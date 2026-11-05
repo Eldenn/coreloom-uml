@@ -23,6 +23,30 @@ export interface ApiDefinition {
     update: typeof routes['notes.update']
     destroy: typeof routes['notes.destroy']
   }
+  architectures: {
+    index: typeof routes['architectures.index']
+    store: typeof routes['architectures.store']
+    show: typeof routes['architectures.show']
+    update: typeof routes['architectures.update']
+    destroy: typeof routes['architectures.destroy']
+    duplicate: typeof routes['architectures.duplicate']
+    diagrams: {
+      store: typeof routes['architectures.diagrams.store']
+      reorder: typeof routes['architectures.diagrams.reorder']
+      update: typeof routes['architectures.diagrams.update']
+      destroy: typeof routes['architectures.diagrams.destroy']
+    }
+    sharing: {
+      show: typeof routes['architectures.sharing.show']
+      update: typeof routes['architectures.sharing.update']
+      regenerateLink: typeof routes['architectures.sharing.regenerate_link']
+      regenerateCode: typeof routes['architectures.sharing.regenerate_code']
+    }
+  }
+  shared: {
+    show: typeof routes['shared.show']
+    unlock: typeof routes['shared.unlock']
+  }
   account: {
     updateProfile: typeof routes['account.update_profile']
     changePassword: typeof routes['account.change_password']
