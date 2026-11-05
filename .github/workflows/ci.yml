@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: coreloom-uml_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7.4.11-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      HOST: localhost
+      PORT: 3333
+      APP_KEY: ci-test-app-key-please-change-me-0000000
+      FRONTEND_URL: http://localhost:5173
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_DATABASE: coreloom-uml_test
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      SESSION_DRIVER: memory
+      LIMITER_STORE: memory
+      SMTP_HOST: localhost
+      SMTP_PORT: 1025
+      MAIL_FROM_ADDRESS: no-reply@coreloom-uml.dev
+      # No MinIO service in CI — the filesystem disk needs no S3 config.
+      DRIVE_DISK: fs
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26.3.0
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint
+
+      - run: pnpm check-types
+
+      - run: pnpm --filter @coreloom-uml/api migration:run
+
+      - run: pnpm test
+
+      - run: pnpm build
+
+      - name: Validate production compose file
+        run: docker compose -f infra/docker-compose.production.yml config --quiet

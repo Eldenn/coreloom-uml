@@ -1,0 +1,8 @@
+{
+  "extends": "@coreloom-uml/config/tsconfig/node",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}

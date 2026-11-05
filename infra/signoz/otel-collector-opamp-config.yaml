@@ -1,0 +1,3 @@
+# Vendored as-is from SigNoz deploy/common/signoz/otel-collector-opamp-config.yaml
+# (tag v0.128.0). `signoz` is the Compose service name of the SigNoz app.
+server_endpoint: ws://signoz:4320/v1/opamp

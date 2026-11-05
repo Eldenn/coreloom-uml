@@ -1,0 +1,140 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Tailwind v4 auto-detects sources from the consuming app's root only, so a
+   consumer (e.g. apps/login) would not scan this package's components and would
+   drop every utility class used solely here (bg-card, bg-primary, ...). Declare
+   this package's components as an explicit source so any consumer emits them. */
+@source "../components";
+
+/* Dark-first: :root carries the dark (graphite) theme; .light overrides it.
+   The `dark:` variant therefore applies by default and is disabled under .light,
+   so shadcn components authored with `dark:` overrides render correctly. */
+@custom-variant dark (&:where(:root:not(.light), :root:not(.light) *));
+@custom-variant light (&:where(.light, .light *));
+
+:root {
+  --radius: 0.625rem;
+
+  --background: #0d0f13;
+  --foreground: #e6e8ec;
+  --card: #15171c;
+  --card-foreground: #e6e8ec;
+  --popover: #1a1d23;
+  --popover-foreground: #e6e8ec;
+  --primary: #1ce0d3;
+  --primary-foreground: #06201e;
+  --secondary: #21242b;
+  --secondary-foreground: #e6e8ec;
+  --muted: #21242b;
+  --muted-foreground: #9ca3b1;
+  --accent: #282c34;
+  --accent-foreground: #e6e8ec;
+  --destructive: #ff6b6b;
+  --border: #20242c;
+  --input: #20242c;
+  --ring: #1ce0d3;
+
+  --border-subtle: #20242c;
+  --border-strong: #3c424f;
+}
+
+.light {
+  --background: #f4f5f7;
+  --foreground: #15171c;
+  --card: #ffffff;
+  --card-foreground: #15171c;
+  --popover: #ffffff;
+  --popover-foreground: #15171c;
+  --primary: #1ce0d3;
+  --primary-foreground: #06201e;
+  --secondary: #f7f8fa;
+  --secondary-foreground: #15171c;
+  --muted: #edeff2;
+  --muted-foreground: #6c7585;
+  --accent: #eef0f3;
+  --accent-foreground: #15171c;
+  --destructive: #ff6b6b;
+  --border: #dce0e6;
+  --input: #dce0e6;
+  --ring: #0f8f8c;
+
+  --border-subtle: #eceef1;
+  --border-strong: #c3c9d2;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+}
+
+/* Design-system raw scales and constants — theme-independent, exposed as
+   Tailwind utilities (e.g. bg-gph-800, text-cyan-400, bg-success). */
+@theme {
+  --color-gph-1000: #0a0b0e;
+  --color-gph-950: #0d0f13;
+  --color-gph-900: #15171c;
+  --color-gph-850: #1a1d23;
+  --color-gph-800: #21242b;
+  --color-gph-750: #282c34;
+  --color-gph-700: #303540;
+  --color-gph-600: #3c424f;
+  --color-gph-500: #5a616f;
+  --color-gph-400: #7b8290;
+  --color-gph-300: #9ca3b1;
+  --color-gph-200: #c4c9d4;
+  --color-gph-100: #e6e8ec;
+  --color-gph-050: #f4f5f7;
+
+  --color-cyan-600: #0f8f8c;
+  --color-cyan-500: #14b5ab;
+  --color-cyan-400: #1ce0d3;
+  --color-cyan-300: #4deadf;
+  --color-cyan-200: #8af2eb;
+  --color-cyan-glow: rgba(28, 224, 211, 0.16);
+
+  --color-cl-cyan: #1ce0d3;
+  --color-cl-teal: #0f8f8c;
+  --color-cl-graphite: #15171c;
+  --color-cl-steel: #303540;
+
+  --color-success: #3dd68c;
+  --color-warning: #f5c451;
+  --color-danger: #ff6b6b;
+  --color-info: #1ce0d3;
+
+  --color-fg-on-accent: #06201e;
+  --color-accent-press: #0b6e6b;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

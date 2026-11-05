@@ -1,0 +1,46 @@
+{
+  "title": "Mon compte",
+  "verifyBanner": {
+    "unverified": "Votre adresse e-mail n'est pas encore vérifiée.",
+    "resend": "Renvoyer l'e-mail de vérification",
+    "sent": "E-mail de vérification envoyé — vérifiez votre boîte de réception.",
+    "error": "Envoi de l'e-mail impossible, réessayez."
+  },
+  "avatar": {
+    "title": "Avatar",
+    "description": "Une image JPEG, PNG ou WebP, jusqu'à 5 Mo.",
+    "remove": "Supprimer l'avatar",
+    "error": "Impossible de mettre à jour votre avatar"
+  },
+  "profile": {
+    "title": "Profil",
+    "description": "Votre nom et votre e-mail de connexion.",
+    "fullName": "Nom complet",
+    "email": "E-mail",
+    "emailChangeHint": "Changer votre e-mail le marque comme non vérifié jusqu'à ce que vous confirmiez la nouvelle adresse.",
+    "submit": "Enregistrer les modifications",
+    "saved": "Profil enregistré.",
+    "verifySent": "Profil enregistré — vérifiez votre nouvelle boîte de réception pour un lien de vérification.",
+    "error": "Impossible d'enregistrer votre profil"
+  },
+  "password": {
+    "title": "Mot de passe",
+    "description": "Nécessite votre mot de passe actuel.",
+    "current": "Mot de passe actuel",
+    "new": "Nouveau mot de passe",
+    "submit": "Changer le mot de passe",
+    "changed": "Votre mot de passe a été changé.",
+    "policy": "Le mot de passe ne respecte pas les exigences.",
+    "error": "Impossible de changer votre mot de passe"
+  },
+  "danger": {
+    "title": "Zone de danger",
+    "description": "Supprimer définitivement votre compte et toutes ses données.",
+    "delete": "Supprimer le compte",
+    "dialogTitle": "Supprimer votre compte",
+    "dialogDescription": "Ceci supprime définitivement votre compte et est irréversible. Saisissez votre mot de passe pour confirmer.",
+    "password": "Mot de passe",
+    "cancel": "Annuler",
+    "error": "Impossible de supprimer votre compte"
+  }
+}

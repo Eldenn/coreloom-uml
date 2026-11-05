@@ -1,0 +1,12 @@
+{
+  "extends": "@coreloom-uml/config/tsconfig/react",
+  "compilerOptions": {
+    "paths": {
+      "@coreloom-uml/ui/*": ["./src/*"]
+    },
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["src", "*.config.ts", "vitest.setup.ts"],
+  "exclude": ["node_modules"]
+}

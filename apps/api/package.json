@@ -1,0 +1,70 @@
+{
+  "name": "@coreloom-uml/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node ace build",
+    "dev": "node ace serve --hmr",
+    "start": "node --import ./instrumentation.js bin/server.js",
+    "lint": "biome check .",
+    "check-types": "tsc --noEmit",
+    "test": "node ace test",
+    "queue:work": "node ace queue:work",
+    "migration:run": "node ace migration:run",
+    "migration:rollback": "node ace migration:rollback",
+    "db:seed": "node ace db:seed"
+  },
+  "imports": {
+    "#app/*": "./app/*.js",
+    "#config/*": "./config/*.js",
+    "#database/*": "./database/*.js",
+    "#start/*": "./start/*.js",
+    "#tests/*": "./tests/*.js"
+  },
+  "exports": {
+    "./registry": "./.adonisjs/client/registry/index.ts"
+  },
+  "dependencies": {
+    "@adonisjs/auth": "10.1.0",
+    "@adonisjs/core": "7.3.4",
+    "@adonisjs/cors": "3.0.0",
+    "@adonisjs/drive": "4.0.0",
+    "@adonisjs/limiter": "3.0.1",
+    "@adonisjs/lucid": "22.4.2",
+    "@adonisjs/mail": "10.4.0",
+    "@adonisjs/redis": "10.0.2",
+    "@adonisjs/session": "8.1.0",
+    "@adonisjs/shield": "9.0.0",
+    "@aws-sdk/client-s3": "3.1127.0",
+    "@aws-sdk/s3-request-presigner": "3.1127.0",
+    "@nemoventures/adonis-jobs": "2.2.0",
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/auto-instrumentations-node": "0.80.0",
+    "@opentelemetry/exporter-trace-otlp-proto": "0.222.0",
+    "@opentelemetry/resources": "2.11.0",
+    "@opentelemetry/sdk-node": "0.222.0",
+    "@opentelemetry/semantic-conventions": "1.43.0",
+    "@tuyau/core": "1.2.2",
+    "@vinejs/vine": "4.4.0",
+    "bullmq": "5.81.4",
+    "luxon": "3.7.2",
+    "pg": "8.21.0",
+    "reflect-metadata": "0.2.2"
+  },
+  "devDependencies": {
+    "@adonisjs/assembler": "8.4.0",
+    "@adonisjs/tsconfig": "2.0.0",
+    "@japa/api-client": "3.2.1",
+    "@japa/assert": "4.2.0",
+    "@japa/plugin-adonisjs": "5.2.0",
+    "@japa/runner": "5.3.0",
+    "@poppinss/ts-exec": "1.4.4",
+    "@swc/core": "1.15.41",
+    "@types/luxon": "3.7.1",
+    "@types/node": "25.9.3",
+    "hot-hook": "1.0.0",
+    "pino-pretty": "13.1.3",
+    "typescript": "6.0.3"
+  }
+}

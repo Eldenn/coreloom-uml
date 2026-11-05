@@ -1,0 +1,69 @@
+name: Changesets
+
+# The core of the release automation — see .changeset/README.md for the
+# full picture. On every push to `main`:
+#
+# - If changesets are pending (normal case: a feature PR just merged and it
+#   carried one, per require-changeset.yml), open or update an
+#   auto-generated "Version Packages" pull request: applies every pending
+#   changeset's version bump to apps/api + apps/web (they version together,
+#   see .changeset/config.json's `fixed` group), regenerates
+#   apps/api/CHANGELOG.md / apps/web/CHANGELOG.md, deletes the consumed
+#   changeset files. Nobody edits this PR by hand.
+# - If none are pending — which only happens right after that
+#   "Version Packages" PR itself gets merged — run scripts/tag-release.mjs
+#   instead: tag the commit vX.Y.Z and push the tag. That tag push is what
+#   triggers release.yml (CI + GitHub Release) and, from there,
+#   deploy-production.yml. There is no npm publish step: every workspace
+#   package is private.
+#
+# Staging (deploy-staging.yml) redeploys on every push to `main` regardless
+# of any of this — it is not gated behind changesets or releases.
+#
+# Setup note: PRs/pushes made with the default GITHUB_TOKEN do not trigger
+# other workflows, so CI (ci.yml, via pull_request) will not automatically
+# run against the "Version Packages" PR unless a token with broader
+# permissions is used here. Add a fine-grained PAT (contents: write,
+# pull-requests: write) as the repository secret RELEASE_GITHUB_TOKEN to get
+# normal CI on that PR too; without it, this workflow still works, just
+# without a check run on the auto-generated PR itself.
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: changesets-main
+  cancel-in-progress: false
+
+jobs:
+  version-or-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26.3.0
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Version packages or tag a release
+        uses: changesets/action@v2.1.2
+        with:
+          github-token: ${{ secrets.RELEASE_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          version-script: pnpm changeset version
+          publish-script: node scripts/tag-release.mjs
+          commit-message: 'chore: version packages'
+          pr-title: 'chore: version packages'
