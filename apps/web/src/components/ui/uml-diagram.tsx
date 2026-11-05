@@ -18,6 +18,7 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
+  type Viewport,
   ViewportPortal,
 } from '@xyflow/react'
 import * as React from 'react'
@@ -227,6 +228,7 @@ function useCanvasEffects({
     },
   }))
   React.useEffect(() => {
+    // React Flow's fitView, which waits until new elements have their size.
     const frame = requestAnimationFrame(() => void flow.fitView({ padding: 0.15, maxZoom: 1 }))
     return () => {
       cancelAnimationFrame(frame)
@@ -246,6 +248,26 @@ function useCanvasEffects({
       cancelAnimationFrame(frame)
     }
   }, [refit, flow, canvas])
+}
+
+/**
+ * Full screen fits the diagram to the screen; leaving it puts back the view from before, since
+ * the screen-sized pan and zoom would leave the diagram off to the side of the smaller box.
+ */
+function useViewAcrossFullscreen(fullscreen: Fullscreen | null) {
+  const active = fullscreen?.active ?? false
+  const flow = useReactFlow()
+  const before = React.useRef<Viewport | null>(null)
+  React.useEffect(() => {
+    if (active) {
+      before.current = flow.getViewport()
+      return
+    }
+    const view = before.current
+    if (!view) return
+    before.current = null
+    void flow.setViewport(view)
+  }, [active, flow])
 }
 
 /** What React Flow's own live region and descriptions say, in the reader's language. */
@@ -444,6 +466,7 @@ function DiagramCanvas({
     ids: nodes.map((n) => n.id).join('\u0000'),
     refit,
   })
+  useViewAcrossFullscreen(fullscreen)
 
   const toAlign = editable ? alignable(selection.elements, boxes, graph) : []
   const align = (how: UmlAlignment) => {

@@ -1,4 +1,12 @@
-import type { UmlProblem } from '@/lib/uml'
+// Coreloom UI — the line reader the Mermaid parsers share: lines without comments or blanks, with
+// their numbers; quoted strings; comma-separated macro arguments; and the problems a parser reports.
+import {
+  umlElementIds,
+  type UmlLayout,
+  type UmlParseResult,
+  type UmlProblem,
+  type UmlSpec,
+} from '@/lib/uml'
 
 interface SourceLine {
   /** 1-based, in the text the user typed. */
@@ -95,9 +103,57 @@ function titleBlock(title: string | undefined): string[] {
   return title ? ['---', `title: ${title.replace(/\r?\n/g, ' ')}`, '---'] : []
 }
 
+/**
+ * Mermaid and PlantUML have no place for positions, so the ones people dragged go in one comment
+ * line, which both skip: `%% coreloom-layout {…}` or `' coreloom-layout {…}`.
+ */
+const LAYOUT_MARK = 'coreloom-layout'
+const LAYOUT_LINE = /^[ \t]*(?:%%|')[ \t]*coreloom-layout[ \t]+(.+?)[ \t]*$/m
+
+/** The comment line for a diagram's positions, or null when it has none to keep. */
+function layoutLine(diagram: UmlSpec, comment: '%%' | "'"): string | null {
+  if (diagram.kind === 'sequence' || !diagram.layout) return null
+  if (!Object.keys(diagram.layout).length) return null
+  return `${comment} ${LAYOUT_MARK} ${JSON.stringify(diagram.layout)}`
+}
+
+function isPoint(value: unknown): value is { x: number; y: number } {
+  if (typeof value !== 'object' || value === null) return false
+  const { x, y } = value as Record<string, unknown>
+  return typeof x === 'number' && typeof y === 'number' && Number.isFinite(x) && Number.isFinite(y)
+}
+
+/** The positions in a layout line, for the elements the diagram has; anything malformed is skipped. */
+function readLayoutLine(input: string, diagram: UmlSpec): UmlLayout | null {
+  const json = LAYOUT_LINE.exec(input)?.[1]
+  if (!json || diagram.kind === 'sequence') return null
+  let raw: unknown
+  try {
+    raw = JSON.parse(json)
+  } catch {
+    return null
+  }
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return null
+  const points = raw as Record<string, unknown>
+  const kept = umlElementIds(diagram).flatMap((id) => {
+    const point = Object.hasOwn(points, id) ? points[id] : undefined
+    return isPoint(point) ? [[id, { x: point.x, y: point.y }] as const] : []
+  })
+  return kept.length ? Object.fromEntries(kept) : null
+}
+
+/** A parse result with the positions its text's layout line kept. */
+function withLayoutLine(result: UmlParseResult, input: string): UmlParseResult {
+  const diagram = result.diagram
+  if (!diagram || diagram.kind === 'sequence') return result
+  const layout = readLayoutLine(input, diagram)
+  return layout ? { ...result, diagram: { ...diagram, layout } } : result
+}
+
 export {
   frontMatter,
   type Groups,
+  layoutLine,
   lineBreaks,
   macroArgs,
   match,
@@ -109,4 +165,5 @@ export {
   STYLING,
   titleBlock,
   unquote,
+  withLayoutLine,
 }
