@@ -7,7 +7,7 @@
 import { ArrowLeftRightIcon } from 'lucide-react'
 import * as React from 'react'
 
-import { Choice, TextField, useDrafts } from '@/components/diagram-fields'
+import { Choice, type NameField, TextField, useDrafts } from '@/components/diagram-fields'
 import { MemberList } from '@/components/diagram-members'
 import { StepForm, type StepFormProps } from '@/components/diagram-sequence'
 import { Button } from '@/components/ui/button'
@@ -46,7 +46,7 @@ interface DiagramPropertiesProps {
   /** What a sequence step's form does: change it, move it, add or remove a block's section. */
   steps?: Pick<StepFormProps, 'onChange' | 'onMove' | 'onAddSection' | 'onRemoveSection'>
   /** The name field, so the editor can focus it after adding an element. */
-  nameRef?: React.Ref<HTMLInputElement>
+  nameRef?: React.Ref<NameField>
   className?: string
 }
 
@@ -103,7 +103,7 @@ function ElementForm({
   kind: UmlSpec['kind']
   locked: boolean
   onChange: (id: string, fields: UmlElementFields) => void
-  nameRef?: React.Ref<HTMLInputElement> | undefined
+  nameRef?: React.Ref<NameField> | undefined
   t: PropertiesText
 }) {
   const { fields, id } = target

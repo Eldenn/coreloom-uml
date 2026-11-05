@@ -65,7 +65,7 @@ function parseErAttribute(text: string): ErAttribute | null {
   const [, type = '', name = '', keys, comment] = m
   const attribute: ErAttribute = { type, name }
   if (keys) attribute.keys = keys.split(',').map((k) => k.trim() as ErKey)
-  if (comment) attribute.comment = comment
+  if (comment) attribute.comment = unquote(comment)
   return attribute
 }
 
@@ -99,7 +99,7 @@ function readStatement(p: ErParse, line: SourceLine): boolean {
   else if ((m = match(ENTITY, line.text))) {
     const [, id = '', label, open, close] = m
     const entity = ensureEntity(p, id)
-    if (label) entity.label = label
+    if (label) entity.label = unquote(label)
     if (open && !close) p.open = { entity, line }
   } else if (STYLING.test(line.text)) p.problems.push(problem(line, 'unsupported', 'warning'))
   else return false

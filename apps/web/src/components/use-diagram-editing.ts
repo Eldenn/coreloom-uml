@@ -7,6 +7,7 @@ import {
   relationCount,
   stepCommands,
 } from '@/components/diagram-commands'
+import type { NameField } from '@/components/diagram-fields'
 import type { Messages } from '@/lib/i18n'
 import { toUmlJson, type UmlLayout, type UmlPoint, type UmlSpec } from '@/lib/uml'
 import {
@@ -80,7 +81,7 @@ function useDiagramEditing({
   const [notice, setNotice] = React.useState<string | null>(null)
   const [lastType, setLastType] = React.useState<UmlRelationType | null>(null)
   const [clip, setClip] = React.useState<UmlClip | null>(null)
-  const nameRef = React.useRef<HTMLInputElement>(null)
+  const nameRef = React.useRef<NameField>(null)
   // The sequence step list's buttons, by step id.
   const stepButtons = React.useRef(new Map<string, HTMLButtonElement>())
   // An element or step just added: its name field (or its button) takes focus once shown.

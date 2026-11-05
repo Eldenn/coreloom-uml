@@ -70,6 +70,9 @@ function flowNodes(input: {
       position: { x: box.x, y: box.y },
       width: box.width,
       height: box.height,
+      // The size is known: without it React Flow forgets where each box's handles are on every
+      // render and drops its lines until it measures the box again, so they blink while dragging.
+      measured: { width: box.width, height: box.height },
       style: { width: box.width, height: box.height },
       ...(node.parent && boxes.has(node.parent) ? { parentId: node.parent } : {}),
       data: { node, connectable },

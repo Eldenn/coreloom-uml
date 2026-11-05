@@ -100,6 +100,7 @@ function Drawing({
   readOnly,
   editing,
   directions,
+  notes = true,
   imageRef,
   onLayoutChange,
 }: {
@@ -114,6 +115,8 @@ function Drawing({
   onLayoutChange: (layout: UmlLayout) => void
   /** The directions the text's format can keep. */
   directions: readonly UmlDirection[]
+  /** The text's format keeps notes (a Mermaid flowchart has none). Default: true. */
+  notes?: boolean
   imageRef: React.Ref<UmlDiagramHandle>
 }) {
   const empty = useCoreloomI18n().messages.diagram.empty
@@ -126,7 +129,7 @@ function Drawing({
       pane.current?.querySelector<HTMLElement>('[role="application"], [role="region"]')?.focus()
     })
   }
-  const types = diagram ? elementTypes(diagram) : []
+  const types = (diagram ? elementTypes(diagram) : []).filter((type) => notes || type !== 'note')
   const drop = (type: string, at: { x: number; y: number }) => {
     const known = types.find((x): x is UmlElementType => x === type)
     if (known) editing.add(known, at)
@@ -159,6 +162,7 @@ function Drawing({
         canRedo={editing.canRedo}
         direction={editing.direction}
         directions={directions}
+        types={types}
         onAdd={editing.add}
         onConnect={editing.connect}
         onDelete={remove}

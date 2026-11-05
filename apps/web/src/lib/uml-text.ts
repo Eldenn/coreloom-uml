@@ -150,6 +150,14 @@ function withLayoutLine(result: UmlParseResult, input: string): UmlParseResult {
   return layout ? { ...result, diagram: { ...diagram, layout } } : result
 }
 
+/**
+ * PlantUML's colours (`#red`, `#E0E0E0`) taken out of a line, but not out of quoted names:
+ * `node "Order #42" #pink` keeps "Order #42".
+ */
+function withoutColors(text: string): string {
+  return text.replace(/("[^"]*")|\s?#\w+/g, (_all, quoted: string | undefined) => quoted ?? '')
+}
+
 export {
   frontMatter,
   type Groups,
@@ -166,4 +174,5 @@ export {
   titleBlock,
   unquote,
   withLayoutLine,
+  withoutColors,
 }

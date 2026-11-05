@@ -22,6 +22,7 @@ import {
   type SourceLine,
   unquote,
   withLayoutLine,
+  withoutColors,
 } from '@/lib/uml-text'
 
 /** The lines worth reading: without `'` comments, `/' … '/` blocks, `@startuml` and `@enduml`. */
@@ -101,12 +102,25 @@ function classOrPackage(lines: readonly SourceLine[]): 'class' | 'package' {
   return packaged && !lines.some((l) => CLASS_ONLY.test(l.text)) ? 'package' : 'class'
 }
 
+/**
+ * What a line looks like without the words people wrote in it: names in quotes, labels after a
+ * colon, a block's guard and the title. `class "Order (v2)" as A` must not read as a use case.
+ */
+function shape(text: string): string {
+  if (/^title\s/i.test(text)) return ''
+  return text
+    .replace(/"[^"]*"/g, '""')
+    .replace(/^(alt|else|loop|opt|par|group|critical|break)\s.*$/, '$1')
+    .replace(/:\s.*$/, ':')
+}
+
 /** The kind with the most lines that are its own; ties go to the first in `ORDER`. */
 function detect(lines: readonly SourceLine[]): PlantKind | null {
   let best: PlantKind | null = null
   let most = 0
+  const shapes = lines.map((l) => shape(l.text))
   for (const kind of ORDER) {
-    const n = lines.filter((l) => SIGNS[kind].test(l.text)).length
+    const n = shapes.filter((text) => SIGNS[kind].test(text)).length
     if (n > most) {
       best = kind
       most = n
@@ -203,10 +217,13 @@ function stateLine(text: string): string | null {
   if (/^(\|\||--)$/.test(text)) return null
   const desc = match(/^state\s+([\w.]+)\s*(?:#\w+)?\s*:\s*(.+)$/, text)
   if (desc) return `${desc[1] ?? ''} : ${desc[2] ?? ''}`
-  const plain = text.replace(/\s#\w+/g, '').replace(/\s*<<\s*(start|end)\s*>>/, '')
-  if (/^state\b/.test(plain)) return plain
+  // Colours go from the declaration, not from what is said after the colon (`: order #42`).
+  const colon = text.search(/\s:\s/)
+  const [head, said] = colon < 0 ? [text, ''] : [text.slice(0, colon), text.slice(colon)]
+  const plain = withoutColors(head).replace(/\s*<<\s*(start|end)\s*>>/, '')
+  if (/^state\b/.test(plain)) return plain + said
   // Every arrow is a transition: `->`, `-down->`, `-[#red]->` all become `-->`.
-  return plain.replace(/\s*-+(?:\[[^\]]*\])?(?:up|down|left|right|u|d|l|r)?-*>\s*/, ' --> ')
+  return plain.replace(/\s*-+(?:\[[^\]]*\])?(?:up|down|left|right|u|d|l|r)?-*>\s*/, ' --> ') + said
 }
 
 const PARTICIPANT =
@@ -273,8 +290,16 @@ function sequenceLine(stack: string[]) {
 
 /** Entity blocks as Mermaid's: `name : type <<PK>>` becomes `type name PK`. */
 function erLine(text: string): string | string[] {
-  const entity = match(/^entity\s+(?:"[^"]+"\s+as\s+)?([\w.]+).*\{$/, text)
-  if (entity) return `${entity[1] ?? ''} {`
+  // `entity "Label" as E {`, `entity E as "Label"`, or a bare `entity E` with no attributes.
+  const entity = match(
+    /^entity\s+(?:"([^"]+)"\s+as\s+)?([\w.]+)(?:\s+as\s+"([^"]+)")?[^{]*?(\{)?$/,
+    text,
+  )
+  if (entity) {
+    const [, before, id = '', after, open] = entity
+    const label = before ?? after
+    return `${id}${label ? `["${label}"]` : ''}${open ? ' {' : ''}`
+  }
   if (text === '}') return '}'
   if (/^(--|\.\.|==|__)$/.test(text)) return []
   const attr = match(/^\*?\s*([\w.]+)\s*:\s*([\w.()[\]]+)(.*)$/, text)

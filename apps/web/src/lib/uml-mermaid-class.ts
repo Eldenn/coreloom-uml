@@ -154,7 +154,7 @@ function readClassDecl(state: ClassState, line: SourceLine, m: Groups) {
   const [, id = '', generic, label, open, close] = m
   const cls = ensureClass(state, id)
   if (generic) cls.generic = generic
-  if (label) cls.label = label
+  if (label) cls.label = unquote(label)
   if (open && !close) state.stack.push({ type: 'class', cls, line })
 }
 

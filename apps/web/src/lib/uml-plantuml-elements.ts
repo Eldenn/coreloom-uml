@@ -8,7 +8,7 @@ import type {
   UseCaseElement,
   UseCaseRelation,
 } from '@/lib/uml-elements'
-import { match, problem, type SourceLine, unquote } from '@/lib/uml-text'
+import { match, problem, type SourceLine, unquote, withoutColors } from '@/lib/uml-text'
 
 /** `"Long name" as id`, `id as "Long name"`, `:Long name: as id`, `(Name) as id`, or `id`. */
 const NAMED =
@@ -250,7 +250,7 @@ function declareDeployment(p: ElementParse<DeploymentNode>, line: SourceLine): b
   const decl = match(DEPLOY_DECL, line.text)
   if (!decl) return false
   const stereotype = STEREOTYPE.exec(decl[2] ?? '')?.[1]
-  const named = readNamed((decl[2] ?? '').replace(STEREOTYPE, '').replace(/#\w+/g, '').trim())
+  const named = readNamed(withoutColors((decl[2] ?? '').replace(STEREOTYPE, '')).trim())
   if (!named) {
     p.problems.push(problem(line, 'syntax'))
     return true

@@ -148,6 +148,8 @@ interface DiagramToolsProps {
   direction: UmlDirection | null
   /** The directions the current format can keep (Mermaid has none for C4). Default: all. */
   directions?: readonly UmlDirection[]
+  /** What can be added: the diagram's elements, less those the text's format can't keep. */
+  types?: readonly UmlElementType[]
   onAdd: (type: UmlElementType) => void
   onConnect: (input: AddRelationInput) => void
   onDelete: () => void
@@ -470,6 +472,7 @@ function DiagramTools({
   canRedo,
   direction,
   directions,
+  types,
   onAdd,
   onConnect,
   onDelete,
@@ -498,7 +501,7 @@ function DiagramTools({
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-2 py-1">
       <Toolbar aria-label={t.label} variant="plain" className="flex-wrap">
         <ElementTools
-          types={diagram ? elementTypes(diagram) : []}
+          types={types ?? (diagram ? elementTypes(diagram) : [])}
           disabled={disabled}
           onAdd={onAdd}
           t={t}
