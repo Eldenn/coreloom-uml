@@ -75,6 +75,7 @@ export const en = {
     reload: 'Reload',
     overwrite: 'Overwrite',
     diagramDeleted: 'Diagram deleted.',
+    importUnsupported: 'This kind of diagram can’t be added to an architecture.',
   },
   settings: {
     title: 'Settings',
@@ -179,6 +180,7 @@ export const fr: Messages = {
     reload: 'Recharger',
     overwrite: 'Écraser',
     diagramDeleted: 'Diagramme supprimé.',
+    importUnsupported: 'Ce type de diagramme ne peut pas être ajouté à une architecture.',
   },
   settings: {
     title: 'Réglages',

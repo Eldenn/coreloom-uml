@@ -9,6 +9,7 @@ import {
   FileTools,
   ProblemList,
 } from '@/components/diagram-file-tools'
+import { sniffFormat, useFileImport } from '@/components/diagram-import'
 import { CodeEditor, type CodeEditorDiagnostic } from '@/components/ui/code-editor'
 import type { UmlDiagramHandle } from '@/components/ui/uml-diagram'
 import { useDiagramEditing } from '@/components/use-diagram-editing'
@@ -198,18 +199,6 @@ function writeDiagram(diagram: UmlSpec, format: DiagramFormat): string {
     case 'mermaid':
       return toMermaid(diagram)
   }
-}
-
-/** The syntax pasted text is written in, when it clearly says: `@startuml`, or a Mermaid header. */
-function sniffFormat(text: string): DiagramFormat | null {
-  if (isPlantUml(text)) return 'plantuml'
-  if (/^\s*[{[]/.test(text)) return 'json'
-  const first = text.trimStart().split(/\s/)[0] ?? ''
-  return /^(classDiagram|sequenceDiagram|stateDiagram|erDiagram|flowchart|graph|C4\w+|---)/.test(
-    first,
-  )
-    ? 'mermaid'
-    : null
 }
 
 /**
@@ -485,15 +474,23 @@ function DiagramEditor({
     if (next !== format) setFormat(next)
   }
 
-  const applyTemplate = (template: string) => {
+  // New text from a template or a file: a fresh start, without the dragged positions.
+  const replaceText = (next: { text: string; format: DiagramFormat }) => {
     editing.reset()
     setLayout(null)
-    const next = templateIn(template, format)
     setText(next.text)
     changeFormat(next.format)
   }
 
+  const imports = useFileImport({ format, t, onRead: replaceText })
+
+  const applyTemplate = (template: string) => {
+    imports.clear()
+    replaceText(templateIn(template, format))
+  }
+
   const type = (next: string) => {
+    imports.clear()
     editing.reset()
     setText(next)
     changeFormat(pastedFormat(next, text, format) ?? format)
@@ -502,7 +499,7 @@ function DiagramEditor({
   const image = React.useRef<UmlDiagramHandle>(null)
   const { download, failed } = useDownload({ image, fileName, format, text: exported })
   const { copied, copy } = useCopy(exported)
-  const notice = failed ? t.imageFailed : editing.notice
+  const notice = failed ? t.imageFailed : [editing.notice, imports.notice].find(Boolean)
   const panes = paneHeight(height)
 
   return (
@@ -520,6 +517,7 @@ function DiagramEditor({
         format={format}
         onFormat={switchFormat}
         onTemplate={applyTemplate}
+        onImport={imports.importFile}
         onCopy={copy}
         copied={copied}
         onDownload={download}

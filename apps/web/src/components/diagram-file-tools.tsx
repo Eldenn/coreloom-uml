@@ -1,7 +1,7 @@
 'use client'
 
-// Coreloom UI — Diagram file tools. The diagram editor's top bar (format, new diagram, copy,
-// download, the view switch, the app's actions and the status line) and the list of problems
+// Coreloom UI — Diagram file tools. The diagram editor's top bar (format, new diagram, import,
+// copy, download, the view switch, the app's actions and the status line) and the list of problems
 // under the text; and which format can hold which kind of diagram.
 import {
   CheckIcon,
@@ -10,11 +10,13 @@ import {
   CopyIcon,
   DownloadIcon,
   FilePlusIcon,
+  FileUpIcon,
   type LucideIcon,
   ShapesIcon,
 } from 'lucide-react'
-import type * as React from 'react'
+import * as React from 'react'
 
+import { DIAGRAM_FILE_ACCEPT } from '@/components/diagram-import'
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import {
   Toolbar,
@@ -109,11 +111,49 @@ function problemText(p: UmlProblem, t: EditorText): string {
   return `${where}${what}${detail ? ` ${detail}` : ''}`
 }
 
+/** Opens the file picker; the file chosen goes to `onImport` (the same file can be picked again). */
+function ImportButton({
+  label,
+  disabled,
+  onImport,
+}: {
+  label: string
+  disabled: boolean
+  onImport: (file: File) => void
+}) {
+  const input = React.useRef<HTMLInputElement>(null)
+  return (
+    <>
+      <ToolbarButton
+        disabled={disabled}
+        onClick={() => {
+          input.current?.click()
+        }}
+      >
+        <FileUpIcon aria-hidden />
+        <span className="max-sm:sr-only">{label}</span>
+      </ToolbarButton>
+      <input
+        ref={input}
+        type="file"
+        accept={DIAGRAM_FILE_ACCEPT}
+        hidden
+        onChange={(e) => {
+          const file = e.currentTarget.files?.[0]
+          e.currentTarget.value = ''
+          if (file) onImport(file)
+        }}
+      />
+    </>
+  )
+}
+
 function FileTools({
   t,
   format,
   onFormat,
   onTemplate,
+  onImport,
   onCopy,
   copied,
   onDownload,
@@ -131,6 +171,8 @@ function FileTools({
   format: DiagramFormat
   onFormat: (f: DiagramFormat) => void
   onTemplate: (text: string) => void
+  /** A file picked with Import, read by the editor. */
+  onImport: (file: File) => void
   onCopy: () => void
   copied: boolean
   onDownload: (what: DiagramFormat | UmlImageFormat) => void
@@ -141,7 +183,7 @@ function FileTools({
   kinds: Messages['diagram']['kinds']
   /** The kind drawn now: a format that can't hold it can't be picked. */
   kind: UmlDiagramKind | null
-  /** Nothing here may change the text: the format and New diagram are off. */
+  /** Nothing here may change the text: the format, New diagram and Import are off. */
   readOnly: boolean
   view: DiagramEditorView
   onView: (view: DiagramEditorView) => void
@@ -183,6 +225,7 @@ function FileTools({
             </DropdownMenuItem>
           ))}
         </ToolbarMenu>
+        <ImportButton label={t.importFile} disabled={readOnly} onImport={onImport} />
         <ToolbarSeparator className="max-sm:hidden" />
         <ToolbarButton onClick={onCopy}>
           {copied ? <CheckIcon aria-hidden /> : <CopyIcon aria-hidden />}
