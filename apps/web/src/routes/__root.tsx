@@ -1,5 +1,6 @@
+import type { QueryClient } from '@tanstack/react-query'
 import {
-  createRootRoute,
+  createRootRouteWithContext,
   type ErrorComponentProps,
   Outlet,
   useRouter,
@@ -14,7 +15,12 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { CoreloomLinkProvider } from '@/lib/link'
 import { LocaleProvider } from '@/lib/locale'
 
-export const Route = createRootRoute({
+/** Available to every route's `beforeLoad` / `loader` (set in `main.tsx`). */
+export interface RouterContext {
+  queryClient: QueryClient
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
   component: Root,
   notFoundComponent: NotFound,
   errorComponent: RootError,

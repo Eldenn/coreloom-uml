@@ -2,15 +2,17 @@
 // visitors are sent to /login first (then back where they were going).
 import {
   createFileRoute,
-  Navigate,
   Outlet,
+  redirect,
   useLocation,
   useNavigate,
+  useRouter,
   useRouterState,
 } from '@tanstack/react-router'
 import { LanguagesIcon, NetworkIcon, PlusIcon, SettingsIcon } from 'lucide-react'
+import * as React from 'react'
 
-import { useAuth } from '@/auth/auth-context'
+import { meQueryOptions, useAuth } from '@/auth/auth-context'
 import { AppShell } from '@/components/app-shell'
 import { CatMark } from '@/components/brand'
 import { Button } from '@/components/ui/button'
@@ -27,6 +29,11 @@ import { apiBaseUrl } from '@/lib/client'
 import { type Locale, useLocale, useT } from '@/lib/locale'
 
 export const Route = createFileRoute('/_authed')({
+  // Runs before any page under it loads or renders, so a signed-out visitor never reaches one.
+  beforeLoad: async ({ context, location }) => {
+    const user = await context.queryClient.query({ ...meQueryOptions, staleTime: 'static' })
+    if (!user) throw redirect({ to: '/login', search: { redirect: location.href }, replace: true })
+  },
   component: AuthedLayout,
 })
 
@@ -65,7 +72,9 @@ function AuthedLayout() {
   const t = useT()
   const { user, isLoading, logout } = useAuth()
   const navigate = useNavigate()
+  const router = useRouter()
   const location = useLocation()
+  const signingOut = React.useRef(false)
   // The page's breadcrumbs come from the matched routes' `staticData.crumb` / loader data.
   const crumbs = useRouterState({
     select: (state) =>
@@ -79,8 +88,18 @@ function AuthedLayout() {
     select: (state) => state.matches.some((match) => match.staticData.fullWidth),
   })
 
-  if (isLoading) return null
-  if (!user) return <Navigate to="/login" search={{ redirect: location.href }} replace />
+  // Signed out while on a page (session expired, a 401 from the API): back to /login, then here.
+  // Signing out from the menu goes to /login without coming back.
+  React.useEffect(() => {
+    if (isLoading || user || signingOut.current) return
+    void router.navigate({
+      to: '/login',
+      search: { redirect: router.state.location.href },
+      replace: true,
+    })
+  }, [isLoading, user, router])
+
+  if (isLoading || !user) return null
 
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`)
@@ -103,8 +122,13 @@ function AuthedLayout() {
         },
       ]}
       onSignOut={async () => {
-        await logout()
-        await navigate({ to: '/login' })
+        signingOut.current = true
+        try {
+          await logout()
+          await navigate({ to: '/login' })
+        } finally {
+          signingOut.current = false
+        }
       }}
       groups={[
         {
