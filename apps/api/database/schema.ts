@@ -7,6 +7,56 @@
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
+export class ArchitectureSchema extends BaseModel {
+  static $columns = ['accessCode', 'accessVersion', 'createdAt', 'description', 'id', 'shareToken', 'title', 'updatedAt', 'userId', 'visibility'] as const
+  $columns = ArchitectureSchema.$columns
+  @column()
+  declare accessCode: string | null
+  @column()
+  declare accessVersion: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare description: string | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare shareToken: string | null
+  @column()
+  declare title: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
+  @column()
+  declare visibility: string
+}
+
+export class DiagramSchema extends BaseModel {
+  static $columns = ['architectureId', 'content', 'createdAt', 'format', 'id', 'kind', 'position', 'title', 'updatedAt', 'version'] as const
+  $columns = DiagramSchema.$columns
+  @column()
+  declare architectureId: number
+  @column()
+  declare content: any | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare format: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare kind: string
+  @column()
+  declare position: number
+  @column()
+  declare title: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare version: number
+}
+
 export class NoteSchema extends BaseModel {
   static $columns = ['body', 'createdAt', 'id', 'title', 'updatedAt', 'userId'] as const
   $columns = NoteSchema.$columns

@@ -106,6 +106,48 @@ router
 
 /*
 |--------------------------------------------------------------------------
+| Architectures and their diagrams (owner-scoped, copied from `notes`)
+|--------------------------------------------------------------------------
+*/
+const architecturesController = () =>
+  import('#app/architectures/controllers/architectures-controller')
+const diagramsController = () => import('#app/diagrams/controllers/diagrams-controller')
+router
+  .group(() => {
+    router.get('/', [architecturesController, 'index']).as('architectures.index')
+    router.post('/', [architecturesController, 'store']).as('architectures.store')
+    router.get('/:id', [architecturesController, 'show']).as('architectures.show')
+    router.patch('/:id', [architecturesController, 'update']).as('architectures.update')
+    router.delete('/:id', [architecturesController, 'destroy']).as('architectures.destroy')
+    router
+      .post('/:id/duplicate', [
+        () => import('#app/architectures/controllers/duplicate-architecture-controller'),
+        'handle',
+      ])
+      .as('architectures.duplicate')
+
+    router.post('/:id/diagrams', [diagramsController, 'store']).as('architectures.diagrams.store')
+    // Declared before `/:id/diagrams/:diagramId` so `order` isn't read as an id.
+    router
+      .put('/:id/diagrams/order', [
+        () => import('#app/diagrams/controllers/reorder-diagrams-controller'),
+        'handle',
+      ])
+      .as('architectures.diagrams.reorder')
+    router
+      .patch('/:id/diagrams/:diagramId', [diagramsController, 'update'])
+      .as('architectures.diagrams.update')
+    router
+      .delete('/:id/diagrams/:diagramId', [diagramsController, 'destroy'])
+      .as('architectures.diagrams.destroy')
+  })
+  .prefix('/architectures')
+  .where('id', router.matchers.number())
+  .where('diagramId', router.matchers.number())
+  .use(middleware.auth())
+
+/*
+|--------------------------------------------------------------------------
 | Account (self-service management of the signed-in user)
 |--------------------------------------------------------------------------
 |

@@ -22,6 +22,8 @@ export default defineConfig({
    * JSON parser.
    */
   json: {
+    // A diagram's content may be up to 1 MB (see DIAGRAM_CONTENT_MAX_BYTES).
+    limit: '2mb',
     convertEmptyStringsToNull: true,
     types: ['application/json', 'application/json-patch+json', 'application/vnd.api+json'],
   },
