@@ -1,15 +1,12 @@
-/// <reference types="vitest/config" />
-import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
 
+// Unit tests for the app's own logic (src/**/*.test.ts), in Node. Screens are tested the
+// coreloom-ui way, in a real browser with Playwright + axe, not with jsdom.
 export default defineConfig({
-  plugins: [react()],
   test: {
-    environment: 'jsdom',
-    globals: false,
-    include: ['src/**/*.test.{ts,tsx}'],
-    setupFiles: ['./vitest.setup.ts'],
-    // No web tests yet — don't fail the pipeline until the first one lands.
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
+    // No web unit test yet — don't fail the pipeline until the first one lands.
     passWithNoTests: true,
   },
 })

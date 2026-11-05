@@ -1,0 +1,206 @@
+// The app's own copy, in English and French. The Coreloom components bring their own strings
+// (buttons, placeholders, screen-reader text…); these are the ones this app adds.
+// Add a language: copy `en`, translate it, and register it in src/lib/locale.tsx.
+
+export const en = {
+  brand: 'Coreloom UML',
+  nav: {
+    architectures: 'Architectures',
+    settings: 'Settings',
+  },
+  shell: {
+    workspace: 'Personal',
+    main: 'Workspace',
+    goTo: 'Go to',
+    actions: 'Actions',
+    language: 'Language',
+  },
+  login: {
+    wrongCredentials: 'Wrong email or password.',
+  },
+  signup: {
+    emailTaken: 'An account already uses this email. Sign in instead, or reset its password.',
+  },
+  reset: {
+    expired: 'This link is invalid or has expired.',
+    requestNew: 'Ask for a new one',
+    changed: 'Your password has been changed. Sign in with it.',
+  },
+  verify: {
+    checking: 'Checking your link…',
+    done: 'Your email address is verified.',
+    failed: 'This verification link is invalid or has expired.',
+    continue: 'Continue',
+  },
+  architectures: {
+    title: 'Architectures',
+    description: 'Your software architectures, each with its UML diagrams.',
+    new: 'New architecture',
+    emptyTitle: 'No architecture yet',
+    emptyDescription: 'Create one to start drawing its diagrams.',
+    search: 'Search architectures',
+    createTitle: 'New architecture',
+    createDescription: 'It starts private, with one diagram. You can add more views later.',
+    titleLabel: 'Title',
+    titleRequired: 'Give it a title.',
+    descriptionLabel: 'Description',
+    firstDiagram: 'First diagram',
+    create: 'Create',
+    cancel: 'Cancel',
+    open: 'Open',
+    duplicate: 'Duplicate',
+    duplicated: 'Copy created.',
+    delete: 'Delete',
+    deleted: 'Architecture deleted.',
+    deleteTitle: (title: string) => `Delete “${title}”?`,
+    deleteText:
+      'Its diagrams and share links go with it. People who had the link can no longer open it.',
+    loadFailed: 'The architectures could not be loaded.',
+    retry: 'Retry',
+  },
+  shared: {
+    unavailableTitle: 'This link is not available',
+    unavailableText:
+      'It may have been turned off or replaced. Ask the person who shared it for a new one.',
+    wrongCode: 'That code didn’t work.',
+    openInEditor: 'Open in the editor',
+  },
+  editor: {
+    loadFailed: 'This architecture could not be loaded.',
+    failed: 'That didn’t work. Try again.',
+    share: 'Share',
+    sharingFailed: 'The sharing settings could not be loaded.',
+    conflictTitle: 'This diagram was changed somewhere else',
+    conflictDescription: 'Reload it to see the other version, or keep yours and overwrite it.',
+    reload: 'Reload',
+    overwrite: 'Overwrite',
+    diagramDeleted: 'Diagram deleted.',
+  },
+  settings: {
+    title: 'Settings',
+    description: 'Your account and how the app looks.',
+    account: 'Account',
+    appearance: 'Appearance',
+    profile: 'Profile',
+    profileHint: 'Your name, shown in the app.',
+    name: 'Name',
+    email: 'Email',
+    saved: 'Changes saved.',
+    managed:
+      'This is the default account. Its email and password come from the server configuration and can only be changed there.',
+    password: 'Password',
+    passwordHint: 'At least 12 characters.',
+    currentPassword: 'Current password',
+    newPassword: 'New password',
+    passwordChanged: 'Your password has been changed.',
+    theme: 'Theme',
+    accent: 'Accent color',
+    emailInvalid: 'Enter a valid email address.',
+    currentPasswordRequired: 'Enter your current password.',
+    wrongPassword: 'Your current password is incorrect.',
+  },
+}
+
+export type Messages = typeof en
+
+export const fr: Messages = {
+  brand: 'Coreloom UML',
+  nav: {
+    architectures: 'Architectures',
+    settings: 'Réglages',
+  },
+  shell: {
+    workspace: 'Personnel',
+    main: 'Espace de travail',
+    goTo: 'Aller à',
+    actions: 'Actions',
+    language: 'Langue',
+  },
+  login: {
+    wrongCredentials: 'Email ou mot de passe incorrect.',
+  },
+  signup: {
+    emailTaken:
+      'Un compte utilise déjà cet email. Connectez-vous, ou réinitialisez son mot de passe.',
+  },
+  reset: {
+    expired: 'Ce lien n’est pas valide ou a expiré.',
+    requestNew: 'En demander un nouveau',
+    changed: 'Votre mot de passe a été changé. Connectez-vous avec.',
+  },
+  verify: {
+    checking: 'Vérification du lien…',
+    done: 'Votre adresse email est vérifiée.',
+    failed: 'Ce lien de vérification n’est pas valide ou a expiré.',
+    continue: 'Continuer',
+  },
+  architectures: {
+    title: 'Architectures',
+    description: 'Vos architectures logicielles, chacune avec ses diagrammes UML.',
+    new: 'Nouvelle architecture',
+    emptyTitle: 'Aucune architecture',
+    emptyDescription: 'Créez-en une pour commencer à dessiner ses diagrammes.',
+    search: 'Rechercher une architecture',
+    createTitle: 'Nouvelle architecture',
+    createDescription:
+      'Elle est privée au départ, avec un diagramme. Vous pourrez ajouter d’autres vues ensuite.',
+    titleLabel: 'Titre',
+    titleRequired: 'Donnez-lui un titre.',
+    descriptionLabel: 'Description',
+    firstDiagram: 'Premier diagramme',
+    create: 'Créer',
+    cancel: 'Annuler',
+    open: 'Ouvrir',
+    duplicate: 'Dupliquer',
+    duplicated: 'Copie créée.',
+    delete: 'Supprimer',
+    deleted: 'Architecture supprimée.',
+    deleteTitle: (title: string) => `Supprimer « ${title} » ?`,
+    deleteText:
+      'Ses diagrammes et ses liens de partage disparaissent avec elle. Les personnes qui avaient le lien ne peuvent plus l’ouvrir.',
+    loadFailed: 'Les architectures n’ont pas pu être chargées.',
+    retry: 'Réessayer',
+  },
+  shared: {
+    unavailableTitle: 'Ce lien n’est pas disponible',
+    unavailableText:
+      'Il a peut-être été désactivé ou remplacé. Demandez-en un nouveau à la personne qui l’a partagé.',
+    wrongCode: 'Ce code ne fonctionne pas.',
+    openInEditor: 'Ouvrir dans l’éditeur',
+  },
+  editor: {
+    loadFailed: 'Cette architecture n’a pas pu être chargée.',
+    failed: 'Cela n’a pas fonctionné. Réessayez.',
+    share: 'Partager',
+    sharingFailed: 'Les réglages de partage n’ont pas pu être chargés.',
+    conflictTitle: 'Ce diagramme a été modifié ailleurs',
+    conflictDescription:
+      'Rechargez-le pour voir l’autre version, ou gardez la vôtre et écrasez-la.',
+    reload: 'Recharger',
+    overwrite: 'Écraser',
+    diagramDeleted: 'Diagramme supprimé.',
+  },
+  settings: {
+    title: 'Réglages',
+    description: 'Votre compte et l’apparence de l’application.',
+    account: 'Compte',
+    appearance: 'Apparence',
+    profile: 'Profil',
+    profileHint: 'Votre nom, affiché dans l’application.',
+    name: 'Nom',
+    email: 'Email',
+    saved: 'Modifications enregistrées.',
+    managed:
+      'C’est le compte par défaut. Son email et son mot de passe viennent de la configuration du serveur et ne se changent que là.',
+    password: 'Mot de passe',
+    passwordHint: 'Au moins 12 caractères.',
+    currentPassword: 'Mot de passe actuel',
+    newPassword: 'Nouveau mot de passe',
+    passwordChanged: 'Votre mot de passe a été changé.',
+    theme: 'Thème',
+    accent: 'Couleur d’accent',
+    emailInvalid: 'Saisissez une adresse email valide.',
+    currentPasswordRequired: 'Saisissez votre mot de passe actuel.',
+    wrongPassword: 'Votre mot de passe actuel est incorrect.',
+  },
+}

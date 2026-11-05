@@ -1,4 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import { isDefaultAccount } from '#app/auth/services/default-account'
 import { verifyPasswordResetToken } from '#app/auth/services/email-token'
 import { resetPasswordInput } from '#app/auth/validators/auth-input'
 import User from '#app/users/models/user'
@@ -15,7 +16,7 @@ export default class ResetPasswordController {
     }
 
     const user = await User.findBy('email', payload.email)
-    if (!user || (user.updatedAt?.toMillis() ?? 0) !== payload.v) {
+    if (!user || isDefaultAccount(user) || (user.updatedAt?.toMillis() ?? 0) !== payload.v) {
       return response.badRequest({
         error: { message: 'This reset link has already been used.' },
       })

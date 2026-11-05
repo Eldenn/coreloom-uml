@@ -3,15 +3,15 @@ services:
     image: 'postgres:16-alpine'
     restart: unless-stopped
     environment:
-      POSTGRES_USER: '${DB_USER:-coreloom-uml}'
+      POSTGRES_USER: '${DB_USER:-coreloom_uml}'
       POSTGRES_PASSWORD: '${SERVICE_PASSWORD_POSTGRES}'
-      POSTGRES_DB: '${DB_DATABASE:-coreloom-uml_staging}'
+      POSTGRES_DB: '${DB_DATABASE:-coreloom_uml_staging}'
     volumes:
       - 'postgres-data:/var/lib/postgresql/data'
     healthcheck:
       test:
         - CMD-SHELL
-        - 'pg_isready -U ${DB_USER:-coreloom-uml} -d ${DB_DATABASE:-coreloom-uml_staging}'
+        - 'pg_isready -U ${DB_USER:-coreloom_uml} -d ${DB_DATABASE:-coreloom_uml_staging}'
       interval: 5s
       timeout: 5s
       retries: 10
@@ -37,23 +37,26 @@ services:
       # file lives. For a manual build, pass `--project-directory ..` too.
       context: .
       dockerfile: apps/api/Dockerfile
+    # Migrations, then the default account from DEFAULT_ACCOUNT_* (idempotent).
     command:
-      - node
-      - ace
-      - 'migration:run'
-      - '--force'
+      - sh
+      - '-c'
+      - 'node ace migration:run --force && node ace account:ensure-default'
     restart: 'no'
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: '3333'
       APP_KEY: '${SERVICE_PASSWORD_64_APPKEY}'
+      DEFAULT_ACCOUNT_EMAIL: '${DEFAULT_ACCOUNT_EMAIL}'
+      DEFAULT_ACCOUNT_PASSWORD: '${DEFAULT_ACCOUNT_PASSWORD}'
+      DEFAULT_ACCOUNT_NAME: '${DEFAULT_ACCOUNT_NAME:-}'
       FRONTEND_URL: '${SERVICE_URL_WEB}'
       DB_HOST: postgres
       DB_PORT: '5432'
-      DB_USER: '${DB_USER:-coreloom-uml}'
+      DB_USER: '${DB_USER:-coreloom_uml}'
       DB_PASSWORD: '${SERVICE_PASSWORD_POSTGRES}'
-      DB_DATABASE: '${DB_DATABASE:-coreloom-uml_staging}'
+      DB_DATABASE: '${DB_DATABASE:-coreloom_uml_staging}'
       DB_SSL: 'false'
       REDIS_HOST: redis
       REDIS_PORT: '6379'
@@ -82,12 +85,15 @@ services:
       APP_NAME: coreloom-uml-api-staging
       LOG_LEVEL: info
       APP_KEY: '${SERVICE_PASSWORD_64_APPKEY}'
+      DEFAULT_ACCOUNT_EMAIL: '${DEFAULT_ACCOUNT_EMAIL}'
+      DEFAULT_ACCOUNT_PASSWORD: '${DEFAULT_ACCOUNT_PASSWORD}'
+      DEFAULT_ACCOUNT_NAME: '${DEFAULT_ACCOUNT_NAME:-}'
       FRONTEND_URL: '${SERVICE_URL_WEB}'
       DB_HOST: postgres
       DB_PORT: '5432'
-      DB_USER: '${DB_USER:-coreloom-uml}'
+      DB_USER: '${DB_USER:-coreloom_uml}'
       DB_PASSWORD: '${SERVICE_PASSWORD_POSTGRES}'
-      DB_DATABASE: '${DB_DATABASE:-coreloom-uml_staging}'
+      DB_DATABASE: '${DB_DATABASE:-coreloom_uml_staging}'
       DB_SSL: 'false'
       REDIS_HOST: redis
       REDIS_PORT: '6379'
@@ -154,12 +160,15 @@ services:
       APP_NAME: coreloom-uml-worker-staging
       LOG_LEVEL: info
       APP_KEY: '${SERVICE_PASSWORD_64_APPKEY}'
+      DEFAULT_ACCOUNT_EMAIL: '${DEFAULT_ACCOUNT_EMAIL}'
+      DEFAULT_ACCOUNT_PASSWORD: '${DEFAULT_ACCOUNT_PASSWORD}'
+      DEFAULT_ACCOUNT_NAME: '${DEFAULT_ACCOUNT_NAME:-}'
       FRONTEND_URL: '${SERVICE_URL_WEB}'
       DB_HOST: postgres
       DB_PORT: '5432'
-      DB_USER: '${DB_USER:-coreloom-uml}'
+      DB_USER: '${DB_USER:-coreloom_uml}'
       DB_PASSWORD: '${SERVICE_PASSWORD_POSTGRES}'
-      DB_DATABASE: '${DB_DATABASE:-coreloom-uml_staging}'
+      DB_DATABASE: '${DB_DATABASE:-coreloom_uml_staging}'
       DB_SSL: 'false'
       REDIS_HOST: redis
       REDIS_PORT: '6379'

@@ -28,6 +28,9 @@ router
       .post('/register', [() => import('#app/auth/controllers/register-controller'), 'handle'])
       .as('register')
     router
+      .get('/options', [() => import('#app/auth/controllers/auth-options-controller'), 'handle'])
+      .as('options')
+    router
       .post('/login', [() => import('#app/auth/controllers/login-controller'), 'handle'])
       .as('login')
     router
@@ -83,26 +86,65 @@ router
 
 /*
 |--------------------------------------------------------------------------
-| Notes (reference user-owned resource — copy this for new domains)
+| Architectures and their diagrams (reference user-owned resource — copy this for new domains)
 |--------------------------------------------------------------------------
-|
-| RESTful CRUD, owner-scoped, paginated `index`. Route names (`notes.*`) are
-| snake_case like every other group so the Tuyau client resolves them.
 */
-const notesController = () => import('#app/notes/controllers/notes-controller')
+const architecturesController = () =>
+  import('#app/architectures/controllers/architectures-controller')
+const diagramsController = () => import('#app/diagrams/controllers/diagrams-controller')
+const sharingController = () => import('#app/sharing/controllers/sharing-controller')
 router
   .group(() => {
-    router.get('/', [notesController, 'index']).as('notes.index')
-    router.post('/', [notesController, 'store']).as('notes.store')
-    router.get('/:id', [notesController, 'show']).as('notes.show')
-    router.patch('/:id', [notesController, 'update']).as('notes.update')
-    router.delete('/:id', [notesController, 'destroy']).as('notes.destroy')
+    router.get('/', [architecturesController, 'index']).as('architectures.index')
+    router.post('/', [architecturesController, 'store']).as('architectures.store')
+    router.get('/:id', [architecturesController, 'show']).as('architectures.show')
+    router.patch('/:id', [architecturesController, 'update']).as('architectures.update')
+    router.delete('/:id', [architecturesController, 'destroy']).as('architectures.destroy')
+    router
+      .post('/:id/duplicate', [
+        () => import('#app/architectures/controllers/duplicate-architecture-controller'),
+        'handle',
+      ])
+      .as('architectures.duplicate')
+
+    router.post('/:id/diagrams', [diagramsController, 'store']).as('architectures.diagrams.store')
+    // Declared before `/:id/diagrams/:diagramId` so `order` isn't read as an id.
+    router
+      .put('/:id/diagrams/order', [
+        () => import('#app/diagrams/controllers/reorder-diagrams-controller'),
+        'handle',
+      ])
+      .as('architectures.diagrams.reorder')
+    router
+      .patch('/:id/diagrams/:diagramId', [diagramsController, 'update'])
+      .as('architectures.diagrams.update')
+    router
+      .delete('/:id/diagrams/:diagramId', [diagramsController, 'destroy'])
+      .as('architectures.diagrams.destroy')
+
+    // Sharing: the owner's settings (RM-20 to RM-24).
+    router.get('/:id/sharing', [sharingController, 'show']).as('architectures.sharing.show')
+    router.put('/:id/sharing', [sharingController, 'update']).as('architectures.sharing.update')
+    router
+      .post('/:id/sharing/regenerate-link', [sharingController, 'regenerateLink'])
+      .as('architectures.sharing.regenerate_link')
+    router
+      .post('/:id/sharing/regenerate-code', [sharingController, 'regenerateCode'])
+      .as('architectures.sharing.regenerate_code')
   })
-  .prefix('/notes')
-  // `Note.id` is an integer column — constrain `:id` to digits so a non-numeric
-  // value is a clean route 404 instead of a Postgres cast error.
+  .prefix('/architectures')
   .where('id', router.matchers.number())
+  .where('diagramId', router.matchers.number())
   .use(middleware.auth())
+
+/*
+|--------------------------------------------------------------------------
+| Share links (public: no session; RM-25 to RM-29)
+|--------------------------------------------------------------------------
+*/
+const sharedController = () => import('#app/sharing/controllers/shared-architecture-controller')
+router.get('/shared/:token', [sharedController, 'show']).as('shared.show')
+router.post('/shared/:token/unlock', [sharedController, 'unlock']).as('shared.unlock')
 
 /*
 |--------------------------------------------------------------------------

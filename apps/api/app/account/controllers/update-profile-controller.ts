@@ -1,7 +1,9 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import mail from '@adonisjs/mail/services/main'
 import { updateProfileInput } from '#app/account/validators/account-input'
+import { DEFAULT_ACCOUNT_MANAGED_MESSAGE } from '#app/auth/constants/default-account'
 import VerifyEmailMail from '#app/auth/mails/verify-email-mail'
+import { isDefaultAccount } from '#app/auth/services/default-account'
 import { createEmailVerificationToken } from '#app/auth/services/email-token'
 import { PgErrorCode } from '#app/shared/database/pg-error'
 import { serializeUser } from '#app/users/serializers/user-serializer'
@@ -12,6 +14,11 @@ export default class UpdateProfileController {
     const { fullName, email } = await request.validateUsing(updateProfileInput)
     const user = auth.getUserOrFail()
 
+    const emailChanged = email !== undefined && email !== user.email
+    if (emailChanged && isDefaultAccount(user)) {
+      return response.forbidden({ error: { message: DEFAULT_ACCOUNT_MANAGED_MESSAGE } })
+    }
+
     if (fullName !== undefined) {
       user.fullName = fullName
     }
@@ -19,7 +26,6 @@ export default class UpdateProfileController {
     // Changing the email address unverifies it: the new address has to prove
     // itself before it counts. Also invalidates any outstanding password-reset
     // link (they are pinned to `updatedAt`), which is the safe direction.
-    const emailChanged = email !== undefined && email !== user.email
     if (emailChanged) {
       user.email = email
       user.emailVerifiedAt = null

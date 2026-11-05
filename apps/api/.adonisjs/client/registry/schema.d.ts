@@ -31,6 +31,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/auth/controllers/register-controller').default['handle']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'auth.options': {
+    methods: ["GET","HEAD"]
+    pattern: '/auth/options'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/auth/controllers/auth-options-controller').default['handle']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/auth/controllers/auth-options-controller').default['handle']>>>
+    }
+  }
   'auth.login': {
     methods: ["POST"]
     pattern: '/auth/login'
@@ -127,64 +139,196 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/users/controllers/users-controller').default['show']>>>
     }
   }
-  'notes.index': {
+  'architectures.index': {
     methods: ["GET","HEAD"]
-    pattern: '/notes'
+    pattern: '/architectures'
     types: {
       body: {}
       paramsTuple: []
       params: {}
-      query: ExtractQueryForGet<InferInput<(typeof import('#app/notes/validators/notes-input').listNotesInput)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['index']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/architectures/validators/architectures-input').listArchitecturesInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/architectures/controllers/architectures-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/architectures/controllers/architectures-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
-  'notes.store': {
+  'architectures.store': {
     methods: ["POST"]
-    pattern: '/notes'
+    pattern: '/architectures'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#app/notes/validators/notes-input').createNoteInput)>>
+      body: ExtractBody<InferInput<(typeof import('#app/architectures/validators/architectures-input').createArchitectureInput)>>
       paramsTuple: []
       params: {}
-      query: ExtractQuery<InferInput<(typeof import('#app/notes/validators/notes-input').createNoteInput)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['store']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+      query: ExtractQuery<InferInput<(typeof import('#app/architectures/validators/architectures-input').createArchitectureInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/architectures/controllers/architectures-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/architectures/controllers/architectures-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
-  'notes.show': {
+  'architectures.show': {
     methods: ["GET","HEAD"]
-    pattern: '/notes/:id'
+    pattern: '/architectures/:id'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['show']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['show']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/architectures/controllers/architectures-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/architectures/controllers/architectures-controller').default['show']>>>
     }
   }
-  'notes.update': {
+  'architectures.update': {
     methods: ["PATCH"]
-    pattern: '/notes/:id'
+    pattern: '/architectures/:id'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#app/notes/validators/notes-input').updateNoteInput)>>
+      body: ExtractBody<InferInput<(typeof import('#app/architectures/validators/architectures-input').updateArchitectureInput)>>
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
-      query: ExtractQuery<InferInput<(typeof import('#app/notes/validators/notes-input').updateNoteInput)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['update']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+      query: ExtractQuery<InferInput<(typeof import('#app/architectures/validators/architectures-input').updateArchitectureInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/architectures/controllers/architectures-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/architectures/controllers/architectures-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
-  'notes.destroy': {
+  'architectures.destroy': {
     methods: ["DELETE"]
-    pattern: '/notes/:id'
+    pattern: '/architectures/:id'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['destroy']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['destroy']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/architectures/controllers/architectures-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/architectures/controllers/architectures-controller').default['destroy']>>>
+    }
+  }
+  'architectures.duplicate': {
+    methods: ["POST"]
+    pattern: '/architectures/:id/duplicate'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/architectures/controllers/duplicate-architecture-controller').default['handle']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/architectures/controllers/duplicate-architecture-controller').default['handle']>>>
+    }
+  }
+  'architectures.diagrams.store': {
+    methods: ["POST"]
+    pattern: '/architectures/:id/diagrams'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/diagrams/validators/diagrams-input').createDiagramInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/diagrams/validators/diagrams-input').createDiagramInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/diagrams/controllers/diagrams-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/diagrams/controllers/diagrams-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'architectures.diagrams.reorder': {
+    methods: ["PUT"]
+    pattern: '/architectures/:id/diagrams/order'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/diagrams/validators/diagrams-input').reorderDiagramsInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/diagrams/validators/diagrams-input').reorderDiagramsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/diagrams/controllers/reorder-diagrams-controller').default['handle']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/diagrams/controllers/reorder-diagrams-controller').default['handle']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'architectures.diagrams.update': {
+    methods: ["PATCH"]
+    pattern: '/architectures/:id/diagrams/:diagramId'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/diagrams/validators/diagrams-input').updateDiagramInput)>>
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; diagramId: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/diagrams/validators/diagrams-input').updateDiagramInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/diagrams/controllers/diagrams-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/diagrams/controllers/diagrams-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'architectures.diagrams.destroy': {
+    methods: ["DELETE"]
+    pattern: '/architectures/:id/diagrams/:diagramId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; diagramId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/diagrams/controllers/diagrams-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/diagrams/controllers/diagrams-controller').default['destroy']>>>
+    }
+  }
+  'architectures.sharing.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/architectures/:id/sharing'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/sharing/controllers/sharing-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/sharing/controllers/sharing-controller').default['show']>>>
+    }
+  }
+  'architectures.sharing.update': {
+    methods: ["PUT"]
+    pattern: '/architectures/:id/sharing'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/sharing/validators/sharing-input').updateSharingInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/sharing/validators/sharing-input').updateSharingInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/sharing/controllers/sharing-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/sharing/controllers/sharing-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'architectures.sharing.regenerate_link': {
+    methods: ["POST"]
+    pattern: '/architectures/:id/sharing/regenerate-link'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/sharing/controllers/sharing-controller').default['regenerateLink']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/sharing/controllers/sharing-controller').default['regenerateLink']>>>
+    }
+  }
+  'architectures.sharing.regenerate_code': {
+    methods: ["POST"]
+    pattern: '/architectures/:id/sharing/regenerate-code'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/sharing/controllers/sharing-controller').default['regenerateCode']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/sharing/controllers/sharing-controller').default['regenerateCode']>>>
+    }
+  }
+  'shared.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/shared/:token'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { token: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/sharing/controllers/shared-architecture-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/sharing/controllers/shared-architecture-controller').default['show']>>>
+    }
+  }
+  'shared.unlock': {
+    methods: ["POST"]
+    pattern: '/shared/:token/unlock'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/sharing/validators/sharing-input').unlockSharedInput)>>
+      paramsTuple: [ParamValue]
+      params: { token: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/sharing/validators/sharing-input').unlockSharedInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/sharing/controllers/shared-architecture-controller').default['unlock']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/sharing/controllers/shared-architecture-controller').default['unlock']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'account.update_profile': {

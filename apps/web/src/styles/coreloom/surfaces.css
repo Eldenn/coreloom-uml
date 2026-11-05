@@ -1,0 +1,79 @@
+/* Coreloom UI — surface presets: the backgrounds, borders and text greys of the page. Import after
+ * theme.css (and accents.css), then set one on <html>, next to data-theme:
+ *   <html data-surface="bone" data-theme="light">
+ * or on any element, for a band of its own. Put data-surface on the same element as data-theme
+ * when a section changes theme:
+ *   <section data-theme="dark" data-surface="mineral">
+ * Each preset replaces every surface, border and text grey in both themes; every pairing meets
+ * WCAG AA on all of its surfaces, with every accent preset. Generated and checked by
+ * build/gen-surfaces.py: edit the colours there, then run
+ * python3 build/gen-surfaces.py src/styles/surfaces.css */
+
+[data-surface='mineral'],
+[data-theme='dark'][data-surface='mineral'] {
+  --bg-base: #0a1219;
+  --bg-1: #0f1922;
+  --surface-1: #14202a;
+  --surface-2: #1a2833;
+  --surface-hover: #22323f;
+  --surface-inset: #070d13;
+  --fg-1: #e3eaf0;
+  --fg-2: #a5b5c2;
+  --fg-muted: #8b9cab;
+  --fg-faint: #56687a;
+  --border-subtle: #19252f;
+  --border: #2a3b4a;
+  --border-strong: #6d8295;
+}
+
+[data-theme='light'][data-surface='mineral'],
+:where([data-theme='light']) [data-surface='mineral'] {
+  --bg-base: #ebf0f4;
+  --bg-1: #f5f8fa;
+  --surface-1: #ffffff;
+  --surface-2: #eff3f6;
+  --surface-hover: #e7edf1;
+  --surface-inset: #e8eef2;
+  --fg-1: #122230;
+  --fg-2: #3b4e5e;
+  --fg-muted: #596b7a;
+  --fg-faint: #9babb8;
+  --border-subtle: #e1e8ee;
+  --border: #cfd9e1;
+  --border-strong: #7a8896;
+}
+
+[data-surface='bone'],
+[data-theme='dark'][data-surface='bone'] {
+  --bg-base: #100e0b;
+  --bg-1: #171410;
+  --surface-1: #1d1915;
+  --surface-2: #24201a;
+  --surface-hover: #2d2821;
+  --surface-inset: #0c0a08;
+  --fg-1: #ede7dd;
+  --fg-2: #bbb2a4;
+  --fg-muted: #9f9688;
+  --fg-faint: #655c50;
+  --border-subtle: #231f19;
+  --border: #3a342b;
+  --border-strong: #837969;
+}
+
+[data-theme='light'][data-surface='bone'],
+:where([data-theme='light']) [data-surface='bone'] {
+  --bg-base: #f4efe7;
+  --bg-1: #faf7f1;
+  --surface-1: #fdfbf7;
+  --surface-2: #f5f0e7;
+  --surface-hover: #f0ebe2;
+  --surface-inset: #f1ece4;
+  --fg-1: #1f1b16;
+  --fg-2: #4b4339;
+  --fg-muted: #685f53;
+  --fg-faint: #aca291;
+  --border-subtle: #ebe5da;
+  --border: #dcd3c4;
+  --border-strong: #877d6f;
+  --warning: #7f5400;
+}

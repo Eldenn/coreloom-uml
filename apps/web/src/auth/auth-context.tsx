@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createContext, type ReactNode, useContext } from 'react'
-import { client, type User } from '../lib/client'
+import { createContext, type ReactNode, use } from 'react'
+
+import { client, type User } from '@/lib/client'
 
 /** Query key for the current-user (`GET /auth/me`) query. */
 export const ME_QUERY_KEY = ['auth', 'me'] as const
 
-type AuthState = {
+interface AuthState {
   user: User | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
@@ -71,11 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return <AuthContext value={value}>{children}</AuthContext>
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext)
+  const context = use(AuthContext)
   if (!context) throw new Error('useAuth must be used within an AuthProvider')
   return context
 }

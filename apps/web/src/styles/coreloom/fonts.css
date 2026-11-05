@@ -1,0 +1,8 @@
+/* Coreloom UI — brand fonts, self-hosted through your bundler from Fontsource
+   (variable files, latin + latin-ext subsets). Import before tokens.css.
+   Already serving Geist, Space Grotesk and JetBrains Mono yourself (next/font,
+   a CDN)? Skip this file: the token font stacks name 'Geist', 'Space Grotesk'
+   and 'JetBrains Mono' first. */
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/space-grotesk';
+@import '@fontsource-variable/jetbrains-mono';
