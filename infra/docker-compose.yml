@@ -10,7 +10,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: coreloom-uml_dev
+      POSTGRES_DB: coreloom_uml_dev
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
