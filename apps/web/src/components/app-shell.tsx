@@ -6,6 +6,7 @@ import { CommandMenu, type CommandMenuGroup } from '@/components/command-menu'
 import { ThemeMenu } from '@/components/theme-toggle'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { useCoreloomI18n } from '@/lib/i18n'
+import { cn } from '@/lib/utils'
 
 function AppShell({
   children,
@@ -14,6 +15,7 @@ function AppShell({
   onAskAi,
   headerActions,
   defaultSidebarOpen = true,
+  fullWidth = false,
   ...sidebar
 }: React.ComponentProps<typeof AppSidebar> & {
   children: React.ReactNode
@@ -25,6 +27,11 @@ function AppShell({
   /** Extra header buttons, placed before the theme toggle (notifications, help…). */
   headerActions?: React.ReactNode
   defaultSidebarOpen?: boolean
+  /**
+   * The page uses the whole width next to the sidebar instead of stopping at --container-app:
+   * for editors, canvases and wide tables. The gutters stay.
+   */
+  fullWidth?: boolean
 }) {
   const t = useCoreloomI18n().messages
   return (
@@ -43,7 +50,12 @@ function AppShell({
             </>
           }
         />
-        <div className="mx-auto flex w-full max-w-(--container-app) flex-1 flex-col gap-6 px-4 py-8 md:px-8">
+        <div
+          className={cn(
+            'mx-auto flex w-full flex-1 flex-col gap-6 px-4 py-8 md:px-8',
+            !fullWidth && 'max-w-(--container-app)',
+          )}
+        >
           {children}
         </div>
       </SidebarInset>

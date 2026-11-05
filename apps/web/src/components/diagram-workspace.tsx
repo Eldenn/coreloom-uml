@@ -56,6 +56,12 @@ interface DiagramWorkspaceProps {
   onRetrySave?: () => void
   /** The app's own buttons (Share, say), at the end of the top bar. */
   actions?: React.ReactNode
+  /**
+   * CSS height of the whole workspace on wide screens: the editor takes what's left under the
+   * top bar. `calc(100svh - 7.5rem)` fills the window in AppShell. Default: none, the editor's
+   * panes are 560px tall.
+   */
+  height?: string
   className?: string
 }
 
@@ -379,6 +385,7 @@ function DiagramWorkspace({
   savedAt,
   onRetrySave,
   actions,
+  height,
   className,
 }: DiagramWorkspaceProps) {
   const t = useCoreloomI18n().messages.diagramWorkspace
@@ -391,7 +398,12 @@ function DiagramWorkspace({
     <section
       data-slot="diagram-workspace"
       aria-label={title}
-      className={cn('flex min-w-0 flex-col gap-3', className)}
+      className={cn(
+        'flex min-w-0 flex-col gap-3',
+        height && 'lg:h-(--diagram-workspace-h)',
+        className,
+      )}
+      style={height ? ({ '--diagram-workspace-h': height } as React.CSSProperties) : undefined}
     >
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
         {/* The name takes its own row until the list of views moves to the side. */}
@@ -421,8 +433,19 @@ function DiagramWorkspace({
         <SaveStatus state={saveState} savedAt={savedAt} onRetry={onRetrySave} />
         {actions}
       </div>
-      <div className="grid min-w-0 gap-3 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start">
-        <nav aria-label={t.views} className="hidden min-w-0 lg:block">
+      <div
+        className={cn(
+          'grid min-w-0 gap-3 lg:grid-cols-[15rem_minmax(0,1fr)]',
+          height ? 'lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(0,1fr)]' : 'lg:items-start',
+        )}
+      >
+        <nav
+          aria-label={t.views}
+          className={cn(
+            'hidden min-w-0 lg:block',
+            height && 'lg:max-h-full lg:self-start lg:overflow-y-auto',
+          )}
+        >
           <ViewsPanel {...panel} onOpen={onActiveChange} />
         </nav>
         {active ? (
@@ -433,6 +456,7 @@ function DiagramWorkspace({
             onChange={reports.onChange}
             onFormatChange={reports.onFormatChange}
             fileName={downloadName(active.title)}
+            height={height ? 'fill' : undefined}
             className="min-w-0"
           />
         ) : null}

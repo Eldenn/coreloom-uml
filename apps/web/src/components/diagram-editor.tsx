@@ -41,7 +41,11 @@ interface DiagramEditorProps {
   onDiagramChange?: (result: UmlParseResult) => void
   /** Starting points under "New diagram", in Mermaid or PlantUML. Default: one per diagram type. */
   templates?: readonly { kind: UmlDiagramKind; label?: string; text: string }[]
-  /** CSS height of both panes on wide screens (they stack on narrow ones). Default: 560px. */
+  /**
+   * CSS height of both panes on wide screens (they stack on narrow ones). `fill`: the panes take
+   * what's left of the height the editor is given (stretched in a grid or a flex column, or a
+   * height class). Default: 560px.
+   */
   height?: string
   /** File name for Download, without the extension. Default: diagram. */
   fileName?: string
@@ -344,6 +348,18 @@ const GRID: Record<DiagramEditorView, string> = {
   text: '',
 }
 
+/**
+ * How tall the panes are on wide screens: a fixed height, or (`fill`) what's left of the editor's
+ * own height. Where the panes stack they keep the fixed one, 560px when filling.
+ */
+function paneHeight(height: string) {
+  const fill = height === 'fill'
+  return {
+    style: { '--diagram-editor-h': fill ? '560px' : height } as React.CSSProperties,
+    className: fill ? 'lg:flex-1 lg:grid-rows-[minmax(0,1fr)]' : 'lg:h-(--diagram-editor-h)',
+  }
+}
+
 /** The text, its marks and the problems under it. */
 function TextPane({
   view,
@@ -487,6 +503,7 @@ function DiagramEditor({
   const { download, failed } = useDownload({ image, fileName, format, text: exported })
   const { copied, copy } = useCopy(exported)
   const notice = failed ? t.imageFailed : editing.notice
+  const panes = paneHeight(height)
 
   return (
     <section
@@ -496,7 +513,7 @@ function DiagramEditor({
         'flex flex-col overflow-hidden rounded-xl border border-border bg-card',
         className,
       )}
-      style={{ '--diagram-editor-h': height } as React.CSSProperties}
+      style={panes.style}
     >
       <FileTools
         t={t}
@@ -516,7 +533,7 @@ function DiagramEditor({
         onView={setView}
         actions={actions}
       />
-      <div className={cn('grid min-h-0 lg:h-(--diagram-editor-h)', GRID[view])}>
+      <div className={cn('grid min-h-0', panes.className, GRID[view])}>
         {view !== 'drawing' && (
           <TextPane
             view={view}

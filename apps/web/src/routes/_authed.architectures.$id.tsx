@@ -38,7 +38,7 @@ export const Route = createFileRoute('/_authed/architectures/$id')({
     stringify: ({ id }) => ({ id: String(id) }),
   },
   validateSearch: z.object({ diagram: z.number().int().optional().catch(undefined) }),
-  staticData: { crumb: (t) => t.nav.architectures },
+  staticData: { crumb: (t) => t.nav.architectures, fullWidth: true },
   component: ArchitecturePage,
 })
 
@@ -47,7 +47,7 @@ function ArchitecturePage() {
   const { id } = Route.useParams()
   const { data: architecture, isPending, isError, refetch } = useArchitecture(id)
 
-  if (isPending) return <Skeleton className="h-[560px] w-full" />
+  if (isPending) return <Skeleton className="h-[calc(100svh-7.5rem)] w-full" />
   if (isError)
     return (
       <Alert variant="destructive">
@@ -169,6 +169,8 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
             onError: failed,
           })
         }}
+        // The window minus AppShell's header and gutters: the editor reaches the bottom.
+        height="calc(100svh - 7.5rem)"
         saveState={autosave.state}
         savedAt={autosave.savedAt}
         onRetrySave={autosave.retry}
