@@ -1,3 +1,7 @@
+// Coreloom UI — writing PlantUML. `toPlantUml` gives any diagram as `@startuml` text: classes with
+// their members and relations, states, sequence steps, entities with crow's feet, C4 through the
+// C4-PlantUML macros, use cases, deployment nodes, and activities in PlantUML's arrow syntax.
+// Positions people dragged go in a `' coreloom-layout {…}` comment line before `@enduml`.
 import type {
   C4Diagram,
   ClassDiagram,
@@ -17,6 +21,7 @@ import { erRelationMarks } from '@/lib/uml-mermaid-er'
 import { activityToPlantUml } from '@/lib/uml-plantuml-activity'
 import { deploymentToPlantUml, usecaseToPlantUml, wrap } from '@/lib/uml-plantuml-elements'
 import { componentToPlantUml, packageToPlantUml } from '@/lib/uml-plantuml-structure'
+import { layoutLine } from '@/lib/uml-text'
 
 /** Text PlantUML reads on one line: line breaks as `\n`. */
 const flat = (text: string) => text.replace(/\r?\n/g, '\\n')
@@ -212,6 +217,15 @@ function c4ToPlantUml(d: C4Diagram): string {
 
 /** The diagram as PlantUML text, between `@startuml` and `@enduml`. */
 function toPlantUml(diagram: UmlSpec): string {
+  const text = plantText(diagram)
+  const line = layoutLine(diagram, "'")
+  if (!line) return text
+  // Inside the diagram: PlantUML reads nothing after @enduml.
+  const end = text.lastIndexOf('@enduml')
+  return end < 0 ? `${text}\n${line}` : `${text.slice(0, end)}${line}\n${text.slice(end)}`
+}
+
+function plantText(diagram: UmlSpec): string {
   switch (diagram.kind) {
     case 'class':
       return classToPlantUml(diagram)

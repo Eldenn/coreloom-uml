@@ -4,7 +4,7 @@
 // select-an-area and arrange buttons; the bar that aligns and spaces the selected boxes; and the
 // field that renames an element in place (F2 or a double click); and full screen. UmlDiagram
 // places them.
-import { Panel, useReactFlow } from '@xyflow/react'
+import { getViewportForBounds, Panel, useReactFlow, useStoreApi } from '@xyflow/react'
 import {
   AlignCenterHorizontalIcon,
   AlignCenterVerticalIcon,
@@ -34,6 +34,26 @@ import { ALIGNMENTS, canAlign, type UmlAlignment } from '@/lib/uml-arrange'
 import { UML_DRAG_TYPE } from '@/lib/uml-edit'
 import type { DiagramGraph } from '@/lib/uml-graph'
 import { cn } from '@/lib/utils'
+
+/**
+ * Fits the whole diagram in the canvas at once, from where the elements are drawn now, never
+ * zooming past 100%. React Flow's own `fitView` waits for the next change of the nodes, and with
+ * the nodes kept by the app (after a drag, say) that change may never come: Fit did nothing.
+ */
+function useFitDiagram() {
+  const flow = useReactFlow()
+  const store = useStoreApi()
+  return React.useCallback(
+    (padding = 0.15) => {
+      const { width, height, minZoom } = store.getState()
+      const ids = flow.getNodes().map((node) => node.id)
+      if (!ids.length || !width || !height) return
+      const bounds = flow.getNodesBounds(ids)
+      void flow.setViewport(getViewportForBounds(bounds, width, height, minZoom, 1, padding))
+    },
+    [flow, store],
+  )
+}
 
 /** Whether the browser lets a page show an element full screen (false on the server). */
 function canFullscreen(): boolean {
@@ -127,13 +147,16 @@ function CanvasControls({
 }) {
   const t = useCoreloomI18n().messages.diagram
   const flow = useReactFlow()
+  const fit = useFitDiagram()
   const buttons = [
     { label: t.zoomIn, icon: ZoomInIcon, run: () => void flow.zoomIn() },
     { label: t.zoomOut, icon: ZoomOutIcon, run: () => void flow.zoomOut() },
     {
       label: t.fit,
       icon: MaximizeIcon,
-      run: () => void flow.fitView({ padding: 0.15, maxZoom: 1 }),
+      run: () => {
+        fit()
+      },
     },
     ...(editable ? [{ label: t.arrange, icon: LayoutGridIcon, run: onArrange }] : []),
   ]
@@ -363,6 +386,7 @@ export {
   FullscreenButton,
   RenameField,
   type RenameTarget,
+  useFitDiagram,
   useFullscreen,
   useRename,
 }

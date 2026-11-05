@@ -1,3 +1,11 @@
+// Coreloom UI — Mermaid text for UML diagrams. `parseMermaid` reads the subset of Mermaid that
+// covers class, sequence, state, entity–relationship and C4 diagrams, and flowcharts as activity
+// diagrams, into Coreloom's UML model, tolerantly: what it can't read becomes a problem on its line
+// and the rest still draws. `toMermaid` writes a diagram back (positions people dragged go in a
+// `%% coreloom-layout {…}` comment line, read back by `parseMermaid`). Mermaid has no use case or deployment diagrams: `toMermaid` writes them as a
+// flowchart any Mermaid renderer draws, which reads back as an activity diagram (PlantUML and JSON
+// keep them whole; `isMermaidSpec` says which kinds round-trip).
+// No `mermaid` dependency: the parsers are plain functions, and nothing is rendered as HTML.
 import type { UmlParseResult, UmlSpec } from '@/lib/uml'
 import type {
   ActivityDiagram,
@@ -12,10 +20,14 @@ import { erToMermaid, parseErDiagram } from '@/lib/uml-mermaid-er'
 import { activityToMermaid, isFlowchart, parseFlowchart } from '@/lib/uml-mermaid-flowchart'
 import { parseSequenceDiagram, sequenceToMermaid } from '@/lib/uml-mermaid-sequence'
 import { parseStateDiagram, stateToMermaid } from '@/lib/uml-mermaid-state'
-import { frontMatter, sourceLines } from '@/lib/uml-text'
+import { frontMatter, layoutLine, sourceLines, withLayoutLine } from '@/lib/uml-text'
 
 /** Reads Mermaid text whose first line names one of the supported diagram types. */
 function parseMermaid(input: string): UmlParseResult {
+  return withLayoutLine(readMermaid(input), input)
+}
+
+function readMermaid(input: string): UmlParseResult {
   const { title, body } = frontMatter(input)
   const all = sourceLines(body)
   const header = all.at(0)
@@ -87,6 +99,12 @@ function asFlowchart(d: FlowchartOnly): ActivityDiagram {
  * lacks, come out as a flowchart (see `isMermaidSpec`).
  */
 function toMermaid(diagram: UmlSpec): string {
+  const text = mermaidText(diagram)
+  const line = layoutLine(diagram, '%%')
+  return line ? `${text.replace(/\n*$/, '')}\n${line}\n` : text
+}
+
+function mermaidText(diagram: UmlSpec): string {
   switch (diagram.kind) {
     case 'class':
       return classToMermaid(diagram)
