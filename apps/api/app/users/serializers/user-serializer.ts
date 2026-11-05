@@ -1,3 +1,4 @@
+import { isDefaultAccount } from '#app/auth/services/default-account'
 import type User from '#app/users/models/user'
 
 /**
@@ -19,6 +20,11 @@ export type UserOutput = {
    * the authenticated `account.avatar_show` route.
    */
   avatarUrl: string | null
+  /**
+   * True for the default account, whose email and password come from the
+   * environment: the app hides the forms that would change them.
+   */
+  managedByEnvironment: boolean
 }
 
 export function serializeUser(user: User): UserOutput {
@@ -28,5 +34,6 @@ export function serializeUser(user: User): UserOutput {
     email: user.email,
     emailVerifiedAt: user.emailVerifiedAt?.toISO() ?? null,
     avatarUrl: user.avatarKey ? '/account/avatar' : null,
+    managedByEnvironment: isDefaultAccount(user),
   }
 }

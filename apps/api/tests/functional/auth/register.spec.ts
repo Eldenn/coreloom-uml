@@ -2,8 +2,14 @@ import testUtils from '@adonisjs/core/services/test_utils'
 import mail from '@adonisjs/mail/services/main'
 import { test } from '@japa/runner'
 import VerifyEmailMail from '#app/auth/mails/verify-email-mail'
+import env from '#start/env'
 
 test.group('Auth - register', (group) => {
+  // Sign-up is closed by default (REGISTRATION_ENABLED); these specs exercise it open.
+  group.setup(() => {
+    env.set('REGISTRATION_ENABLED', true)
+    return () => env.set('REGISTRATION_ENABLED', false)
+  })
   group.each.setup(() => testUtils.db().withGlobalTransaction())
 
   test('creates an account, starts a session, and sends a verification email', async ({

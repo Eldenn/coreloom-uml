@@ -13,17 +13,20 @@ services:
   migrate:
     image: 'ghcr.io/${IMAGE_OWNER}/coreloom-uml-api:${IMAGE_TAG:-production-latest}'
     pull_policy: always
+    # Migrations, then the default account from DEFAULT_ACCOUNT_* (idempotent).
     command:
-      - node
-      - ace
-      - 'migration:run'
-      - '--force'
+      - sh
+      - '-c'
+      - 'node ace migration:run --force && node ace account:ensure-default'
     restart: 'no'
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: '3333'
       APP_KEY: '${SERVICE_PASSWORD_64_APPKEY}'
+      DEFAULT_ACCOUNT_EMAIL: '${DEFAULT_ACCOUNT_EMAIL}'
+      DEFAULT_ACCOUNT_PASSWORD: '${DEFAULT_ACCOUNT_PASSWORD}'
+      DEFAULT_ACCOUNT_NAME: '${DEFAULT_ACCOUNT_NAME:-}'
       FRONTEND_URL: '${SERVICE_URL_WEB}'
       DB_HOST: '${DB_HOST}'
       DB_PORT: '${DB_PORT:-5432}'
@@ -53,6 +56,9 @@ services:
       APP_NAME: coreloom-uml-api-production
       LOG_LEVEL: info
       APP_KEY: '${SERVICE_PASSWORD_64_APPKEY}'
+      DEFAULT_ACCOUNT_EMAIL: '${DEFAULT_ACCOUNT_EMAIL}'
+      DEFAULT_ACCOUNT_PASSWORD: '${DEFAULT_ACCOUNT_PASSWORD}'
+      DEFAULT_ACCOUNT_NAME: '${DEFAULT_ACCOUNT_NAME:-}'
       FRONTEND_URL: '${SERVICE_URL_WEB}'
       DB_HOST: '${DB_HOST}'
       DB_PORT: '${DB_PORT:-5432}'
@@ -118,6 +124,9 @@ services:
       APP_NAME: coreloom-uml-worker-production
       LOG_LEVEL: info
       APP_KEY: '${SERVICE_PASSWORD_64_APPKEY}'
+      DEFAULT_ACCOUNT_EMAIL: '${DEFAULT_ACCOUNT_EMAIL}'
+      DEFAULT_ACCOUNT_PASSWORD: '${DEFAULT_ACCOUNT_PASSWORD}'
+      DEFAULT_ACCOUNT_NAME: '${DEFAULT_ACCOUNT_NAME:-}'
       FRONTEND_URL: '${SERVICE_URL_WEB}'
       DB_HOST: '${DB_HOST}'
       DB_PORT: '${DB_PORT:-5432}'

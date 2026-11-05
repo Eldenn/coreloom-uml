@@ -2,8 +2,14 @@ import testUtils from '@adonisjs/core/services/test_utils'
 import mail from '@adonisjs/mail/services/main'
 import { test } from '@japa/runner'
 import User from '#app/users/models/user'
+import env from '#start/env'
 
 test.group('Auth - email normalization', (group) => {
+  // Sign-up is closed by default (REGISTRATION_ENABLED); these specs exercise it open.
+  group.setup(() => {
+    env.set('REGISTRATION_ENABLED', true)
+    return () => env.set('REGISTRATION_ENABLED', false)
+  })
   group.each.setup(() => testUtils.db().withGlobalTransaction())
 
   test('lowercases the email on register', async ({ client }) => {

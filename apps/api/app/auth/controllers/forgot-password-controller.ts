@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import mail from '@adonisjs/mail/services/main'
 import PasswordResetMail from '#app/auth/mails/password-reset-mail'
+import { isDefaultAccount } from '#app/auth/services/default-account'
 import { createPasswordResetToken } from '#app/auth/services/email-token'
 import { forgotPasswordInput } from '#app/auth/validators/auth-input'
 import User from '#app/users/models/user'
@@ -11,7 +12,8 @@ export default class ForgotPasswordController {
     const { email } = await request.validateUsing(forgotPasswordInput)
 
     const user = await User.findBy('email', email)
-    if (user) {
+    // The default account's password comes from the environment: no reset link.
+    if (user && !isDefaultAccount(user)) {
       const token = createPasswordResetToken(user)
       const resetUrl = `${env.get('FRONTEND_URL')}/reset-password?token=${encodeURIComponent(token)}`
       await mail.sendLater(new PasswordResetMail(user.email, resetUrl))

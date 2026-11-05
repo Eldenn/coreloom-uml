@@ -112,6 +112,7 @@ docker compose -f infra/docker-compose.yml up -d
 
 # 4. Run migrations
 pnpm --filter @coreloom-uml/api migration:run
+pnpm --filter @coreloom-uml/api exec node ace account:ensure-default   # DEFAULT_ACCOUNT_* from apps/api/.env
 
 # 5. Start everything in dev mode
 pnpm dev
