@@ -11,7 +11,14 @@ import { useT } from '@/lib/locale'
 
 export const Route = createFileRoute('/login')({
   // Where to go after signing in; set by the signed-in layout (src/routes/_authed.tsx).
-  validateSearch: z.object({ redirect: z.string().startsWith('/').optional().catch(undefined) }),
+  // Same-site paths only: `//host` would leave the app.
+  validateSearch: z.object({
+    redirect: z
+      .string()
+      .regex(/^\/(?![/\\])/)
+      .optional()
+      .catch(undefined),
+  }),
   component: LoginPage,
 })
 

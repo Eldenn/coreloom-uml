@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createContext, type ReactNode, use } from 'react'
 
 import { client, type User } from '@/lib/client'
@@ -20,23 +20,29 @@ interface AuthState {
   refresh: () => Promise<void>
 }
 
+/**
+ * The current-user query, shared by `AuthProvider` and the signed-in layout's route guard
+ * (`src/routes/_authed.tsx`). A failed `me` means "not signed in": it resolves to `null`
+ * rather than throwing.
+ */
+export const meQueryOptions = queryOptions({
+  queryKey: ME_QUERY_KEY,
+  queryFn: async (): Promise<User | null> => {
+    try {
+      const { user } = await client.api.auth.me({})
+      return user
+    } catch {
+      return null
+    }
+  },
+})
+
 const AuthContext = createContext<AuthState | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
 
-  const { data: user = null, isLoading } = useQuery({
-    queryKey: ME_QUERY_KEY,
-    // A failed `me` means "not signed in" — resolve to null rather than throw.
-    queryFn: async (): Promise<User | null> => {
-      try {
-        const { user } = await client.api.auth.me({})
-        return user
-      } catch {
-        return null
-      }
-    },
-  })
+  const { data: user = null, isLoading } = useQuery(meQueryOptions)
 
   const loginMutation = useMutation({
     mutationFn: (vars: { email: string; password: string }) =>
