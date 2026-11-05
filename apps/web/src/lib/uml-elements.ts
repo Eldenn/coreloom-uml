@@ -114,7 +114,91 @@ interface DeploymentDiagram {
   layout?: UmlLayout
 }
 
-type ElementDiagram = UseCaseDiagram | ActivityDiagram | DeploymentDiagram
+// ── Component diagram ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * A `component` (a box, holding others when they name it as `parent`), an `interface` (a small
+ * circle, the "lollipop" a component provides), or a `port` (a square on its component's edge).
+ */
+type ComponentElementKind = 'component' | 'interface' | 'port'
+
+interface ComponentElement {
+  id: string
+  kind: ComponentElementKind
+  label?: string
+  /** Shown in guillemets above the name, instead of «component»: «service». */
+  stereotype?: string
+  /** The component it sits in; a port's is the component whose edge it is on. */
+  parent?: string
+}
+
+/**
+ * `provide` joins a component to the interface it offers (a plain line to the lollipop),
+ * `require` to one it needs (a socket around it); `assembly` wires a component that needs
+ * something to the one that offers it (a ball in a socket); `delegate` passes a port's work to a
+ * part inside; `dependency` is a dashed arrow.
+ */
+type ComponentRelationKind = 'dependency' | 'provide' | 'require' | 'assembly' | 'delegate'
+
+interface ComponentRelation {
+  from: string
+  to: string
+  /** Default: dependency. */
+  kind?: ComponentRelationKind
+  label?: string
+}
+
+interface ComponentDiagram {
+  kind: 'component'
+  title?: string
+  direction?: UmlDirection
+  elements: ComponentElement[]
+  relations: ComponentRelation[]
+  notes?: UmlNote[]
+  layout?: UmlLayout
+}
+
+// ── Package diagram ─────────────────────────────────────────────────────────────────────────────
+
+/** A `package` (a folder, holding what names it as `parent`), or an element it contains. */
+type PackageElementKind = 'package' | 'class' | 'interface' | 'component'
+
+interface PackageElement {
+  id: string
+  kind: PackageElementKind
+  label?: string
+  /** Shown in guillemets above the name: «subsystem». */
+  stereotype?: string
+  /** The package it is in. */
+  parent?: string
+}
+
+/**
+ * Dashed arrows: `dependency` (uses), `import` (its public names are visible here), `merge`
+ * (its contents are added to this package's).
+ */
+type PackageRelationKind = 'dependency' | 'import' | 'merge'
+
+interface PackageRelation {
+  from: string
+  to: string
+  /** Default: dependency. */
+  kind?: PackageRelationKind
+  label?: string
+}
+
+interface PackageDiagram {
+  kind: 'package'
+  title?: string
+  direction?: UmlDirection
+  elements: PackageElement[]
+  relations: PackageRelation[]
+  notes?: UmlNote[]
+  layout?: UmlLayout
+}
+
+type ElementDiagram =
+  UseCaseDiagram | ActivityDiagram | DeploymentDiagram | ComponentDiagram | PackageDiagram
 
 /** The element kinds of each diagram, in the order a toolbar lists them. */
 const USE_CASE_KINDS: readonly UseCaseElementKind[] = ['actor', 'usecase', 'system']
@@ -145,13 +229,25 @@ const USE_CASE_RELATIONS: readonly UseCaseRelationKind[] = [
   'generalization',
 ]
 const DEPLOYMENT_RELATIONS: readonly DeploymentRelationKind[] = ['link', 'dependency', 'deploy']
+const COMPONENT_KINDS: readonly ComponentElementKind[] = ['component', 'interface', 'port']
+const COMPONENT_RELATIONS: readonly ComponentRelationKind[] = [
+  'dependency',
+  'provide',
+  'require',
+  'assembly',
+  'delegate',
+]
+const PACKAGE_KINDS: readonly PackageElementKind[] = ['package', 'class', 'interface', 'component']
+const PACKAGE_RELATIONS: readonly PackageRelationKind[] = ['dependency', 'import', 'merge']
 
 /** The element kinds that hold others (drawn as frames), by diagram kind. */
 function isContainer(diagram: ElementDiagram, id: string): boolean {
   const element = diagram.elements.find((e) => e.id === id)
   if (!element) return false
-  if (element.kind === 'system' || element.kind === 'partition') return true
-  return diagram.kind === 'deployment' && diagram.elements.some((e) => e.parent === id)
+  if (element.kind === 'system' || element.kind === 'partition' || element.kind === 'package')
+    return true
+  const holds = diagram.elements.some((e) => e.parent === id && e.kind !== 'port')
+  return (diagram.kind === 'deployment' || diagram.kind === 'component') && holds
 }
 
 // ── JSON ────────────────────────────────────────────────────────────────────────────────────────
@@ -227,6 +323,42 @@ const deploymentSchema = z.object({
   layout,
 })
 
+const componentSchema = z.object({
+  kind: z.literal('component'),
+  title: text.optional(),
+  direction,
+  elements: z.array(
+    z.object({
+      id,
+      kind: z.enum(['component', 'interface', 'port']),
+      label: text.optional(),
+      stereotype: text.optional(),
+      parent: id.optional(),
+    }),
+  ),
+  relations: z.array(relation(['dependency', 'provide', 'require', 'assembly', 'delegate'])),
+  notes,
+  layout,
+})
+
+const packageSchema = z.object({
+  kind: z.literal('package'),
+  title: text.optional(),
+  direction,
+  elements: z.array(
+    z.object({
+      id,
+      kind: z.enum(['package', 'class', 'interface', 'component']),
+      label: text.optional(),
+      stereotype: text.optional(),
+      parent: id.optional(),
+    }),
+  ),
+  relations: z.array(relation(['dependency', 'import', 'merge'])),
+  notes,
+  layout,
+})
+
 export {
   ACTIVITY_KINDS,
   type ActivityDiagram,
@@ -234,6 +366,14 @@ export {
   type ActivityNode,
   type ActivityNodeKind,
   activitySchema,
+  COMPONENT_KINDS,
+  COMPONENT_RELATIONS,
+  type ComponentDiagram,
+  type ComponentElement,
+  type ComponentElementKind,
+  type ComponentRelation,
+  type ComponentRelationKind,
+  componentSchema,
   DEPLOYMENT_KINDS,
   DEPLOYMENT_RELATIONS,
   type DeploymentDiagram,
@@ -248,6 +388,14 @@ export {
   isContainer,
   layout,
   notes,
+  PACKAGE_KINDS,
+  PACKAGE_RELATIONS,
+  type PackageDiagram,
+  type PackageElement,
+  type PackageElementKind,
+  type PackageRelation,
+  type PackageRelationKind,
+  packageSchema,
   text,
   USE_CASE_KINDS,
   USE_CASE_RELATIONS,

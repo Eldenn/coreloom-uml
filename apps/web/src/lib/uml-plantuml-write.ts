@@ -16,6 +16,7 @@ import { c4ToMermaid } from '@/lib/uml-mermaid-c4'
 import { erRelationMarks } from '@/lib/uml-mermaid-er'
 import { activityToPlantUml } from '@/lib/uml-plantuml-activity'
 import { deploymentToPlantUml, usecaseToPlantUml, wrap } from '@/lib/uml-plantuml-elements'
+import { componentToPlantUml, packageToPlantUml } from '@/lib/uml-plantuml-structure'
 
 /** Text PlantUML reads on one line: line breaks as `\n`. */
 const flat = (text: string) => text.replace(/\r?\n/g, '\\n')
@@ -228,6 +229,10 @@ function toPlantUml(diagram: UmlSpec): string {
       return activityToPlantUml(diagram)
     case 'deployment':
       return deploymentToPlantUml(diagram)
+    case 'component':
+      return componentToPlantUml(diagram)
+    case 'package':
+      return packageToPlantUml(diagram)
   }
 }
 

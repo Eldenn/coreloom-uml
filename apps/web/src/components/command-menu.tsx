@@ -1,3 +1,8 @@
+'use client'
+
+// Coreloom UI — CommandMenu block part. The ⌘K palette: a search button for the header and a
+// CommandDialog bound to ⌘K / Ctrl+K. Items are plain data; navigate or act in onSelect. With
+// `onAskAi`, what you type can also go to an assistant: "Ask AI: “…”" comes first in the list.
 import { defaultFilter } from 'cmdk'
 import { SearchIcon, SparklesIcon } from 'lucide-react'
 import * as React from 'react'

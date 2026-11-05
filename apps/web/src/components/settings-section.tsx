@@ -1,10 +1,3 @@
-'use client'
-
-// Coreloom UI — SettingsSection, SettingsRow, DangerZone (settings block).
-// A section is a card with a title, its fields and a footer with the save action.
-// Pass a `form` from useAppForm (@coreloom/form) and put its fields inside: the section becomes the
-// <form>, and Save is the form's SubmitButton (busy while your onSubmit runs). `onSubmit(FormData)`
-// still works for plain, uncontrolled inputs.
 import { AlertTriangleIcon } from 'lucide-react'
 import * as React from 'react'
 

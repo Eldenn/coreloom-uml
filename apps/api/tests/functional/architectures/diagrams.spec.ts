@@ -37,6 +37,21 @@ test.group('Architectures - diagrams', (group) => {
     response.assertBodyContains({ diagram: { title: 'Order flow', kind: 'sequence', position: 1 } })
   })
 
+  test('accepts component and package diagrams', async ({ client, assert }) => {
+    const { user, architecture } = await setup(client)
+
+    for (const kind of ['component', 'package']) {
+      const response = await client
+        .post(`/architectures/${architecture.id}/diagrams`)
+        .headers(json)
+        .loginAs(user)
+        .json({ title: kind, kind })
+
+      response.assertStatus(201)
+      assert.equal(response.body().diagram.kind, kind)
+    }
+  })
+
   test('rejects an unknown kind', async ({ client }) => {
     const { user, architecture } = await setup(client)
 

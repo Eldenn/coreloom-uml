@@ -1,3 +1,12 @@
+'use client'
+
+// Coreloom UI — UmlDiagram. Draws a software diagram from Coreloom's UML model: class, state,
+// entity–relationship, C4 and the other box-and-line diagrams on a React Flow canvas (laid out automatically, zoomable,
+// elements draggable when `editable`), sequence diagrams as an SVG. Feed it JSON you checked with
+// `parseUmlJson`, or Mermaid text read with `parseMermaid`. Nothing is rendered as HTML. When
+// editable it can also select an area, align the selected boxes, rename in place and take
+// elements dropped from a toolbar; its `ref` turns the drawing into an SVG or PNG image. The
+// controls can show it full screen; `preview` draws a still thumbnail with one accessible name.
 import '@xyflow/react/dist/base.css'
 
 import {
@@ -376,7 +385,7 @@ function canvasNaming(preview: boolean, label: string, title: string | undefined
   return { flow: { 'aria-label': label }, title }
 }
 
-/** A class, state, ER, C4, use case, activity or deployment diagram on a React Flow canvas. */
+/** Any diagram but a sequence one (class to package) on a React Flow canvas. */
 function DiagramCanvas({
   diagram,
   editable = false,
@@ -517,6 +526,15 @@ function DiagramCanvas({
   )
 }
 
+/**
+ * Where the app's classes go: on the frame, except for a thumbnail, whose box is the drawing
+ * itself (its border and background are the ones to change). Full screen drops the border.
+ */
+function sequenceClasses(preview: boolean, full: boolean, className: string | undefined) {
+  if (preview) return { outer: 'h-full', inner: className }
+  return { outer: className, inner: full ? 'h-full rounded-none border-0' : undefined }
+}
+
 /** A sequence diagram, with the same `ref` as the canvas: its SVG as an image. */
 function SequencePane({
   diagram,
@@ -562,14 +580,15 @@ function SequencePane({
       }
     : undefined
   const full = fullscreen?.active ?? false
+  const classes = sequenceClasses(preview, full, className)
   return (
-    <div ref={frame} data-slot="uml-diagram" className={cn('relative', className)}>
+    <div ref={frame} data-slot="uml-diagram" className={cn('relative', classes.outer)}>
       <SequenceDiagramView
         ref={root}
         diagram={diagram}
         {...(height === undefined || full ? {} : { maxHeight: height })}
         {...(label ? { label } : {})}
-        {...(full ? { className: 'h-full rounded-none border-0' } : {})}
+        {...(classes.inner ? { className: classes.inner } : {})}
         {...(selection && !exporting ? { selected: selection.elements } : {})}
         {...(select && !preview ? { onSelect: select } : {})}
         fit={preview}
@@ -582,8 +601,8 @@ function SequencePane({
 }
 
 /**
- * A class, state, ER, C4, use case, activity or deployment diagram on a canvas, or a sequence
- * diagram as an SVG.
+ * A class, state, ER, C4, use case, activity, deployment, component or package diagram on a
+ * canvas, or a sequence diagram as an SVG.
  */
 function UmlDiagram(props: UmlDiagramProps) {
   const { diagram, height = 480, className, preview = false, controls = true } = props

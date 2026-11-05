@@ -1,3 +1,14 @@
+'use client'
+
+// Coreloom UI — DescriptionList. Labels and their values, to read: a customer's details, an
+// invoice's summary, a server's settings, the properties of a record. Stacked (label above value),
+// inline (label beside value) or in a grid of columns. An empty value says "Not set" instead of
+// leaving a hole; `copy` adds a Copy button for IDs and keys.
+//
+//   <DescriptionList layout="inline" items={[
+//     { term: 'Plan', value: 'Team' },
+//     { term: 'Workspace ID', value: <code>ws_8f2k</code>, copy: 'ws_8f2k' },
+//   ]} />
 import * as React from 'react'
 
 import { CopyButton } from '@/components/copy-button'

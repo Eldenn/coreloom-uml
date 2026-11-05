@@ -1,9 +1,3 @@
-'use client'
-
-// Coreloom UI — MentionTextarea. A textarea where typing "@" suggests people (or channels, files,
-// with another `trigger`): a comment, a task description, a message. The list follows what is typed
-// after the "@"; arrows move, Enter or Tab inserts "@handle ", Escape closes it. The value stays
-// plain text; `mentionsIn` lists the handles a text mentions, for notifications.
 import * as React from 'react'
 
 import { useCoreloomI18n } from '@/lib/i18n'

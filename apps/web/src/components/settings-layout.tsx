@@ -1,3 +1,7 @@
+'use client'
+
+// Coreloom UI — SettingsLayout (settings block). Page title, a section nav (a column on desktop,
+// a scrolling row on phones) and the active section's content.
 import * as React from 'react'
 
 import { useCoreloomI18n } from '@/lib/i18n'

@@ -1,11 +1,3 @@
-'use client'
-
-// Coreloom UI — AgentPlan. The steps an agent works through, ticked off live: to do, in progress,
-// done, failed or skipped, with "2 of 5 done" and a bar. Feed it the `data-plan` part your server
-// writes (and rewrites with the same id as the agent moves on); Chat draws those parts by itself.
-//
-//   writer.write({ type: 'data-plan', id: 'plan', data: { steps: [{ id: '1', title: 'Read the logs', status: 'running' }] } })
-//   <AgentPlan plan={part.data} active={status === 'streaming'} />
 import {
   CheckCircle2Icon,
   ChevronRightIcon,

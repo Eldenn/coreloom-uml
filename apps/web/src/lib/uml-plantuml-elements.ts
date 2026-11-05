@@ -413,11 +413,21 @@ function wrap(title: string | undefined, lines: readonly string[]): string {
 }
 
 export {
+  arrowOf,
+  commonLine,
+  declaration,
   deploymentToPlantUml,
+  directionLine,
+  type ElementParse,
+  END,
   idOf,
+  keyword,
+  LINE,
+  notesText,
   parsePlantDeployment,
   parsePlantUseCase,
   readNamed,
+  STEREOTYPE,
   usecaseToPlantUml,
   wrap,
 }

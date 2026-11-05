@@ -1,3 +1,8 @@
+'use client'
+
+// Coreloom UI — RelativeTime. A date said the way people say it: "5 minutes ago", "yesterday",
+// "in 3 days". It keeps itself up to date, and the full date and time sit in its tooltip and in the
+// `<time datetime>` machines read. In the person's language (Intl.RelativeTimeFormat).
 import * as React from 'react'
 
 import { useCoreloomI18n } from '@/lib/i18n'

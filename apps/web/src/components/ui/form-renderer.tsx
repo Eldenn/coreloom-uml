@@ -1,3 +1,23 @@
+'use client'
+
+// Coreloom UI — FormRenderer. Builds a form at runtime from a FormSpec, a JSON description of its
+// sections and fields, using the Form fields (`useAppForm`). Use it when the form's shape comes from
+// data: a settings page your server describes, a survey, a form made in the FormBuilder block.
+//
+//   const spec: FormSpec = {
+//     version: 1,
+//     title: 'Contact',
+//     sections: [{ id: 'main', columns: 2, fields: [
+//       { name: 'email', type: 'email', label: 'Email', required: true },
+//       { name: 'topic', type: 'select', label: 'Topic', options: [{ value: 'sales', label: 'Sales' }] },
+//       { name: 'company', type: 'text', label: 'Company', visibleWhen: { field: 'topic', op: 'equals', value: 'sales' } },
+//     ] }],
+//   }
+//   <FormRenderer spec={spec} onSubmit={(values) => save(values)} />
+//
+// A spec received from elsewhere is untrusted: read it with `readFormSpec` first. Field types live in
+// `formFieldTypes`; pass `types={{ ...formFieldTypes, mine }}` to add your own. `fromJSONSchema` turns a
+// JSON Schema (and a react-jsonschema-form style UI schema) into a FormSpec; `toJSONSchema` goes back.
 import {
   AlignLeftIcon,
   ArrowLeftRightIcon,

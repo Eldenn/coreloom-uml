@@ -1,9 +1,3 @@
-'use client'
-
-// Coreloom UI — ChipGroup. Pills that toggle on and off: filters above a list ("Open · Mine ·
-// This week"), interests on a profile, the sizes in stock. With `type="multiple"` (default) each
-// chip is a checkbox and the value is an array; with `type="single"` they are radios and the value
-// a string. A ticked chip shows a check, so the state never rests on colour alone.
 import { CheckIcon } from 'lucide-react'
 import * as React from 'react'
 

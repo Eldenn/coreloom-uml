@@ -1,11 +1,3 @@
-'use client'
-
-// Coreloom UI — SecretValue. A value that should not sit on screen in clear: an API key, a token,
-// a webhook secret, a recovery code. It shows dots (and, if you want, the first and last few
-// characters so people can tell keys apart), an eye button to show it, and Copy, which copies the
-// real value without showing it.
-//
-//   <SecretValue value={key.secret} visibleStart={3} visibleEnd={4} onReveal={logAccess} />
 import { EyeIcon, EyeOffIcon } from 'lucide-react'
 import * as React from 'react'
 

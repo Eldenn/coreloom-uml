@@ -1,9 +1,3 @@
-'use client'
-
-// Coreloom UI — PasswordStrength. A meter under a new-password field: four bars, a word (weak, fair,
-// good, strong) and the rules the password must meet, each ticked as it is met. The score is a quick
-// estimate made in the browser (length, kinds of characters, common passwords), a nudge for people,
-// not a security check: keep your server's rules. Screen readers hear the level only when it changes.
 import { CheckIcon, CircleIcon } from 'lucide-react'
 import * as React from 'react'
 

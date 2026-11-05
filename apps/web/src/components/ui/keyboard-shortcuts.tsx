@@ -1,3 +1,13 @@
+'use client'
+
+// Coreloom UI — keyboard shortcuts. `useHotkeys` runs a function on a key combination ("mod+k",
+// "shift+?", "g i" for G then I); "mod" is ⌘ on a Mac and Ctrl elsewhere. Single keys don't fire
+// while someone types in a field. `ShortcutsDialog` lists an app's shortcuts by group, with a
+// filter, usually opened with "?". `Hotkey` draws one combination as keys, for menus and tooltips.
+//
+//   useHotkeys('mod+k', () => setPaletteOpen(true))
+//   useHotkeys('shift+?', () => setHelpOpen(true))
+//   <ShortcutsDialog open={helpOpen} onOpenChange={setHelpOpen} groups={shortcuts} />
 import * as React from 'react'
 
 import {

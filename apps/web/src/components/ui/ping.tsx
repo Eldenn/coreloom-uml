@@ -1,12 +1,3 @@
-'use client'
-
-// Coreloom UI — Ping. Draws the eye to one thing with a ring that pulses out of a small dot:
-// a new feature in a menu, an unread message on an avatar, a live stream, a step of a tour. Put
-// it around the element (the dot sits in a corner) or on its own. The pulse never carries the
-// meaning alone: give it a `label` (read by screen readers) or say it in the text next to it.
-// For people who ask for reduced motion the dot stays, without the pulse.
-//
-//   <Ping label="New"><Button variant="ghost">Automations</Button></Ping>
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'

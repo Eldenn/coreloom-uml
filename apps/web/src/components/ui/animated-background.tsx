@@ -1,3 +1,11 @@
+'use client'
+
+// Coreloom UI — AnimatedBackground. A quiet moving backdrop for a hero or a sign-in page: a grid
+// or dots drifting slowly, or an aurora of the accent colours. It fills its parent (give the
+// parent `relative`), sits behind the content, fades out at the edges, and stands still for
+// people who ask for reduced motion.
+//
+//   <section className="relative"><AnimatedBackground variant="grid" />…</section>
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'

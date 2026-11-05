@@ -1,7 +1,3 @@
-'use client'
-
-// Coreloom UI — SignupForm (auth block). Name, email and password, with the terms underneath.
-// Built on @coreloom/form (TanStack Form), like LoginForm.
 import * as React from 'react'
 
 import { type OAuthProvider, validateEmail } from '@/components/login-form'

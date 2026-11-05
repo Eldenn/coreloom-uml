@@ -1,11 +1,3 @@
-'use client'
-
-// Coreloom UI — PageProgress. A thin bar across the top of the page while the next page loads:
-// it creeps toward the end while `loading` is true, runs to the end and fades when it turns
-// false. Wire it to your router's pending state. Screen readers hear that the page is loading
-// through the progress bar's busy state, once.
-//
-//   <PageProgress loading={router.state.isLoading} />
 import * as React from 'react'
 
 import { useCoreloomI18n } from '@/lib/i18n'

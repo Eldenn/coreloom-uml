@@ -1,10 +1,14 @@
 import type { UmlLayout, UmlNote, UmlPoint, UmlSpec } from '@/lib/uml'
 import {
   type ActivityNodeKind,
+  type ComponentElementKind,
+  type ComponentRelationKind,
   type DeploymentNodeKind,
   type DeploymentRelationKind,
   type ElementDiagram,
   isContainer,
+  type PackageElementKind,
+  type PackageRelationKind,
   type UseCaseElementKind,
   type UseCaseRelationKind,
 } from '@/lib/uml-elements'
@@ -24,14 +28,27 @@ interface BaseRelation {
   label?: string
 }
 
-/** A change to the element and relation lists that works for any of the three kinds. */
+/** A change to the element and relation lists that works for any of these kinds. */
 type PartsChange = <E extends BaseElement, R extends BaseRelation>(
   elements: readonly E[],
   relations: readonly R[],
 ) => { elements: E[]; relations: R[] }
 
 function isElementDiagram(diagram: UmlSpec): diagram is ElementDiagram {
-  return diagram.kind === 'usecase' || diagram.kind === 'activity' || diagram.kind === 'deployment'
+  return ELEMENT_KINDS.has(diagram.kind)
+}
+
+const ELEMENT_KINDS: ReadonlySet<UmlSpec['kind']> = new Set([
+  'usecase',
+  'activity',
+  'deployment',
+  'component',
+  'package',
+])
+
+/** The kinds whose elements carry a stereotype a properties panel can change. */
+function hasStereotypes(d: ElementDiagram): boolean {
+  return d.kind === 'deployment' || d.kind === 'component' || d.kind === 'package'
 }
 
 /** A diagram's notes and positions, as they should end up: an absent key means none. */
@@ -72,6 +89,14 @@ function withParts(d: ElementDiagram, change: PartsChange, extras?: Extras): Ele
       const { notes: _n, layout: _l, ...rest } = d
       return { ...rest, ...change(d.elements, d.relations), ...tail(d) }
     }
+    case 'component': {
+      const { notes: _n, layout: _l, ...rest } = d
+      return { ...rest, ...change(d.elements, d.relations), ...tail(d) }
+    }
+    case 'package': {
+      const { notes: _n, layout: _l, ...rest } = d
+      return { ...rest, ...change(d.elements, d.relations), ...tail(d) }
+    }
   }
 }
 
@@ -103,21 +128,54 @@ const DEPLOYMENT_TYPES = {
   database: 'database',
   cloud: 'cloud',
 } as const satisfies Record<string, DeploymentNodeKind>
+const COMPONENT_TYPES = {
+  component: 'component',
+  interface: 'interface',
+  port: 'port',
+} as const satisfies Record<string, ComponentElementKind>
+const PACKAGE_TYPES = {
+  package: 'package',
+  class: 'class',
+  interface: 'interface',
+  component: 'component',
+} as const satisfies Record<string, PackageElementKind>
 
 type ElementTypeOfKinds =
-  keyof typeof USE_CASE_TYPES | keyof typeof ACTIVITY_TYPES | keyof typeof DEPLOYMENT_TYPES
+  | keyof typeof USE_CASE_TYPES
+  | keyof typeof ACTIVITY_TYPES
+  | keyof typeof DEPLOYMENT_TYPES
+  | keyof typeof COMPONENT_TYPES
+  | keyof typeof PACKAGE_TYPES
 
 /** The relations the tools draw, per diagram; the first is the usual one. */
 const USE_CASE_LINES = ['association', 'include', 'extend', 'generalization'] as const
 const DEPLOYMENT_LINES = ['link', 'dependency', 'deploy'] as const
+const COMPONENT_LINES = [
+  'dependency',
+  'provide',
+  'require',
+  'assembly',
+  'delegate',
+] as const satisfies readonly ComponentRelationKind[]
+const PACKAGE_LINES = [
+  'dependency',
+  'import',
+  'merge',
+] as const satisfies readonly PackageRelationKind[]
 type RelationTypeOfKinds =
-  (typeof USE_CASE_LINES)[number] | (typeof DEPLOYMENT_LINES)[number] | 'flow'
+  | (typeof USE_CASE_LINES)[number]
+  | (typeof DEPLOYMENT_LINES)[number]
+  | (typeof COMPONENT_LINES)[number]
+  | (typeof PACKAGE_LINES)[number]
+  | 'flow'
 
 function elementTypesOf(d: ElementDiagram): readonly (ElementTypeOfKinds | 'note')[] {
   const types = {
     usecase: Object.keys(USE_CASE_TYPES),
     activity: Object.keys(ACTIVITY_TYPES),
     deployment: Object.keys(DEPLOYMENT_TYPES),
+    component: Object.keys(COMPONENT_TYPES),
+    package: Object.keys(PACKAGE_TYPES),
   }[d.kind] as ElementTypeOfKinds[]
   return [...types, 'note']
 }
@@ -130,6 +188,10 @@ function relationTypesOf(d: ElementDiagram): readonly RelationTypeOfKinds[] {
       return ['flow']
     case 'deployment':
       return DEPLOYMENT_LINES
+    case 'component':
+      return COMPONENT_LINES
+    case 'package':
+      return PACKAGE_LINES
   }
 }
 
@@ -138,18 +200,32 @@ function relationTypesOf(d: ElementDiagram): readonly RelationTypeOfKinds[] {
 /** Where a new element goes: inside the selected frame, or beside the selected element. */
 function parentFor(d: ElementDiagram, near: string | undefined, kind: string): string | undefined {
   if (!near) return undefined
-  // A use case's system holds use cases only, and frames don't nest in these kinds but deployment.
+  // A use case's system holds use cases only, and frames don't nest in use case and activity.
   if (d.kind === 'usecase' && kind !== 'usecase') return undefined
   if (d.kind === 'activity' && kind === 'partition') return undefined
-  if (isContainer(d, near) || (d.kind === 'deployment' && d.elements.some((e) => e.id === near)))
-    return d.kind === 'deployment' && !isHolder(d, near) ? undefined : near
+  if (isHolder(d, near)) return near
+  // In a deployment diagram, beside anything else means at the top.
+  if (d.kind === 'deployment') return undefined
+  if (isContainer(d, near)) return near
   return d.elements.find((e) => e.id === near)?.parent
 }
 
-/** Deployment elements that can hold others: nodes, devices, environments and clouds. */
+/**
+ * Elements that can hold others: a use case's system, a partition, a package, a component, and
+ * deployment nodes, devices, environments and clouds.
+ */
 function isHolder(d: ElementDiagram, id: string): boolean {
   const kind = d.elements.find((e) => e.id === id)?.kind
-  return kind === 'node' || kind === 'device' || kind === 'environment' || kind === 'cloud'
+  switch (d.kind) {
+    case 'deployment':
+      return kind === 'node' || kind === 'device' || kind === 'environment' || kind === 'cloud'
+    case 'component':
+      return kind === 'component'
+    case 'package':
+      return kind === 'package'
+    default:
+      return kind === 'system' || kind === 'partition'
+  }
 }
 
 /** The new element, or null when `type` isn't one of this diagram's. */
@@ -178,6 +254,14 @@ function addTo(
       const kind = (DEPLOYMENT_TYPES as Record<string, DeploymentNodeKind | undefined>)[input.type]
       return kind ? { ...d, elements: [...d.elements, { ...base(kind), kind }] } : null
     }
+    case 'component': {
+      const kind = (COMPONENT_TYPES as Record<string, ComponentElementKind | undefined>)[input.type]
+      return kind ? { ...d, elements: [...d.elements, { ...base(kind), kind }] } : null
+    }
+    case 'package': {
+      const kind = (PACKAGE_TYPES as Record<string, PackageElementKind | undefined>)[input.type]
+      return kind ? { ...d, elements: [...d.elements, { ...base(kind), kind }] } : null
+    }
   }
 }
 
@@ -203,6 +287,16 @@ function relateIn(
         ? (input.type as DeploymentRelationKind)
         : 'link'
       const relation = { ...ends, ...(kind === 'link' ? {} : { kind }), ...labelled }
+      return { ...d, relations: [...d.relations, relation] }
+    }
+    case 'component': {
+      const kind = COMPONENT_LINES.find((k) => k === input.type) ?? 'dependency'
+      const relation = { ...ends, ...(kind === 'dependency' ? {} : { kind }), ...labelled }
+      return { ...d, relations: [...d.relations, relation] }
+    }
+    case 'package': {
+      const kind = PACKAGE_LINES.find((k) => k === input.type) ?? 'dependency'
+      const relation = { ...ends, ...(kind === 'dependency' ? {} : { kind }), ...labelled }
       return { ...d, relations: [...d.relations, relation] }
     }
   }
@@ -311,14 +405,13 @@ function reverseIn(d: ElementDiagram, index: number): ElementDiagram {
   }))
 }
 
-/** A properties panel's fields: the name, and a deployment element's stereotype. */
+/** A properties panel's fields: the name, and the stereotype of the kinds that have one. */
 function fieldsIn(d: ElementDiagram, id: string): { name: string; stereotype?: string } | null {
-  if (d.kind === 'deployment') {
-    const node = d.elements.find((x) => x.id === id)
-    return node ? { name: node.label ?? node.id, stereotype: node.stereotype ?? '' } : null
-  }
-  const e = d.elements.find((x) => x.id === id)
-  return e ? { name: e.label ?? e.id } : null
+  const e: BaseElement | undefined = d.elements.find((x) => x.id === id)
+  if (!e) return null
+  return hasStereotypes(d)
+    ? { name: e.label ?? e.id, stereotype: e.stereotype ?? '' }
+    : { name: e.label ?? e.id }
 }
 
 /** A relation's fields: its kind (when the diagram has several) and its label. */
@@ -370,6 +463,23 @@ function copyIn(d: ElementDiagram, picked: ReadonlySet<string>): ElementDiagram 
   )
 }
 
+/** Lists of two diagrams of the same kind put together by `merge`; null for different kinds. */
+function joined(
+  d: ElementDiagram,
+  clip: ElementDiagram,
+  merge: <E extends BaseElement, R extends BaseRelation>(
+    own: { elements: readonly E[]; relations: readonly R[] },
+    more: { elements: readonly E[]; relations: readonly R[] },
+  ) => { elements: E[]; relations: R[] },
+): ElementDiagram | null {
+  if (d.kind === 'usecase' && clip.kind === 'usecase') return { ...d, ...merge(d, clip) }
+  if (d.kind === 'activity' && clip.kind === 'activity') return { ...d, ...merge(d, clip) }
+  if (d.kind === 'deployment' && clip.kind === 'deployment') return { ...d, ...merge(d, clip) }
+  if (d.kind === 'component' && clip.kind === 'component') return { ...d, ...merge(d, clip) }
+  if (d.kind === 'package' && clip.kind === 'package') return { ...d, ...merge(d, clip) }
+  return null
+}
+
 /** How far a pasted element lands from where it was copied. */
 const OFFSET = 32
 
@@ -401,11 +511,8 @@ function pasteIn(
       ...more.relations.map((r) => ({ ...r, from: id(r.from), to: id(r.to) })),
     ],
   })
-  let next: ElementDiagram
-  if (d.kind === 'usecase' && clip.kind === 'usecase') next = { ...d, ...merge(d, clip) }
-  else if (d.kind === 'activity' && clip.kind === 'activity') next = { ...d, ...merge(d, clip) }
-  else if (d.kind === 'deployment' && clip.kind === 'deployment') next = { ...d, ...merge(d, clip) }
-  else return null
+  const next = joined(d, clip, merge)
+  if (!next) return null
   const inner = new Set(clip.elements.filter((e) => e.parent && map.has(e.parent)).map((e) => e.id))
   const moved = Object.entries(clip.layout ?? {}).flatMap(([x, p]): [string, UmlPoint][] => {
     const to = map.get(x)
@@ -430,6 +537,7 @@ export {
   type ElementTypeOfKinds,
   elementTypesOf,
   fieldsIn,
+  hasStereotypes,
   isElementDiagram,
   pasteIn,
   relateIn,

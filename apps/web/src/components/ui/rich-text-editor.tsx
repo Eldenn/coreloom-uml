@@ -1,3 +1,11 @@
+'use client'
+
+// Coreloom UI — RichTextEditor. Tiptap (ProseMirror) with a toolbar: bold, italic, underline,
+// strikethrough, inline code, two heading levels, lists, quote, code block, links, undo / redo.
+// Optional AI (`ai`): an "AI" button and ⌘J / Ctrl+J open a panel that edits the selection
+// through the app's own model call, and "/" at the start of a line opens a menu of AI commands.
+// A rewrite can be reviewed as changes in the text, each one accepted or rejected.
+// The value is HTML. Sanitize it on the server before you render it anywhere else.
 import { Placeholder } from '@tiptap/extensions'
 import { type Editor, EditorContent, useEditor, useEditorState } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'

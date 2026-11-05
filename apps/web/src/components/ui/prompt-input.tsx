@@ -1,3 +1,11 @@
+'use client'
+
+// Coreloom UI — PromptInput. Where people write to a model: a text area that grows with the text,
+// Enter to send and Shift + Enter for a new line, attachments, and a Send button that becomes Stop
+// while the answer streams. The `toolbar` slot takes a model picker, a "search the web" toggle…
+//
+// With the AI SDK: <PromptInput status={status} onStop={stop}
+//   onSubmit={({ text, files }) => sendMessage({ text, files })} />
 import { ArrowUpIcon, FileIcon, PaperclipIcon, SquareIcon, XIcon } from 'lucide-react'
 import * as React from 'react'
 

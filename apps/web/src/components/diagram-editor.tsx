@@ -140,6 +140,36 @@ database "PostgreSQL" as db
 web -- db : JDBC
 @enduml`,
   },
+  {
+    kind: 'component',
+    text: `@startuml
+left to right direction
+component "Checkout" as checkout {
+  port "api" as api
+  component "Cart" as cart
+}
+interface "Payments" as payments
+component "Payment service" as pay
+api --> cart : <<delegate>>
+pay -- payments
+checkout -( payments
+@enduml`,
+  },
+  {
+    kind: 'package',
+    text: `@startuml
+package "Web" as web {
+  class "OrderController" as controller
+}
+package "Domain" as domain {
+  class "Order" as order
+}
+package "Persistence" as persistence {
+}
+web ..> domain : <<import>>
+persistence ..> domain
+@enduml`,
+  },
 ]
 
 /** Reads text in any of the formats. */

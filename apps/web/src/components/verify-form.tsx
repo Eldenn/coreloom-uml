@@ -1,3 +1,8 @@
+'use client'
+
+// Coreloom UI — VerifyForm (auth block). Enter the 6-digit code sent by email or SMS.
+// Built on @coreloom/form (TanStack Form, OTPField): submits by itself once the last digit is in;
+// the button stays for those who wait.
 import { REGEXP_ONLY_DIGITS } from 'input-otp'
 import * as React from 'react'
 

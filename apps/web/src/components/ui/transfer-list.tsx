@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — TransferList. Two lists side by side, "Available" and "Selected", with buttons to
+// move ticked items between them: columns to show in a table, members of a group, the permissions
+// of a role. Each list can be filtered. The value is the selected items' values, in the options'
+// order. On a narrow screen the lists stack, the buttons between them.
 import {
   ChevronLeftIcon,
   ChevronRightIcon,

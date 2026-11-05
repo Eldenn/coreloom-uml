@@ -1,3 +1,8 @@
+'use client'
+
+// Coreloom UI — MonthPicker. A month of a year, for reports, billing periods and card expiry
+// dates. The value is "YYYY-MM" ("2026-10"). The popover shows a year with its twelve months; arrows
+// move between months (up and down by a row of three), Page Up / Page Down change the year.
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import * as React from 'react'
 

@@ -1,9 +1,3 @@
-'use client'
-
-// Coreloom UI — JsonInput. A code field for JSON: a webhook payload, a feature flag's settings, a
-// tool's arguments. It checks the text when the field is left and says where it breaks ("line 3,
-// column 12"), and Format re-indents it. The value is the text; `onValueChange` also passes the
-// parsed value when the text is valid JSON.
 import { BracesIcon } from 'lucide-react'
 import * as React from 'react'
 

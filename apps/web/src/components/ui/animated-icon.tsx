@@ -1,15 +1,3 @@
-'use client'
-
-// Coreloom UI — Animated icons. Small icons that move to confirm something:
-// - DrawIcon: a check, a cross, an arrow or a circled check that draws itself, for a step done,
-//   a saved form, a payment that went through.
-// - MorphIcon: one icon turning into another (copy → copied, play → pause), with a quick turn.
-// - MenuToggleIcon: the three-line menu icon that folds into a cross when the menu is open.
-// They are decorative by default; give `label` to DrawIcon when it is the only sign of the
-// state. For people who ask for reduced motion they simply appear.
-//
-//   <DrawIcon icon="check" className="text-success" />
-//   <MorphIcon active={copied} from={<CopyIcon />} to={<CheckIcon />} />
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'

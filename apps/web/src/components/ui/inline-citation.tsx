@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — InlineCitation. The little numbered pill a model leaves in its answer ("…since v0.8 [1]"),
+// pointing at one of the message's sources. Hover it, focus it or tap it and a card shows the source: its
+// title, where it comes from (the site, or the file) and, for a web page, a link to open it. Takes an AI SDK
+// source part (`source-url` or `source-document`) as it is; Markdown places them for you when given `sources`.
 import { ExternalLinkIcon, FileTextIcon, GlobeIcon } from 'lucide-react'
 import * as React from 'react'
 

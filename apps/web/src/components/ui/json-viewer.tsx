@@ -1,9 +1,3 @@
-'use client'
-
-// Coreloom UI — JsonViewer. JSON to read and explore: an API response, a webhook payload, a tool
-// call's input, an event's properties. Objects and arrays fold and unfold (the first levels open),
-// values are coloured by type, and the header has Expand all, Collapse all and Copy. Read only:
-// to edit JSON, use JsonInput.
 import { ChevronRightIcon, ChevronsDownUpIcon, ChevronsUpDownIcon } from 'lucide-react'
 import * as React from 'react'
 

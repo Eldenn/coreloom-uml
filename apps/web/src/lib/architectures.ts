@@ -17,6 +17,8 @@ export type Visibility = ArchitectureDetail['visibility']
 export const DIAGRAM_KINDS = [
   'c4',
   'deployment',
+  'component',
+  'package',
   'class',
   'sequence',
   'state',
@@ -125,3 +127,63 @@ export function useDeleteDiagram(architectureId: number) {
       queryClient.invalidateQueries({ queryKey: architectureKeys.detail(architectureId) }),
   })
 }
+
+export function useUpdateArchitecture(id: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { title?: string; description?: string | null }) =>
+      client.api.architectures.update({ params: { id }, body }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: architectureKeys.all }),
+  })
+}
+
+export function useReorderDiagrams(architectureId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: number[]) =>
+      client.api.architectures.diagrams.reorder({ params: { id: architectureId }, body: { ids } }),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: architectureKeys.detail(architectureId) }),
+  })
+}
+
+export const sharingKeys = {
+  detail: (id: number) => ['architectures', 'sharing', id] as const,
+}
+
+/** The owner's sharing settings: visibility, link and, while protected, the access code. */
+export function useSharing(id: number, enabled: boolean) {
+  return useQuery({
+    queryKey: sharingKeys.detail(id),
+    queryFn: async () => (await client.api.architectures.sharing.show({ params: { id } })).sharing,
+    enabled,
+  })
+}
+
+/** Changes the visibility or regenerates the link or the code; the settings take the answer. */
+export function useSharingActions(id: number) {
+  const queryClient = useQueryClient()
+  const onSuccess = async ({ sharing }: { sharing: SharingSettings }) => {
+    queryClient.setQueryData(sharingKeys.detail(id), sharing)
+    await queryClient.invalidateQueries({ queryKey: architectureKeys.all })
+  }
+  return {
+    setVisibility: useMutation({
+      mutationFn: (visibility: Visibility) =>
+        client.api.architectures.sharing.update({ params: { id }, body: { visibility } }),
+      onSuccess,
+    }),
+    regenerateLink: useMutation({
+      mutationFn: () => client.api.architectures.sharing.regenerateLink({ params: { id } }),
+      onSuccess,
+    }),
+    regenerateCode: useMutation({
+      mutationFn: () => client.api.architectures.sharing.regenerateCode({ params: { id } }),
+      onSuccess,
+    }),
+  }
+}
+
+export type SharingSettings = Awaited<
+  ReturnType<typeof client.api.architectures.sharing.show>
+>['sharing']

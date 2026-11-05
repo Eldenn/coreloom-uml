@@ -1,3 +1,10 @@
+'use client'
+
+// Coreloom UI — TypingIndicator. Three dots that bob while someone (a person in a chat, an
+// assistant before its first word) is writing. Screen readers hear "Lena is typing" once, not
+// the dots. For people who ask for reduced motion the dots stay still.
+//
+//   {typing && <TypingIndicator name="Lena" />}
 import * as React from 'react'
 
 import { useCoreloomI18n } from '@/lib/i18n'

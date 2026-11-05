@@ -23,6 +23,7 @@ import {
 } from '@/lib/uml-edit'
 import {
   fieldsIn,
+  hasStereotypes,
   isElementDiagram,
   relationFieldsIn,
   renameIdIn,
@@ -262,7 +263,8 @@ function renameElement(diagram: UmlSpec, id: string, name: string): EditResult {
   return { diagram: setLabel(renamed, next, null), id: next }
 }
 
-/** The same rule for use case, activity and deployment elements, which all have a label. */
+/** The same rule for the elements of the use case, activity, deployment, component and package
+ * kinds, which all have a label. */
 function renameIn(d: ElementDiagram, id: string, name: string, note: number | null): EditResult {
   if (note !== null) return { diagram: renameNote(d, note, name), id }
   if (!d.elements.some((e) => e.id === id)) return { diagram: d, id }
@@ -353,7 +355,7 @@ const optional = <K extends string>(key: K, value: string | undefined) =>
 
 function applyFields(d: UmlSpec, id: string, f: UmlElementFields): UmlSpec {
   if (isElementDiagram(d)) {
-    if (d.kind !== 'deployment' || f.stereotype === undefined) return d
+    if (!hasStereotypes(d) || f.stereotype === undefined) return d
     return setElementField(d, id, 'stereotype', f.stereotype.trim() || null)
   }
   switch (d.kind) {

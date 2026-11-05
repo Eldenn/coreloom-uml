@@ -1,20 +1,3 @@
-'use client'
-
-// Coreloom UI — ToolCall. One call an agent makes to a tool, as a folded card: the tool's name and
-// where it stands (preparing, running, done, failed, waiting for approval), with its input and
-// output underneath. Takes an AI SDK tool part as it is. When the call needs approval, the card
-// opens with Allow / Deny; wire them to `addToolApprovalResponse`.
-//
-// Generative UI: `tool` draws the call as your own component (a skeleton while `getWeather` runs,
-// a weather card once it answers), inside the card or, with `display: 'inline'`, in place of it:
-//
-//   const weather: ToolComponent<{ city: string }, Weather> = { label: 'Weather', display: 'inline',
-//     render: (call) => call.state === 'output-available' ? <WeatherCard {...call.output} /> : <WeatherSkeleton /> }
-//   <ToolCall part={part} tool={weather} />
-//
-// Tools that ask the person first (no `execute` on the server) set `awaitsInput`: while the call
-// waits, `render` gets `submit(output)` and `cancel()`, wired to `onOutput` (`addToolOutput`).
-// ToolForm's `formTool()` builds such an entry with a form.
 import {
   CheckCircle2Icon,
   ChevronRightIcon,

@@ -1,7 +1,3 @@
-'use client'
-
-// Coreloom UI — Carousel (shadcn/ui new-york-v4 on Embla, restyled). Swipeable slides with previous / next.
-
 import useEmblaCarousel, { type UseEmblaCarouselType } from 'embla-carousel-react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import * as React from 'react'

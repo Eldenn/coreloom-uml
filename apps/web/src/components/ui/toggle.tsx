@@ -1,7 +1,3 @@
-'use client'
-
-// Coreloom UI — Toggle (shadcn/ui new-york-v4, restyled). A two-state button; "on" takes the cyan tint.
-
 import { cva, type VariantProps } from 'class-variance-authority'
 import { Toggle as TogglePrimitive } from 'radix-ui'
 import * as React from 'react'

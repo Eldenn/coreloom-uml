@@ -1,3 +1,13 @@
+'use client'
+
+// Coreloom UI — Confetti. A short burst of confetti for a real success: onboarding finished, a
+// first deploy, a payment that went through. It is drawn with the browser's own Web Animations
+// (no canvas, no library), lasts about a second and a half, sits above everything without taking
+// clicks, and cleans up after itself. Nothing happens for people who ask for reduced motion, so
+// always say the success in words too.
+//
+//   <Button onClick={(e) => { publish(); void fireConfetti(e.currentTarget) }}>Publish</Button>
+
 const COLORS = [
   '--color-primary',
   '--color-chart-2',

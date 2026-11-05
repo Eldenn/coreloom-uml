@@ -16,6 +16,7 @@ import {
   DatabaseIcon,
   DiamondIcon,
   FileTextIcon,
+  FolderIcon,
   FrameIcon,
   GitBranchIcon,
   GitMergeIcon,
@@ -40,6 +41,7 @@ import {
   SplineIcon,
   SplitIcon,
   SquareDashedIcon,
+  SquareIcon,
   SquareUserIcon,
   StickyNoteIcon,
   TableIcon,
@@ -121,6 +123,8 @@ const ICONS: Record<UmlElementType, LucideIcon> = {
   environment: LayersIcon,
   artifact: FileTextIcon,
   cloud: CloudIcon,
+  port: SquareIcon,
+  package: FolderIcon,
 }
 
 /** How many element tools sit in the bar itself on wide screens; all of them are under Add. */

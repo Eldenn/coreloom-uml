@@ -1,9 +1,3 @@
-'use client'
-
-// Coreloom UI — PhoneInput. A country picker (searchable, names in the reader's language) and the
-// national number, typed and shown the way people write it ("06 12 34 56 78"). The value is the
-// international E.164 form ("+33612345678"), ready for an API or an SMS provider; "" when empty.
-// The country list is short on purpose: extend PHONE_COUNTRIES with what your users need.
 import { CheckIcon, ChevronDownIcon } from 'lucide-react'
 import * as React from 'react'
 

@@ -1,3 +1,11 @@
+'use client'
+
+// Coreloom UI — Sparkline. A word-sized trend with no axes: a line, an area or bars that sit next to a
+// number in a StatCard, a table cell or a list row. Plain SVG (no Recharts), so a table can hold
+// hundreds of them. The chart is an image with a summary for screen readers: first and last value,
+// low and high.
+//
+//   <Sparkline data={[12, 18, 15, 22, 30]} aria-label="Sign-ups, last 7 days" />
 import * as React from 'react'
 
 import { useCoreloomI18n } from '@/lib/i18n'

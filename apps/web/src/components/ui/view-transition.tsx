@@ -1,3 +1,15 @@
+'use client'
+
+// Coreloom UI — useViewTransition. Animates a change of view (a route, a tab, a step of a wizard)
+// with the browser's View Transitions API: the old view fades, slides or scales out while the new
+// one comes in. Where the API is missing, or for people who ask for reduced motion, the change
+// simply happens. Give an element the same `viewTransitionName` in both views to have it move
+// from one place to the other.
+//
+//   const transition = useViewTransition()
+//   <Button onClick={() => transition(() => setStep(2), { effect: 'slide' })}>Next</Button>
+//
+// With TanStack Router, prefer its own `viewTransition` option; the CSS effects here apply too.
 import * as React from 'react'
 import { flushSync } from 'react-dom'
 

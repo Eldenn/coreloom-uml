@@ -1,3 +1,8 @@
+'use client'
+
+// Coreloom UI — DurationInput. A length of time typed the way people say it: "1h30", "1:30",
+// "90", "1.5 h", "45 min", "2 h 15". The value is a number of minutes; on blur the field shows it
+// back in the locale ("1 h 30 min"). Arrow keys add or remove `step` minutes (default 15).
 import { ClockIcon } from 'lucide-react'
 import * as React from 'react'
 

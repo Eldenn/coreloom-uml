@@ -1,3 +1,12 @@
+'use client'
+
+// Coreloom UI — AnimatedList. A list whose items slide open when they are added and fold away
+// when they are removed, instead of jumping: notifications, a to-do list, uploaded files, a
+// queue. Give every child a stable `key`; the list does the rest. Items that are leaving are
+// hidden from screen readers and from Tab at once. For people who ask for reduced motion items
+// simply appear and disappear.
+//
+//   <AnimatedList>{todos.map((t) => <TodoRow key={t.id} todo={t} />)}</AnimatedList>
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'

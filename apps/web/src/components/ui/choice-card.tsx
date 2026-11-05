@@ -1,9 +1,3 @@
-'use client'
-
-// Coreloom UI — ChoiceCard. Radio buttons and checkboxes drawn as cards, with a title, a
-// description and an optional icon: a plan, a delivery option, the features to turn on. Each card
-// is a real <input> inside its <label>, so the whole card is clickable, arrows move between radio
-// cards, Space ticks a checkbox card, and the description is read after the title.
 import { CheckIcon } from 'lucide-react'
 import * as React from 'react'
 

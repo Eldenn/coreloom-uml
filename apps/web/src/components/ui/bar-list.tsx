@@ -1,3 +1,11 @@
+'use client'
+
+// Coreloom UI — BarList. A ranking: one row per item with its label over a bar, and the value at the
+// right — top pages, busiest models, biggest customers. Plain HTML, so it reads as a list to screen
+// readers and every label stays selectable. Long lists show the first `limit` rows and a button for
+// the rest.
+//
+//   <BarList data={[{ label: '/pricing', value: 1820, href: '/pages/pricing' }, …]} limit={5} />
 import * as React from 'react'
 
 import { Button } from '@/components/ui/button'

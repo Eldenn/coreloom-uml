@@ -21,6 +21,9 @@ type DiagramShape =
   | 'decision'
   | 'flowEnd'
   | 'node3d'
+  | 'lollipop'
+  | 'port'
+  | 'folder'
 
 /** The look of a box: plain, the system in focus (C4), or something outside it. */
 type DiagramTone = 'default' | 'primary' | 'external'
@@ -35,6 +38,8 @@ type DiagramMarker =
   | 'zeroOrOne'
   | 'oneOrMore'
   | 'zeroOrMore'
+  | 'socket'
+  | 'assembly'
 
 /** A line in a compartment: `+ name: String`, or `PK id string`. */
 interface DiagramRow {
@@ -76,10 +81,15 @@ type DiagramRole =
   | 'artifact'
   | 'database'
   | 'cloud'
+  | 'interface'
+  | 'port'
+  | 'package'
 
 interface DiagramNode {
   id: string
   parent?: string
+  /** Drawn on its frame's edge rather than inside it: a component's port. */
+  border?: boolean
   shape: DiagramShape
   role: DiagramRole
   title: string
@@ -109,6 +119,12 @@ type DiagramRelation =
   | 'generalization'
   | 'flow'
   | 'deploy'
+  | 'provide'
+  | 'require'
+  | 'assembly'
+  | 'delegate'
+  | 'import'
+  | 'merge'
 
 interface DiagramEdge {
   id: string

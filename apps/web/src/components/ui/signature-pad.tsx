@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — SignaturePad. A box to sign in with a finger, a pen or the mouse, for delivery
+// receipts, consent forms and contracts. Those who can't draw (keyboard, screen reader, motor
+// impairments) type their name instead and it is written out as the signature. The value is a PNG
+// data URL ("data:image/png;base64,…"), or null while empty.
 import { EraserIcon, PenLineIcon, TypeIcon } from 'lucide-react'
 import * as React from 'react'
 

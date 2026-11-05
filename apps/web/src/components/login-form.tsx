@@ -1,3 +1,8 @@
+'use client'
+
+// Coreloom UI — LoginForm (auth block). Email + password sign-in with optional OAuth buttons.
+// Built on @coreloom/form (TanStack Form): fields validate on change once left, and the button
+// shows a spinner while your `onSubmit` promise runs. Pass the API's answer back as `error`.
 import * as React from 'react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'

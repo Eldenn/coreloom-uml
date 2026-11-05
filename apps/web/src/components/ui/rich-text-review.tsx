@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — RichTextReview. Suggested changes in RichTextEditor: an AI rewrite shown as a diff in
+// the text itself (deleted words struck through, new words underlined), with a bar under the text to
+// step through the changes and accept or reject each one, or all at once. Until a change is accepted
+// the document (and the editor's value) stays as it was: the suggestions are only drawn over it.
 import { DOMSerializer, Fragment, type Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'

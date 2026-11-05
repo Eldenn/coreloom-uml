@@ -1,11 +1,3 @@
-'use client'
-
-// Coreloom UI — RichTextAi. The AI panel of RichTextEditor: ask for an edit, or pick a quick action
-// (improve, shorten, translate…), watch the answer stream in, then replace the selection or insert
-// it below, or review it as changes in the text (accepted or rejected one by one: RichTextReview).
-// The app sends the request to its model through `onRequest`; nothing here calls an API.
-// The model's text is read as light Markdown and inserted as text nodes, never as HTML.
-// Typing "/" at the start of a line (or after a space) opens a small menu of AI commands at the caret.
 import { closeHistory } from '@tiptap/pm/history'
 import { Fragment, type Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { type EditorState, Plugin, PluginKey } from '@tiptap/pm/state'

@@ -1,15 +1,3 @@
-'use client'
-
-// Coreloom UI — Tour. A guided tour: a few steps that each point at a part of the screen and say
-// what it is for, for a first visit or a new feature. The step's target is lit up (the rest of
-// the page dims) and a card beside it holds the title, the text, "Step 2 of 4", Back, Next and
-// Skip. Escape ends the tour. A step without a target (or whose target isn't on the page) shows
-// its card in the middle of the screen.
-//
-//   <Tour open={open} onOpenChange={setOpen} steps={[
-//     { target: '#new-project', title: 'Start a project', content: 'Everything begins here.' },
-//     { target: () => searchRef.current, title: 'Find anything', content: 'Press ⌘K anywhere.' },
-//   ]} />
 import { Popover as PopoverPrimitive } from 'radix-ui'
 import * as React from 'react'
 

@@ -1,10 +1,16 @@
 import type {
   ActivityDiagram,
   ActivityNode,
+  ComponentDiagram,
+  ComponentElement,
+  ComponentRelationKind,
   DeploymentDiagram,
   DeploymentNode,
   DeploymentRelationKind,
   ElementDiagram,
+  PackageDiagram,
+  PackageElement,
+  PackageRelationKind,
   UseCaseDiagram,
   UseCaseElement,
   UseCaseRelationKind,
@@ -257,7 +263,139 @@ function deploymentGraph(d: DeploymentDiagram): DiagramGraph {
   return graphOf(d, nodes, edges, 'TB')
 }
 
-/** The graph for a use case, activity or deployment diagram. */
+// ── Component ───────────────────────────────────────────────────────────────────────────────────
+
+/** A lollipop's ball and a port's square: fixed sizes, their names drawn beside them. */
+const BALL = 20
+const PORT = 14
+
+function componentNode(
+  e: ComponentElement,
+  holders: ReadonlySet<string>,
+  ids: ReadonlySet<string>,
+): DiagramNode {
+  const base = { id: e.id, title: e.label ?? e.id, ...withParent(e, ids) }
+  switch (e.kind) {
+    case 'interface':
+      return { ...base, shape: 'lollipop', role: 'interface', width: BALL, height: BALL }
+    case 'port':
+      return {
+        ...base,
+        shape: 'port',
+        role: 'port',
+        width: PORT,
+        height: PORT,
+        ...(base.parent ? { border: true } : {}),
+      }
+    case 'component':
+      return sizeBox(
+        {
+          ...base,
+          shape: holders.has(e.id) ? 'frame' : 'box',
+          role: 'component',
+          stereotype: e.stereotype ?? 'component',
+          variant: 'component',
+        },
+        140,
+      )
+  }
+}
+
+const COMPONENT_EDGES: Record<
+  ComponentRelationKind,
+  { marker?: DiagramMarker; dashed?: boolean; keyword?: string }
+> = {
+  dependency: { marker: 'arrow', dashed: true },
+  provide: {},
+  require: { marker: 'socket' },
+  assembly: { marker: 'assembly' },
+  delegate: { marker: 'arrow', keyword: '«delegate»' },
+}
+
+function componentGraph(d: ComponentDiagram): DiagramGraph {
+  const ids = new Set(d.elements.filter((e) => e.kind === 'component').map((e) => e.id))
+  // Ports sit on the edge; a component is drawn as a frame only when it holds something else.
+  const holders = new Set(
+    d.elements.flatMap((e) => (e.parent && e.kind !== 'port' ? [e.parent] : [])),
+  )
+  const nodes = d.elements.map((e) => componentNode(e, holders, ids))
+  const edges = d.relations.map((r, i): DiagramEdge => {
+    const kind = r.kind ?? 'dependency'
+    const look = COMPONENT_EDGES[kind]
+    return {
+      id: `r${String(i)}`,
+      source: r.from,
+      target: r.to,
+      from: r.from,
+      to: r.to,
+      relation: kind,
+      ...(look.dashed ? { dashed: true } : {}),
+      ...(look.marker ? { targetMarker: look.marker } : {}),
+      ...joinLabel(look.keyword, r.label),
+    }
+  })
+  return graphOf(d, nodes, edges, 'LR')
+}
+
+// ── Package ─────────────────────────────────────────────────────────────────────────────────────
+
+/** A folder's tab, above the box. */
+const TAB = 18
+
+function packageNode(
+  e: PackageElement,
+  holders: ReadonlySet<string>,
+  ids: ReadonlySet<string>,
+): DiagramNode {
+  const base = { id: e.id, title: e.label ?? e.id, ...withParent(e, ids) }
+  const stereotype = e.stereotype ?? (e.kind === 'interface' ? 'interface' : undefined)
+  const said = stereotype ? { stereotype } : {}
+  if (e.kind === 'package') {
+    if (holders.has(e.id)) return sizeBox({ ...base, ...said, shape: 'frame', role: 'package' })
+    const box = sizeBox({ ...base, ...said, shape: 'folder', role: 'package' }, 130)
+    return { ...box, height: box.height + TAB }
+  }
+  return sizeBox({
+    ...base,
+    ...said,
+    shape: 'box',
+    role: e.kind,
+    ...(e.kind === 'component'
+      ? { variant: 'component' as const, stereotype: e.stereotype ?? 'component' }
+      : {}),
+  })
+}
+
+const PACKAGE_KEYWORDS: Record<PackageRelationKind, string | undefined> = {
+  dependency: undefined,
+  import: '«import»',
+  merge: '«merge»',
+}
+
+function packageGraph(d: PackageDiagram): DiagramGraph {
+  const ids = new Set(d.elements.filter((e) => e.kind === 'package').map((e) => e.id))
+  const holders = new Set(
+    d.elements.flatMap((e) => (e.parent && ids.has(e.parent) ? [e.parent] : [])),
+  )
+  const nodes = d.elements.map((e) => packageNode(e, holders, ids))
+  const edges = d.relations.map((r, i): DiagramEdge => {
+    const kind = r.kind ?? 'dependency'
+    return {
+      id: `r${String(i)}`,
+      source: r.from,
+      target: r.to,
+      from: r.from,
+      to: r.to,
+      relation: kind,
+      dashed: true,
+      targetMarker: 'arrow',
+      ...joinLabel(PACKAGE_KEYWORDS[kind], r.label),
+    }
+  })
+  return graphOf(d, nodes, edges, 'TB')
+}
+
+/** The graph for a use case, activity, deployment, component or package diagram. */
 function elementGraph(diagram: ElementDiagram): DiagramGraph {
   switch (diagram.kind) {
     case 'usecase':
@@ -266,6 +404,10 @@ function elementGraph(diagram: ElementDiagram): DiagramGraph {
       return activityGraph(diagram)
     case 'deployment':
       return deploymentGraph(diagram)
+    case 'component':
+      return componentGraph(diagram)
+    case 'package':
+      return packageGraph(diagram)
   }
 }
 

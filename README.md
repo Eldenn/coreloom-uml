@@ -36,7 +36,7 @@ AdonisJS v7 · React 19 · TypeScript (strict) · pnpm · Turborepo
 
 Coreloom UML is a tool to diagram software architectures in UML. An **architecture** holds
 several **diagrams** (views: C4 context, deployment, class, sequence, state, entity-relationship,
-use case, activity), each written as Mermaid, PlantUML or JSON text and drawn live beside it.
+use case, activity, component, package), each written as Mermaid, PlantUML or JSON text and drawn live beside it.
 Changes are saved automatically, with a version check so two tabs never overwrite each other
 silently.
 
@@ -158,9 +158,6 @@ Deliberate gaps — the scaffolding assumes you'll fill these in for your projec
 
 - **`apps/web` screen tests.** They will be Playwright + axe, as in coreloom-ui. Vitest only runs
   Node unit tests (`src/**/*.test.ts`, `passWithNoTests: true`). `apps/api` is covered.
-- **Sharing screens, the read-only viewer and the access-code page.** The API is complete; the
-  screens wait for the coreloom-ui blocks being built for them (share dialog, diagram viewer,
-  access-code gate, diagram workspace, save status). The editor page is interim until then.
 
 See [Differences from coreloom](#differences-from-coreloom) for the pieces that
 were cut on purpose and how to bring them back.

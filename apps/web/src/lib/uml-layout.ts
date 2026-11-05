@@ -4,6 +4,8 @@ interface LayoutNode {
   id: string
   /** The frame it sits in. */
   parent?: string
+  /** Set on its frame's edge, not laid out inside it: a component's port. */
+  border?: boolean
   width: number
   height: number
 }
@@ -33,6 +35,37 @@ const WRAP = 1100
 /** A frame's padding, and its header (where its name goes). */
 const FRAME_PAD = 24
 const FRAME_HEAD = 40
+/** Room between the things on one side of a frame, and from its corners. */
+const BORDER_GAP = 12
+
+/** The two sides of a frame, and what goes on each: the first half on the left. */
+function bySide(edge: readonly LayoutNode[]): [LayoutNode[], LayoutNode[]] {
+  const left = edge.slice(0, Math.ceil(edge.length / 2))
+  return [left, edge.slice(left.length)]
+}
+
+const columnHeight = (nodes: readonly LayoutNode[]) =>
+  nodes.reduce((sum, n) => sum + n.height, 0) + BORDER_GAP * Math.max(0, nodes.length - 1)
+
+/** The height a frame needs for what's on its edge. */
+function borderHeight(edge: readonly LayoutNode[]): number {
+  return Math.max(...bySide(edge).map((nodes) => columnHeight(nodes) + 2 * BORDER_GAP))
+}
+
+/**
+ * Where the things on a frame's edge go, relative to it: half on the left side, half on the
+ * right, spread around the middle, straddling the line.
+ */
+function placeBorder(edge: readonly LayoutNode[], frame: Size, result: Map<string, LayoutBox>) {
+  bySide(edge).forEach((nodes, side) => {
+    let y = Math.max(BORDER_GAP, (frame.height - columnHeight(nodes)) / 2)
+    for (const n of nodes) {
+      const x = side === 0 ? -n.width / 2 : frame.width - n.width / 2
+      result.set(n.id, { x, y, width: n.width, height: n.height })
+      y += n.height + BORDER_GAP
+    }
+  })
+}
 
 /** Ids grouped into connected components, in order of first appearance. */
 function components(ids: readonly string[], edges: readonly LayoutEdge[]): string[][] {
@@ -312,17 +345,32 @@ function layoutDiagram(input: {
     }
     return null
   }
+  /** A frame's size once what's inside it is placed, with what's on its edge set along it. */
+  const frameSize = (c: LayoutNode): Size => {
+    const inner = place(c.id)
+    const size = {
+      width: Math.max(c.width, inner.width + FRAME_PAD),
+      height: Math.max(c.height, inner.height + FRAME_PAD),
+    }
+    const edge = (kids.get(c.id) ?? []).filter((k) => k.border)
+    const free = edge.filter((k) => !Object.hasOwn(fixed, k.id))
+    if (free.length) {
+      size.height = Math.max(size.height, borderHeight(free))
+      placeBorder(free, size, result)
+    }
+    for (const k of edge) {
+      if (Object.hasOwn(fixed, k.id))
+        result.set(k.id, { ...fixed[k.id], width: k.width, height: k.height })
+    }
+    return size
+  }
   const place = (scope: string | undefined): Size => {
-    const children = kids.get(scope) ?? []
+    const all = kids.get(scope) ?? []
+    const children = scope === undefined ? all : all.filter((c) => !c.border)
     const sizes = new Map<string, Size>()
     for (const c of children) {
-      if (kids.has(c.id)) {
-        const inner = place(c.id)
-        sizes.set(c.id, {
-          width: Math.max(c.width, inner.width + FRAME_PAD),
-          height: Math.max(c.height, inner.height + FRAME_PAD),
-        })
-      } else sizes.set(c.id, { width: c.width, height: c.height })
+      if (kids.has(c.id)) sizes.set(c.id, frameSize(c))
+      else sizes.set(c.id, { width: c.width, height: c.height })
     }
     const local = edges.flatMap((e) => {
       const source = at(e.source, scope)

@@ -1,9 +1,3 @@
-'use client'
-
-// Coreloom UI — UmlDiagram parts. The boxes (classes, entities, states, C4 elements, notes), the
-// pseudo-states (start, end, choice, fork/join), the frames (namespaces, composite states, C4
-// boundaries), and the line between two boxes with its UML markers and labels. UmlDiagram draws
-// them on React Flow; they read the neutral graph from uml-graph.ts.
 import {
   BaseEdge,
   type Edge,
@@ -25,12 +19,20 @@ import {
   PuzzleIcon,
   UserRoundIcon,
 } from 'lucide-react'
-import * as React from 'react'
 
-import { ActorNode, DecisionNode, EllipseNode, Ends } from '@/components/ui/uml-diagram-nodes'
+import { DiagramMarkers } from '@/components/ui/uml-diagram-markers'
+import {
+  ActorNode,
+  DecisionNode,
+  EllipseNode,
+  Ends,
+  FolderNode,
+  LollipopNode,
+  PortNode,
+} from '@/components/ui/uml-diagram-nodes'
 import { type Messages, useCoreloomI18n } from '@/lib/i18n'
 import type { UmlDirection } from '@/lib/uml'
-import type { DiagramEdge, DiagramMarker, DiagramNode, DiagramRow } from '@/lib/uml-graph'
+import type { DiagramEdge, DiagramNode, DiagramRow } from '@/lib/uml-graph'
 import { cn } from '@/lib/utils'
 
 /** `connectable`: the node shows a dot to drag a new line from. */
@@ -48,6 +50,9 @@ type DiagramFlowNode =
   | Node<NodeData, 'actor'>
   | Node<NodeData, 'ellipse'>
   | Node<NodeData, 'decision'>
+  | Node<NodeData, 'lollipop'>
+  | Node<NodeData, 'port'>
+  | Node<NodeData, 'folder'>
 type DiagramFlowEdge = Edge<
   { edge: DiagramEdge; markers: string; offset: number; flow: UmlDirection },
   'uml'
@@ -95,6 +100,7 @@ const ROLE_KEYWORDS: Partial<Record<DiagramNode['role'], string>> = {
   component: 'component',
   database: 'database',
   cloud: 'cloud',
+  interface: 'interface',
 }
 
 function nodeLabel(node: DiagramNode, t: DiagramText): string {
@@ -259,7 +265,7 @@ function PseudoNode({ data }: NodeProps<PseudoNodeType>) {
   )
 }
 
-/** Composite states and deployment nodes are solid, a use case's system plain; the rest dashed. */
+/** Composite states, deployment nodes and components are solid, a system plain; the rest dashed. */
 const FRAMES: Partial<Record<DiagramNode['role'], string>> = {
   composite: 'rounded-xl bg-card/60',
   boundary: 'rounded-lg border-dashed bg-inset/50',
@@ -270,11 +276,14 @@ const FRAMES: Partial<Record<DiagramNode['role'], string>> = {
   device: cn('bg-inset/40', DEPTH),
   environment: cn('bg-inset/40', DEPTH),
   cloud: 'rounded-[28px] bg-inset/40',
+  component: 'rounded-md bg-inset/40',
 }
 
-function FrameNode({ data }: NodeProps<FrameNodeType>) {
+function FrameNode(props: NodeProps<FrameNodeType>) {
+  const { data } = props
   const { node } = data
   const t = useCoreloomI18n().messages.diagram
+  if (node.role === 'package') return <FolderNode {...props} type="folder" />
   const top = eyebrow(node, t)
   return (
     <>
@@ -303,14 +312,18 @@ interface Rect {
   height: number
 }
 
-function rectOf(node: InternalNode | undefined): Rect | null {
+/** A folder's tab, which lines stop at the body below rather than float over. */
+const FOLDER_TAB = 23
+
+function rectOf(node: InternalNode<DiagramFlowNode> | undefined): Rect | null {
   if (!node) return null
   const { x, y } = node.internals.positionAbsolute
+  const tab = node.data.node.role === 'package' ? FOLDER_TAB : 0
   return {
     x,
-    y,
+    y: y + tab,
     width: node.measured.width ?? node.width ?? 0,
-    height: node.measured.height ?? node.height ?? 0,
+    height: (node.measured.height ?? node.height ?? 0) - tab,
   }
 }
 
@@ -440,8 +453,8 @@ const labelClass =
   'nodrag nopan pointer-events-none absolute rounded-sm bg-background/90 px-1 text-[11.5px] leading-4 text-fg-secondary'
 
 function UmlEdge({ source, target, data, selected }: EdgeProps<DiagramFlowEdge>) {
-  const a = rectOf(useInternalNode(source))
-  const b = rectOf(useInternalNode(target))
+  const a = rectOf(useInternalNode<DiagramFlowNode>(source))
+  const b = rectOf(useInternalNode<DiagramFlowNode>(target))
   if (!a || !b || !data) return null
   const { edge, markers, offset, flow } = data
   const g = geometry({ a, b, offset, self: source === target, flow })
@@ -487,79 +500,6 @@ function UmlEdge({ source, target, data, selected }: EdgeProps<DiagramFlowEdge>)
   )
 }
 
-/**
- * The marker shapes, drawn with the node on the right (x = width) so one definition serves both
- * ends (`auto-start-reverse` turns it round at the start of a line).
- */
-const MARKERS: Record<DiagramMarker, { w: number; h: number; draw: React.ReactNode }> = {
-  arrow: { w: 12, h: 12, draw: <path d="M1 1 L11 6 L1 11" fill="none" /> },
-  arrowFilled: { w: 12, h: 12, draw: <path d="M0 1 L12 6 L0 11 Z" fill="var(--diagram-edge)" /> },
-  triangle: { w: 16, h: 16, draw: <path d="M1 1 L15 8 L1 15 Z" fill="var(--color-background)" /> },
-  diamond: {
-    w: 20,
-    h: 12,
-    draw: <path d="M1 6 L10 1 L19 6 L10 11 Z" fill="var(--color-background)" />,
-  },
-  diamondFilled: {
-    w: 20,
-    h: 12,
-    draw: <path d="M1 6 L10 1 L19 6 L10 11 Z" fill="var(--diagram-edge)" />,
-  },
-  one: { w: 24, h: 16, draw: <path d="M14 2 V14 M18 2 V14" fill="none" /> },
-  zeroOrOne: {
-    w: 24,
-    h: 16,
-    draw: (
-      <>
-        <path d="M18 2 V14" fill="none" />
-        <circle cx="9" cy="8" r="4" fill="var(--color-background)" />
-      </>
-    ),
-  },
-  oneOrMore: {
-    w: 24,
-    h: 16,
-    draw: <path d="M12 8 L24 1 M12 8 L24 8 M12 8 L24 15 M8 2 V14" fill="none" />,
-  },
-  zeroOrMore: {
-    w: 24,
-    h: 16,
-    draw: (
-      <>
-        <path d="M12 8 L24 1 M12 8 L24 8 M12 8 L24 15" fill="none" />
-        <circle cx="6" cy="8" r="4" fill="var(--color-background)" />
-      </>
-    ),
-  },
-}
-
-/** The marker definitions every line points at, under one id prefix per diagram. */
-function DiagramMarkers({ prefix }: { prefix: string }) {
-  return (
-    <svg aria-hidden className="absolute size-0">
-      <defs>
-        {Object.entries(MARKERS).map(([name, m]) => (
-          <marker
-            key={name}
-            id={`${prefix}-${name}`}
-            viewBox={`0 0 ${String(m.w)} ${String(m.h)}`}
-            refX={m.w}
-            refY={m.h / 2}
-            markerWidth={m.w}
-            markerHeight={m.h}
-            markerUnits="userSpaceOnUse"
-            orient="auto-start-reverse"
-            stroke="var(--diagram-edge)"
-            strokeWidth={1.25}
-          >
-            {m.draw}
-          </marker>
-        ))}
-      </defs>
-    </svg>
-  )
-}
-
 const NODE_TYPES = {
   box: BoxNode,
   pseudo: PseudoNode,
@@ -567,6 +507,9 @@ const NODE_TYPES = {
   actor: ActorNode,
   ellipse: EllipseNode,
   decision: DecisionNode,
+  lollipop: LollipopNode,
+  port: PortNode,
+  folder: FolderNode,
 }
 const EDGE_TYPES = { uml: UmlEdge }
 

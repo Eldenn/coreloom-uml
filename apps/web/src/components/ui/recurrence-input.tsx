@@ -1,10 +1,3 @@
-'use client'
-
-// Coreloom UI — RecurrenceInput. How often something repeats: a meeting every 2 weeks on Monday and
-// Wednesday, an invoice on the 1st of each month, a backup every day until the end of the year.
-// A sentence under the fields reads the rule back ("Every 2 weeks on Mon, Wed, 10 times"). The
-// value is a plain object; `toRRule` and `parseRRule` convert it to and from an iCalendar RRULE
-// ("FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;COUNT=10") for calendars and schedulers.
 import * as React from 'react'
 
 import { ChipGroup } from '@/components/ui/chip-group'

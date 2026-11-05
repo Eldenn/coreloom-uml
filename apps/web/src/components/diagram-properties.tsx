@@ -76,6 +76,20 @@ function targetOf(diagram: UmlSpec, selection: DiagramPropertiesProps['selection
   return { kind: 'relation', index, fields, from, to }
 }
 
+/** What a stereotype says in each kind: a deployment node's platform, a component's role. */
+function stereotypeHint(kind: UmlSpec['kind'], p: PropertiesText['properties']): string {
+  switch (kind) {
+    case 'deployment':
+      return p.deploymentStereotypeHint
+    case 'component':
+      return p.componentStereotypeHint
+    case 'package':
+      return p.packageStereotypeHint
+    default:
+      return p.stereotypeHint
+  }
+}
+
 function ElementForm({
   target,
   kind,
@@ -133,7 +147,7 @@ function ElementForm({
         <TextField
           label={p.stereotype}
           value={text('stereotype')}
-          hint={kind === 'deployment' ? p.deploymentStereotypeHint : p.stereotypeHint}
+          hint={stereotypeHint(kind, p)}
           disabled={locked}
           onChange={(v) => {
             set('stereotype', v)

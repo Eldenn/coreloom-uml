@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — Rating. Stars to give a score (1 to 5 by default) or to show one. Giving a score
+// uses real radio buttons, so arrows move between stars and a screen reader hears "3 stars, 3 of
+// 5"; clicking the picked star again clears it. Shown read-only, it is one image with its score
+// as its name, and can show halves (4.5).
 import { StarIcon } from 'lucide-react'
 import * as React from 'react'
 

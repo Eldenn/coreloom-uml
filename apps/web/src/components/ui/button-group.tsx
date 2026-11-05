@@ -1,3 +1,8 @@
+'use client'
+
+// Coreloom UI — ButtonGroup. Buttons (and selects, inputs or a text label) joined edge to edge:
+// a split button, a set of related actions, a "−  1  +" stepper. It follows shadcn's button-group.
+// For an on/off choice between options, use ToggleGroup instead: it carries the pressed state.
 import { cva, type VariantProps } from 'class-variance-authority'
 import { Slot } from 'radix-ui'
 import * as React from 'react'

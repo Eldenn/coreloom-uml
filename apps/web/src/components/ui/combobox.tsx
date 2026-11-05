@@ -1,9 +1,3 @@
-'use client'
-
-// Coreloom UI — Combobox. A searchable Select, composed from Popover + Command (Radix + cmdk),
-// following shadcn's combobox pattern. Single value; for several, compose the same parts.
-// With `clearable`, a × button next to the chevron empties it (to ""). With `onCreate`, a search
-// that matches no option offers "Create “…”" (tags, categories, a new contact).
 import { CheckIcon, ChevronsUpDownIcon, PlusIcon, XIcon } from 'lucide-react'
 import * as React from 'react'
 

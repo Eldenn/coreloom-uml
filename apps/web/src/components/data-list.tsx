@@ -1,3 +1,15 @@
+'use client'
+
+// Coreloom UI — DataList (data-list block). A filterable list whose state lives in the URL, so a
+// filtered view can be bookmarked, shared and survives a reload: ?q=api&status=ready,building&page=2.
+//
+//   const list = useDataList({ rows, searchKeys: ["name"], facets: [{ key: "status", label: "Status", options }] })
+//   <DataListToolbar list={list} />
+//   {list.pageRows.map(…)}            // render rows as a Table, cards, Items…
+//   <DataListPagination list={list} />
+//
+// By default it reads and writes window.location (history.replaceState). With a router, pass
+// `searchParams` and `onSearchParamsChange` (Next.js: useSearchParams() and router.replace).
 import {
   CheckIcon,
   ChevronLeftIcon,

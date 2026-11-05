@@ -1,14 +1,3 @@
-'use client'
-
-// Coreloom UI — Spotlight and BorderGlow. Two quiet effects for a card or a panel you want to
-// stand out, on a marketing page or a pricing table:
-// - Spotlight: a soft light follows the pointer across the surface.
-// - BorderGlow: a light runs along the border, slowly.
-// Both are decoration: they add no meaning, take no focus, and BorderGlow stands still for people
-// who ask for reduced motion. Use one or two per view.
-//
-//   <Spotlight className="rounded-xl border bg-card p-6">…</Spotlight>
-//   <BorderGlow className="rounded-xl"><div className="p-6">…</div></BorderGlow>
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'

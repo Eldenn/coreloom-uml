@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — error pages (error-pages block). A centered page with a big status code, a title,
+// one sentence and a way out. NotFoundPage, ServerErrorPage and MaintenancePage fill in the words
+// (from i18n); ErrorPage is the bare layout for anything else (403, 410…).
+// In Next.js: render NotFoundPage from app/not-found.tsx and ServerErrorPage from app/error.tsx.
 import * as React from 'react'
 
 import { Button } from '@/components/ui/button'

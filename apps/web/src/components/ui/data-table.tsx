@@ -1,3 +1,17 @@
+'use client'
+
+// Coreloom UI — DataTable. shadcn's data-table recipe (TanStack Table v8) packaged as one
+// component: sorting, a text filter, row selection and pagination on top of Table.
+// Columns are TanStack `ColumnDef`s; use DataTableColumnHeader for sortable headers.
+//
+// Two modes. By default it sorts, filters and paginates `data` in the browser. With `server`, your
+// API does: `data` is the current page, `server.rowCount` the total, and `server.query` /
+// `server.onQueryChange` hold page, page size, sort and search — keep them in the URL's search
+// params and refetch when they change.
+//
+// With `virtual`, every row stays in the browser but only the visible ones are in the DOM: the
+// table scrolls inside a fixed height with its header pinned, and there are no pages. For lists
+// of thousands of rows; sorting, the filter and selection work the same.
 import {
   type Column,
   type ColumnDef,

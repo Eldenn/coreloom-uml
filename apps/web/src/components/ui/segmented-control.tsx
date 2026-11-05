@@ -1,9 +1,3 @@
-'use client'
-
-// Coreloom UI — SegmentedControl. Two to five options side by side, exactly one picked: "Day ·
-// Week · Month", "List · Board", "Monthly · Yearly". It is a radio group drawn as one pill: Tab
-// reaches it once, arrows change the pick. For buttons that act on something (bold, align) use
-// ToggleGroup; for switching panels of content use Tabs.
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'

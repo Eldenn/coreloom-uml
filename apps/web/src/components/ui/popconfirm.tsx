@@ -1,3 +1,13 @@
+'use client'
+
+// Coreloom UI — Popconfirm. A small confirmation next to the button that asked for it: "Delete
+// this comment?" with Cancel and Delete. Lighter than an AlertDialog, for actions that matter but
+// are easy to redo or limited to one item. The focus starts on Cancel; Escape or a click outside
+// cancels. When `onConfirm` returns a promise, the confirm button waits for it.
+//
+//   <Popconfirm title="Delete this comment?" confirmLabel="Delete" destructive onConfirm={remove}>
+//     <Button variant="ghost" size="icon-sm" aria-label="Delete"><TrashIcon /></Button>
+//   </Popconfirm>
 import { Popover as PopoverPrimitive } from 'radix-ui'
 import * as React from 'react'
 

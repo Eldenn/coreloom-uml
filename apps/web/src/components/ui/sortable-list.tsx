@@ -1,9 +1,3 @@
-'use client'
-
-// Coreloom UI — SortableList. Items to put in order: rank priorities, order the steps of a
-// checklist, the columns of an export, a survey's "rank these from most to least important". Drag
-// by the handle (pointer, or Space then arrows on the handle), or use the up and down buttons. The
-// value is the items' values in their new order.
 import {
   type Announcements,
   closestCenter,

@@ -1,4 +1,11 @@
+'use client'
+
+// Coreloom UI — UmlDiagram node pieces: the invisible ends every node has (and the dot to drag a
+// new line from), and the shapes of use case, activity, component and package diagrams: an actor's
+// stick figure, a use case's ellipse, a decision's diamond with its question, an interface's
+// lollipop, a port's square and a package's folder. uml-diagram-parts.tsx draws the rest.
 import { Handle, type Node, type NodeProps, Position, useConnection } from '@xyflow/react'
+import type * as React from 'react'
 
 import type { DiagramNode } from '@/lib/uml-graph'
 import { cn } from '@/lib/utils'
@@ -11,6 +18,9 @@ interface NodeData extends Record<string, unknown> {
 type ActorNodeType = Node<NodeData, 'actor'>
 type EllipseNodeType = Node<NodeData, 'ellipse'>
 type DecisionNodeType = Node<NodeData, 'decision'>
+type LollipopNodeType = Node<NodeData, 'lollipop'>
+type PortNodeType = Node<NodeData, 'port'>
+type FolderNodeType = Node<NodeData, 'folder'>
 
 /**
  * The ends React Flow needs to draw an edge; the line itself picks the sides. When the node is
@@ -118,4 +128,100 @@ function DecisionNode({ data }: NodeProps<DecisionNodeType>) {
   )
 }
 
-export { ActorNode, DecisionNode, EllipseNode, Ends }
+/** The name beside a small shape, outside it, on one line. */
+const outsideName =
+  'pointer-events-none absolute left-1/2 w-max max-w-40 -translate-x-1/2 truncate text-center text-[12px] leading-4 font-semibold text-foreground'
+
+/** An interface a component provides: a ball, its name under it. */
+function LollipopNode({ data }: NodeProps<LollipopNodeType>) {
+  return (
+    <>
+      <Ends connectable={data.connectable} />
+      <div className="size-full rounded-full border-[1.5px] border-foreground bg-card" />
+      <p className={cn(outsideName, 'top-full mt-1')}>{data.node.title}</p>
+    </>
+  )
+}
+
+/** A port: a small square on its component's edge, its name above it. */
+function PortNode({ data }: NodeProps<PortNodeType>) {
+  return (
+    <>
+      <Ends connectable={data.connectable} />
+      <div className="size-full border-[1.5px] border-foreground bg-card" />
+      <p className={cn(outsideName, 'bottom-full mb-1 font-normal text-fg-secondary')}>
+        {data.node.title}
+      </p>
+    </>
+  )
+}
+
+/** The tab and the body of a folder, the line drawn once round both. */
+function Folder({
+  tab,
+  children,
+  holds,
+}: {
+  tab: React.ReactNode
+  children?: React.ReactNode
+  holds: boolean
+}) {
+  return (
+    <div className="flex size-full flex-col items-start">
+      <div
+        className={cn(
+          'relative z-[1] -mb-px flex h-6 max-w-[85%] min-w-[40%] items-center gap-2 rounded-t-sm border border-b-0 border-border-strong px-2.5',
+          holds ? 'bg-inset' : 'bg-card',
+        )}
+      >
+        {tab}
+      </div>
+      <div
+        className={cn(
+          'flex min-h-0 w-full flex-1 flex-col justify-center rounded-sm rounded-tl-none border border-border-strong text-card-foreground',
+          holds ? 'bg-inset/40' : 'bg-card',
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
+/** A package: a folder, its name in the tab when it holds others, in the middle when not. */
+function FolderNode({ data }: NodeProps<FolderNodeType>) {
+  const { node } = data
+  const holds = node.shape === 'frame'
+  const stereotype = node.stereotype ? `«${node.stereotype}»` : null
+  const name = (
+    <p className="truncate text-[12.5px] leading-5 font-semibold text-foreground">{node.title}</p>
+  )
+  const keyword = stereotype && (
+    <p className="truncate font-mono text-[10.5px] leading-4 text-fg-secondary">{stereotype}</p>
+  )
+  return (
+    <>
+      <Ends connectable={data.connectable} />
+      {holds ? (
+        <Folder
+          holds
+          tab={
+            <>
+              {name}
+              {keyword}
+            </>
+          }
+        />
+      ) : (
+        <Folder tab={null} holds={false}>
+          <div className="px-3.5 text-center">
+            {keyword}
+            {name}
+          </div>
+        </Folder>
+      )}
+    </>
+  )
+}
+
+export { ActorNode, DecisionNode, EllipseNode, Ends, FolderNode, LollipopNode, PortNode }

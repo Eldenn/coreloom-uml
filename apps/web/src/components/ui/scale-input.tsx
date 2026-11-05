@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — ScaleInput. A row of points to answer a survey question: "How likely are you to
+// recommend us?" from 0 to 10 (NPS), or "Strongly disagree" to "Strongly agree" (Likert). The value
+// is a number, or null before an answer. It is a radio group: arrows move along the scale, and each
+// point is read with its words ("0, Not at all likely").
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'

@@ -1,11 +1,3 @@
-'use client'
-
-// Coreloom UI — ModelPicker. Which model answers: a small trigger with the chosen model's name that
-// opens a searchable list, grouped by provider, with what each model is for, its context window, its
-// price per million tokens and what it can do (vision, tools, reasoning…). A ghost trigger sits in the
-// composer's toolbar; an outline one fits a settings form. ModelList is the list on its own.
-//
-//   <ModelPicker models={models} value={model} onValueChange={setModel} />
 import { CheckIcon, ChevronsUpDownIcon } from 'lucide-react'
 import * as React from 'react'
 

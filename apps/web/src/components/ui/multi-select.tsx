@@ -1,3 +1,7 @@
+'use client'
+
+// Coreloom UI — MultiSelect. Several values from a known list: a trigger that shows the picks as
+// chips, and a searchable checklist in a Popover (Command). For free-form values, use TagsInput.
 import { CheckIcon, ChevronsUpDownIcon } from 'lucide-react'
 import * as React from 'react'
 

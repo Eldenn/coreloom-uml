@@ -1,12 +1,3 @@
-'use client'
-
-// Coreloom UI — Reveal. Content that arrives as it scrolls into view: a fade, a short slide, a
-// scale or a blur, once. `Stagger` does the same for a list or a grid, one item after the other.
-// For people who ask for reduced motion the content is simply there. `useInView` and
-// `useReducedMotion` are the hooks underneath, for your own effects.
-//
-//   <Reveal effect="up"><FeatureGrid /></Reveal>
-//   <Stagger className="grid grid-cols-3 gap-4">{cards}</Stagger>
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'

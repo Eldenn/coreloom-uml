@@ -77,13 +77,21 @@ function ViewSwitch({
 
 /**
  * True when a diagram of this kind reads back the same from text in `format`: Mermaid has no use
- * case or deployment diagrams, and PlantUML's activity syntax can't hold every graph.
+ * case, deployment, component or package diagrams, and PlantUML's activity syntax can't hold
+ * every graph.
  */
 function canWrite(kind: UmlDiagramKind, format: DiagramFormat): boolean {
-  if (format === 'mermaid') return kind !== 'usecase' && kind !== 'deployment'
+  if (format === 'mermaid') return !NOT_MERMAID.has(kind)
   if (format === 'plantuml') return kind !== 'activity'
   return true
 }
+
+const NOT_MERMAID: ReadonlySet<UmlDiagramKind> = new Set([
+  'usecase',
+  'deployment',
+  'component',
+  'package',
+])
 
 const FORMATS: readonly [DiagramFormat, string][] = [
   ['mermaid', 'Mermaid'],

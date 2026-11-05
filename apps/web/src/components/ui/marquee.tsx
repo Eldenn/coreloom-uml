@@ -1,3 +1,11 @@
+'use client'
+
+// Coreloom UI — Marquee. A row (or a column) that scrolls by itself without end: customer logos,
+// testimonials, integrations. It stops while the pointer is over it or focus is inside, fades at
+// the edges, and has a pause button, because moving content needs a way to stop it. For people
+// who ask for reduced motion it stands still. Screen readers read the items once.
+//
+//   <Marquee><Logo /><Logo /><Logo /></Marquee>
 import { PauseIcon, PlayIcon } from 'lucide-react'
 import * as React from 'react'
 

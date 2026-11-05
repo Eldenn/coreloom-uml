@@ -1,6 +1,3 @@
-'use client'
-
-// Coreloom UI — CopyButton (block part). Copies a string, confirms with a check and a toast.
 import { CheckIcon, CopyIcon } from 'lucide-react'
 import * as React from 'react'
 

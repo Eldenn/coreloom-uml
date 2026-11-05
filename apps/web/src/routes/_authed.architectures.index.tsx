@@ -1,9 +1,10 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { CopyIcon, MoreHorizontalIcon, NetworkIcon, PlusIcon, Trash2Icon } from 'lucide-react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { CopyIcon, NetworkIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
 import { PageHeader } from '@/components/app-shell'
+import { DiagramCard } from '@/components/diagram-card'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,9 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -25,17 +24,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { useAppForm } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { RelativeTime } from '@/components/ui/relative-time'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
 import {
@@ -49,6 +40,7 @@ import {
 } from '@/lib/architectures'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { useT } from '@/lib/locale'
+import type { UmlSpec } from '@/lib/uml'
 
 export const Route = createFileRoute('/_authed/architectures/')({
   // `?new=true` opens the "New architecture" dialog (the ⌘K action links here).
@@ -164,83 +156,50 @@ function ArchitectureList({
   )
 }
 
-const VISIBILITY_VARIANT = {
-  private: 'secondary',
-  public: 'success',
-  protected: 'warning',
-} as const
-
 function ArchitectureCard({ architecture }: { architecture: ArchitectureSummary }) {
   const t = useT()
   const navigate = useNavigate()
   const duplicate = useDuplicateArchitecture()
   const remove = useDeleteArchitecture()
   const [confirming, setConfirming] = React.useState(false)
+  const cover = architecture.cover?.content as UmlSpec | null | undefined
 
   return (
-    <Card className="relative h-full">
-      <CardHeader>
-        <CardTitle className="pr-10">
-          <Link
-            to="/architectures/$id"
-            params={{ id: architecture.id }}
-            className="after:absolute after:inset-0 after:content-['']"
-          >
-            {architecture.title}
-          </Link>
-        </CardTitle>
-        {architecture.description && (
-          <CardDescription className="line-clamp-2">{architecture.description}</CardDescription>
-        )}
-      </CardHeader>
-      <CardFooter className="mt-auto flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
-        <Badge variant={VISIBILITY_VARIANT[architecture.visibility]}>
-          {t.architectures.visibility[architecture.visibility]}
-        </Badge>
-        <span>{t.architectures.diagramCount(architecture.diagramCount)}</span>
-        <span aria-hidden>·</span>
-        <span>
-          {t.architectures.updated} <RelativeTime date={new Date(architecture.updatedAt)} />
-        </span>
-      </CardFooter>
-      <div className="absolute top-3 right-3">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label={architecture.title}>
-              <MoreHorizontalIcon />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onSelect={() =>
-                void navigate({
-                  to: '/architectures/$id',
-                  params: { id: architecture.id },
-                })
-              }
-            >
-              <NetworkIcon /> {t.architectures.open}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={async () => {
-                await duplicate.mutateAsync(architecture.id)
-                toast.success(t.architectures.duplicated)
-              }}
-            >
-              <CopyIcon /> {t.architectures.duplicate}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={() => {
-                setConfirming(true)
-              }}
-            >
-              <Trash2Icon /> {t.architectures.delete}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+    <>
+      <DiagramCard
+        className="h-full"
+        title={architecture.title}
+        href={`/architectures/${architecture.id}`}
+        diagram={cover ?? undefined}
+        visibility={architecture.visibility}
+        updatedAt={new Date(architecture.updatedAt)}
+        diagramCount={architecture.diagramCount}
+        actions={[
+          {
+            label: t.architectures.open,
+            icon: <NetworkIcon />,
+            onSelect: () =>
+              void navigate({ to: '/architectures/$id', params: { id: architecture.id } }),
+          },
+          {
+            label: t.architectures.duplicate,
+            icon: <CopyIcon />,
+            onSelect: () => {
+              duplicate.mutate(architecture.id, {
+                onSuccess: () => toast.success(t.architectures.duplicated),
+              })
+            },
+          },
+          {
+            label: t.architectures.delete,
+            icon: <Trash2Icon />,
+            destructive: true,
+            onSelect: () => {
+              setConfirming(true)
+            },
+          },
+        ]}
+      />
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -261,7 +220,7 @@ function ArchitectureCard({ architecture }: { architecture: ArchitectureSummary 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </>
   )
 }
 

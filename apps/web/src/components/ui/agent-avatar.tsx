@@ -1,3 +1,16 @@
+'use client'
+
+// Coreloom UI — AgentAvatar. A small animated face for an AI agent: it breathes, blinks and glances
+// around while it waits, looks up with a glowing halo while it thinks, talks while it answers,
+// opens its eyes wide while it listens, smiles when it is done, frowns on an error and dozes when
+// offline. `variant="dots"` is the quieter version: three dots that breathe, wave and bounce. Give
+// each agent a `seed` (its id or name) and it keeps the same colour, eyes and rhythm everywhere, so
+// the members of a team are told apart at a glance and never blink in step. `shape` gives it another
+// outline (circle, hexagon, diamond, shield, blob), or `shape="seed"` lets the seed pick one. The state
+// is said in words to screen readers; the motion stops for people who ask for reduced motion.
+//
+//   <AgentAvatar name="Researcher" seed="researcher" state="thinking" />
+//   <AgentAvatar variant="dots" state={status === 'streaming' ? 'speaking' : 'idle'} decorative />
 import * as React from 'react'
 
 import { useCoreloomI18n } from '@/lib/i18n'

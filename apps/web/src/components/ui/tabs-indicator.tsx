@@ -1,3 +1,13 @@
+'use client'
+
+// Coreloom UI — TabsIndicator. A highlight that slides to the active tab instead of jumping:
+// put it last inside a TabsList (or any row of [data-state=active] / [aria-selected=true]
+// triggers). It follows clicks, the arrow keys and resizes. While it is there, theme.css hands
+// the active tab's own background (or underline) over to it; the active tab keeps its text
+// color, and in forced-colors mode its own styles come back.
+//
+//   <TabsList>…<TabsTrigger value="b">B</TabsTrigger><TabsIndicator /></TabsList>
+//   <TabsList variant="line">…<TabsIndicator variant="line" /></TabsList>
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'

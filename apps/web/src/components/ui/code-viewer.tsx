@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — CodeViewer. Code to read, with line numbers: a snippet in a doc, a generated file, a
+// log, a stack trace. Lines can be highlighted ("3, 7-9"), long lines can wrap, and Copy sits in
+// the header. No syntax colouring built in: pass `renderLine` to colour each line with Shiki or
+// Prism.
 import { WrapTextIcon } from 'lucide-react'
 import * as React from 'react'
 

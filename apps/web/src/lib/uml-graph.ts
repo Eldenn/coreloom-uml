@@ -289,6 +289,8 @@ function toDiagramGraph(diagram: UmlSpec): DiagramGraph | null {
     case 'usecase':
     case 'activity':
     case 'deployment':
+    case 'component':
+    case 'package':
       return elementGraph(diagram)
     case 'sequence':
       return null

@@ -11,6 +11,8 @@ export const DIAGRAM_KINDS = [
   'usecase',
   'activity',
   'deployment',
+  'component',
+  'package',
 ] as const
 export type DiagramKind = (typeof DIAGRAM_KINDS)[number]
 

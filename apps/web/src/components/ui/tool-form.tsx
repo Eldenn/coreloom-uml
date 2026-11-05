@@ -1,15 +1,3 @@
-'use client'
-
-// Coreloom UI — ToolForm. A tool that asks before it goes on: the agent needs a date, a name, a
-// choice, and the person fills them in right in the conversation. The answer goes back as the
-// tool's output (`addToolOutput`), and the form then shows what was sent. Use it for tools that
-// have no `execute` on the server, so they wait for the browser to answer.
-//
-//   const tools: ToolComponents<MyTools> = {
-//     askUser: formTool(), // the model sends { title, fields: [{ name, label, type }] } as input
-//     scheduleCall: formTool({ fields: [{ name: 'day', label: 'Day', type: 'date', required: true }] }),
-//   }
-//   <Chat tools={tools} onToolOutput={addToolOutput} … />
 import { CheckCircle2Icon, XCircleIcon } from 'lucide-react'
 import * as React from 'react'
 

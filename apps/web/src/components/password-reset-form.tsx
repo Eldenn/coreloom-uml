@@ -1,10 +1,3 @@
-'use client'
-
-// Coreloom UI — password reset (auth block), in two steps:
-//   ForgotPasswordForm: asks for the account's email, then says a link is on its way. It never says
-//                       whether the account exists, so the form can't be used to probe emails.
-//   ResetPasswordForm:  the page the link opens — a new password, typed twice.
-// Built on @coreloom/form (TanStack Form), like LoginForm.
 import * as React from 'react'
 
 import { validateEmail } from '@/components/login-form'

@@ -1,3 +1,13 @@
+'use client'
+
+// Coreloom UI — AnsiOutput. Text from a program, with its ANSI colours and styles: a build log, a
+// CLI's output, a test report. It reads SGR colours (16, 256 and true colour), bold, dim, italic,
+// underline, inverse and strike, OSC 8 hyperlinks, and the cursor moves that progress bars use
+// (carriage return, erase line, cursor up), so `pnpm install`'s output looks as it does in a
+// terminal. The 16 base colours follow the theme's tokens.
+//
+// The parser is pure and incremental: `writeAnsi(screen, chunk)` takes chunks as they stream in,
+// even when an escape sequence is cut in two.
 import * as React from 'react'
 
 import { useCoreloomI18n } from '@/lib/i18n'

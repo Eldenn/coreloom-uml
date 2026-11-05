@@ -1,9 +1,3 @@
-'use client'
-
-// Coreloom UI — TreeSelect. A select whose options nest: a department in an organisation, a
-// category in a catalogue, a folder, a region in a country. The popover holds a tree (APG pattern):
-// Up and Down move, Right opens a branch or enters it, Left closes it or goes to the parent, Enter
-// or Space picks. One value, or several with `multiple`; any node can be picked, branch or leaf.
 import { CheckIcon, ChevronRightIcon, ChevronsUpDownIcon } from 'lucide-react'
 import * as React from 'react'
 

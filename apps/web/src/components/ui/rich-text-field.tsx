@@ -1,11 +1,3 @@
-'use client'
-
-// Coreloom UI — RichTextField: RichTextEditor in the form kit. Use it inside <form.AppField>:
-//
-//   <form.AppField name="body">{() => <RichTextField label="Description" />}</form.AppField>
-//
-// It lives apart from form.tsx so the form kit doesn't pull in the editor. The value is HTML ("" when
-// empty); sanitize it on the server.
 import { useSelector } from '@tanstack/react-form'
 import * as React from 'react'
 

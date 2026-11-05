@@ -1,10 +1,3 @@
-'use client'
-
-// Coreloom UI — MaskedInput. A field that groups what people type the way the number is printed:
-// "FR76 3000 6000 0112 3456 7890 189", "4970 1012 3456 7890", "123 456 789 00012". People type or
-// paste with or without spaces; the value sent is the raw characters ("FR7630006000…"). Presets
-// check the number too (IBAN mod 97, Luhn for cards, SIREN and SIRET). A mask is a pattern where
-// 9 is a digit, a a letter, * a letter or digit, and anything else is printed as is.
 import * as React from 'react'
 
 import { useCoreloomI18n } from '@/lib/i18n'

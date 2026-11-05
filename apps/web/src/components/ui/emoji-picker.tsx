@@ -1,10 +1,3 @@
-'use client'
-
-// Coreloom UI — EmojiPicker. A small, built-in set of common emoji to react with or insert in a
-// message, grouped by category and searchable by English name. `EmojiPicker` is a button that
-// opens it; `EmojiPickerPanel` is the panel alone, to place in your own popover or toolbar. Arrows
-// move through the grid, Enter picks, and typing in the search narrows it. Pass `emojis` for
-// your own set (or one with names in your language).
 import { SmileIcon } from 'lucide-react'
 import * as React from 'react'
 

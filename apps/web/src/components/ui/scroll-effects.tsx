@@ -1,16 +1,3 @@
-'use client'
-
-// Coreloom UI — Scroll effects, driven by the scroll itself with CSS scroll-driven animations
-// (no scroll listener, no script per frame):
-// - ScrollProgress: a thin bar at the top of the page that fills as you read, for long articles
-//   and docs.
-// - Parallax: a layer that moves a little slower or faster than the page as it crosses the
-//   screen, for hero images and decorative shapes.
-// Where the browser has no scroll-driven animations the bar is hidden and the layers stay put;
-// for people who ask for reduced motion the layers stay put too.
-//
-//   <ScrollProgress />
-//   <Parallax distance={60}><img src={hero} alt="" /></Parallax>
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'

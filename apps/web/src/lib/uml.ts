@@ -3,12 +3,16 @@ import { z } from 'zod'
 import {
   type ActivityDiagram,
   activitySchema,
+  type ComponentDiagram,
+  componentSchema,
   type DeploymentDiagram,
   deploymentSchema,
   direction,
   id,
   layout,
   notes,
+  type PackageDiagram,
+  packageSchema,
   text,
   type UseCaseDiagram,
   usecaseSchema,
@@ -273,6 +277,8 @@ type UmlSpec =
   | UseCaseDiagram
   | ActivityDiagram
   | DeploymentDiagram
+  | ComponentDiagram
+  | PackageDiagram
 type UmlDiagramKind = UmlSpec['kind']
 
 /**
@@ -487,6 +493,8 @@ const diagramSchema = z.discriminatedUnion('kind', [
   usecaseSchema,
   activitySchema,
   deploymentSchema,
+  componentSchema,
+  packageSchema,
 ])
 
 /** Reads a diagram from JSON text (pasted, imported, stored), checking every field once. */
@@ -542,6 +550,8 @@ function umlElementIds(diagram: UmlSpec): string[] {
     case 'usecase':
     case 'activity':
     case 'deployment':
+    case 'component':
+    case 'package':
       return diagram.elements.map((e) => e.id)
   }
 }
@@ -559,6 +569,7 @@ export {
   type ClassRelation,
   type ClassRelationKind,
   type ClassVisibility,
+  type ComponentDiagram,
   type DeploymentDiagram,
   type ErAttribute,
   type ErCardinality,
@@ -566,6 +577,7 @@ export {
   type ErEntity,
   type ErKey,
   type ErRelation,
+  type PackageDiagram,
   parseUmlJson,
   parseUmlValue,
   type SequenceArrow,

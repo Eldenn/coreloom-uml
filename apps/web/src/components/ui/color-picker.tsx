@@ -1,3 +1,8 @@
+'use client'
+
+// Coreloom UI — ColorPicker. A colour as "#rrggbb": picked from swatches, typed as a hex code, or
+// chosen in the system's own colour dialog. For labels, tags, calendars and brand settings. The
+// swatches are the app's data (a label palette), not theme tokens: pass your own.
 import { CheckIcon } from 'lucide-react'
 import * as React from 'react'
 

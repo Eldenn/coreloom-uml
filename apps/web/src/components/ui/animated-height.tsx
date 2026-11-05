@@ -1,11 +1,3 @@
-'use client'
-
-// Coreloom UI — AnimatedHeight. A box that grows and shrinks smoothly when what is inside changes
-// height: a form step that adds fields, an answer that expands, an error that appears. It measures
-// its content and animates to the new height. For people who ask for reduced motion it resizes at
-// once.
-//
-//   <AnimatedHeight><StepContent step={step} /></AnimatedHeight>
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'

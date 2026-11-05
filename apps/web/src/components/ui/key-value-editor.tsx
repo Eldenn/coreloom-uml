@@ -1,9 +1,3 @@
-'use client'
-
-// Coreloom UI — KeyValueEditor. A list of key and value pairs people add to and remove from:
-// HTTP headers, environment variables, metadata, query parameters. The value is an array of
-// `{ key, value }`. Each field is named by its column and row ("Key, row 2"), a repeated key is
-// flagged, and pasting "KEY=value" lines (a .env file) into a key field fills several rows at once.
 import { PlusIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 

@@ -1,11 +1,3 @@
-'use client'
-
-// Coreloom UI — Countdown. The time left until a moment: a launch, the end of a sale, a session
-// that expires, a code that can be sent again. As a clock (02:14:07), in boxes with the units
-// named, or as one short phrase ("2 h 14 min"). It updates every second and calls `onComplete` at
-// zero. Screen readers get the time left in words, without being interrupted every second.
-//
-//   <Countdown to={launch} variant="boxes" onComplete={refresh} />
 import * as React from 'react'
 
 import { useCoreloomI18n } from '@/lib/i18n'

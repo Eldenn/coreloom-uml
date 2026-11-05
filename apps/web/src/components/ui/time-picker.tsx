@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — TimePicker. A time of day: people type it ("14:30", "2:30 pm", "1430", "14h30") or
+// pick it from a list every `step` minutes. The value is "HH:mm" in 24-hour time — the same string
+// as <input type="time"> — and it is shown in the reader's clock (2:30 PM in English, 14:30 in
+// French). `DateTimePicker` puts a DatePicker and a TimePicker side by side for one Date.
 import type { Locale } from 'date-fns'
 import { ClockIcon } from 'lucide-react'
 import * as React from 'react'
