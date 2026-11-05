@@ -1,3 +1,12 @@
+## Authorship
+
+Matthieu Chane is responsible for this code and is its only author. Nothing committed or published
+from this repository may name or credit an AI assistant or coding agent, in any form: no
+`Co-Authored-By` or session trailers in commit messages, no "generated with" footers or links in
+pull requests, issues, reviews or comments, no agent-specific files or folders (instruction files,
+settings, plans), and no mention in code comments or docs. Commits are authored as
+`Matthieu Chane <matthieu.chanewenc@gmail.com>`. These instructions live in this `AGENTS.md`.
+
 ## Conventions
 
 Coreloom UML follows the same conventions as [coreloom](https://github.com/eldenn/coreloom),

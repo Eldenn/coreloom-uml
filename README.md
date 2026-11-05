@@ -502,7 +502,7 @@ environment (**Settings → Environments**).
 Issues and pull requests are welcome.
 
 1. Fork the repo and create a branch off `main`.
-2. Follow the conventions in [`CLAUDE.md`](CLAUDE.md) (naming, folder layout,
+2. Follow the conventions in [`AGENTS.md`](AGENTS.md) (naming, folder layout,
    English-only code/comments, pinned versions, etc.) — they're the actual
    style guide, not just AI-assistant instructions.
 3. Before opening a PR: `pnpm lint`, `pnpm check-types` and `pnpm test` must
