@@ -1,0 +1,377 @@
+services:
+  # ---------------------------------------------------------------------------
+  # Postgres is NOT a service in this stack. It is a dedicated Coolify
+  # "Database" (PostgreSQL) resource, created separately in the same Coolify
+  # project as this compose resource (so they share a private network) —
+  # that resource type is the only place Coolify exposes native scheduled
+  # backups to an S3 target. Create it first, configure its Backups tab
+  # (schedule + a bucket separate from the object-storage bucket below), then
+  # copy its connection details into DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/
+  # DB_DATABASE below. See README.md "Production on Coolify".
+  # ---------------------------------------------------------------------------
+
+  migrate:
+    image: 'ghcr.io/${IMAGE_OWNER}/coreloom-uml-api:${IMAGE_TAG:-production-latest}'
+    pull_policy: always
+    command:
+      - node
+      - ace
+      - 'migration:run'
+      - '--force'
+    restart: 'no'
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3333'
+      APP_KEY: '${SERVICE_PASSWORD_64_APPKEY}'
+      FRONTEND_URL: '${SERVICE_URL_WEB}'
+      DB_HOST: '${DB_HOST}'
+      DB_PORT: '${DB_PORT:-5432}'
+      DB_USER: '${DB_USER}'
+      DB_PASSWORD: '${DB_PASSWORD}'
+      DB_DATABASE: '${DB_DATABASE}'
+      # true if the Database resource is NOT on this compose resource's
+      # private network (e.g. reached over a public endpoint); false if it is.
+      DB_SSL: '${DB_SSL:-false}'
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      SMTP_HOST: '${SMTP_HOST}'
+      SMTP_PORT: '${SMTP_PORT:-587}'
+      MAIL_FROM_ADDRESS: '${MAIL_FROM_ADDRESS}'
+
+  api:
+    image: 'ghcr.io/${IMAGE_OWNER}/coreloom-uml-api:${IMAGE_TAG:-production-latest}'
+    pull_policy: always
+    restart: unless-stopped
+    # Without `expose`, Coolify can't detect any port and falls back to 3000.
+    expose:
+      - '3333'
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3333'
+      APP_NAME: coreloom-uml-api-production
+      LOG_LEVEL: info
+      APP_KEY: '${SERVICE_PASSWORD_64_APPKEY}'
+      FRONTEND_URL: '${SERVICE_URL_WEB}'
+      DB_HOST: '${DB_HOST}'
+      DB_PORT: '${DB_PORT:-5432}'
+      DB_USER: '${DB_USER}'
+      DB_PASSWORD: '${DB_PASSWORD}'
+      DB_DATABASE: '${DB_DATABASE}'
+      DB_SSL: '${DB_SSL:-false}'
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      SESSION_DRIVER: cookie
+      SESSION_COOKIE_SAME_SITE: none
+      SESSION_COOKIE_SECURE: 'true'
+      LIMITER_STORE: memory
+      SMTP_HOST: '${SMTP_HOST}'
+      SMTP_PORT: '${SMTP_PORT:-587}'
+      SMTP_USERNAME: '${SMTP_USERNAME}'
+      SMTP_PASSWORD: '${SMTP_PASSWORD}'
+      MAIL_FROM_ADDRESS: '${MAIL_FROM_ADDRESS}'
+      MAIL_FROM_NAME: Coreloom UML
+      # Object storage (@adonisjs/drive). No MinIO in this stack — point at a
+      # real S3 / R2 / Spaces bucket. See infra/.env.production.example.
+      DRIVE_DISK: '${DRIVE_DISK:-s3}'
+      S3_ENDPOINT: '${S3_ENDPOINT}'
+      S3_REGION: '${S3_REGION:-auto}'
+      S3_BUCKET: '${S3_BUCKET}'
+      S3_ACCESS_KEY_ID: '${S3_ACCESS_KEY_ID}'
+      S3_SECRET_ACCESS_KEY: '${S3_SECRET_ACCESS_KEY}'
+      S3_PUBLIC_URL: '${S3_PUBLIC_URL:-}'
+      # Observability — a SigNoz instance dedicated to production (below), not
+      # shared with staging: an incident on one never blinds the other.
+      OTEL_SERVICE_NAME: coreloom-uml-api-production
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'wget -q --spider http://127.0.0.1:3333/health || exit 1'
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # BullMQ job worker — same image as `api`, run as an extra process (like
+  # `migrate`). Processes jobs dispatched onto the queue.
+  queue-worker:
+    image: 'ghcr.io/${IMAGE_OWNER}/coreloom-uml-api:${IMAGE_TAG:-production-latest}'
+    pull_policy: always
+    restart: unless-stopped
+    command:
+      - node
+      - '--import'
+      - './instrumentation.js'
+      - 'bin/console.js'
+      - 'queue:work'
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3333'
+      APP_NAME: coreloom-uml-worker-production
+      LOG_LEVEL: info
+      APP_KEY: '${SERVICE_PASSWORD_64_APPKEY}'
+      FRONTEND_URL: '${SERVICE_URL_WEB}'
+      DB_HOST: '${DB_HOST}'
+      DB_PORT: '${DB_PORT:-5432}'
+      DB_USER: '${DB_USER}'
+      DB_PASSWORD: '${DB_PASSWORD}'
+      DB_DATABASE: '${DB_DATABASE}'
+      DB_SSL: '${DB_SSL:-false}'
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      SMTP_HOST: '${SMTP_HOST}'
+      SMTP_PORT: '${SMTP_PORT:-587}'
+      SMTP_USERNAME: '${SMTP_USERNAME}'
+      SMTP_PASSWORD: '${SMTP_PASSWORD}'
+      MAIL_FROM_ADDRESS: '${MAIL_FROM_ADDRESS}'
+      MAIL_FROM_NAME: Coreloom UML
+      DRIVE_DISK: '${DRIVE_DISK:-s3}'
+      S3_ENDPOINT: '${S3_ENDPOINT}'
+      S3_REGION: '${S3_REGION:-auto}'
+      S3_BUCKET: '${S3_BUCKET}'
+      S3_ACCESS_KEY_ID: '${S3_ACCESS_KEY_ID}'
+      S3_SECRET_ACCESS_KEY: '${S3_SECRET_ACCESS_KEY}'
+      S3_PUBLIC_URL: '${S3_PUBLIC_URL:-}'
+      OTEL_SERVICE_NAME: coreloom-uml-worker-production
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  redis:
+    image: 'redis:7.4.11-alpine'
+    restart: unless-stopped
+    volumes:
+      - 'redis-data:/data'
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # bull-board — queue dashboard (inspect / retry / remove jobs). Published on
+  # its own subdomain by Coolify; drop this service if tunnel-only access is
+  # preferred. Basic auth is mandatory — set BULLBOARD_USER / BULLBOARD_PASSWORD.
+  bull-board:
+    image: 'venatum/bull-board:3.4.11'
+    restart: unless-stopped
+    expose:
+      - '3000'
+    environment:
+      SERVICE_FQDN_BULLBOARD_3000: '${SERVICE_FQDN_BULLBOARD_3000:-}'
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      BULL_PREFIX: bull
+      BULL_VERSION: BULLMQ
+      USER_LOGIN: '${BULLBOARD_USER}'
+      USER_PASSWORD: '${BULLBOARD_PASSWORD}'
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  web:
+    image: 'ghcr.io/${IMAGE_OWNER}/coreloom-uml-web:${IMAGE_TAG:-production-latest}'
+    pull_policy: always
+    restart: unless-stopped
+    expose:
+      - '80'
+    environment:
+      # Injected into the SPA at container start (docker/30-render-env-js.sh) —
+      # a domain change no longer needs an image rebuild, only a restart.
+      API_URL: '${SERVICE_URL_API}'
+    depends_on:
+      - api
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'wget -q --spider http://127.0.0.1:80/ || exit 1'
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # SigNoz — dedicated to production, NOT shared with staging (see the design
+  # spec). Identical to the block in infra/docker-compose.staging.yml — on any
+  # upstream re-copy of infra/signoz/*, copy this block from staging's file
+  # too, per CLAUDE.md's vendoring note. Same topology: ClickHouse + ZooKeeper
+  # + a one-shot init + a schema migrator + the SigNoz app (UI/API on 8080) +
+  # the SigNoz OTel collector (OTLP on 4317/4318 — what `api`/`queue-worker`
+  # export to). Only `signoz` gets a domain.
+  # ---------------------------------------------------------------------------
+  signoz-init-clickhouse:
+    image: 'clickhouse/clickhouse-server:25.5.6'
+    restart: on-failure
+    command:
+      - bash
+      - -c
+      - |
+        version="v0.0.1"
+        node_os=$$(uname -s | tr '[:upper:]' '[:lower:]')
+        node_arch=$$(uname -m | sed s/aarch64/arm64/ | sed s/x86_64/amd64/)
+        echo "Fetching histogram-binary for $${node_os}/$${node_arch}"
+        cd /tmp
+        wget -O histogram-quantile.tar.gz "https://github.com/SigNoz/signoz/releases/download/histogram-quantile%2F$${version}/histogram-quantile_$${node_os}_$${node_arch}.tar.gz"
+        tar -xvzf histogram-quantile.tar.gz
+        mv histogram-quantile /var/lib/clickhouse/user_scripts/histogramQuantile
+    volumes:
+      - 'signoz-clickhouse-user-scripts:/var/lib/clickhouse/user_scripts'
+
+  signoz-zookeeper:
+    image: 'signoz/zookeeper:3.7.1'
+    restart: unless-stopped
+    user: root
+    environment:
+      ZOO_SERVER_ID: '1'
+      ALLOW_ANONYMOUS_LOGIN: 'yes'
+      ZOO_AUTOPURGE_INTERVAL: '1'
+      ZOO_ENABLE_PROMETHEUS_METRICS: 'yes'
+      ZOO_PROMETHEUS_METRICS_PORT_NUMBER: '9141'
+    volumes:
+      - 'signoz-zookeeper:/bitnami/zookeeper'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'curl -s -m 2 http://localhost:8080/commands/ruok | grep error | grep null'
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  signoz-clickhouse:
+    build:
+      # The vendored SigNoz config is baked into the image rather than
+      # bind-mounted: Coolify's Compose runner does not resolve relative host
+      # bind-mount paths reliably. Context is the repo root — Coolify runs
+      # `docker compose` with `--project-directory` set there regardless of
+      # where this file lives; for a manual build pass `--project-directory ..`.
+      context: .
+      dockerfile: infra/signoz/clickhouse/Dockerfile
+    restart: unless-stopped
+    tty: true
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: '1'
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - 'signoz-clickhouse-user-scripts:/var/lib/clickhouse/user_scripts'
+      - 'signoz-clickhouse:/var/lib/clickhouse'
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --spider
+        - -q
+        - '0.0.0.0:8123/ping'
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      signoz-init-clickhouse:
+        condition: service_completed_successfully
+      signoz-zookeeper:
+        condition: service_healthy
+
+  signoz-schema-migrator:
+    image: 'signoz/signoz-otel-collector:v0.144.5'
+    restart: on-failure
+    environment:
+      SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN: 'tcp://signoz-clickhouse:9000'
+      SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_CLUSTER: cluster
+      SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_REPLICATION: 'true'
+      SIGNOZ_OTEL_COLLECTOR_TIMEOUT: 10m
+    entrypoint:
+      - /bin/sh
+    command:
+      - -c
+      - |
+        /signoz-otel-collector migrate bootstrap &&
+        /signoz-otel-collector migrate sync up &&
+        /signoz-otel-collector migrate async up
+    depends_on:
+      signoz-clickhouse:
+        condition: service_healthy
+
+  signoz:
+    image: 'signoz/signoz:v0.128.0'
+    restart: unless-stopped
+    expose:
+      - '8080'
+    environment:
+      # Coolify: attach a domain to this service, routed to container port
+      # 8080. `expose` alone is not enough — this SERVICE_FQDN_<svc>_<port>
+      # marker tells Coolify which port to proxy. Set it in the resource's
+      # Environment Variables editor to e.g.
+      #   SERVICE_FQDN_SIGNOZ_8080=https://signoz.example.com
+      SERVICE_FQDN_SIGNOZ_8080: '${SERVICE_FQDN_SIGNOZ_8080:-}'
+      SIGNOZ_ALERTMANAGER_PROVIDER: signoz
+      SIGNOZ_TELEMETRYSTORE_CLICKHOUSE_DSN: 'tcp://signoz-clickhouse:9000'
+      SIGNOZ_SQLSTORE_SQLITE_PATH: /var/lib/signoz/signoz.db
+      SIGNOZ_TOKENIZER_JWT_SECRET: '${SERVICE_PASSWORD_64_SIGNOZJWT}'
+    volumes:
+      - 'signoz-sqlite:/var/lib/signoz'
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --spider
+        - -q
+        - 'localhost:8080/api/v1/health'
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      signoz-clickhouse:
+        condition: service_healthy
+
+  signoz-otel-collector:
+    build:
+      # Config baked into the image, not bind-mounted — see the note on the
+      # signoz-clickhouse service. Context is the repo root.
+      context: .
+      dockerfile: infra/signoz/otel-collector/Dockerfile
+    restart: unless-stopped
+    # OTLP receivers — `api`/`queue-worker` export to signoz-otel-collector:4318.
+    expose:
+      - '4317'
+      - '4318'
+    entrypoint:
+      - /bin/sh
+    command:
+      - -c
+      - |
+        /signoz-otel-collector migrate sync check &&
+        /signoz-otel-collector --config=/etc/otel-collector-config.yaml --manager-config=/etc/manager-config.yaml --copy-path=/var/tmp/collector-config.yaml
+    environment:
+      OTEL_RESOURCE_ATTRIBUTES: host.name=signoz-host,os.type=linux
+      LOW_CARDINAL_EXCEPTION_GROUPING: 'false'
+      SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN: 'tcp://signoz-clickhouse:9000'
+      SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_CLUSTER: cluster
+      SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_REPLICATION: 'true'
+      SIGNOZ_OTEL_COLLECTOR_TIMEOUT: 10m
+    depends_on:
+      signoz-clickhouse:
+        condition: service_healthy
+      signoz-schema-migrator:
+        condition: service_completed_successfully
+
+volumes:
+  redis-data:
+  signoz-clickhouse:
+  signoz-clickhouse-user-scripts:
+  signoz-zookeeper:
+  signoz-sqlite:

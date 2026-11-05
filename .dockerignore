@@ -1,0 +1,12 @@
+.git/
+**/node_modules/
+**/dist/
+**/build/
+**/.adonis/
+**/.turbo/
+**/coverage/
+**/.tsbuildinfo
+**/*.tsbuildinfo
+.env
+.env.*
+!.env.example

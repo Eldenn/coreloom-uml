@@ -1,0 +1,37 @@
+{
+  "title": "Notes",
+  "new": "New note",
+  "empty": "You don't have any notes yet.",
+  "createFirst": "Create your first note",
+  "loading": "Loading…",
+  "loadError": "Unable to load your notes.",
+  "backToList": "Back to notes",
+  "fields": {
+    "title": "Title",
+    "body": "Body"
+  },
+  "list": {
+    "open": "Open",
+    "updatedAt": "Updated {{date}}"
+  },
+  "pager": {
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page {{page}} of {{lastPage}}"
+  },
+  "detail": {
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this note? This cannot be undone.",
+    "notFound": "This note doesn't exist or isn't yours."
+  },
+  "form": {
+    "createTitle": "New note",
+    "editTitle": "Edit note",
+    "save": "Save",
+    "create": "Create note",
+    "cancel": "Cancel",
+    "titleRequired": "A title is required.",
+    "error": "Unable to save this note."
+  }
+}

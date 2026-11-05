@@ -1,0 +1,74 @@
+# Dependencies
+node_modules/
+
+# pnpm (lockfile is committed; local content-addressable store is ignored)
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.adonis/
+.adonisjs/
+build-tsconfig.json
+
+# ...except the generated Tuyau client registry, which is committed (like a
+# lockfile) so `apps/web` typechecks without first running the API dev server.
+# Regenerate with `pnpm dev` (or `cd apps/api && node ace serve`).
+!apps/api/.adonisjs/
+apps/api/.adonisjs/*
+!apps/api/.adonisjs/client/
+apps/api/.adonisjs/client/*
+!apps/api/.adonisjs/client/manifest.d.ts
+!apps/api/.adonisjs/client/data.d.ts
+!apps/api/.adonisjs/client/registry/
+
+# Turborepo
+.turbo/
+
+# Vite
+apps/web/dist/
+*.local
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.staging.example
+!.env.production.example
+!.env.test
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+logs/
+
+# Testing
+coverage/
+playwright-report/
+playwright/.cache/
+test-results/
+storybook-static/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Misc
+tmp/
+*.tsbuildinfo
+*.bak
+
+# Graphify
+graphify-out/
+
+# Serena
+.serena/
+
+# Git worktrees (scratch, per-session)
+.worktrees/

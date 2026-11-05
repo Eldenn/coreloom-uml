@@ -1,0 +1,46 @@
+{
+  "title": "My account",
+  "verifyBanner": {
+    "unverified": "Your email address isn't verified yet.",
+    "resend": "Resend verification email",
+    "sent": "Verification email sent — check your inbox.",
+    "error": "Couldn't send the email, try again."
+  },
+  "avatar": {
+    "title": "Avatar",
+    "description": "A JPEG, PNG or WebP image, up to 5 MB.",
+    "remove": "Remove avatar",
+    "error": "Unable to update your avatar"
+  },
+  "profile": {
+    "title": "Profile",
+    "description": "Your name and sign-in email.",
+    "fullName": "Full name",
+    "email": "Email",
+    "emailChangeHint": "Changing your email signs it out as unverified until you confirm the new address.",
+    "submit": "Save changes",
+    "saved": "Profile saved.",
+    "verifySent": "Profile saved — check your new inbox for a verification link.",
+    "error": "Unable to save your profile"
+  },
+  "password": {
+    "title": "Password",
+    "description": "Requires your current password.",
+    "current": "Current password",
+    "new": "New password",
+    "submit": "Change password",
+    "changed": "Your password has been changed.",
+    "policy": "Password does not meet the requirements.",
+    "error": "Unable to change your password"
+  },
+  "danger": {
+    "title": "Danger zone",
+    "description": "Permanently delete your account and all its data.",
+    "delete": "Delete account",
+    "dialogTitle": "Delete your account",
+    "dialogDescription": "This permanently removes your account and cannot be undone. Enter your password to confirm.",
+    "password": "Password",
+    "cancel": "Cancel",
+    "error": "Unable to delete your account"
+  }
+}

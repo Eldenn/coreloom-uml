@@ -1,0 +1,88 @@
+name: Deploy (production)
+
+# Triggers a Coolify deploy of the production stack once release.yml has
+# published a GitHub Release for a pushed vX.Y.Z tag — which itself only
+# happens when the auto-generated "Version Packages" PR gets merged (see
+# .changeset/README.md). A plain push to `main` never reaches this workflow:
+# that only redeploys staging (deploy-staging.yml), continuously and
+# unversioned. The full chain on a release is:
+#   changesets.yml tags -> release.yml -> deploy-production.yml (this)
+#
+# `environment: production` below is inert until you opt in: create a
+# "production" environment under Settings -> Environments and add required
+# reviewers, and every run of the `deploy` job pauses for that approval
+# (the workflow run's "Review deployments" button) before it executes.
+# Without that setup the job just runs immediately, same as today.
+#
+# infra/docker-compose.production.yml exists and the GHCR image pipeline is
+# wired (see README.md "Production on Coolify") — what's still needed is the
+# Coolify resource itself (a Docker Compose resource for this file, plus a
+# separate Coolify Database resource for Postgres) and the two secrets below.
+#
+# Setup once that stack exists: add two repository secrets under
+# Settings -> Secrets and variables -> Actions:
+#   COOLIFY_PRODUCTION_WEBHOOK_URL   - the resource's API deploy endpoint,
+#                                      shaped like https://<coolify-host>/api/v1/deploy?uuid=<resource-uuid>
+#                                      (Coolify resource -> Webhooks -> Deploy Webhook).
+#   COOLIFY_PRODUCTION_WEBHOOK_TOKEN - a Coolify API token (avatar -> Keys &
+#                                      Tokens) with deploy permission.
+# Without both secrets the job is a no-op, so the template stays green.
+
+on:
+  workflow_run:
+    workflows: ['Release']
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Trigger Coolify production deploy
+        env:
+          COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_PRODUCTION_WEBHOOK_URL }}
+          COOLIFY_WEBHOOK_TOKEN: ${{ secrets.COOLIFY_PRODUCTION_WEBHOOK_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${COOLIFY_WEBHOOK_URL}" ] || [ -z "${COOLIFY_WEBHOOK_TOKEN}" ]; then
+            echo "COOLIFY_PRODUCTION_WEBHOOK_URL / COOLIFY_PRODUCTION_WEBHOOK_TOKEN are not set — skipping deploy."
+            echo "Add both secrets, once a production stack exists, to enable deployment on release."
+            exit 0
+          fi
+
+          # POST (current Coolify API); uuid/force stay in the URL query string.
+          # No --location: an auth redirect to the login page must fail here,
+          # not be followed to a misleading 200.
+          status="$(curl --silent --show-error \
+            --request POST "${COOLIFY_WEBHOOK_URL}" \
+            --header "Authorization: Bearer ${COOLIFY_WEBHOOK_TOKEN}" \
+            --header "Accept: application/json" \
+            --output coolify-response.txt \
+            --write-out '%{http_code}')"
+
+          echo "Coolify response (HTTP ${status}):"
+          cat coolify-response.txt
+          echo
+
+          if [ "${status}" -lt 200 ] || [ "${status}" -ge 300 ]; then
+            echo "::error::Coolify returned HTTP ${status}. Check COOLIFY_PRODUCTION_WEBHOOK_URL is the POST /api/v1/deploy?uuid=... endpoint and COOLIFY_PRODUCTION_WEBHOOK_TOKEN is a valid deploy token."
+            exit 1
+          fi
+
+          # The deploy API answers with JSON ({"deployments":[...]}). An HTML
+          # body means the request landed on the dashboard / a login redirect.
+          if [ "$(head -c 1 coolify-response.txt)" != "{" ]; then
+            echo "::error::Coolify replied ${status} but with a non-JSON body — the URL is almost certainly not the deploy webhook endpoint, or the token is not authorized."
+            exit 1
+          fi
+
+          echo "Deploy triggered."

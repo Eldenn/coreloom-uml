@@ -1,0 +1,32 @@
+{
+  "appName": "Coreloom UML",
+  "tagline": "Un monorepo MVC léger — le strict nécessaire pour livrer un MVP rapidement.",
+  "language": "Langue",
+  "signIn": "Se connecter",
+  "signOut": "Se déconnecter",
+  "createAccount": "Créer un compte",
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "notes": "Notes",
+    "account": "Compte"
+  },
+  "actions": {
+    "goToAccount": "Aller à mon compte",
+    "backToHome": "Retour à l'accueil"
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Page introuvable",
+    "body": "La page que vous cherchez n'existe pas ou a été déplacée."
+  },
+  "errorBoundary": {
+    "title": "Une erreur est survenue",
+    "body": "La page a rencontré une erreur inattendue. Recharger la page suffit généralement.",
+    "reload": "Recharger l'application"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bon retour, {{name}}.",
+    "body": "Ceci est l'accueil authentifié. Construisez votre application ici."
+  }
+}

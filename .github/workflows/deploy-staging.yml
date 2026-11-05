@@ -1,0 +1,75 @@
+name: Deploy (staging)
+
+# Triggers a Coolify deploy of the staging stack after CI passes on `main`.
+# Coolify pulls the repo and rebuilds the images itself (the compose file uses
+# `build:` directives) — this workflow only pokes its deploy webhook.
+#
+# Setup: add two repository secrets under
+# Settings -> Secrets and variables -> Actions:
+#   COOLIFY_WEBHOOK_URL   - the resource's API deploy endpoint, shaped like
+#                           https://<coolify-host>/api/v1/deploy?uuid=<resource-uuid>
+#                           (Coolify resource -> Webhooks -> Deploy Webhook).
+#                           NOT the dashboard URL.
+#   COOLIFY_WEBHOOK_TOKEN - a Coolify API token (avatar -> Keys & Tokens) with
+#                           deploy permission.
+# Without both secrets the job is a no-op, so the template stays green.
+
+on:
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    steps:
+      - name: Trigger Coolify staging deploy
+        env:
+          COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
+          COOLIFY_WEBHOOK_TOKEN: ${{ secrets.COOLIFY_WEBHOOK_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${COOLIFY_WEBHOOK_URL}" ] || [ -z "${COOLIFY_WEBHOOK_TOKEN}" ]; then
+            echo "COOLIFY_WEBHOOK_URL / COOLIFY_WEBHOOK_TOKEN are not set — skipping deploy."
+            echo "Add both secrets to enable continuous deployment to staging."
+            exit 0
+          fi
+
+          # POST (current Coolify API); uuid/force stay in the URL query string.
+          # No --location: an auth redirect to the login page must fail here,
+          # not be followed to a misleading 200.
+          status="$(curl --silent --show-error \
+            --request POST "${COOLIFY_WEBHOOK_URL}" \
+            --header "Authorization: Bearer ${COOLIFY_WEBHOOK_TOKEN}" \
+            --header "Accept: application/json" \
+            --output coolify-response.txt \
+            --write-out '%{http_code}')"
+
+          echo "Coolify response (HTTP ${status}):"
+          cat coolify-response.txt
+          echo
+
+          if [ "${status}" -lt 200 ] || [ "${status}" -ge 300 ]; then
+            echo "::error::Coolify returned HTTP ${status}. Check COOLIFY_WEBHOOK_URL is the POST /api/v1/deploy?uuid=... endpoint and COOLIFY_WEBHOOK_TOKEN is a valid deploy token."
+            exit 1
+          fi
+
+          # The deploy API answers with JSON ({"deployments":[...]}). An HTML
+          # body means the request landed on the dashboard / a login redirect.
+          if [ "$(head -c 1 coolify-response.txt)" != "{" ]; then
+            echo "::error::Coolify replied ${status} but with a non-JSON body — the URL is almost certainly not the deploy webhook endpoint, or the token is not authorized."
+            exit 1
+          fi
+
+          echo "Deploy triggered."
