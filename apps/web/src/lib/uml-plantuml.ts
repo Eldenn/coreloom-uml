@@ -1,3 +1,10 @@
+// Coreloom UI — PlantUML text for UML diagrams. `parsePlantUml` reads `@startuml` text: it tells
+// which diagram it is from the lines (class, sequence, state, entity–relationship, C4 with the
+// C4-PlantUML macros, use case, activity, deployment, component or package) and reads it into Coreloom's model,
+// tolerantly, with problems by line. Class, state, sequence and ER lines are close to Mermaid's,
+// so they're turned into Mermaid lines (same line numbers) and read by the Mermaid parsers.
+// `toPlantUml` writes any diagram back, positions people dragged in a `' coreloom-layout` comment
+// line. No PlantUML dependency, nothing rendered as HTML.
 import type { C4Level, UmlParseResult, UmlProblem } from '@/lib/uml'
 import { parseC4Diagram } from '@/lib/uml-mermaid-c4'
 import { parseClassDiagram } from '@/lib/uml-mermaid-class'
@@ -8,7 +15,14 @@ import { ACTIVITY_LINE, parsePlantActivity } from '@/lib/uml-plantuml-activity'
 import { parsePlantDeployment, parsePlantUseCase } from '@/lib/uml-plantuml-elements'
 import { parsePlantComponent, parsePlantPackage } from '@/lib/uml-plantuml-structure'
 import { toPlantUml } from '@/lib/uml-plantuml-write'
-import { type Groups, match, problem, type SourceLine, unquote } from '@/lib/uml-text'
+import {
+  type Groups,
+  match,
+  problem,
+  type SourceLine,
+  unquote,
+  withLayoutLine,
+} from '@/lib/uml-text'
 
 /** The lines worth reading: without `'` comments, `/' … '/` blocks, `@startuml` and `@enduml`. */
 function plantLines(input: string): SourceLine[] {
@@ -341,7 +355,7 @@ function parsePlantUml(input: string): UmlParseResult {
       problems: [first ? problem(first, 'header') : { line: 0, severity: 'error', code: 'header' }],
     }
   }
-  return readKind(kind, lines)
+  return withLayoutLine(readKind(kind, lines), input)
 }
 
 /** True when the text looks like PlantUML rather than Mermaid: `@startuml`, after any `'` comments. */

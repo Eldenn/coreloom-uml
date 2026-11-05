@@ -39,6 +39,7 @@ import {
   type Fullscreen,
   FullscreenButton,
   RenameField,
+  useFitDiagram,
   useFullscreen,
   useRename,
 } from '@/components/ui/uml-diagram-tools'
@@ -216,6 +217,7 @@ function useCanvasEffects({
   refit: boolean
 }) {
   const flow = useReactFlow()
+  const fit = useFitDiagram()
   React.useImperativeHandle(ref, () => ({
     toImage: async (format) => {
       setExporting(true)
@@ -228,6 +230,7 @@ function useCanvasEffects({
     },
   }))
   React.useEffect(() => {
+    // React Flow's fitView, which waits until new elements have their size.
     const frame = requestAnimationFrame(() => void flow.fitView({ padding: 0.15, maxZoom: 1 }))
     return () => {
       cancelAnimationFrame(frame)
@@ -239,14 +242,16 @@ function useCanvasEffects({
     let frame = 0
     const observer = new ResizeObserver(() => {
       cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => void flow.fitView({ padding: 0.08, maxZoom: 1 }))
+      frame = requestAnimationFrame(() => {
+        fit(0.08)
+      })
     })
     observer.observe(el)
     return () => {
       observer.disconnect()
       cancelAnimationFrame(frame)
     }
-  }, [refit, flow, canvas])
+  }, [refit, fit, canvas])
 }
 
 /**
