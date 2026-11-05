@@ -1,0 +1,141 @@
+/* Coreloom UI — accent presets. Import after theme.css, then set one on <html> (or on any element,
+ * for a section with its own accent):
+ *   <html data-accent="violet">            (dark)
+ *   <html data-accent="violet" data-theme="light">
+ * "cyan" is the default; set it only to bring it back inside an element with another preset.
+ * A section that changes theme takes the accent on the same element: <section data-theme="dark"
+ * data-accent="violet">.
+ * Each preset replaces the whole accent family in both themes; every pairing meets WCAG AA
+ * (text 4.5:1, fills and focus rings 3:1 on all surfaces). Generated and checked by
+ * build/gen-accents.py: edit the colours there, then run
+ * python3 build/gen-accents.py src/styles/accents.css */
+
+[data-accent='cyan'],
+[data-theme='dark'][data-accent='cyan'] {
+  --accent: #1ce0d3;
+  --accent-hover: #4deadf;
+  --accent-press: #14b5ab;
+  --accent-fg: #1ce0d3;
+  --accent-subtle: rgba(28, 224, 211, 0.1);
+  --accent-ring: rgba(28, 224, 211, 0.55);
+  --border-accent: #1ce0d3;
+  --fg-on-accent: #06201e;
+  --glow-accent: 0 0 0 1px rgba(28, 224, 211, 0.4), 0 6px 24px rgba(28, 224, 211, 0.22);
+}
+
+[data-theme='light'][data-accent='cyan'],
+:where([data-theme='light']) [data-accent='cyan'] {
+  --accent: #00968d;
+  --accent-hover: #14b5ab;
+  --accent-press: #00958c;
+  --accent-fg: #006f6c;
+  --accent-subtle: rgba(0, 150, 141, 0.1);
+  --accent-ring: rgba(0, 111, 108, 0.8);
+  --border-accent: #1ce0d3;
+  --fg-on-accent: #06201e;
+  --glow-accent: 0 0 0 1px rgba(20, 181, 171, 0.35), 0 6px 20px rgba(20, 181, 171, 0.2);
+}
+
+[data-accent='blue'],
+[data-theme='dark'][data-accent='blue'] {
+  --accent: #60a5fa;
+  --accent-hover: #93c5fd;
+  --accent-press: #3b82f6;
+  --accent-fg: #7cb5fb;
+  --accent-subtle: rgba(96, 165, 250, 0.1);
+  --accent-ring: rgba(96, 165, 250, 0.7);
+  --border-accent: #60a5fa;
+  --fg-on-accent: #04122a;
+  --glow-accent: 0 0 0 1px rgba(96, 165, 250, 0.4), 0 6px 24px rgba(96, 165, 250, 0.22);
+}
+
+[data-theme='light'][data-accent='blue'],
+:where([data-theme='light']) [data-accent='blue'] {
+  --accent: #2563eb;
+  --accent-hover: #1d4fd8;
+  --accent-press: #1e40af;
+  --accent-fg: #1d4ed8;
+  --accent-subtle: rgba(37, 99, 235, 0.1);
+  --accent-ring: rgba(29, 78, 216, 0.85);
+  --border-accent: #2563eb;
+  --fg-on-accent: #ffffff;
+  --glow-accent: 0 0 0 1px rgba(37, 99, 235, 0.35), 0 6px 20px rgba(37, 99, 235, 0.2);
+}
+
+[data-accent='violet'],
+[data-theme='dark'][data-accent='violet'] {
+  --accent: #a78bfa;
+  --accent-hover: #c4b5fd;
+  --accent-press: #9d84fa;
+  --accent-fg: #b4a0fb;
+  --accent-subtle: rgba(167, 139, 250, 0.1);
+  --accent-ring: rgba(167, 139, 250, 0.7);
+  --border-accent: #a78bfa;
+  --fg-on-accent: #160c33;
+  --glow-accent: 0 0 0 1px rgba(167, 139, 250, 0.4), 0 6px 24px rgba(167, 139, 250, 0.22);
+}
+
+[data-theme='light'][data-accent='violet'],
+:where([data-theme='light']) [data-accent='violet'] {
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-press: #5b21b6;
+  --accent-fg: #6d28d9;
+  --accent-subtle: rgba(124, 58, 237, 0.1);
+  --accent-ring: rgba(109, 40, 217, 0.85);
+  --border-accent: #7c3aed;
+  --fg-on-accent: #ffffff;
+  --glow-accent: 0 0 0 1px rgba(124, 58, 237, 0.35), 0 6px 20px rgba(124, 58, 237, 0.2);
+}
+
+[data-accent='amber'],
+[data-theme='dark'][data-accent='amber'] {
+  --accent: #fbbf24;
+  --accent-hover: #fcd34d;
+  --accent-press: #f59e0b;
+  --accent-fg: #fbbf24;
+  --accent-subtle: rgba(251, 191, 36, 0.1);
+  --accent-ring: rgba(251, 191, 36, 0.7);
+  --border-accent: #fbbf24;
+  --fg-on-accent: #231500;
+  --glow-accent: 0 0 0 1px rgba(251, 191, 36, 0.4), 0 6px 24px rgba(251, 191, 36, 0.22);
+}
+
+[data-theme='light'][data-accent='amber'],
+:where([data-theme='light']) [data-accent='amber'] {
+  --accent: #b45309;
+  --accent-hover: #92400e;
+  --accent-press: #78350f;
+  --accent-fg: #92400e;
+  --accent-subtle: rgba(180, 83, 9, 0.1);
+  --accent-ring: rgba(146, 64, 14, 0.85);
+  --border-accent: #b45309;
+  --fg-on-accent: #ffffff;
+  --glow-accent: 0 0 0 1px rgba(180, 83, 9, 0.35), 0 6px 20px rgba(180, 83, 9, 0.2);
+}
+
+[data-accent='rose'],
+[data-theme='dark'][data-accent='rose'] {
+  --accent: #fb7185;
+  --accent-hover: #fda4af;
+  --accent-press: #f43f5e;
+  --accent-fg: #fb8799;
+  --accent-subtle: rgba(251, 113, 133, 0.1);
+  --accent-ring: rgba(251, 113, 133, 0.7);
+  --border-accent: #fb7185;
+  --fg-on-accent: #2b0610;
+  --glow-accent: 0 0 0 1px rgba(251, 113, 133, 0.4), 0 6px 24px rgba(251, 113, 133, 0.22);
+}
+
+[data-theme='light'][data-accent='rose'],
+:where([data-theme='light']) [data-accent='rose'] {
+  --accent: #e11d48;
+  --accent-hover: #be123c;
+  --accent-press: #9f1239;
+  --accent-fg: #be123c;
+  --accent-subtle: rgba(225, 29, 72, 0.1);
+  --accent-ring: rgba(190, 18, 60, 0.85);
+  --border-accent: #e11d48;
+  --fg-on-accent: #ffffff;
+  --glow-accent: 0 0 0 1px rgba(225, 29, 72, 0.35), 0 6px 20px rgba(225, 29, 72, 0.2);
+}

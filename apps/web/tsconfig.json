@@ -1,31 +1,29 @@
 {
-  "extends": "@coreloom-uml/config/tsconfig/react",
+  // The compiler options of the coreloom-ui starter (starter/tsconfig.app.json): front-end
+  // settings follow coreloom-ui, so registry components type-check here as they do upstream.
+  //
   // `../api/.adonisjs/client` holds the generated Tuyau registry consumed via
-  // `@coreloom-uml/api/registry`. The registry references `#app/*` controller and
-  // validator source through `typeof import(...)`, so type-checking `apps/web`
-  // pulls the API's `app/` into the program — hence the decorator options
-  // (Lucid models) and TS-extension imports the generated files use. Not
-  // `composite` (would force every pulled-in API file under this rootDir).
-  "include": ["src", "*.config.ts", "vitest.setup.ts", "../api/.adonisjs/client/**/*"],
+  // `@coreloom-uml/api/registry`. It references the API's `#app/*` source through
+  // `typeof import(...)`, so type-checking `apps/web` pulls the API's `app/` into the program:
+  // hence the decorator options (Lucid models) and TS-extension imports below.
+  "include": ["src", "*.config.ts", "../api/.adonisjs/client/**/*"],
   "compilerOptions": {
-    "resolveJsonModule": true,
-    // `apps/web` is an application, not a published library: `tsc` only
-    // type-checks (Vite builds), so no emit — which also drops the library
-    // defaults inherited from the shared config that otherwise trip TS2883
-    // on the cross-package client type.
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "moduleDetection": "force",
+    "types": ["vite/client", "node"],
+    "jsx": "react-jsx",
+    "strict": true,
     "noEmit": true,
-    "declaration": false,
-    "declarationMap": false,
+    "skipLibCheck": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "allowImportingTsExtensions": true,
-    // The generated registry drags the API's `app/` into this program; those
-    // files are written against `@adonisjs/tsconfig`, which does not set the
-    // three extra-strict flags below. Relax them here so the shared API code
-    // type-checks in-place — `strict` still applies to `apps/web`'s own code.
-    "noImplicitOverride": false,
-    "exactOptionalPropertyTypes": false,
-    "noUncheckedIndexedAccess": false,
-    "types": ["vite/client", "node", "vitest/globals"]
+    "paths": { "@/*": ["./src/*"] }
   }
 }

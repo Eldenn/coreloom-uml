@@ -1,0 +1,187 @@
+/* Coreloom UI Design System — generated from tokens.json */
+/* Registry copy: the @font-face rules are left out. The fonts come from fonts.css
+   (Fontsource packages), registered as "Geist Variable", "Space Grotesk Variable" and
+   "JetBrains Mono Variable" — the font stacks below list those names after the brand names. */
+
+:root, [data-theme="dark"] {
+  --cl-cyan: #1ce0d3;
+  --cl-teal: #0f8f8c;
+  --cl-graphite: #15171c;
+  --cl-steel: #303540;
+  --gph-1000: #0a0b0e;
+  --gph-950: #0d0f13;
+  --gph-900: #15171c;
+  --gph-850: #1a1d23;
+  --gph-800: #21242b;
+  --gph-750: #282c34;
+  --gph-700: #303540;
+  --gph-600: #3c424f;
+  --gph-500: #5a616f;
+  --gph-400: #8c93a1;
+  --gph-300: #9ca3b1;
+  --gph-200: #c4c9d4;
+  --gph-100: #e6e8ec;
+  --gph-050: #f4f5f7;
+  --cyan-600: #0f8f8c;
+  --cyan-500: #14b5ab;
+  --cyan-400: #1ce0d3;
+  --cyan-300: #4deadf;
+  --cyan-200: #8af2eb;
+  --cyan-glow: rgba(28, 224, 211, 0.16);
+  --bg-base: var(--gph-950);
+  --bg-1: var(--gph-900);
+  --surface-1: var(--gph-850);
+  --surface-2: var(--gph-800);
+  --surface-hover: var(--gph-750);
+  --surface-inset: var(--gph-1000);
+  --fg-1: var(--gph-100);
+  --fg-2: var(--gph-300);
+  --fg-muted: var(--gph-400);
+  --fg-faint: var(--gph-500);
+  --fg-on-accent: #06201e;
+  --border-subtle: #20242c;
+  --border: var(--gph-700);
+  --border-strong: #676e7c;
+  --border-accent: var(--cyan-400);
+  --accent: var(--cyan-400);
+  --accent-hover: var(--cyan-300);
+  --accent-press: var(--cyan-500);
+  --accent-fg: var(--cyan-400);
+  --accent-subtle: rgba(28, 224, 211, 0.10);
+  --accent-ring: rgba(28, 224, 211, 0.55);
+  --success: #3dd68c;
+  --success-subtle: rgba(61, 214, 140, 0.12);
+  --warning: #f5c451;
+  --warning-subtle: rgba(245, 196, 81, 0.12);
+  --danger: #ff6b6b;
+  --danger-subtle: rgba(255, 107, 107, 0.12);
+  --info: var(--cyan-400);
+  --info-subtle: var(--accent-subtle);
+  --scrim: rgba(0, 0, 0, 0.55);
+  --chart-1: #0fa89f;
+  --chart-2: #9085e9;
+  --chart-3: #d95926;
+  --chart-4: #3987e5;
+  --chart-5: #d55181;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.40);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.45);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.55);
+  --shadow-xl: 0 24px 64px rgba(0,0,0,0.60);
+  --glow-accent: 0 0 0 1px rgba(28,224,211,0.40), 0 6px 24px rgba(28,224,211,0.22);
+  --hairline-top: inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+[data-theme="light"] {
+  --bg-base: #f4f5f7;
+  --bg-1: #ffffff;
+  --surface-1: #ffffff;
+  --surface-2: #f7f8fa;
+  --surface-hover: #eef0f3;
+  --surface-inset: #edeff2;
+  --fg-1: #15171c;
+  --fg-2: #44505f;
+  --fg-muted: #656d7d;
+  --fg-faint: #a0a8b5;
+  --border-subtle: #eceef1;
+  --border: #dce0e6;
+  --border-strong: #858a93;
+  --accent: #00968d;
+  --accent-hover: var(--cyan-500);
+  --accent-press: #00958c;
+  --accent-fg: #006f6c;
+  --accent-subtle: rgba(0, 150, 141, 0.10);
+  --border-accent: var(--cyan-400);
+  --accent-ring: rgba(0, 111, 108, 0.80);
+  --success: #007330;
+  --success-subtle: rgba(0, 115, 48, 0.10);
+  --warning: #885b00;
+  --warning-subtle: rgba(136, 91, 0, 0.10);
+  --danger: #b82731;
+  --danger-subtle: rgba(184, 39, 49, 0.10);
+  --info: var(--accent-fg);
+  --info-subtle: var(--accent-subtle);
+  --chart-1: #0b9a92;
+  --chart-2: #6250d6;
+  --chart-4: #2a78d6;
+  --shadow-sm: 0 1px 2px rgba(21,23,28,0.06);
+  --shadow-md: 0 4px 14px rgba(21,23,28,0.08);
+  --shadow-lg: 0 14px 40px rgba(21,23,28,0.12);
+  --shadow-xl: 0 28px 70px rgba(21,23,28,0.16);
+  --glow-accent: 0 0 0 1px rgba(20,181,171,0.35), 0 6px 20px rgba(20,181,171,0.20);
+  --hairline-top: inset 0 1px 0 rgba(255,255,255,0.6);
+}
+
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-pill: 999px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --text-3xl: 36px;
+  --text-4xl: 48px;
+  --text-5xl: 64px;
+  --text-6xl: 80px;
+  --fw-light: 300;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --lh-tight: 1.05;
+  --lh-snug: 1.22;
+  --lh-normal: 1.45;
+  --lh-relaxed: 1.65;
+  --ls-tighter: -0.03em;
+  --ls-tight: -0.015em;
+  --ls-normal: 0;
+  --ls-wide: 0.04em;
+  --ls-caps: 0.12em;
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-modal: 1300;
+  --z-popover: 1400;
+  --z-toast: 1500;
+  --z-tooltip: 1600;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+  --container-prose: 720px;
+  --container-app: 1200px;
+  --font-display: 'Space Grotesk', 'Space Grotesk Variable', 'Geist', 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Geist', 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+.cl-display { font-family: var(--font-display); font-size: 64px; line-height: 1.05; font-weight: 700; letter-spacing: -0.03em; }
+.cl-h1 { font-family: var(--font-display); font-size: 48px; line-height: 1.05; font-weight: 600; letter-spacing: -0.015em; }
+.cl-h2 { font-family: var(--font-display); font-size: 36px; line-height: 1.22; font-weight: 600; letter-spacing: -0.015em; }
+.cl-h3 { font-family: var(--font-display); font-size: 28px; line-height: 1.22; font-weight: 500; letter-spacing: -0.015em; }
+.cl-h4 { font-family: var(--font-sans); font-size: 22px; line-height: 1.22; font-weight: 600; }
+.cl-lead { font-family: var(--font-sans); font-size: 18px; line-height: 1.65; font-weight: 400; }
+.cl-body { font-family: var(--font-sans); font-size: 15px; line-height: 1.45; font-weight: 400; }
+.cl-small { font-family: var(--font-sans); font-size: 13px; line-height: 1.45; font-weight: 400; }
+.cl-label { font-family: var(--font-sans); font-size: 13px; line-height: 1.45; font-weight: 500; letter-spacing: 0.01em; }
+.cl-eyebrow { font-family: var(--font-mono); font-size: 12px; line-height: 1; font-weight: 500; letter-spacing: 0.12em; }
+.cl-code { font-family: var(--font-mono); font-size: 0.9em; line-height: 1.45; font-weight: 400; letter-spacing: -0.01em; }

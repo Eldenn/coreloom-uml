@@ -132,3 +132,16 @@ test.group('Auth - registration switch', (group) => {
     response.assertStatus(404)
   })
 })
+
+test.group('Auth - options', () => {
+  test('says whether sign-up is open', async ({ client }) => {
+    env.set('REGISTRATION_ENABLED', false)
+    const closed = await client.get('/auth/options').header('accept', 'application/json')
+    closed.assertBody({ registrationEnabled: false })
+
+    env.set('REGISTRATION_ENABLED', true)
+    const open = await client.get('/auth/options').header('accept', 'application/json')
+    open.assertBody({ registrationEnabled: true })
+    env.set('REGISTRATION_ENABLED', false)
+  })
+})

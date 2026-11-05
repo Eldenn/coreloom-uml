@@ -1,0 +1,6 @@
+dist
+public
+src/routeTree.gen.ts
+# Installed from the coreloom-ui registry: kept as installed.
+src/components/ui
+src/styles/coreloom

@@ -2,7 +2,7 @@
 
 # Coreloom UML
 
-**A light MVC monorepo — the strict necessary to ship an MVP fast.**
+**Draw your software architectures in UML, and share them with a link.**
 
 AdonisJS v7 · React 19 · TypeScript (strict) · pnpm · Turborepo
 
@@ -34,13 +34,23 @@ AdonisJS v7 · React 19 · TypeScript (strict) · pnpm · Turborepo
 
 ## What is Coreloom UML?
 
-Coreloom UML is [coreloom](https://github.com/eldenn/coreloom) stripped down to what a
-first, presentable MVP actually needs: the same core stack, the same
-domain-driven folder layout, the same coding conventions — minus every piece
-of infrastructure an MVP can live without. See
-[Differences from coreloom](#differences-from-coreloom) for the exact list
-and the reasoning behind each cut, so pieces can be copied back into
-coreloom later with minimal adaptation.
+Coreloom UML is a tool to diagram software architectures in UML. An **architecture** holds
+several **diagrams** (views: C4 context, deployment, class, sequence, state, entity-relationship,
+use case, activity), each written as Mermaid, PlantUML or JSON text and drawn live beside it.
+Changes are saved automatically, with a version check so two tabs never overwrite each other
+silently.
+
+- **Sign-in is required.** The app runs with one **default account** described by the server's
+  environment (`DEFAULT_ACCOUNT_EMAIL`, `DEFAULT_ACCOUNT_PASSWORD`, `DEFAULT_ACCOUNT_NAME`), created
+  or updated at deploy time by `node ace account:ensure-default`. Self-registration is off unless
+  `REGISTRATION_ENABLED=true`.
+- **Sharing.** An architecture is private by default. It can be made **public** (anyone with the
+  link sees it, read-only) or **protected** (the link plus an access code the server generates when
+  the visibility is set; regenerating it shuts out everyone who entered the old one).
+
+The business rules (RM-xx, referenced in the code) are in the scoping document. The monorepo comes
+from [lightloom](https://github.com/eldenn/lightloom) (itself [coreloom](https://github.com/eldenn/coreloom)
+stripped down); the whole front end is built with [coreloom-ui](https://github.com/eldenn/coreloom-ui).
 
 ## Tech Stack
 
@@ -50,10 +60,10 @@ coreloom later with minimal adaptation.
 | Monorepo orchestration | Turborepo (local cache only) |
 | Backend | AdonisJS v7 |
 | Auth | `@adonisjs/auth` session guard, file-backed sessions — no Redis |
-| Frontend | React 19 + Vite + react-router |
+| Frontend | React 19 + Vite + TanStack Router, every component from [coreloom-ui](https://github.com/eldenn/coreloom-ui) (shadcn registry `@coreloom`, see `apps/web/AGENTS.md`) |
 | Data fetching (web) | TanStack Query (`@tanstack/react-query`) — every API read/write goes through a query/mutation hook wrapping the Tuyau client |
-| Forms (web) | React Hook Form for `apps/web`-owned forms; `@coreloom-uml/ui` form components keep their own internal field handling |
-| i18n (web) | `i18next` + `react-i18next`, bundled in `apps/web` (`src/i18n/`); `en` source of truth, `fr` shipped. Re-extract into a shared `packages/i18n` only when a second app needs it. |
+| Forms (web) | TanStack Form through coreloom-ui's `useAppForm`, validated with zod |
+| i18n (web) | coreloom-ui's `CoreloomI18nProvider` for component strings + the app's own `src/messages.ts` (`useT()`); `en` source of truth, `fr` shipped |
 | API contract | Tuyau (`@tuyau/core`) — end-to-end typed client generated from the AdonisJS routes |
 | Request / response validation | VineJS (backend only; the Tuyau client infers `apps/web`'s types from it) |
 | Database | PostgreSQL |
@@ -64,9 +74,10 @@ coreloom later with minimal adaptation.
 | Object storage | `@adonisjs/drive` (S3 driver); MinIO locally, real S3/R2/Spaces elsewhere. `DRIVE_DISK=fs` falls back to the local filesystem (tests, CI). Account **avatar upload** exercises it end to end — private disk, MIME + 5 MB validation at the boundary, bytes streamed back through an authenticated route. |
 | Security headers | `@adonisjs/shield` (API), CSP + hardening headers at nginx (web) |
 | Observability | OpenTelemetry traces → SigNoz, opt-in via `OTEL_*` env |
-| Code quality | Biome |
-| Unit & integration tests | Japa (`apps/api`), Vitest (`packages/ui`). `apps/web` component tests are deliberately deferred — see [Not yet included](#not-yet-included). |
-| UI | Tailwind CSS v4 + shadcn/ui (`packages/ui`, copied from coreloom) |
+| Code quality | Biome (`apps/api`, root); ESLint + Prettier with coreloom-ui's rules (`apps/web`) |
+| Unit & integration tests | Japa (`apps/api`). `apps/web` screen tests (Playwright + axe, as in coreloom-ui) are not written yet — see [Not yet included](#not-yet-included). |
+| UI | coreloom-ui (Tailwind CSS v4, Radix, shadcn), installed into `apps/web/src/components` |
+| Diagrams | coreloom-ui's `DiagramEditor` / `UmlDiagram` and its `uml` library (Mermaid, PlantUML, JSON) |
 
 ## Repository Layout
 
@@ -74,10 +85,9 @@ coreloom later with minimal adaptation.
 coreloom-uml/
 ├── apps/
 │   ├── api/                  # AdonisJS v7 backend — same app/ domain layout as coreloom
-│   │                         #   app/notes/ is the reference domain — copy it for new user-owned resources
-│   └── web/                  # React 19 + Vite SPA (public + auth + account + notes)
+│   │                         #   app/architectures/ is the reference domain — copy it for new user-owned resources
+│   └── web/                  # React 19 + Vite SPA built with coreloom-ui (sign-in, architectures, editor, settings)
 ├── packages/
-│   ├── ui/                   # Shared UI components — copied from coreloom, unmodified
 │   ├── config/                # Shared TypeScript config — copied from coreloom, unmodified
 │   └── auth-policy/          # Password policy — copied from coreloom (consumed from source, no build step)
 └── infra/
@@ -137,8 +147,8 @@ By default:
 |---|---|
 | `pnpm dev` | Run all apps in development mode |
 | `pnpm build` | Build every workspace (cached) |
-| `pnpm lint` | Lint the whole repo with Biome |
-| `pnpm test` | Run tests (Japa for `apps/api`, Vitest for `packages/ui`) |
+| `pnpm lint` | Lint the repo (Biome for `apps/api`, ESLint + Prettier for `apps/web`) |
+| `pnpm test` | Run tests (Japa for `apps/api`) |
 | `pnpm check-types` | Type-check all workspaces |
 | `pnpm changeset` | Add a changeset for the current PR — required, see [Releases and production](#releases-and-production) |
 
@@ -146,10 +156,11 @@ By default:
 
 Deliberate gaps — the scaffolding assumes you'll fill these in for your project:
 
-- **`apps/web` component tests.** Vitest, Testing Library and the jsdom setup
-  are wired (`apps/web/vitest.config.ts`, `passWithNoTests: true`), but no test
-  files ship yet. `packages/ui` and `apps/api` are covered. Add web tests once
-  the screens stop churning.
+- **`apps/web` screen tests.** They will be Playwright + axe, as in coreloom-ui. Vitest only runs
+  Node unit tests (`src/**/*.test.ts`, `passWithNoTests: true`). `apps/api` is covered.
+- **Sharing screens, the read-only viewer and the access-code page.** The API is complete; the
+  screens wait for the coreloom-ui blocks being built for them (share dialog, diagram viewer,
+  access-code gate, diagram workspace, save status). The editor page is interim until then.
 
 See [Differences from coreloom](#differences-from-coreloom) for the pieces that
 were cut on purpose and how to bring them back.
@@ -457,14 +468,14 @@ environment (**Settings → Environments**).
 | OpenTelemetry + SigNoz | **Kept, traces only** — `instrumentation.ts` exports spans to SigNoz over OTLP, opt-in via `OTEL_EXPORTER_OTLP_ENDPOINT` (no-op when unset). Metrics/logs collector pipelines still dropped. | A `500` you cannot see is the thing that actually kills an MVP; traces (with `pino` correlation) cover that with one env var and no infra to run. Full metrics/logs pipelines still wait for traffic. |
 | Traefik, multi-service `docker-compose.yml` | `infra/docker-compose.yml` with `postgres`, `redis`, `mailpit`, `minio` and `bull-board` | The only dependencies an MVP actually needs locally. |
 | MinIO (part of coreloom's Logto footprint) | **Back as a standalone dev dependency** — a plain S3-compatible store for `@adonisjs/drive`, no Logto attached, wired end to end by the account **avatar upload** (`app/account/controllers/avatar-controller.ts`). One private bucket, created by a one-shot `minio-init`. Prod points `DRIVE_DISK=s3` at a real S3/R2/Spaces bucket; `DRIVE_DISK=fs` skips it entirely. | Object storage is a genuine MVP need (user-uploaded files) and `@adonisjs/drive` keeps the app code storage-agnostic, so swapping MinIO for managed S3 is one env change. |
-| `packages/i18n` | **Back**, but not as a shared package — `i18next` + `react-i18next` live directly inside `apps/web` (`src/i18n/`), with `en`/`fr` JSON namespaces (`common`, `auth`, `account`). Re-extract into `packages/i18n` when a second app needs the same catalog. | A single SPA doesn't need a shared package for its own strings; the coreloom `packages/i18n` split earns its keep only across `apps/login` + `apps/account`. |
-| Bouncer / per-resource RBAC policies | Dropped. Resource ownership is a flat `userId` check via `app/shared/authorization/assertOwner` (used by `app/notes/` and `/users/:id`); a non-owned resource reads as a 404. No roles, no policy classes. | The `assertOwner` helper covers "a user may only touch their own rows", which is all an MVP needs. Add real RBAC back (`@adonisjs/bouncer` + policy classes, exactly as coreloom does it) once roles/permissions become a requirement. |
-| Playwright e2e, Storybook | Dropped | Re-add once core flows stabilize — both churn heavily during early MVP iteration. `packages/ui`'s Vitest component tests are kept; `apps/web` tests are deferred (see [Not yet included](#not-yet-included)). |
+| `packages/i18n` | **Dropped** — the front end follows coreloom-ui: `CoreloomI18nProvider` for component strings and the app's own `apps/web/src/messages.ts` (`en`/`fr`). | One design system, one i18n mechanism on the front. |
+| Bouncer / per-resource RBAC policies | Dropped. Resource ownership is a flat `userId` check via `app/shared/authorization/assertOwner` (through `app/architectures/services/owned-architecture.ts`); a non-owned resource reads as a 404. No roles, no policy classes. | The `assertOwner` helper covers "a user may only touch their own rows", which is all an MVP needs. Add real RBAC back (`@adonisjs/bouncer` + policy classes, exactly as coreloom does it) once roles/permissions become a requirement. |
+| Playwright e2e, Storybook | Storybook dropped (coreloom-ui has its own). Screen tests will be Playwright + axe, as in coreloom-ui — not written yet (see [Not yet included](#not-yet-included)). | |
 | Changesets versioning | **Kept, repurposed** — not for publishing packages (nothing here is published), but as the release-PR automation: every PR adds a changeset, `apps/api` + `apps/web` version together (`fixed` in `.changeset/config.json`), and merging the auto-generated "Version Packages" PR tags and deploys to production. See [Releases and production](#releases-and-production). | An MVP with a real production environment needs *some* deliberate release boundary distinct from continuous staging deploys; Changesets' PR-based flow gives that without any hand-edited version bump or changelog. |
 | Tuyau typed API client (`@tuyau/core`) | **Kept** — `apps/web` calls the API through the generated client (`apps/web/src/lib/client.ts`); no OpenAPI docs generation. The registry (`apps/api/.adonisjs/client/registry/`) is generated by an assembler hook on `node ace serve` and committed like a lockfile. | End-to-end type safety with a single source of truth (the Vine input validators + controller return types) beats hand-syncing a `fetch` wrapper against a separate schema package, even at this size. OpenAPI stays out until an external/non-TS consumer needs it. |
 | `packages/contracts` (shared Zod schemas) | **Dropped** | Its only real job was supplying `apps/web`'s request/response types, which Tuyau now infers from the API; no runtime Zod validation was in use. Client-side form checks still come from `packages/auth-policy`. |
-| `packages/auth-policy` | **Kept**, now consumed straight from TypeScript source (`exports` → `./src`, no `tsup` build) like `packages/ui`; dropped from `apps/api`'s dependencies since only `apps/web` uses it | Small, dependency-free, and now directly useful (it feeds the register/login forms' client-side password validation) rather than only informing Logto's server-side policy. Coreloom builds it because its API consumes it as compiled JS; coreloom-uml's API doesn't consume it at all, so the build step is dead weight. |
-| `packages/ui` | **Kept as-is** (minus Storybook config/stories) | Zero coupling to Logto or S3 — pure, framework-agnostic presentation components. |
+| `packages/auth-policy` | **Kept**, now consumed straight from TypeScript source (`exports` → `./src`, no `tsup` build); dropped from `apps/api`'s dependencies since only `apps/web` uses it | Small, dependency-free, and now directly useful (its `PASSWORD_POLICY.minLength` sets the password forms' minimum length) rather than only informing Logto's server-side policy. Coreloom builds it because its API consumes it as compiled JS; coreloom-uml's API doesn't consume it at all, so the build step is dead weight. |
+| `packages/ui` | **Dropped** — every component comes from the coreloom-ui shadcn registry, installed into `apps/web` | One design system on the front, with its own rules (`apps/web/AGENTS.md`). |
 
 ## Forward-compatibility notes
 
@@ -474,14 +485,13 @@ environment (**Settings → Environments**).
   swap of the guard implementation, not a rewrite of callers.
 - Any new domain follows coreloom's `app/<domain>/{controllers,validators,
   middleware,models}` shape, so it can be copied into coreloom's `apps/api`
-  directly. `app/notes/` is the worked reference for a user-owned resource —
-  Lucid model + migration, Vine `*-input`/`*-output`, serializer, RESTful
-  controller, routes, functional specs, and an `apps/web` list/detail/create/
-  edit slice. It leans on two cross-cutting helpers meant for reuse:
+  directly. `app/architectures/` is the worked reference for a user-owned
+  resource — Lucid model + migration, Vine `*-input`/`*-output`, serializer,
+  RESTful controller, routes, functional specs. It leans on two cross-cutting helpers meant for reuse:
   `app/shared/pagination/` (list endpoints return `{ data, meta }`, `perPage`
   capped) and `app/shared/authorization/` (`assertOwner`). Copy the folder and
   rename for the next resource.
-- `packages/ui`, `packages/config`, and `packages/auth-policy` are vendored
+- `packages/config` and `packages/auth-policy` are vendored
   copies of coreloom's, not forks — if one needs to change, consider making
   the change in coreloom first and re-copying it here. The only intentional
   divergence is packaging: they are renamed to the `@coreloom-uml/*` scope and

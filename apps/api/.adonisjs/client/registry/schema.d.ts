@@ -31,6 +31,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/auth/controllers/register-controller').default['handle']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'auth.options': {
+    methods: ["GET","HEAD"]
+    pattern: '/auth/options'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/auth/controllers/auth-options-controller').default['handle']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/auth/controllers/auth-options-controller').default['handle']>>>
+    }
+  }
   'auth.login': {
     methods: ["POST"]
     pattern: '/auth/login'
@@ -125,66 +137,6 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#app/users/controllers/users-controller').default['show']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/users/controllers/users-controller').default['show']>>>
-    }
-  }
-  'notes.index': {
-    methods: ["GET","HEAD"]
-    pattern: '/notes'
-    types: {
-      body: {}
-      paramsTuple: []
-      params: {}
-      query: ExtractQueryForGet<InferInput<(typeof import('#app/notes/validators/notes-input').listNotesInput)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['index']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
-    }
-  }
-  'notes.store': {
-    methods: ["POST"]
-    pattern: '/notes'
-    types: {
-      body: ExtractBody<InferInput<(typeof import('#app/notes/validators/notes-input').createNoteInput)>>
-      paramsTuple: []
-      params: {}
-      query: ExtractQuery<InferInput<(typeof import('#app/notes/validators/notes-input').createNoteInput)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['store']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
-    }
-  }
-  'notes.show': {
-    methods: ["GET","HEAD"]
-    pattern: '/notes/:id'
-    types: {
-      body: {}
-      paramsTuple: [ParamValue]
-      params: { id: ParamValue }
-      query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['show']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['show']>>>
-    }
-  }
-  'notes.update': {
-    methods: ["PATCH"]
-    pattern: '/notes/:id'
-    types: {
-      body: ExtractBody<InferInput<(typeof import('#app/notes/validators/notes-input').updateNoteInput)>>
-      paramsTuple: [ParamValue]
-      params: { id: ParamValue }
-      query: ExtractQuery<InferInput<(typeof import('#app/notes/validators/notes-input').updateNoteInput)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['update']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
-    }
-  }
-  'notes.destroy': {
-    methods: ["DELETE"]
-    pattern: '/notes/:id'
-    types: {
-      body: {}
-      paramsTuple: [ParamValue]
-      params: { id: ParamValue }
-      query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['destroy']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/notes/controllers/notes-controller').default['destroy']>>>
     }
   }
   'architectures.index': {

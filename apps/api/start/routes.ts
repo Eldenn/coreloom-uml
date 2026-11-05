@@ -28,6 +28,9 @@ router
       .post('/register', [() => import('#app/auth/controllers/register-controller'), 'handle'])
       .as('register')
     router
+      .get('/options', [() => import('#app/auth/controllers/auth-options-controller'), 'handle'])
+      .as('options')
+    router
       .post('/login', [() => import('#app/auth/controllers/login-controller'), 'handle'])
       .as('login')
     router
@@ -83,30 +86,7 @@ router
 
 /*
 |--------------------------------------------------------------------------
-| Notes (reference user-owned resource — copy this for new domains)
-|--------------------------------------------------------------------------
-|
-| RESTful CRUD, owner-scoped, paginated `index`. Route names (`notes.*`) are
-| snake_case like every other group so the Tuyau client resolves them.
-*/
-const notesController = () => import('#app/notes/controllers/notes-controller')
-router
-  .group(() => {
-    router.get('/', [notesController, 'index']).as('notes.index')
-    router.post('/', [notesController, 'store']).as('notes.store')
-    router.get('/:id', [notesController, 'show']).as('notes.show')
-    router.patch('/:id', [notesController, 'update']).as('notes.update')
-    router.delete('/:id', [notesController, 'destroy']).as('notes.destroy')
-  })
-  .prefix('/notes')
-  // `Note.id` is an integer column — constrain `:id` to digits so a non-numeric
-  // value is a clean route 404 instead of a Postgres cast error.
-  .where('id', router.matchers.number())
-  .use(middleware.auth())
-
-/*
-|--------------------------------------------------------------------------
-| Architectures and their diagrams (owner-scoped, copied from `notes`)
+| Architectures and their diagrams (reference user-owned resource — copy this for new domains)
 |--------------------------------------------------------------------------
 */
 const architecturesController = () =>

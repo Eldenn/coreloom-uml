@@ -16,12 +16,9 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
-import { Route as AuthedAccountRouteImport } from './routes/_authed.account'
-import { Route as AuthedDashboardRouteImport } from './routes/_authed.dashboard'
-import { Route as AuthedNotesIndexRouteImport } from './routes/_authed.notes.index'
-import { Route as AuthedNotesIdRouteImport } from './routes/_authed.notes.$id'
-import { Route as AuthedNotesNewRouteImport } from './routes/_authed.notes.new'
-import { Route as AuthedNotesIdEditRouteImport } from './routes/_authed.notes.$id_.edit'
+import { Route as AuthedSettingsRouteImport } from './routes/_authed.settings'
+import { Route as AuthedArchitecturesIndexRouteImport } from './routes/_authed.architectures.index'
+import { Route as AuthedArchitecturesIdRouteImport } from './routes/_authed.architectures.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -57,34 +54,20 @@ const VerifyEmailRoute = VerifyEmailRouteImport.update({
   path: '/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthedAccountRoute = AuthedAccountRouteImport.update({
-  id: '/account',
-  path: '/account',
+const AuthedSettingsRoute = AuthedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedNotesIndexRoute = AuthedNotesIndexRouteImport.update({
-  id: '/notes/',
-  path: '/notes/',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedNotesIdRoute = AuthedNotesIdRouteImport.update({
-  id: '/notes/$id',
-  path: '/notes/$id',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedNotesNewRoute = AuthedNotesNewRouteImport.update({
-  id: '/notes/new',
-  path: '/notes/new',
-  getParentRoute: () => AuthedRoute,
-} as any)
-const AuthedNotesIdEditRoute = AuthedNotesIdEditRouteImport.update({
-  id: '/notes/$id_/edit',
-  path: '/notes/$id/edit',
+const AuthedArchitecturesIndexRoute =
+  AuthedArchitecturesIndexRouteImport.update({
+    id: '/architectures/',
+    path: '/architectures/',
+    getParentRoute: () => AuthedRoute,
+  } as any)
+const AuthedArchitecturesIdRoute = AuthedArchitecturesIdRouteImport.update({
+  id: '/architectures/$id',
+  path: '/architectures/$id',
   getParentRoute: () => AuthedRoute,
 } as any)
 
@@ -95,12 +78,9 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
-  '/account': typeof AuthedAccountRoute
-  '/dashboard': typeof AuthedDashboardRoute
-  '/notes/$id': typeof AuthedNotesIdRoute
-  '/notes/new': typeof AuthedNotesNewRoute
-  '/notes/': typeof AuthedNotesIndexRoute
-  '/notes/$id/edit': typeof AuthedNotesIdEditRoute
+  '/settings': typeof AuthedSettingsRoute
+  '/architectures/$id': typeof AuthedArchitecturesIdRoute
+  '/architectures/': typeof AuthedArchitecturesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -109,12 +89,9 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
-  '/account': typeof AuthedAccountRoute
-  '/dashboard': typeof AuthedDashboardRoute
-  '/notes/$id': typeof AuthedNotesIdRoute
-  '/notes/new': typeof AuthedNotesNewRoute
-  '/notes': typeof AuthedNotesIndexRoute
-  '/notes/$id/edit': typeof AuthedNotesIdEditRoute
+  '/settings': typeof AuthedSettingsRoute
+  '/architectures/$id': typeof AuthedArchitecturesIdRoute
+  '/architectures': typeof AuthedArchitecturesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,12 +102,9 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
-  '/_authed/account': typeof AuthedAccountRoute
-  '/_authed/dashboard': typeof AuthedDashboardRoute
-  '/_authed/notes/$id': typeof AuthedNotesIdRoute
-  '/_authed/notes/new': typeof AuthedNotesNewRoute
-  '/_authed/notes/': typeof AuthedNotesIndexRoute
-  '/_authed/notes/$id_/edit': typeof AuthedNotesIdEditRoute
+  '/_authed/settings': typeof AuthedSettingsRoute
+  '/_authed/architectures/$id': typeof AuthedArchitecturesIdRoute
+  '/_authed/architectures/': typeof AuthedArchitecturesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,12 +115,9 @@ export interface FileRouteTypes {
     | '/register'
     | '/reset-password'
     | '/verify-email'
-    | '/account'
-    | '/dashboard'
-    | '/notes/$id'
-    | '/notes/new'
-    | '/notes/'
-    | '/notes/$id/edit'
+    | '/settings'
+    | '/architectures/$id'
+    | '/architectures/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -155,12 +126,9 @@ export interface FileRouteTypes {
     | '/register'
     | '/reset-password'
     | '/verify-email'
-    | '/account'
-    | '/dashboard'
-    | '/notes/$id'
-    | '/notes/new'
-    | '/notes'
-    | '/notes/$id/edit'
+    | '/settings'
+    | '/architectures/$id'
+    | '/architectures'
   id:
     | '__root__'
     | '/'
@@ -170,12 +138,9 @@ export interface FileRouteTypes {
     | '/register'
     | '/reset-password'
     | '/verify-email'
-    | '/_authed/account'
-    | '/_authed/dashboard'
-    | '/_authed/notes/$id'
-    | '/_authed/notes/new'
-    | '/_authed/notes/'
-    | '/_authed/notes/$id_/edit'
+    | '/_authed/settings'
+    | '/_authed/architectures/$id'
+    | '/_authed/architectures/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -239,67 +204,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authed/account': {
-      id: '/_authed/account'
-      path: '/account'
-      fullPath: '/account'
-      preLoaderRoute: typeof AuthedAccountRouteImport
+    '/_authed/settings': {
+      id: '/_authed/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthedSettingsRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/dashboard': {
-      id: '/_authed/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthedDashboardRouteImport
+    '/_authed/architectures/': {
+      id: '/_authed/architectures/'
+      path: '/architectures'
+      fullPath: '/architectures/'
+      preLoaderRoute: typeof AuthedArchitecturesIndexRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/notes/': {
-      id: '/_authed/notes/'
-      path: '/notes'
-      fullPath: '/notes/'
-      preLoaderRoute: typeof AuthedNotesIndexRouteImport
-      parentRoute: typeof AuthedRoute
-    }
-    '/_authed/notes/$id': {
-      id: '/_authed/notes/$id'
-      path: '/notes/$id'
-      fullPath: '/notes/$id'
-      preLoaderRoute: typeof AuthedNotesIdRouteImport
-      parentRoute: typeof AuthedRoute
-    }
-    '/_authed/notes/new': {
-      id: '/_authed/notes/new'
-      path: '/notes/new'
-      fullPath: '/notes/new'
-      preLoaderRoute: typeof AuthedNotesNewRouteImport
-      parentRoute: typeof AuthedRoute
-    }
-    '/_authed/notes/$id_/edit': {
-      id: '/_authed/notes/$id_/edit'
-      path: '/notes/$id/edit'
-      fullPath: '/notes/$id/edit'
-      preLoaderRoute: typeof AuthedNotesIdEditRouteImport
+    '/_authed/architectures/$id': {
+      id: '/_authed/architectures/$id'
+      path: '/architectures/$id'
+      fullPath: '/architectures/$id'
+      preLoaderRoute: typeof AuthedArchitecturesIdRouteImport
       parentRoute: typeof AuthedRoute
     }
   }
 }
 
 interface AuthedRouteChildren {
-  AuthedAccountRoute: typeof AuthedAccountRoute
-  AuthedDashboardRoute: typeof AuthedDashboardRoute
-  AuthedNotesIdRoute: typeof AuthedNotesIdRoute
-  AuthedNotesNewRoute: typeof AuthedNotesNewRoute
-  AuthedNotesIndexRoute: typeof AuthedNotesIndexRoute
-  AuthedNotesIdEditRoute: typeof AuthedNotesIdEditRoute
+  AuthedSettingsRoute: typeof AuthedSettingsRoute
+  AuthedArchitecturesIdRoute: typeof AuthedArchitecturesIdRoute
+  AuthedArchitecturesIndexRoute: typeof AuthedArchitecturesIndexRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
-  AuthedAccountRoute: AuthedAccountRoute,
-  AuthedDashboardRoute: AuthedDashboardRoute,
-  AuthedNotesIdRoute: AuthedNotesIdRoute,
-  AuthedNotesNewRoute: AuthedNotesNewRoute,
-  AuthedNotesIndexRoute: AuthedNotesIndexRoute,
-  AuthedNotesIdEditRoute: AuthedNotesIdEditRoute,
+  AuthedSettingsRoute: AuthedSettingsRoute,
+  AuthedArchitecturesIdRoute: AuthedArchitecturesIdRoute,
+  AuthedArchitecturesIndexRoute: AuthedArchitecturesIndexRoute,
 }
 
 const AuthedRouteWithChildren =

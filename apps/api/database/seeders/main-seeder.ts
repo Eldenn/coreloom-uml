@@ -1,6 +1,7 @@
 import { BaseSeeder } from '@adonisjs/lucid/seeders'
 import { DateTime } from 'luxon'
-import Note from '#app/notes/models/note'
+import { ArchitectureVisibility } from '#app/architectures/constants/visibility'
+import Architecture from '#app/architectures/models/architecture'
 import User from '#app/users/models/user'
 
 export default class MainSeeder extends BaseSeeder {
@@ -17,21 +18,20 @@ export default class MainSeeder extends BaseSeeder {
       },
     )
 
-    const noteCount = await Note.query().where('userId', user.id).count('* as total')
-    if (Number(noteCount[0].$extras.total) > 0) return
+    const count = await Architecture.query().where('userId', user.id).count('* as total')
+    if (Number(count[0].$extras.total) > 0) return
 
-    await Note.createMany([
-      {
-        userId: user.id,
-        title: 'Welcome to Coreloom UML',
-        body: 'This note was seeded for the demo.',
-      },
-      { userId: user.id, title: 'Second note', body: 'Notes support create, edit and delete.' },
-      {
-        userId: user.id,
-        title: 'Third note',
-        body: 'Log in as demo@coreloom-uml.dev to see these.',
-      },
+    // Empty diagrams open on the editor's template for their kind.
+    const architecture = await Architecture.create({
+      userId: user.id,
+      title: 'Sample architecture',
+      description: 'Seeded for the demo. Log in as demo@coreloom-uml.dev to see it.',
+      visibility: ArchitectureVisibility.Private,
+    })
+    await architecture.related('diagrams').createMany([
+      { title: 'Context', kind: 'c4', content: null, position: 0 },
+      { title: 'Deployment', kind: 'deployment', content: null, position: 1 },
+      { title: 'Domain model', kind: 'class', content: null, position: 2 },
     ])
   }
 }

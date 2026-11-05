@@ -31,7 +31,7 @@ export type Paginated<T> = {
 
 /**
  * Structural slice of Lucid's paginator — keeps this helper decoupled from the
- * ORM types. `Note.query().where(...)` satisfies it.
+ * ORM types. `Architecture.query().where(...)` satisfies it.
  */
 type Paginable<Row> = {
   paginate(

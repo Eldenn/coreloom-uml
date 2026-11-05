@@ -18,7 +18,7 @@
       "!**/coverage",
       "!**/playwright-report",
       "!**/packages/cli/templates",
-      "!**/apps/web/src/routeTree.gen.ts"
+      "!**/apps/web"
     ]
   },
   "formatter": {

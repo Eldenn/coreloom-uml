@@ -18,6 +18,12 @@ const routes = {
     tokens: [{"old":"/auth/register","type":0,"val":"auth","end":""},{"old":"/auth/register","type":0,"val":"register","end":""}],
     types: placeholder as Registry['auth.register']['types'],
   },
+  'auth.options': {
+    methods: ["GET","HEAD"],
+    pattern: '/auth/options',
+    tokens: [{"old":"/auth/options","type":0,"val":"auth","end":""},{"old":"/auth/options","type":0,"val":"options","end":""}],
+    types: placeholder as Registry['auth.options']['types'],
+  },
   'auth.login': {
     methods: ["POST"],
     pattern: '/auth/login',
@@ -65,36 +71,6 @@ const routes = {
     pattern: '/users/:id',
     tokens: [{"old":"/users/:id","type":0,"val":"users","end":""},{"old":"/users/:id","type":1,"val":"id","end":""}],
     types: placeholder as Registry['users.show']['types'],
-  },
-  'notes.index': {
-    methods: ["GET","HEAD"],
-    pattern: '/notes',
-    tokens: [{"old":"/notes","type":0,"val":"notes","end":""}],
-    types: placeholder as Registry['notes.index']['types'],
-  },
-  'notes.store': {
-    methods: ["POST"],
-    pattern: '/notes',
-    tokens: [{"old":"/notes","type":0,"val":"notes","end":""}],
-    types: placeholder as Registry['notes.store']['types'],
-  },
-  'notes.show': {
-    methods: ["GET","HEAD"],
-    pattern: '/notes/:id',
-    tokens: [{"old":"/notes/:id","type":0,"val":"notes","end":""},{"old":"/notes/:id","type":1,"val":"id","end":""}],
-    types: placeholder as Registry['notes.show']['types'],
-  },
-  'notes.update': {
-    methods: ["PATCH"],
-    pattern: '/notes/:id',
-    tokens: [{"old":"/notes/:id","type":0,"val":"notes","end":""},{"old":"/notes/:id","type":1,"val":"id","end":""}],
-    types: placeholder as Registry['notes.update']['types'],
-  },
-  'notes.destroy': {
-    methods: ["DELETE"],
-    pattern: '/notes/:id',
-    tokens: [{"old":"/notes/:id","type":0,"val":"notes","end":""},{"old":"/notes/:id","type":1,"val":"id","end":""}],
-    types: placeholder as Registry['notes.destroy']['types'],
   },
   'architectures.index': {
     methods: ["GET","HEAD"],

@@ -11,6 +11,7 @@ import { createTuyau, TuyauError } from '@tuyau/core/client'
  * `||` (not `??`) so an empty string from a misconfigured `env.js` falls through.
  */
 const API_URL =
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- an empty string must fall through too
   window.__APP_CONFIG__?.apiUrl || import.meta.env.VITE_API_URL || 'http://localhost:3333'
 
 /**
@@ -48,14 +49,13 @@ export type User = Awaited<ReturnType<typeof client.api.auth.me>>['user']
 export function getErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
   if (error instanceof TuyauError) {
     const body = error.response as
-      | { error?: { message?: string }; errors?: Array<{ message?: string }>; message?: string }
+      | { error?: { message?: string }; errors?: { message?: string }[]; message?: string }
       | undefined
     return (
       body?.error?.message ??
       body?.errors?.[0]?.message ??
       body?.message ??
-      error.message ??
-      fallback
+      (error.message || fallback)
     )
   }
   return error instanceof Error ? error.message : fallback

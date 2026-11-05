@@ -20,3 +20,8 @@ minimumReleaseAgeExclude:
   - '@tanstack/router-core@1.171.30'
   - '@tanstack/router-generator@1.167.36'
   - '@tanstack/router-plugin@1.168.38'
+
+# coreloom-ui pins @codemirror/view; some @codemirror/* packages ask for a newer patch, which
+# would load two copies and break CodeEditor's types. One copy, the pinned one.
+overrides:
+  '@codemirror/view': 6.43.14

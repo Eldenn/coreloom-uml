@@ -34,7 +34,9 @@
         "OTEL_*",
         "DRIVE_DISK",
         "S3_*",
-        "REDIS_*"
+        "REDIS_*",
+        "DEFAULT_ACCOUNT_*",
+        "REGISTRATION_ENABLED"
       ]
     },
     "migration:run": {
