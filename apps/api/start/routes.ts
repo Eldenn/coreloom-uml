@@ -112,6 +112,7 @@ router
 const architecturesController = () =>
   import('#app/architectures/controllers/architectures-controller')
 const diagramsController = () => import('#app/diagrams/controllers/diagrams-controller')
+const sharingController = () => import('#app/sharing/controllers/sharing-controller')
 router
   .group(() => {
     router.get('/', [architecturesController, 'index']).as('architectures.index')
@@ -140,11 +141,30 @@ router
     router
       .delete('/:id/diagrams/:diagramId', [diagramsController, 'destroy'])
       .as('architectures.diagrams.destroy')
+
+    // Sharing: the owner's settings (RM-20 to RM-24).
+    router.get('/:id/sharing', [sharingController, 'show']).as('architectures.sharing.show')
+    router.put('/:id/sharing', [sharingController, 'update']).as('architectures.sharing.update')
+    router
+      .post('/:id/sharing/regenerate-link', [sharingController, 'regenerateLink'])
+      .as('architectures.sharing.regenerate_link')
+    router
+      .post('/:id/sharing/regenerate-code', [sharingController, 'regenerateCode'])
+      .as('architectures.sharing.regenerate_code')
   })
   .prefix('/architectures')
   .where('id', router.matchers.number())
   .where('diagramId', router.matchers.number())
   .use(middleware.auth())
+
+/*
+|--------------------------------------------------------------------------
+| Share links (public: no session; RM-25 to RM-29)
+|--------------------------------------------------------------------------
+*/
+const sharedController = () => import('#app/sharing/controllers/shared-architecture-controller')
+router.get('/shared/:token', [sharedController, 'show']).as('shared.show')
+router.post('/shared/:token/unlock', [sharedController, 'unlock']).as('shared.unlock')
 
 /*
 |--------------------------------------------------------------------------
