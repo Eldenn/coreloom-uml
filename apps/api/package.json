@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node ace build",
+    "init-default": "node ace account:ensure-default",
     "dev": "node ace serve --hmr",
     "start": "node --import ./instrumentation.js bin/server.js",
     "lint": "biome check .",
