@@ -24,6 +24,8 @@ declare module '@tanstack/react-router' {
   // `staticData: { crumb }` on a route adds it to the header's breadcrumbs (src/routes/_authed.tsx).
   interface StaticDataRouteOption {
     crumb?: (t: Messages) => string
+    /** The page uses the whole width next to the sidebar (editors), not the centred column. */
+    fullWidth?: boolean
   }
 }
 

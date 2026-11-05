@@ -75,6 +75,10 @@ function AuthedLayout() {
       }),
   })
 
+  const fullWidth = useRouterState({
+    select: (state) => state.matches.some((match) => match.staticData.fullWidth),
+  })
+
   if (isLoading) return null
   if (!user) return <Navigate to="/login" search={{ redirect: location.href }} replace />
 
@@ -150,6 +154,7 @@ function AuthedLayout() {
         },
       ]}
       headerActions={<LanguageMenu />}
+      fullWidth={fullWidth}
     >
       <Outlet />
     </AppShell>
