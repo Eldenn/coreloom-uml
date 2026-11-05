@@ -27,7 +27,11 @@ export default class MainSeeder extends BaseSeeder {
         body: 'This note was seeded for the demo.',
       },
       { userId: user.id, title: 'Second note', body: 'Notes support create, edit and delete.' },
-      { userId: user.id, title: 'Third note', body: 'Log in as demo@coreloom-uml.dev to see these.' },
+      {
+        userId: user.id,
+        title: 'Third note',
+        body: 'Log in as demo@coreloom-uml.dev to see these.',
+      },
     ])
   }
 }

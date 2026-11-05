@@ -37,17 +37,20 @@ services:
       # file lives. For a manual build, pass `--project-directory ..` too.
       context: .
       dockerfile: apps/api/Dockerfile
+    # Migrations, then the default account from DEFAULT_ACCOUNT_* (idempotent).
     command:
-      - node
-      - ace
-      - 'migration:run'
-      - '--force'
+      - sh
+      - '-c'
+      - 'node ace migration:run --force && node ace account:ensure-default'
     restart: 'no'
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: '3333'
       APP_KEY: '${SERVICE_PASSWORD_64_APPKEY}'
+      DEFAULT_ACCOUNT_EMAIL: '${DEFAULT_ACCOUNT_EMAIL}'
+      DEFAULT_ACCOUNT_PASSWORD: '${DEFAULT_ACCOUNT_PASSWORD}'
+      DEFAULT_ACCOUNT_NAME: '${DEFAULT_ACCOUNT_NAME:-}'
       FRONTEND_URL: '${SERVICE_URL_WEB}'
       DB_HOST: postgres
       DB_PORT: '5432'
@@ -82,6 +85,9 @@ services:
       APP_NAME: coreloom-uml-api-staging
       LOG_LEVEL: info
       APP_KEY: '${SERVICE_PASSWORD_64_APPKEY}'
+      DEFAULT_ACCOUNT_EMAIL: '${DEFAULT_ACCOUNT_EMAIL}'
+      DEFAULT_ACCOUNT_PASSWORD: '${DEFAULT_ACCOUNT_PASSWORD}'
+      DEFAULT_ACCOUNT_NAME: '${DEFAULT_ACCOUNT_NAME:-}'
       FRONTEND_URL: '${SERVICE_URL_WEB}'
       DB_HOST: postgres
       DB_PORT: '5432'
@@ -154,6 +160,9 @@ services:
       APP_NAME: coreloom-uml-worker-staging
       LOG_LEVEL: info
       APP_KEY: '${SERVICE_PASSWORD_64_APPKEY}'
+      DEFAULT_ACCOUNT_EMAIL: '${DEFAULT_ACCOUNT_EMAIL}'
+      DEFAULT_ACCOUNT_PASSWORD: '${DEFAULT_ACCOUNT_PASSWORD}'
+      DEFAULT_ACCOUNT_NAME: '${DEFAULT_ACCOUNT_NAME:-}'
       FRONTEND_URL: '${SERVICE_URL_WEB}'
       DB_HOST: postgres
       DB_PORT: '5432'
