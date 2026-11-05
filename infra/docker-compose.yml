@@ -15,12 +15,36 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # -----------------------------------------------
+  # postgres-init — one-shot, on every `up`: creates the app's databases when
+  # they're missing (dev + test), then exits. Unlike /docker-entrypoint-initdb.d,
+  # it also works on a volume that already exists.
+  # -----------------------------------------------
+  postgres-init:
+    image: postgres:16-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      DATABASES: coreloom_uml_dev coreloom_uml_test
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        for db in $$DATABASES; do
+          psql -tAc "SELECT 1 FROM pg_database WHERE datname = '$$db'" | grep -q 1 ||
+          psql -c "CREATE DATABASE $$db" || exit 1;
+        done
+    restart: 'no'
 
   # -----------------------------------------------
   # Redis 7 — backs @adonisjs/redis and the BullMQ job queue

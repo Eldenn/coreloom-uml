@@ -91,10 +91,10 @@ coreloom-uml/
 │   ├── config/                # Shared TypeScript config — copied from coreloom, unmodified
 │   └── auth-policy/          # Password policy — copied from coreloom (consumed from source, no build step)
 └── infra/
-    ├── docker-compose.yml         # local dev: postgres + redis + mailpit + minio + bull-board
+    ├── docker-compose.yml         # local dev: postgres (+ postgres-init, which creates the dev and
+    │                              #   test databases on every `up`) + redis + mailpit + minio + bull-board
     ├── docker-compose.staging.yml # Coolify staging stack
-    ├── .env.staging.example       # staging environment variables
-    └── postgres/init/             # local Postgres init scripts
+    └── .env.staging.example       # staging environment variables
 ```
 
 ## Requirements
