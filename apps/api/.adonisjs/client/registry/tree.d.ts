@@ -5,6 +5,7 @@ export interface ApiDefinition {
   health: typeof routes['health']
   auth: {
     register: typeof routes['auth.register']
+    options: typeof routes['auth.options']
     login: typeof routes['auth.login']
     logout: typeof routes['auth.logout']
     me: typeof routes['auth.me']
@@ -15,13 +16,6 @@ export interface ApiDefinition {
   }
   users: {
     show: typeof routes['users.show']
-  }
-  notes: {
-    index: typeof routes['notes.index']
-    store: typeof routes['notes.store']
-    show: typeof routes['notes.show']
-    update: typeof routes['notes.update']
-    destroy: typeof routes['notes.destroy']
   }
   architectures: {
     index: typeof routes['architectures.index']

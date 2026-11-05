@@ -57,23 +57,6 @@ export class DiagramSchema extends BaseModel {
   declare version: number
 }
 
-export class NoteSchema extends BaseModel {
-  static $columns = ['body', 'createdAt', 'id', 'title', 'updatedAt', 'userId'] as const
-  $columns = NoteSchema.$columns
-  @column()
-  declare body: string
-  @column.dateTime({ autoCreate: true })
-  declare createdAt: DateTime
-  @column({ isPrimary: true })
-  declare id: number
-  @column()
-  declare title: string
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
-  declare updatedAt: DateTime
-  @column()
-  declare userId: number
-}
-
 export class UserSchema extends BaseModel {
   static $columns = ['avatarKey', 'createdAt', 'email', 'emailVerifiedAt', 'fullName', 'id', 'password', 'updatedAt'] as const
   $columns = UserSchema.$columns

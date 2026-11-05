@@ -24,7 +24,7 @@ function likePattern(search: string) {
 }
 
 /**
- * The signed-in user's architectures. Copied from the `notes` reference domain:
+ * The signed-in user's architectures — the reference user-owned resource:
  * owner-scoped, a resource that isn't yours reads as 404.
  */
 export default class ArchitecturesController {
