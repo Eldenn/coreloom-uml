@@ -62,6 +62,9 @@ function ArchitecturePage() {
   return <Workspace architecture={architecture} />
 }
 
+/** The kind given to an imported view whose text can't be read yet. */
+const IMPORT_FALLBACK_KIND: DiagramKind = 'class'
+
 function isKind(kind: UmlDiagramKind): kind is DiagramKind {
   return (DIAGRAM_KINDS as readonly string[]).includes(kind)
 }
@@ -138,6 +141,25 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
             {
               onSuccess: ({ diagram }) => {
                 select(diagram.id)
+              },
+              onError: failed,
+            },
+          )
+        }}
+        onImport={({ title, value, result, format }) => {
+          // A file that can't be read yet still opens, as a draft, in the kind the editor falls
+          // back to; it is saved once its text reads.
+          const kind = result.diagram?.kind ?? IMPORT_FALLBACK_KIND
+          if (!isKind(kind)) {
+            toast.error(t.editor.importUnsupported)
+            return
+          }
+          add.mutate(
+            { title, kind },
+            {
+              onSuccess: ({ diagram }) => {
+                select(diagram.id)
+                autosave.onDiagramChange(diagram, value, result, format)
               },
               onError: failed,
             },

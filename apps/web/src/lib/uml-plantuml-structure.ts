@@ -24,12 +24,12 @@ import {
   STEREOTYPE,
   wrap,
 } from '@/lib/uml-plantuml-elements'
-import { match, problem, type SourceLine } from '@/lib/uml-text'
+import { match, problem, type SourceLine, withoutColors } from '@/lib/uml-text'
 
 /** `name <<stereotype>> {`: the name and alias, the stereotype, and whether it opens a block. */
 function declared(text: string) {
   const stereotype = STEREOTYPE.exec(text)?.[1]
-  const named = readNamed(text.replace(STEREOTYPE, '').replace(/#\w+/g, '').trim())
+  const named = readNamed(withoutColors(text.replace(STEREOTYPE, '')).trim())
   return { named, stereotype, opens: /\{\s*$/.test(text) }
 }
 

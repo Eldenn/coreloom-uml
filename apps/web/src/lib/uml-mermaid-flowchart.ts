@@ -22,14 +22,18 @@ const SUBGRAPH = /^subgraph\s+([\w.-]+)(?:\s*\[(.*)\])?\s*$|^subgraph\s+"?([^"]+
 const DIRECTION = /^direction\s+(TB|TD|BT|LR|RL)$/
 const FLOW_STYLING = /^(classDef|class|style|linkStyle|click|accTitle|accDescr)\b/
 
-/** A node id, then a shape with its text, then a `:::class` that Coreloom ignores. */
+/**
+ * A node id, then a shape with its text, then a `:::class` that Coreloom ignores. Quoted text comes
+ * first, since it may hold the shape's closing brackets: `A("Order (v2)")`, `D{"x {y}"}`.
+ */
 const NODE =
-  /^([\w.-]+)(?:@\{([^}]*)\}|(\(\(\(.*?\)\)\)|\(\(.*?\)\)|\(\[.*?\]\)|\[\[.*?\]\]|\[\(.*?\)\]|\[[/\\].*?[/\\]\]|\{\{.*?\}\}|\{.*?\}|\(.*?\)|\[.*?\]|>.*?\]))?(?::::[\w-]+)?/
+  /^([\w.-]+)(?:@\{([^}]*)\}|(\(\(\("[^"]*"\)\)\)|\(\("[^"]*"\)\)|\(\["[^"]*"\]\)|\[\["[^"]*"\]\]|\[\("[^"]*"\)\]|\{\{"[^"]*"\}\}|\{"[^"]*"\}|\("[^"]*"\)|\["[^"]*"\]|>"[^"]*"\]|\(\(\(.*?\)\)\)|\(\(.*?\)\)|\(\[.*?\]\)|\[\[.*?\]\]|\[\(.*?\)\]|\[[/\\].*?[/\\]\]|\{\{.*?\}\}|\{.*?\}|\(.*?\)|\[.*?\]|>.*?\]))?(?::::[\w-]+)?/
 
 /** `-- text -->`, `== text ==>`, `-. text .->`. */
 const LINK_TEXT = /^\s*(?:--|==|-\.)\s+(.+?)\s+(?:-{2,}>|={2,}>|\.+->|-{3,}|={3,}|\.+-)\s*/
 /** `-->`, `--->`, `==>`, `-.->`, `---`, `--o`, `--x`, `<-->`, then an optional `|text|`. */
-const LINK = /^\s*<?(?:-{2,}>|={2,}>|-\.+->|-{3,}|={3,}|-\.+-|--[ox]|~~~)\s*(?:\|([^|]*)\|)?\s*/
+const LINK =
+  /^\s*<?(?:-{2,}>|={2,}>|-\.+->|-{3,}|={3,}|-\.+-|--[ox]|~~~)\s*(?:\|("[^"]*"|[^|]*)\|)?\s*/
 
 interface FlowParse {
   nodes: Map<string, ActivityNode>

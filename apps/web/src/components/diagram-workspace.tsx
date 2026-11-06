@@ -1,12 +1,14 @@
-import { ListIcon, PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
+import { FileUpIcon, ListIcon, PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 
 import { DiagramEditor, type DiagramFormat, parseDiagram } from '@/components/diagram-editor'
+import { DIAGRAM_FILE_ACCEPT, importError, readDiagramFile } from '@/components/diagram-import'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { EditableText } from '@/components/ui/editable-text'
@@ -46,6 +48,12 @@ interface DiagramWorkspaceProps {
   ) => void
   /** "Add a diagram" with the kind picked; the app adds the view (and usually opens it). */
   onAdd: (kind: UmlDiagramKind) => void
+  /**
+   * A file picked with "Import a file…" in the Add menu, read in the browser: its name without
+   * the extension, its text, what could be read from it and its format. The app adds the view.
+   * Without it, the Add menu offers no import.
+   */
+  onImport?: (view: DiagramWorkspaceImport) => void
   onRename: (id: string, title: string) => void
   /** The views' ids in their new order. */
   onReorder: (ids: string[]) => void
@@ -63,6 +71,14 @@ interface DiagramWorkspaceProps {
    */
   height?: string
   className?: string
+}
+
+/** A diagram file read for a new view. */
+interface DiagramWorkspaceImport {
+  title: string
+  value: string
+  result: UmlParseResult
+  format: DiagramFormat
 }
 
 type WorkspaceText = Messages['diagramWorkspace']
@@ -223,39 +239,94 @@ function ViewRow({
   )
 }
 
-function AddMenu({ onAdd }: { onAdd: (kind: UmlDiagramKind) => void }) {
+/** A view from a file: reads it, hands it to the app, and says why when it can't be read. */
+function useWorkspaceImport(onImport: DiagramWorkspaceProps['onImport']) {
   const { messages } = useCoreloomI18n()
+  const [error, setError] = React.useState<string | null>(null)
+  const importFile = (file: File) => {
+    void readDiagramFile(file, 'mermaid').then((read) => {
+      setError(importError(read, messages.diagramEditor))
+      if (read.status !== 'read') return
+      onImport?.({
+        title: read.title,
+        value: read.text,
+        result: parseDiagram(read.text, read.format),
+        format: read.format,
+      })
+    })
+  }
+  return { importFile, error }
+}
+
+function AddMenu({
+  onAdd,
+  onImport,
+}: {
+  onAdd: (kind: UmlDiagramKind) => void
+  /** Present when the app takes views from files. */
+  onImport?: (file: File) => void
+}) {
+  const { messages } = useCoreloomI18n()
+  const input = React.useRef<HTMLInputElement>(null)
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label={messages.diagramWorkspace.add}
-        >
-          <PlusIcon aria-hidden />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {KINDS.map((kind) => (
-          <DropdownMenuItem
-            key={kind}
-            onSelect={() => {
-              onAdd(kind)
-            }}
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={messages.diagramWorkspace.add}
           >
-            {messages.diagram.kinds[kind]}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <PlusIcon aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {KINDS.map((kind) => (
+            <DropdownMenuItem
+              key={kind}
+              onSelect={() => {
+                onAdd(kind)
+              }}
+            >
+              {messages.diagram.kinds[kind]}
+            </DropdownMenuItem>
+          ))}
+          {onImport && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => {
+                  input.current?.click()
+                }}
+              >
+                <FileUpIcon aria-hidden />
+                {messages.diagramWorkspace.importFile}
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {onImport && (
+        <input
+          ref={input}
+          type="file"
+          accept={DIAGRAM_FILE_ACCEPT}
+          hidden
+          onChange={(e) => {
+            const file = e.currentTarget.files?.[0]
+            e.currentTarget.value = ''
+            if (file) onImport(file)
+          }}
+        />
+      )}
+    </>
   )
 }
 
 type ViewsPanelProps = Pick<
   DiagramWorkspaceProps,
-  'diagrams' | 'activeId' | 'onAdd' | 'onRename' | 'onReorder' | 'onDelete'
+  'diagrams' | 'activeId' | 'onAdd' | 'onImport' | 'onRename' | 'onReorder' | 'onDelete'
 > & {
   /** A view was opened from the list. */
   onOpen: (id: string) => void
@@ -267,11 +338,13 @@ function ViewsPanel({
   activeId,
   onOpen,
   onAdd,
+  onImport,
   onRename,
   onReorder,
   onDelete,
 }: ViewsPanelProps) {
   const t = useCoreloomI18n().messages.diagramWorkspace
+  const imports = useWorkspaceImport(onImport)
   const [reordering, setReordering] = React.useState(false)
   const [renaming, setRenaming] = React.useState<string | null>(null)
   const list = React.useRef<HTMLDivElement>(null)
@@ -297,8 +370,12 @@ function ViewsPanel({
         >
           {reordering ? t.reorderDone : t.reorder}
         </Button>
-        <AddMenu onAdd={onAdd} />
+        <AddMenu onAdd={onAdd} onImport={onImport ? imports.importFile : undefined} />
       </div>
+      {/* Says why a picked file didn't become a view; empty otherwise. */}
+      <p role="status" className="m-0 text-[12.5px] text-destructive empty:sr-only">
+        {imports.error}
+      </p>
       {reordering ? (
         <SortableList
           aria-label={t.order}
@@ -378,6 +455,7 @@ function DiagramWorkspace({
   onActiveChange,
   onDiagramChange,
   onAdd,
+  onImport,
   onRename,
   onReorder,
   onDelete,
@@ -392,7 +470,15 @@ function DiagramWorkspace({
   const [sheet, setSheet] = React.useState(false)
   const active = diagrams.find((item) => item.id === activeId) ?? diagrams.at(0)
   const reports = useEditorReports(active, onDiagramChange)
-  const panel = { diagrams, activeId: active?.id ?? '', onAdd, onRename, onReorder, onDelete }
+  const panel = {
+    diagrams,
+    activeId: active?.id ?? '',
+    onAdd,
+    onImport,
+    onRename,
+    onReorder,
+    onDelete,
+  }
 
   return (
     <section
@@ -465,4 +551,9 @@ function DiagramWorkspace({
   )
 }
 
-export { DiagramWorkspace, type DiagramWorkspaceItem, type DiagramWorkspaceProps }
+export {
+  DiagramWorkspace,
+  type DiagramWorkspaceImport,
+  type DiagramWorkspaceItem,
+  type DiagramWorkspaceProps,
+}

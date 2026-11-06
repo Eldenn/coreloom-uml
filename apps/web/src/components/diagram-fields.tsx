@@ -31,6 +31,17 @@ function useDrafts<T extends object>(key: string) {
   return { drafts, set, take }
 }
 
+/** The field that names what's selected: one line, or a box for a note's text. */
+type NameField = HTMLInputElement | HTMLTextAreaElement
+
+/** Hands the field to `ref`, whichever element it is. */
+function fieldRef(ref: React.Ref<NameField> | undefined) {
+  return (el: NameField | null) => {
+    if (typeof ref === 'function') return ref(el)
+    if (ref) ref.current = el
+  }
+}
+
 function TextField({
   label,
   value,
@@ -51,7 +62,7 @@ function TextField({
   disabled: boolean
   onChange: (value: string) => void
   onCommit: () => void
-  inputRef?: React.Ref<HTMLInputElement> | undefined
+  inputRef?: React.Ref<NameField> | undefined
 }) {
   const id = React.useId()
   const described = hint ? { 'aria-describedby': `${id}-hint` } : {}
@@ -61,6 +72,7 @@ function TextField({
       {multiline ? (
         <Textarea
           id={id}
+          ref={fieldRef(inputRef)}
           value={value}
           readOnly={disabled}
           rows={3}
@@ -75,7 +87,7 @@ function TextField({
       ) : (
         <Input
           id={id}
-          ref={inputRef}
+          ref={fieldRef(inputRef)}
           value={value}
           readOnly={disabled}
           className="h-8 text-[13px]"
@@ -135,4 +147,4 @@ function Choice<T extends string>({
   )
 }
 
-export { Choice, TextField, useDrafts }
+export { Choice, type NameField, TextField, useDrafts }
