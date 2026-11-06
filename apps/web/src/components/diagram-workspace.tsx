@@ -2,12 +2,16 @@ import { FileUpIcon, ListIcon, PencilIcon, PlusIcon, Trash2Icon } from 'lucide-r
 import * as React from 'react'
 
 import { DiagramEditor, type DiagramFormat, parseDiagram } from '@/components/diagram-editor'
+<<<<<<< HEAD
 import {
   DIAGRAM_FILE_ACCEPT,
   importError,
   readDiagramFile,
   useFileDrop,
 } from '@/components/diagram-import'
+=======
+import { DIAGRAM_FILE_ACCEPT, importError, readDiagramFile } from '@/components/diagram-import'
+>>>>>>> origin/claude/project-thread-l81mot
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -54,10 +58,16 @@ interface DiagramWorkspaceProps {
   /** "Add a diagram" with the kind picked; the app adds the view (and usually opens it). */
   onAdd: (kind: UmlDiagramKind) => void
   /**
+<<<<<<< HEAD
    * A file picked with "Import a file…" in the Add menu, or dropped on the workspace, read in the
    * browser: its name without the extension, its text, what could be read from it and its format.
    * The app adds the view; several dropped files call it once each, in order. Without it, the Add
    * menu offers no import and dropped files are left alone.
+=======
+   * A file picked with "Import a file…" in the Add menu, read in the browser: its name without
+   * the extension, its text, what could be read from it and its format. The app adds the view.
+   * Without it, the Add menu offers no import.
+>>>>>>> origin/claude/project-thread-l81mot
    */
   onImport?: (view: DiagramWorkspaceImport) => void
   onRename: (id: string, title: string) => void
@@ -245,6 +255,7 @@ function ViewRow({
   )
 }
 
+<<<<<<< HEAD
 /** Views from files: reads them, hands each to the app in order, says why any was left out. */
 function useWorkspaceImport(onImport: DiagramWorkspaceProps['onImport']) {
   const { messages } = useCoreloomI18n()
@@ -265,6 +276,25 @@ function useWorkspaceImport(onImport: DiagramWorkspaceProps['onImport']) {
     })
   }
   return { importFiles, error }
+=======
+/** A view from a file: reads it, hands it to the app, and says why when it can't be read. */
+function useWorkspaceImport(onImport: DiagramWorkspaceProps['onImport']) {
+  const { messages } = useCoreloomI18n()
+  const [error, setError] = React.useState<string | null>(null)
+  const importFile = (file: File) => {
+    void readDiagramFile(file, 'mermaid').then((read) => {
+      setError(importError(read, messages.diagramEditor))
+      if (read.status !== 'read') return
+      onImport?.({
+        title: read.title,
+        value: read.text,
+        result: parseDiagram(read.text, read.format),
+        format: read.format,
+      })
+    })
+  }
+  return { importFile, error }
+>>>>>>> origin/claude/project-thread-l81mot
 }
 
 function AddMenu({
@@ -273,7 +303,11 @@ function AddMenu({
 }: {
   onAdd: (kind: UmlDiagramKind) => void
   /** Present when the app takes views from files. */
+<<<<<<< HEAD
   onImport?: (files: File[]) => void
+=======
+  onImport?: (file: File) => void
+>>>>>>> origin/claude/project-thread-l81mot
 }) {
   const { messages } = useCoreloomI18n()
   const input = React.useRef<HTMLInputElement>(null)
@@ -325,7 +359,11 @@ function AddMenu({
           onChange={(e) => {
             const file = e.currentTarget.files?.[0]
             e.currentTarget.value = ''
+<<<<<<< HEAD
             if (file) onImport([file])
+=======
+            if (file) onImport(file)
+>>>>>>> origin/claude/project-thread-l81mot
           }}
         />
       )}
@@ -335,7 +373,7 @@ function AddMenu({
 
 type ViewsPanelProps = Pick<
   DiagramWorkspaceProps,
-  'diagrams' | 'activeId' | 'onAdd' | 'onRename' | 'onReorder' | 'onDelete'
+  'diagrams' | 'activeId' | 'onAdd' | 'onImport' | 'onRename' | 'onReorder' | 'onDelete'
 > & {
   /** A view was opened from the list. */
   onOpen: (id: string) => void
@@ -351,13 +389,18 @@ function ViewsPanel({
   activeId,
   onOpen,
   onAdd,
+<<<<<<< HEAD
   importFiles,
   importError,
+=======
+  onImport,
+>>>>>>> origin/claude/project-thread-l81mot
   onRename,
   onReorder,
   onDelete,
 }: ViewsPanelProps) {
   const t = useCoreloomI18n().messages.diagramWorkspace
+  const imports = useWorkspaceImport(onImport)
   const [reordering, setReordering] = React.useState(false)
   const [renaming, setRenaming] = React.useState<string | null>(null)
   const list = React.useRef<HTMLDivElement>(null)
@@ -383,11 +426,19 @@ function ViewsPanel({
         >
           {reordering ? t.reorderDone : t.reorder}
         </Button>
+<<<<<<< HEAD
         <AddMenu onAdd={onAdd} onImport={importFiles} />
       </div>
       {/* Says why a picked or dropped file didn't become a view; empty otherwise. */}
       <p role="status" className="m-0 text-[12.5px] text-destructive empty:sr-only">
         {importError}
+=======
+        <AddMenu onAdd={onAdd} onImport={onImport ? imports.importFile : undefined} />
+      </div>
+      {/* Says why a picked file didn't become a view; empty otherwise. */}
+      <p role="status" className="m-0 text-[12.5px] text-destructive empty:sr-only">
+        {imports.error}
+>>>>>>> origin/claude/project-thread-l81mot
       </p>
       {reordering ? (
         <SortableList
@@ -500,14 +551,21 @@ function DiagramWorkspace({
   const [sheet, setSheet] = React.useState(false)
   const active = diagrams.find((item) => item.id === activeId) ?? diagrams.at(0)
   const reports = useEditorReports(active, onDiagramChange)
+<<<<<<< HEAD
   const imports = useWorkspaceImport(onImport)
   const drop = useFileDrop({ enabled: onImport !== undefined, onFiles: imports.importFiles })
+=======
+>>>>>>> origin/claude/project-thread-l81mot
   const panel = {
     diagrams,
     activeId: active?.id ?? '',
     onAdd,
+<<<<<<< HEAD
     importFiles: onImport ? imports.importFiles : undefined,
     importError: imports.error,
+=======
+    onImport,
+>>>>>>> origin/claude/project-thread-l81mot
     onRename,
     onReorder,
     onDelete,

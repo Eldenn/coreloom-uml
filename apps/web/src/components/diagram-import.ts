@@ -108,6 +108,7 @@ function useFileImport({
   return { importFile, notice, clear }
 }
 
+<<<<<<< HEAD
 /** True when what is dragged holds files (not text or a link from the page). */
 function draggingFiles(event: React.DragEvent): boolean {
   return Array.from(event.dataTransfer.types).includes('Files')
@@ -153,6 +154,8 @@ function useFileDrop({ enabled, onFiles }: { enabled: boolean; onFiles: (files: 
   return { dragging: enabled && dragging, handlers }
 }
 
+=======
+>>>>>>> origin/claude/project-thread-l81mot
 export {
   DIAGRAM_FILE_ACCEPT,
   type DiagramFileRead,
@@ -162,6 +165,9 @@ export {
   readDiagramFile,
   sniffFormat,
   titleOfFile,
+<<<<<<< HEAD
   useFileDrop,
+=======
+>>>>>>> origin/claude/project-thread-l81mot
   useFileImport,
 }
