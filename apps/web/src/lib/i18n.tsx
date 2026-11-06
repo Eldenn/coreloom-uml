@@ -2534,10 +2534,7 @@ const en = {
     reorderDone: 'Done',
     order: 'Order of the views',
     importFile: 'Import a file…',
-<<<<<<< HEAD
     dropFiles: 'Drop diagram files to add them as views',
-=======
->>>>>>> origin/claude/project-thread-l81mot
   },
   diagramEditor: {
     label: 'Diagram editor',
@@ -5381,10 +5378,7 @@ const fr: Messages = {
     reorderDone: 'Terminé',
     order: 'Ordre des vues',
     importFile: 'Importer un fichier…',
-<<<<<<< HEAD
     dropFiles: 'Déposez des fichiers de diagramme pour les ajouter comme vues',
-=======
->>>>>>> origin/claude/project-thread-l81mot
   },
   diagramEditor: {
     label: 'Éditeur de diagramme',
