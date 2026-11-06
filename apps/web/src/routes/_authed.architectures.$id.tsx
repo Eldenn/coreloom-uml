@@ -81,6 +81,8 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
   const remove = useDeleteDiagram(architecture.id)
   const reorder = useReorderDiagrams(architecture.id)
   const [sharing, setSharing] = React.useState(false)
+  // Imported files waiting for the views before them to be added.
+  const imports = React.useRef<Promise<void>>(Promise.resolve())
   const queryClient = useQueryClient()
 
   const diagrams = architecture.diagrams
@@ -154,15 +156,18 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
             toast.error(t.editor.importUnsupported)
             return
           }
-          add.mutate(
-            { title, kind },
-            {
-              onSuccess: ({ diagram }) => {
+          // Several dropped files arrive in one event: they are added one after the other, in
+          // order, each with its own text (mutate's callbacks would only run for the last one).
+          imports.current = imports.current.then(() =>
+            add.mutateAsync({ title, kind }).then(
+              ({ diagram }) => {
                 select(diagram.id)
                 autosave.onDiagramChange(diagram, value, result, format)
               },
-              onError: failed,
-            },
+              (error: unknown) => {
+                failed(error)
+              },
+            ),
           )
         }}
         onRename={(viewId, title) => {
