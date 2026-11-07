@@ -53,5 +53,10 @@ export interface ApiDefinition {
     avatarShow: typeof routes['account.avatar_show']
     avatarUpdate: typeof routes['account.avatar_update']
     avatarDestroy: typeof routes['account.avatar_destroy']
+    apiTokens: {
+      index: typeof routes['account.api_tokens.index']
+      store: typeof routes['account.api_tokens.store']
+      destroy: typeof routes['account.api_tokens.destroy']
+    }
   }
 }

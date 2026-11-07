@@ -1,6 +1,6 @@
 import router from '@adonisjs/core/services/router'
 import { middleware } from '#start/kernel'
-import { authThrottle } from '#start/limiter'
+import { apiTokenThrottle, authThrottle } from '#start/limiter'
 
 /*
 |--------------------------------------------------------------------------
@@ -143,7 +143,8 @@ router
   .prefix('/architectures')
   .where('id', router.matchers.number())
   .where('diagramId', router.matchers.number())
-  .use(middleware.auth())
+  // The session or an API token (see `app/api-tokens`).
+  .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
 
 /*
 |--------------------------------------------------------------------------
@@ -208,5 +209,16 @@ router
     router.get('/account/avatar', [avatarController, 'show']).as('account.avatar_show')
     router.post('/account/avatar', [avatarController, 'update']).as('account.avatar_update')
     router.delete('/account/avatar', [avatarController, 'destroy']).as('account.avatar_destroy')
+
+    // API tokens: managed with the session only (a token cannot mint tokens).
+    const apiTokensController = () => import('#app/api-tokens/controllers/api-tokens-controller')
+    router.get('/account/api-tokens', [apiTokensController, 'index']).as('account.api_tokens.index')
+    router
+      .post('/account/api-tokens', [apiTokensController, 'store'])
+      .as('account.api_tokens.store')
+    router
+      .delete('/account/api-tokens/:id', [apiTokensController, 'destroy'])
+      .as('account.api_tokens.destroy')
+      .where('id', router.matchers.number())
   })
   .use(middleware.auth())

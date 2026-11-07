@@ -1,12 +1,13 @@
 // Account and appearance settings. The default account (managed by the server configuration)
 // keeps its email and password read-only: only its display name can change here.
 import { PASSWORD_POLICY } from '@coreloom-uml/auth-policy'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { InfoIcon } from 'lucide-react'
 import { z } from 'zod'
 
 import { useAuth } from '@/auth/auth-context'
+import { type ApiKeyInput, ApiKeys } from '@/components/api-keys'
 import { SettingsLayout } from '@/components/settings-layout'
 import { SettingsRow, SettingsSection } from '@/components/settings-section'
 import { AccentPicker, ThemeMenu } from '@/components/theme-toggle'
@@ -41,6 +42,7 @@ function SettingsPage() {
       ) : (
         <PasswordSection />
       )}
+      <ApiTokensSection />
       <SettingsSection title={t.settings.appearance}>
         <SettingsRow label={t.settings.theme}>
           <ThemeMenu />
@@ -135,5 +137,67 @@ function PasswordSection() {
         )}
       </form.AppField>
     </SettingsSection>
+  )
+}
+
+const API_TOKENS_QUERY_KEY = ['account', 'api-tokens'] as const
+
+/** API keys (tokens) for scripts and agents: listed, created (secret shown once) and revoked. */
+function ApiTokensSection() {
+  const t = useT()
+  const queryClient = useQueryClient()
+  const tokens = useQuery({
+    queryKey: API_TOKENS_QUERY_KEY,
+    queryFn: () => client.api.account.apiTokens.index({}),
+  })
+  const refresh = () => queryClient.invalidateQueries({ queryKey: API_TOKENS_QUERY_KEY })
+  const create = useMutation({
+    mutationFn: (input: ApiKeyInput) =>
+      client.api.account.apiTokens.store({
+        body: {
+          name: input.name,
+          abilities: input.scopes as ('read' | 'write')[],
+          expiresInDays: input.expiresInDays,
+        },
+      }),
+    onSuccess: refresh,
+  })
+  const revoke = useMutation({
+    mutationFn: (id: number) => client.api.account.apiTokens.destroy({ params: { id } }),
+    onSuccess: async () => {
+      await refresh()
+      toast.success(t.settings.apiTokenRevoked)
+    },
+    onError: () => toast.error(t.settings.apiTokenRevokeFailed),
+  })
+
+  return (
+    <ApiKeys
+      description={t.settings.apiTokensHint}
+      scopes={[
+        { value: 'read', label: t.settings.scopeRead, description: t.settings.scopeReadHint },
+        { value: 'write', label: t.settings.scopeWrite, description: t.settings.scopeWriteHint },
+      ]}
+      keys={(tokens.data?.data ?? []).map((token) => ({
+        id: String(token.id),
+        name: token.name,
+        prefix: token.prefix,
+        last4: token.hint,
+        scopes: token.abilities,
+        createdAt: new Date(token.createdAt),
+        lastUsedAt: token.lastUsedAt ? new Date(token.lastUsedAt) : undefined,
+        expiresAt: token.expiresAt ? new Date(token.expiresAt) : undefined,
+      }))}
+      onCreate={async (input) => {
+        try {
+          const { secret } = await create.mutateAsync(input)
+          return { secret }
+        } catch (error) {
+          toast.error(t.settings.apiTokenCreateFailed)
+          throw error
+        }
+      }}
+      onRevoke={(id) => revoke.mutate(Number(id))}
+    />
   )
 }

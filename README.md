@@ -59,7 +59,7 @@ stripped down); the whole front end is built with [coreloom-ui](https://github.c
 | Package manager | pnpm (workspaces) |
 | Monorepo orchestration | Turborepo (local cache only) |
 | Backend | AdonisJS v7 |
-| Auth | `@adonisjs/auth` session guard, file-backed sessions — no Redis |
+| Auth | `@adonisjs/auth` session guard, file-backed sessions — no Redis; access tokens guard for API keys |
 | Frontend | React 19 + Vite + TanStack Router, every component from [coreloom-ui](https://github.com/eldenn/coreloom-ui) (shadcn registry `@coreloom`, see `apps/web/AGENTS.md`) |
 | Data fetching (web) | TanStack Query (`@tanstack/react-query`) — every API read/write goes through a query/mutation hook wrapping the Tuyau client |
 | Forms (web) | TanStack Form through coreloom-ui's `useAppForm`, validated with zod |
@@ -197,6 +197,24 @@ via `@adonisjs/mail`. Password-reset and verification links are stateless
 signed/encrypted tokens (`AdonisJS`'s `encryption` service, see
 `app/auth/services/email-token.ts`) — no extra database table, and a reset
 link is invalidated the moment the linked password actually changes.
+
+### API keys
+
+Scripts and agents reach the architectures API with an API key instead of a
+session: `Authorization: Bearer clu_…`. Keys are created, listed and revoked
+from the Settings page (`/account/api-tokens`, session only — a key cannot
+manage keys). They use `@adonisjs/auth`'s access tokens guard (`api`), stored
+hashed in `auth_access_tokens`; the secret is shown once, at creation.
+
+- Each key is named, has a `read` and/or `write` ability, and expires after
+  1 to 365 days or never. `GET` needs `read`, every other method `write`
+  (403 otherwise).
+- Only the `/architectures` routes accept a key
+  (`middleware.auth({ guards: ['web', 'api'] })` + `middleware.tokenAbility()`).
+- A key cannot `force` a diagram save: on a version conflict it gets the 409
+  and must reload the latest version.
+- Each key is limited to 120 requests per minute (`apiTokenThrottle`); an
+  account holds 20 keys at most. Both are in `app/api-tokens/constants`.
 
 ### Security headers
 
