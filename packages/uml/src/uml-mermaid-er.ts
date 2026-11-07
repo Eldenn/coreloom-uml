@@ -7,7 +7,7 @@ import type {
   ErRelation,
   UmlDirection,
   UmlProblem,
-} from '@/lib/uml'
+} from './uml.ts'
 import {
   type Groups,
   match,
@@ -17,7 +17,7 @@ import {
   STYLING,
   titleBlock,
   unquote,
-} from '@/lib/uml-text'
+} from './uml-text.ts'
 
 const ID = '[A-Za-z_][\\w-]*'
 const ENTITY = new RegExp(`^(${ID})(?:\\["([^"]*)"\\])?\\s*(\\{)?\\s*(\\})?$`)

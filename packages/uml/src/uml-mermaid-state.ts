@@ -6,7 +6,7 @@ import type {
   UmlNote,
   UmlProblem,
   UmlState,
-} from '@/lib/uml'
+} from './uml.ts'
 import {
   type Groups,
   match,
@@ -16,7 +16,7 @@ import {
   STYLING,
   titleBlock,
   unquote,
-} from '@/lib/uml-text'
+} from './uml-text.ts'
 
 const ID = '(?:\\[\\*\\]|[\\w.]+)'
 const TRANSITION = new RegExp(

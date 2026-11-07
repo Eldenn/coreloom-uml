@@ -1,11 +1,11 @@
-import type { UmlNote, UmlProblem } from '@/lib/uml'
+import type { UmlNote, UmlProblem } from './uml.ts'
 import type {
   ActivityDiagram,
   ActivityFlow,
   ActivityNode,
   ActivityNodeKind,
-} from '@/lib/uml-elements'
-import { match, problem, type SourceLine, unquote } from '@/lib/uml-text'
+} from './uml-elements.ts'
+import { match, problem, type SourceLine, unquote } from './uml-text.ts'
 
 /** Where the next node connects from: a node, with the guard its flow carries. */
 interface Tail {
@@ -195,14 +195,20 @@ function readFlowWord(p: ActivityParse, text: string, line: SourceLine): boolean
 
 function readStructure(p: ActivityParse, text: string, line: SourceLine): boolean {
   const ifOpen = match(IF, text)
-  if (ifOpen) return (openIf(p, ifOpen, line), true)
+  if (ifOpen) {
+    openIf(p, ifOpen, line)
+    return true
+  }
   const elseIf = match(ELSEIF, text)
   if (elseIf) {
     nextBranch(p, [elseIf[1], elseIf[2]].filter(Boolean).join(': '), line, false)
     return true
   }
   const elseBranch = match(ELSE, text)
-  if (elseBranch) return (nextBranch(p, elseBranch[1], line, true), true)
+  if (elseBranch) {
+    nextBranch(p, elseBranch[1], line, true)
+    return true
+  }
   const loop = match(WHILE, text)
   if (loop) {
     const decision = addNode(p, 'decision', unquote(loop[1] ?? ''))

@@ -1,6 +1,7 @@
 // Autosave for the diagrams of one architecture: keeps each view's text while it's edited, and
 // saves the diagram it reads (UML JSON) a moment after the last change, with the version it was
 // based on so a save from another tab is never overwritten silently (RM-16).
+import { isPlantUml, type UmlParseResult, type UmlSpec } from '@coreloom-uml/uml'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 
@@ -18,8 +19,6 @@ import {
   useSaveDiagram,
 } from '@/lib/architectures'
 import { TuyauError } from '@/lib/client'
-import type { UmlParseResult, UmlSpec } from '@/lib/uml'
-import { isPlantUml } from '@/lib/uml-plantuml'
 
 /** Quiet time after the last change before the changes are saved. */
 const AUTOSAVE_DELAY_MS = 1200

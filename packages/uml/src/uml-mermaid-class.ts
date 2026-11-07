@@ -8,7 +8,7 @@ import type {
   UmlDirection,
   UmlNote,
   UmlProblem,
-} from '@/lib/uml'
+} from './uml.ts'
 import {
   type Groups,
   match,
@@ -18,7 +18,7 @@ import {
   STYLING,
   titleBlock,
   unquote,
-} from '@/lib/uml-text'
+} from './uml-text.ts'
 
 const ID = '[A-Za-z_][\\w]*'
 const GENERIC = '(?:~([^~]+)~)?'
@@ -48,7 +48,8 @@ const SIGN: Record<ClassVisibility, string> = {
 }
 
 type Scope =
-  { type: 'class'; cls: UmlClass } | { type: 'namespace'; name: string; line: SourceLine }
+  | { type: 'class'; cls: UmlClass }
+  | { type: 'namespace'; name: string; line: SourceLine }
 
 interface ClassState {
   classes: Map<string, UmlClass>

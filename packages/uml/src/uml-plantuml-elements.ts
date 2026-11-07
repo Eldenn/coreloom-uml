@@ -1,4 +1,4 @@
-import type { UmlDirection, UmlNote, UmlProblem } from '@/lib/uml'
+import type { UmlDirection, UmlNote, UmlProblem } from './uml.ts'
 import type {
   DeploymentDiagram,
   DeploymentNode,
@@ -7,8 +7,8 @@ import type {
   UseCaseDiagram,
   UseCaseElement,
   UseCaseRelation,
-} from '@/lib/uml-elements'
-import { match, problem, type SourceLine, unquote, withoutColors } from '@/lib/uml-text'
+} from './uml-elements.ts'
+import { match, problem, type SourceLine, unquote, withoutColors } from './uml-text.ts'
 
 /** `"Long name" as id`, `id as "Long name"`, `:Long name: as id`, `(Name) as id`, or `id`. */
 const NAMED =

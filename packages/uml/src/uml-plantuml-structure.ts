@@ -1,4 +1,4 @@
-import type { UmlProblem } from '@/lib/uml'
+import type { UmlProblem } from './uml.ts'
 import type {
   ComponentDiagram,
   ComponentElement,
@@ -8,7 +8,7 @@ import type {
   PackageElement,
   PackageElementKind,
   PackageRelation,
-} from '@/lib/uml-elements'
+} from './uml-elements.ts'
 import {
   arrowOf,
   commonLine,
@@ -23,8 +23,8 @@ import {
   readNamed,
   STEREOTYPE,
   wrap,
-} from '@/lib/uml-plantuml-elements'
-import { match, problem, type SourceLine, withoutColors } from '@/lib/uml-text'
+} from './uml-plantuml-elements.ts'
+import { match, problem, type SourceLine, withoutColors } from './uml-text.ts'
 
 /** `name <<stereotype>> {`: the name and alias, the stereotype, and whether it opens a block. */
 function declared(text: string) {

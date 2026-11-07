@@ -24,6 +24,16 @@
     "allowImportingTsExtensions": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "paths": { "@/*": ["./src/*"] }
+    // The UML model and its Mermaid/PlantUML/JSON conversion live in `packages/uml`, shared with
+    // the API. Registry components still import them from `@/lib/uml*`, so those paths point
+    // there (keep in sync with `UML_SHARED` in vite.config.ts).
+    "paths": {
+      "@/lib/uml": ["../../packages/uml/src/uml.ts"],
+      "@/lib/uml-elements": ["../../packages/uml/src/uml-elements.ts"],
+      "@/lib/uml-text": ["../../packages/uml/src/uml-text.ts"],
+      "@/lib/uml-mermaid*": ["../../packages/uml/src/uml-mermaid*.ts"],
+      "@/lib/uml-plantuml*": ["../../packages/uml/src/uml-plantuml*.ts"],
+      "@/*": ["./src/*"]
+    }
   }
 }

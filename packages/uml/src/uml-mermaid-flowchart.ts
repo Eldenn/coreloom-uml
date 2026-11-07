@@ -1,10 +1,10 @@
-import type { UmlDirection, UmlProblem } from '@/lib/uml'
+import type { UmlDirection, UmlProblem } from './uml.ts'
 import type {
   ActivityDiagram,
   ActivityFlow,
   ActivityNode,
   ActivityNodeKind,
-} from '@/lib/uml-elements'
+} from './uml-elements.ts'
 import {
   type Groups,
   lineBreaks,
@@ -15,7 +15,7 @@ import {
   type SourceLine,
   titleBlock,
   unquote,
-} from '@/lib/uml-text'
+} from './uml-text.ts'
 
 const HEADER = /^(?:flowchart|graph)(?:\s+(TB|TD|BT|LR|RL))?\s*;?$/
 const SUBGRAPH = /^subgraph\s+([\w.-]+)(?:\s*\[(.*)\])?\s*$|^subgraph\s+"?([^"]+?)"?\s*$/

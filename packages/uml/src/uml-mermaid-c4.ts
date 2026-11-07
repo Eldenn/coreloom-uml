@@ -6,8 +6,8 @@ import type {
   C4Level,
   C4Relation,
   UmlProblem,
-} from '@/lib/uml'
-import { type Groups, macroArgs, match, problem, quote, type SourceLine } from '@/lib/uml-text'
+} from './uml.ts'
+import { type Groups, macroArgs, match, problem, quote, type SourceLine } from './uml-text.ts'
 
 const MACRO = /^(\w+)\s*\((.*)\)\s*(\{)?$/
 const HEADERS: Partial<Record<string, C4Level>> = {

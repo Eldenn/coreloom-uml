@@ -1,5 +1,6 @@
 // One architecture in the Coreloom diagram workspace: its views on the side, the open one in the
 // editor, saved automatically, and the Share dialog for its link and access code.
+import type { UmlDiagramKind } from '@coreloom-uml/uml'
 import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { Share2Icon } from 'lucide-react'
@@ -29,7 +30,6 @@ import {
 import { getErrorMessage } from '@/lib/client'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { useT } from '@/lib/locale'
-import type { UmlDiagramKind } from '@/lib/uml'
 import { useDiagramAutosave } from '@/lib/use-diagram-autosave'
 
 export const Route = createFileRoute('/_authed/architectures/$id')({

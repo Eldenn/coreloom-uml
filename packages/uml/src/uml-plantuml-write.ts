@@ -1,4 +1,4 @@
-// Coreloom UI — writing PlantUML. `toPlantUml` gives any diagram as `@startuml` text: classes with
+// Coreloom UML — writing PlantUML. `toPlantUml` gives any diagram as `@startuml` text: classes with
 // their members and relations, states, sequence steps, entities with crow's feet, C4 through the
 // C4-PlantUML macros, use cases, deployment nodes, and activities in PlantUML's arrow syntax.
 // Positions people dragged go in a `' coreloom-layout {…}` comment line before `@enduml`.
@@ -15,13 +15,13 @@ import type {
   UmlDirection,
   UmlNote,
   UmlSpec,
-} from '@/lib/uml'
-import { c4ToMermaid } from '@/lib/uml-mermaid-c4'
-import { erRelationMarks } from '@/lib/uml-mermaid-er'
-import { activityToPlantUml } from '@/lib/uml-plantuml-activity'
-import { deploymentToPlantUml, usecaseToPlantUml, wrap } from '@/lib/uml-plantuml-elements'
-import { componentToPlantUml, packageToPlantUml } from '@/lib/uml-plantuml-structure'
-import { layoutLine } from '@/lib/uml-text'
+} from './uml.ts'
+import { c4ToMermaid } from './uml-mermaid-c4.ts'
+import { erRelationMarks } from './uml-mermaid-er.ts'
+import { activityToPlantUml } from './uml-plantuml-activity.ts'
+import { deploymentToPlantUml, usecaseToPlantUml, wrap } from './uml-plantuml-elements.ts'
+import { componentToPlantUml, packageToPlantUml } from './uml-plantuml-structure.ts'
+import { layoutLine } from './uml-text.ts'
 
 /** Text PlantUML reads on one line: line breaks as `\n`. */
 const flat = (text: string) => text.replace(/\r?\n/g, '\\n')
