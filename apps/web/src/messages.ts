@@ -99,6 +99,15 @@ export const en = {
     emailInvalid: 'Enter a valid email address.',
     currentPasswordRequired: 'Enter your current password.',
     wrongPassword: 'Your current password is incorrect.',
+    apiTokensHint:
+      'API keys let scripts and agents use your architectures through the API, with an Authorization: Bearer header.',
+    scopeRead: 'Read',
+    scopeReadHint: 'List and open architectures and their diagrams.',
+    scopeWrite: 'Write',
+    scopeWriteHint: 'Create, change and delete them. Cannot overwrite changes made elsewhere.',
+    apiTokenCreateFailed: 'The key could not be created.',
+    apiTokenRevoked: 'Key revoked.',
+    apiTokenRevokeFailed: 'The key could not be revoked.',
   },
 }
 
@@ -204,5 +213,15 @@ export const fr: Messages = {
     emailInvalid: 'Saisissez une adresse email valide.',
     currentPasswordRequired: 'Saisissez votre mot de passe actuel.',
     wrongPassword: 'Votre mot de passe actuel est incorrect.',
+    apiTokensHint:
+      'Les clés permettent à des scripts et à des agents d’utiliser vos architectures par l’API, avec un en-tête Authorization: Bearer.',
+    scopeRead: 'Lecture',
+    scopeReadHint: 'Lister et ouvrir les architectures et leurs diagrammes.',
+    scopeWrite: 'Écriture',
+    scopeWriteHint:
+      'Les créer, les modifier et les supprimer. Sans écraser des modifications faites ailleurs.',
+    apiTokenCreateFailed: 'La clé n’a pas pu être créée.',
+    apiTokenRevoked: 'Clé révoquée.',
+    apiTokenRevokeFailed: 'La clé n’a pas pu être révoquée.',
   },
 }
