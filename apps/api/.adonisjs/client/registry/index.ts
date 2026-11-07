@@ -132,6 +132,18 @@ const routes = {
     tokens: [{"old":"/architectures/:id/diagrams/:diagramId","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/diagrams/:diagramId","type":1,"val":"id","end":""},{"old":"/architectures/:id/diagrams/:diagramId","type":0,"val":"diagrams","end":""},{"old":"/architectures/:id/diagrams/:diagramId","type":1,"val":"diagramId","end":""}],
     types: placeholder as Registry['architectures.diagrams.destroy']['types'],
   },
+  'architectures.diagrams.source_show': {
+    methods: ["GET","HEAD"],
+    pattern: '/architectures/:id/diagrams/:diagramId/source',
+    tokens: [{"old":"/architectures/:id/diagrams/:diagramId/source","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/diagrams/:diagramId/source","type":1,"val":"id","end":""},{"old":"/architectures/:id/diagrams/:diagramId/source","type":0,"val":"diagrams","end":""},{"old":"/architectures/:id/diagrams/:diagramId/source","type":1,"val":"diagramId","end":""},{"old":"/architectures/:id/diagrams/:diagramId/source","type":0,"val":"source","end":""}],
+    types: placeholder as Registry['architectures.diagrams.source_show']['types'],
+  },
+  'architectures.diagrams.source_update': {
+    methods: ["PUT"],
+    pattern: '/architectures/:id/diagrams/:diagramId/source',
+    tokens: [{"old":"/architectures/:id/diagrams/:diagramId/source","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/diagrams/:diagramId/source","type":1,"val":"id","end":""},{"old":"/architectures/:id/diagrams/:diagramId/source","type":0,"val":"diagrams","end":""},{"old":"/architectures/:id/diagrams/:diagramId/source","type":1,"val":"diagramId","end":""},{"old":"/architectures/:id/diagrams/:diagramId/source","type":0,"val":"source","end":""}],
+    types: placeholder as Registry['architectures.diagrams.source_update']['types'],
+  },
   'architectures.sharing.show': {
     methods: ["GET","HEAD"],
     pattern: '/architectures/:id/sharing',
@@ -155,6 +167,12 @@ const routes = {
     pattern: '/architectures/:id/sharing/regenerate-code',
     tokens: [{"old":"/architectures/:id/sharing/regenerate-code","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/sharing/regenerate-code","type":1,"val":"id","end":""},{"old":"/architectures/:id/sharing/regenerate-code","type":0,"val":"sharing","end":""},{"old":"/architectures/:id/sharing/regenerate-code","type":0,"val":"regenerate-code","end":""}],
     types: placeholder as Registry['architectures.sharing.regenerate_code']['types'],
+  },
+  'uml.validate': {
+    methods: ["POST"],
+    pattern: '/uml/validate',
+    tokens: [{"old":"/uml/validate","type":0,"val":"uml","end":""},{"old":"/uml/validate","type":0,"val":"validate","end":""}],
+    types: placeholder as Registry['uml.validate']['types'],
   },
   'shared.show': {
     methods: ["GET","HEAD"],

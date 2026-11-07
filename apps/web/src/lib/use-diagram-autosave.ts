@@ -36,7 +36,7 @@ interface Pending {
 /** The text a diagram opens with: its saved content, or the template for its kind. */
 function initialDraft(diagram: Diagram): Draft {
   if (diagram.content) {
-    const spec = diagram.content as unknown as UmlSpec
+    const spec = diagram.content
     const format: DiagramFormat = canWrite(spec.kind, diagram.format) ? diagram.format : 'json'
     return { value: writeDiagram(spec, format), format }
   }
@@ -75,7 +75,7 @@ export function useDiagramAutosave(architecture: ArchitectureDetail) {
         try {
           await save.mutateAsync({
             diagramId,
-            content: change.content as unknown as NonNullable<Diagram['content']>,
+            content: change.content,
             format: change.format,
             version: current.version,
             force,

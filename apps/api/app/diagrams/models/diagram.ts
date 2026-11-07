@@ -1,11 +1,12 @@
 import { BaseModel, belongsTo, column } from '@adonisjs/lucid/orm'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
+import type { UmlSpec } from '@coreloom-uml/uml'
 import type { DateTime } from 'luxon'
 import Architecture from '#app/architectures/models/architecture'
 import type { DiagramFormat, DiagramKind } from '#app/diagrams/constants/diagram'
 
-/** The coreloom-ui UML JSON, kept as an opaque object on this side. */
-export type DiagramContent = { kind: DiagramKind } & Record<string, unknown>
+/** The UML JSON of `@coreloom-uml/uml`, layout included, checked by `validateDiagram` on save. */
+export type DiagramContent = UmlSpec
 
 /** One UML diagram (a view) of an architecture. */
 export default class Diagram extends BaseModel {

@@ -120,9 +120,110 @@ test.group('Architectures - diagrams', (group) => {
       .patch(`/architectures/${architecture.id}/diagrams/${firstId}`)
       .headers(json)
       .loginAs(user)
-      .json({ content: { kind: 'class', note: 'x'.repeat(1_000_001) }, version: 1 })
+      .json({
+        content: { kind: 'class', classes: [{ id: 'x'.repeat(1_000_001) }], relations: [] },
+        version: 1,
+      })
 
     response.assertStatus(422)
+    response.assertBodyContains({ error: { problems: [{ severity: 'error' }] } })
+  })
+
+  test('refuses content the UML schema does not accept, with its problems', async ({
+    client,
+    assert,
+  }) => {
+    const { user, architecture, firstId } = await setup(client)
+
+    const response = await client
+      .patch(`/architectures/${architecture.id}/diagrams/${firstId}`)
+      .headers(json)
+      .loginAs(user)
+      .json({ content: { kind: 'class', classes: [{ name: 'Order' }] }, version: 1 })
+
+    response.assertStatus(422)
+    const { problems } = response.body().error
+    assert.isAbove(problems.length, 0)
+    assert.isTrue(problems.every((p: { code: string }) => p.code === 'schema'))
+    assert.isTrue(problems.some((p: { text: string }) => p.text.startsWith('relations')))
+  })
+
+  test('creates a diagram from Mermaid text', async ({ client, assert }) => {
+    const { user, architecture } = await setup(client)
+
+    const response = await client
+      .post(`/architectures/${architecture.id}/diagrams`)
+      .headers(json)
+      .loginAs(user)
+      .json({ title: 'Domain', source: 'classDiagram\n  Order --> Customer : places\n' })
+
+    response.assertStatus(201)
+    response.assertBodyContains({
+      diagram: {
+        title: 'Domain',
+        kind: 'class',
+        format: 'mermaid',
+        version: 1,
+        content: {
+          kind: 'class',
+          classes: [{ id: 'Order' }, { id: 'Customer' }],
+          relations: [{ from: 'Order', to: 'Customer', label: 'places' }],
+        },
+      },
+      problems: [],
+    })
+    assert.equal(response.body().diagram.position, 1)
+  })
+
+  test('creates a diagram from PlantUML text in the format it is given', async ({ client }) => {
+    const { user, architecture } = await setup(client)
+
+    const response = await client
+      .post(`/architectures/${architecture.id}/diagrams`)
+      .headers(json)
+      .loginAs(user)
+      .json({
+        title: 'Flow',
+        kind: 'sequence',
+        format: 'plantuml',
+        source: '@startuml\nAlice -> Bob : hello\n@enduml\n',
+      })
+
+    response.assertStatus(201)
+    response.assertBodyContains({ diagram: { kind: 'sequence', format: 'plantuml' } })
+  })
+
+  test('refuses text it cannot read, a kind that does not match, or no kind', async ({
+    client,
+  }) => {
+    const { user, architecture } = await setup(client)
+    const url = `/architectures/${architecture.id}/diagrams`
+
+    const unreadable = await client
+      .post(url)
+      .headers(json)
+      .loginAs(user)
+      .json({ title: 'Broken', source: 'classDiagram\n  class A\n  ??? nope\n' })
+    unreadable.assertStatus(422)
+    unreadable.assertBodyContains({ error: { problems: [{ line: 3, severity: 'error' }] } })
+
+    const unknown = await client
+      .post(url)
+      .headers(json)
+      .loginAs(user)
+      .json({ title: 'Prose', source: 'just some words' })
+    unknown.assertStatus(422)
+    unknown.assertBodyContains({ error: { problems: [{ code: 'header' }] } })
+
+    const mismatch = await client
+      .post(url)
+      .headers(json)
+      .loginAs(user)
+      .json({ title: 'Mismatch', kind: 'er', source: 'classDiagram\n  class A\n' })
+    mismatch.assertStatus(422)
+
+    const neither = await client.post(url).headers(json).loginAs(user).json({ title: 'Nothing' })
+    neither.assertStatus(422)
   })
 
   test('reorders the diagrams, and only with the full list', async ({ client }) => {
