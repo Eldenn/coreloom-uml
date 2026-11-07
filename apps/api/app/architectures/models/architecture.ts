@@ -3,15 +3,23 @@ import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import type { DateTime } from 'luxon'
 import type { ArchitectureVisibility } from '#app/architectures/constants/visibility'
 import Diagram from '#app/diagrams/models/diagram'
+import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
 
-/** A software architecture: a titled set of UML diagrams (its views), owned by one user. */
+/**
+ * A software architecture: a titled set of UML diagrams (its views), owned by
+ * one user and held by one of their projects.
+ */
 export default class Architecture extends BaseModel {
   @column({ isPrimary: true })
   declare id: number
 
   @column()
   declare userId: number
+
+  /** Always one of the owner's projects. */
+  @column()
+  declare projectId: number
 
   @column()
   declare title: string
@@ -40,6 +48,9 @@ export default class Architecture extends BaseModel {
 
   @belongsTo(() => User)
   declare user: BelongsTo<typeof User>
+
+  @belongsTo(() => Project)
+  declare project: BelongsTo<typeof Project>
 
   @hasMany(() => Diagram)
   declare diagrams: HasMany<typeof Diagram>

@@ -16,12 +16,13 @@ import {
   updateArchitectureInput,
 } from '#app/architectures/validators/architectures-input'
 import { DEFAULT_DIAGRAM } from '#app/diagrams/constants/diagram'
+import {
+  defaultProjectFor,
+  findOwnedProject,
+  PROJECT_NOT_FOUND,
+} from '#app/projects/services/owned-project'
+import { likePattern } from '#app/shared/database/like-pattern'
 import { paginate } from '#app/shared/pagination/paginate'
-
-/** Escapes LIKE wildcards so a search for `50%` matches the text `50%`. */
-function likePattern(search: string) {
-  return `%${search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`
-}
 
 /**
  * The signed-in user's architectures — the reference user-owned resource:
@@ -29,7 +30,7 @@ function likePattern(search: string) {
  */
 export default class ArchitecturesController {
   async index({ request, auth, response }: HttpContext) {
-    const { page, perPage, search, visibility } =
+    const { page, perPage, projectId, search, visibility } =
       await request.validateUsing(listArchitecturesInput)
     const user = auth.getUserOrFail()
 
@@ -38,6 +39,7 @@ export default class ArchitecturesController {
       .preload('diagrams', (diagrams) => diagrams.orderBy('position', 'asc'))
       .orderBy('updatedAt', 'desc')
       .orderBy('id', 'desc')
+    if (projectId) query.where('projectId', projectId)
     if (search) query.whereILike('title', likePattern(search))
     if (visibility) query.where('visibility', visibility)
 
@@ -45,13 +47,18 @@ export default class ArchitecturesController {
   }
 
   async store({ request, auth, response }: HttpContext) {
-    const { title, description, diagram } = await request.validateUsing(createArchitectureInput)
+    const { projectId, title, description, diagram } =
+      await request.validateUsing(createArchitectureInput)
     const user = auth.getUserOrFail()
+
+    const project = projectId ? await findOwnedProject(projectId, user) : null
+    if (projectId && !project) return response.notFound(PROJECT_NOT_FOUND)
 
     const architecture = await db.transaction(async (trx) => {
       const created = await Architecture.create(
         {
           userId: user.id,
+          projectId: (project ?? (await defaultProjectFor(user, trx))).id,
           title,
           description: description ?? null,
           visibility: ArchitectureVisibility.Private,
@@ -81,12 +88,15 @@ export default class ArchitecturesController {
   }
 
   async update({ params, request, auth, response }: HttpContext) {
-    const architecture = await findOwnedArchitecture(params.id, auth.getUserOrFail(), {
-      withDiagrams: true,
-    })
+    const user = auth.getUserOrFail()
+    const architecture = await findOwnedArchitecture(params.id, user, { withDiagrams: true })
     if (!architecture) return response.notFound(ARCHITECTURE_NOT_FOUND)
 
-    const { title, description } = await request.validateUsing(updateArchitectureInput)
+    const { projectId, title, description } = await request.validateUsing(updateArchitectureInput)
+    if (projectId !== undefined && projectId !== architecture.projectId) {
+      if (!(await findOwnedProject(projectId, user))) return response.notFound(PROJECT_NOT_FOUND)
+      architecture.projectId = projectId
+    }
     if (title !== undefined) architecture.title = title
     if (description !== undefined) architecture.description = description
     await architecture.save()

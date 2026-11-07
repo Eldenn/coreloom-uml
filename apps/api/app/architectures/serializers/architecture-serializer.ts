@@ -9,6 +9,7 @@ import { serializeDiagram } from '#app/diagrams/serializers/diagram-serializer'
 export function serializeArchitecture(architecture: Architecture): ArchitectureOutput {
   return {
     id: architecture.id,
+    projectId: architecture.projectId,
     title: architecture.title,
     description: architecture.description,
     visibility: architecture.visibility,
