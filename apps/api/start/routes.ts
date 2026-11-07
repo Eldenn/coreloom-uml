@@ -92,6 +92,7 @@ router
 const architecturesController = () =>
   import('#app/architectures/controllers/architectures-controller')
 const diagramsController = () => import('#app/diagrams/controllers/diagrams-controller')
+const diagramSourceController = () => import('#app/diagrams/controllers/diagram-source-controller')
 const sharingController = () => import('#app/sharing/controllers/sharing-controller')
 router
   .group(() => {
@@ -121,6 +122,13 @@ router
     router
       .delete('/:id/diagrams/:diagramId', [diagramsController, 'destroy'])
       .as('architectures.diagrams.destroy')
+    // The diagram as Mermaid, PlantUML or JSON text (`?format=`), converted on the way in and out.
+    router
+      .get('/:id/diagrams/:diagramId/source', [diagramSourceController, 'show'])
+      .as('architectures.diagrams.source_show')
+    router
+      .put('/:id/diagrams/:diagramId/source', [diagramSourceController, 'update'])
+      .as('architectures.diagrams.source_update')
 
     // Sharing: the owner's settings (RM-20 to RM-24).
     router.get('/:id/sharing', [sharingController, 'show']).as('architectures.sharing.show')
@@ -135,6 +143,19 @@ router
   .prefix('/architectures')
   .where('id', router.matchers.number())
   .where('diagramId', router.matchers.number())
+  .use(middleware.auth())
+
+/*
+|--------------------------------------------------------------------------
+| UML: check a diagram (text or JSON) the way a save would, without storing it
+|--------------------------------------------------------------------------
+*/
+router
+  .post('/uml/validate', [
+    () => import('#app/diagrams/controllers/validate-diagram-controller'),
+    'handle',
+  ])
+  .as('uml.validate')
   .use(middleware.auth())
 
 /*

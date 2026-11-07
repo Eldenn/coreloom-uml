@@ -1,75 +1,87 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { DateTime } from 'luxon'
-import type Architecture from '#app/architectures/models/architecture'
 import {
   ARCHITECTURE_NOT_FOUND,
   findOwnedArchitecture,
 } from '#app/architectures/services/owned-architecture'
-import { DIAGRAM_CONTENT_MAX_BYTES } from '#app/diagrams/constants/diagram'
-import type { DiagramContent } from '#app/diagrams/models/diagram'
+import { DiagramFormat } from '#app/diagrams/constants/diagram'
 import { serializeDiagram } from '#app/diagrams/serializers/diagram-serializer'
+import {
+  checkDiagramText,
+  checkDiagramValue,
+  invalidDiagram,
+} from '#app/diagrams/services/diagram-content'
+import {
+  DIAGRAM_CHANGED,
+  DIAGRAM_NOT_FOUND,
+  findArchitectureDiagram,
+  touchArchitecture,
+} from '#app/diagrams/services/owned-diagram'
 import { createDiagramInput, updateDiagramInput } from '#app/diagrams/validators/diagrams-input'
-
-const DIAGRAM_NOT_FOUND = { error: { message: 'Diagram not found' } } as const
-
-/** A change to a diagram is a change to its architecture (the date visitors see, RM-26). */
-async function touch(architecture: Architecture) {
-  architecture.updatedAt = DateTime.now()
-  await architecture.save()
-}
 
 /** The diagrams (views) of an architecture the signed-in user owns. */
 export default class DiagramsController {
+  /** Empty, or read from `source` (Mermaid, PlantUML or JSON text): then a 422 lists its problems. */
   async store({ params, request, auth, response }: HttpContext) {
     const architecture = await findOwnedArchitecture(params.id, auth.getUserOrFail(), {
       withDiagrams: true,
     })
     if (!architecture) return response.notFound(ARCHITECTURE_NOT_FOUND)
 
-    const { title, kind } = await request.validateUsing(createDiagramInput)
-    const position = Math.max(-1, ...architecture.diagrams.map((d) => d.position)) + 1
-    const diagram = await architecture
-      .related('diagrams')
-      .create({ title, kind, content: null, position })
-    await touch(architecture)
+    const { title, kind, source, format } = await request.validateUsing(createDiagramInput)
+    const checked = source === undefined ? null : checkDiagramText(source, format)
+    if (checked && !checked.diagram) {
+      return response.unprocessableEntity(invalidDiagram(checked.problems))
+    }
+    const content = checked?.diagram ?? null
+    if (content && kind && content.kind !== kind) {
+      return response.unprocessableEntity({
+        error: { message: `The text is a ${content.kind} diagram, not a ${kind} diagram.` },
+      })
+    }
 
-    return response.created({ diagram: serializeDiagram(diagram) })
+    const position = Math.max(-1, ...architecture.diagrams.map((d) => d.position)) + 1
+    const diagram = await architecture.related('diagrams').create({
+      title,
+      kind: content?.kind ?? kind,
+      content,
+      position,
+      // Set here rather than left to the column defaults, which `create` doesn't read back.
+      format: checked?.format ?? DiagramFormat.Mermaid,
+      version: 1,
+    })
+    await touchArchitecture(architecture)
+
+    return response.created({
+      diagram: serializeDiagram(diagram),
+      problems: checked?.problems ?? [],
+    })
   }
 
   async update({ params, request, auth, response }: HttpContext) {
     const architecture = await findOwnedArchitecture(params.id, auth.getUserOrFail())
     if (!architecture) return response.notFound(ARCHITECTURE_NOT_FOUND)
-    const diagram = await architecture
-      .related('diagrams')
-      .query()
-      .where('id', params.diagramId)
-      .first()
+    const diagram = await findArchitectureDiagram(architecture, params.diagramId)
     if (!diagram) return response.notFound(DIAGRAM_NOT_FOUND)
 
     const { title, format, content, version, force } =
       await request.validateUsing(updateDiagramInput)
 
     if (content !== undefined) {
-      if (Buffer.byteLength(JSON.stringify(content)) > DIAGRAM_CONTENT_MAX_BYTES) {
-        return response.unprocessableEntity({
-          error: { message: 'This diagram is too large (1 MB at most).' },
-        })
-      }
+      // Checked against the shared UML schema (and the 1 MB limit) before anything else.
+      const checked = checkDiagramValue(content)
+      if (!checked.diagram) return response.unprocessableEntity(invalidDiagram(checked.problems))
       // RM-16: two tabs on one diagram — the later save must not silently win.
       if (version !== diagram.version && !force) {
-        return response.conflict({
-          error: { message: 'This diagram was changed somewhere else.' },
-          diagram: serializeDiagram(diagram),
-        })
+        return response.conflict({ error: DIAGRAM_CHANGED, diagram: serializeDiagram(diagram) })
       }
-      diagram.content = content as DiagramContent
-      diagram.kind = content.kind
+      diagram.content = checked.diagram
+      diagram.kind = checked.diagram.kind
       diagram.version += 1
     }
     if (title !== undefined) diagram.title = title
     if (format !== undefined) diagram.format = format
     await diagram.save()
-    await touch(architecture)
+    await touchArchitecture(architecture)
 
     return response.ok({ diagram: serializeDiagram(diagram) })
   }
@@ -90,7 +102,7 @@ export default class DiagramsController {
     }
 
     await diagram.delete()
-    await touch(architecture)
+    await touchArchitecture(architecture)
 
     return response.noContent()
   }

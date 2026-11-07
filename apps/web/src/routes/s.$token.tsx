@@ -1,6 +1,5 @@
 // A share link (RM-25 to RM-29): the architecture read-only, behind its access code when it's
 // protected. No sign-in needed; the owner opening their own link gets "Open in the editor".
-import type { UmlSpec } from '@coreloom-uml/uml'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { PencilIcon } from 'lucide-react'
 import * as React from 'react'
@@ -112,9 +111,7 @@ function SharedViewer({
   const t = useT()
   // Views that were never drawn have nothing to show a visitor.
   const diagrams = architecture.diagrams.flatMap((d) =>
-    d.content
-      ? [{ id: String(d.id), title: d.title, diagram: d.content as unknown as UmlSpec }]
-      : [],
+    d.content ? [{ id: String(d.id), title: d.title, diagram: d.content }] : [],
   )
   return (
     <DiagramViewer

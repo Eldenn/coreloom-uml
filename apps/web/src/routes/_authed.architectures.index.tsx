@@ -1,4 +1,3 @@
-import type { UmlSpec } from '@coreloom-uml/uml'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { CopyIcon, NetworkIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
@@ -162,7 +161,7 @@ function ArchitectureCard({ architecture }: { architecture: ArchitectureSummary 
   const duplicate = useDuplicateArchitecture()
   const remove = useDeleteArchitecture()
   const [confirming, setConfirming] = React.useState(false)
-  const cover = architecture.cover?.content as UmlSpec | null | undefined
+  const cover = architecture.cover?.content
 
   return (
     <>

@@ -29,6 +29,8 @@ export interface ApiDefinition {
       reorder: typeof routes['architectures.diagrams.reorder']
       update: typeof routes['architectures.diagrams.update']
       destroy: typeof routes['architectures.diagrams.destroy']
+      sourceShow: typeof routes['architectures.diagrams.source_show']
+      sourceUpdate: typeof routes['architectures.diagrams.source_update']
     }
     sharing: {
       show: typeof routes['architectures.sharing.show']
@@ -36,6 +38,9 @@ export interface ApiDefinition {
       regenerateLink: typeof routes['architectures.sharing.regenerate_link']
       regenerateCode: typeof routes['architectures.sharing.regenerate_code']
     }
+  }
+  uml: {
+    validate: typeof routes['uml.validate']
   }
   shared: {
     show: typeof routes['shared.show']

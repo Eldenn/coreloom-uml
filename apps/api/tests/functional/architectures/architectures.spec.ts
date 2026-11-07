@@ -182,7 +182,7 @@ test.group('Architectures', (group) => {
       .patch(`/architectures/${source.id}/diagrams/${source.diagrams[0].id}`)
       .headers(json)
       .loginAs(user)
-      .json({ content: { kind: 'c4', elements: [] }, version: 1 })
+      .json({ content: { kind: 'c4', level: 'context', elements: [], relations: [] }, version: 1 })
     await Architecture.query()
       .where('id', source.id)
       .update({ visibility: 'public', share_token: 'token' })
@@ -197,7 +197,13 @@ test.group('Architectures', (group) => {
       architecture: {
         title: 'Origin (copy)',
         visibility: 'private',
-        diagrams: [{ kind: 'c4', content: { kind: 'c4', elements: [] }, version: 1 }],
+        diagrams: [
+          {
+            kind: 'c4',
+            content: { kind: 'c4', level: 'context', elements: [], relations: [] },
+            version: 1,
+          },
+        ],
       },
     })
     const stored = await Architecture.findOrFail(copy.body().architecture.id)

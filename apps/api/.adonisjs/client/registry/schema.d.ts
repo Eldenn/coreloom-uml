@@ -259,6 +259,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/diagrams/controllers/diagrams-controller').default['destroy']>>>
     }
   }
+  'architectures.diagrams.source_show': {
+    methods: ["GET","HEAD"]
+    pattern: '/architectures/:id/diagrams/:diagramId/source'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; diagramId: ParamValue }
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/diagrams/validators/diagrams-input').showDiagramSourceInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/diagrams/controllers/diagram-source-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/diagrams/controllers/diagram-source-controller').default['show']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'architectures.diagrams.source_update': {
+    methods: ["PUT"]
+    pattern: '/architectures/:id/diagrams/:diagramId/source'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/diagrams/validators/diagrams-input').updateDiagramSourceInput)>>
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; diagramId: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/diagrams/validators/diagrams-input').updateDiagramSourceInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/diagrams/controllers/diagram-source-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/diagrams/controllers/diagram-source-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'architectures.sharing.show': {
     methods: ["GET","HEAD"]
     pattern: '/architectures/:id/sharing'
@@ -305,6 +329,18 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#app/sharing/controllers/sharing-controller').default['regenerateCode']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/sharing/controllers/sharing-controller').default['regenerateCode']>>>
+    }
+  }
+  'uml.validate': {
+    methods: ["POST"]
+    pattern: '/uml/validate'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/diagrams/validators/diagrams-input').validateDiagramInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/diagrams/validators/diagrams-input').validateDiagramInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/diagrams/controllers/validate-diagram-controller').default['handle']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/diagrams/controllers/validate-diagram-controller').default['handle']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'shared.show': {
