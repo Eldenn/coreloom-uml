@@ -32,7 +32,7 @@ function LoginPage() {
 
   // Already signed in (or just signed in): go where the visitor was heading.
   React.useEffect(() => {
-    if (user) void navigate({ href: next ?? '/architectures', replace: true })
+    if (user) void navigate({ href: next ?? '/projects', replace: true })
   }, [user, next, navigate])
   if (user) return null
 

@@ -8,7 +8,7 @@ import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
 export class ArchitectureSchema extends BaseModel {
-  static $columns = ['accessCode', 'accessVersion', 'createdAt', 'description', 'id', 'shareToken', 'title', 'updatedAt', 'userId', 'visibility'] as const
+  static $columns = ['accessCode', 'accessVersion', 'createdAt', 'description', 'id', 'projectId', 'shareToken', 'title', 'updatedAt', 'userId', 'visibility'] as const
   $columns = ArchitectureSchema.$columns
   @column()
   declare accessCode: string | null
@@ -20,6 +20,8 @@ export class ArchitectureSchema extends BaseModel {
   declare description: string | null
   @column({ isPrimary: true })
   declare id: number
+  @column()
+  declare projectId: number
   @column()
   declare shareToken: string | null
   @column()
@@ -82,6 +84,23 @@ export class DiagramSchema extends BaseModel {
   declare updatedAt: DateTime
   @column()
   declare version: number
+}
+
+export class ProjectSchema extends BaseModel {
+  static $columns = ['createdAt', 'description', 'id', 'name', 'updatedAt', 'userId'] as const
+  $columns = ProjectSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare description: string | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
 }
 
 export class UserSchema extends BaseModel {

@@ -86,6 +86,27 @@ router
 
 /*
 |--------------------------------------------------------------------------
+| Projects: the top-level container of an account's design work
+|--------------------------------------------------------------------------
+|
+| A project holds artifacts; architectures (below) are the first kind, listed
+| with `GET /architectures?projectId=`. Same guards as the architectures.
+*/
+const projectsController = () => import('#app/projects/controllers/projects-controller')
+router
+  .group(() => {
+    router.get('/', [projectsController, 'index']).as('projects.index')
+    router.post('/', [projectsController, 'store']).as('projects.store')
+    router.get('/:id', [projectsController, 'show']).as('projects.show')
+    router.patch('/:id', [projectsController, 'update']).as('projects.update')
+    router.delete('/:id', [projectsController, 'destroy']).as('projects.destroy')
+  })
+  .prefix('/projects')
+  .where('id', router.matchers.number())
+  .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
+
+/*
+|--------------------------------------------------------------------------
 | Architectures and their diagrams (reference user-owned resource — copy this for new domains)
 |--------------------------------------------------------------------------
 */

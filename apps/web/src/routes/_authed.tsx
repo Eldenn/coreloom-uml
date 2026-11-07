@@ -9,7 +9,7 @@ import {
   useRouter,
   useRouterState,
 } from '@tanstack/react-router'
-import { LanguagesIcon, NetworkIcon, PlusIcon, SettingsIcon } from 'lucide-react'
+import { FolderIcon, LanguagesIcon, PlusIcon, SettingsIcon } from 'lucide-react'
 import * as React from 'react'
 
 import { meQueryOptions, useAuth } from '@/auth/auth-context'
@@ -79,8 +79,11 @@ function AuthedLayout() {
   const crumbs = useRouterState({
     select: (state) =>
       state.matches.flatMap((match) => {
-        const crumb = match.staticData.crumb
-        return crumb ? [{ label: crumb(t), href: match.pathname.replace(/(.)\/$/, '$1') }] : []
+        const crumb = match.staticData.crumb?.(t, match.loaderData)
+        if (crumb === undefined) return []
+        return typeof crumb === 'string'
+          ? [{ label: crumb, href: match.pathname.replace(/(.)\/$/, '$1') }]
+          : crumb
       }),
   })
 
@@ -135,10 +138,11 @@ function AuthedLayout() {
           label: t.shell.main,
           items: [
             {
-              title: t.nav.architectures,
-              url: '/architectures',
-              icon: NetworkIcon,
-              isActive: isActive('/architectures'),
+              title: t.nav.projects,
+              url: '/projects',
+              icon: FolderIcon,
+              // An architecture opens inside its project.
+              isActive: isActive('/projects') || isActive('/architectures'),
             },
             {
               title: t.nav.settings,
@@ -149,15 +153,15 @@ function AuthedLayout() {
           ],
         },
       ]}
-      breadcrumbs={[{ label: t.brand, href: '/architectures' }, ...crumbs]}
+      breadcrumbs={[{ label: t.brand, href: '/projects' }, ...crumbs]}
       commands={[
         {
           heading: t.shell.goTo,
           items: [
             {
-              label: t.nav.architectures,
-              icon: NetworkIcon,
-              onSelect: () => void navigate({ to: '/architectures' }),
+              label: t.nav.projects,
+              icon: FolderIcon,
+              onSelect: () => void navigate({ to: '/projects' }),
             },
             {
               label: t.nav.settings,
@@ -170,9 +174,9 @@ function AuthedLayout() {
           heading: t.shell.actions,
           items: [
             {
-              label: t.architectures.new,
+              label: t.projects.new,
               icon: PlusIcon,
-              onSelect: () => void navigate({ to: '/architectures', search: { new: true } }),
+              onSelect: () => void navigate({ to: '/projects', search: { new: true } }),
             },
           ],
         },

@@ -48,7 +48,7 @@ function VerifyEmailPage() {
           </Alert>
         )}
         <Button asChild>
-          <Link to={user ? '/architectures' : '/login'}>{t.verify.continue}</Link>
+          <Link to={user ? '/projects' : '/login'}>{t.verify.continue}</Link>
         </Button>
       </div>
     </AuthLayout>

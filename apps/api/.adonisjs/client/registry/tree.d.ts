@@ -17,6 +17,13 @@ export interface ApiDefinition {
   users: {
     show: typeof routes['users.show']
   }
+  projects: {
+    index: typeof routes['projects.index']
+    store: typeof routes['projects.store']
+    show: typeof routes['projects.show']
+    update: typeof routes['projects.update']
+    destroy: typeof routes['projects.destroy']
+  }
   architectures: {
     index: typeof routes['architectures.index']
     store: typeof routes['architectures.store']

@@ -34,7 +34,9 @@ AdonisJS v7 · React 19 · TypeScript (strict) · pnpm · Turborepo
 
 ## What is Coreloom UML?
 
-Coreloom UML is a tool to diagram software architectures in UML. An **architecture** holds
+Coreloom UML is a tool for software and system design. Work is organised in **projects**: a
+project holds the design artifacts of one system or product, architectures being the first kind
+(more will follow, each linked to a project the same way). An **architecture** holds
 several **diagrams** (views: C4 context, deployment, class, sequence, state, entity-relationship,
 use case, activity, component, package), each written as Mermaid, PlantUML or JSON text and drawn live beside it.
 Changes are saved automatically, with a version check so two tabs never overwrite each other
@@ -44,6 +46,11 @@ silently.
   environment (`DEFAULT_ACCOUNT_EMAIL`, `DEFAULT_ACCOUNT_PASSWORD`, `DEFAULT_ACCOUNT_NAME`), created
   or updated at deploy time by `node ace account:ensure-default`. Self-registration is off unless
   `REGISTRATION_ENABLED=true`.
+- **Projects.** `/projects` (CRUD) lists them with their architecture count; architectures are
+  listed per project with `GET /architectures?projectId=`, created in one with `projectId` (or in
+  the account's oldest project, created as "Default project" if needed, when it is omitted) and
+  moved with `PATCH /architectures/:id { projectId }`. Deleting a project deletes its
+  architectures. The editor stays at `/architectures/:id`.
 - **Sharing.** An architecture is private by default. It can be made **public** (anyone with the
   link sees it, read-only) or **protected** (the link plus an access code the server generates when
   the visibility is set; regenerating it shuts out everyone who entered the old one).
@@ -200,7 +207,7 @@ link is invalidated the moment the linked password actually changes.
 
 ### API keys
 
-Scripts and agents reach the architectures API with an API key instead of a
+Scripts and agents reach the projects and architectures API with an API key instead of a
 session: `Authorization: Bearer clu_…`. Keys are created, listed and revoked
 from the Settings page (`/account/api-tokens`, session only — a key cannot
 manage keys). They use `@adonisjs/auth`'s access tokens guard (`api`), stored
@@ -209,7 +216,7 @@ hashed in `auth_access_tokens`; the secret is shown once, at creation.
 - Each key is named, has a `read` and/or `write` ability, and expires after
   1 to 365 days or never. `GET` needs `read`, every other method `write`
   (403 otherwise).
-- Only the `/architectures` routes accept a key
+- Only the `/projects` and `/architectures` routes accept a key
   (`middleware.auth({ guards: ['web', 'api'] })` + `middleware.tokenAbility()`).
 - A key cannot `force` a diagram save: on a version conflict it gets the 409
   and must reload the latest version.

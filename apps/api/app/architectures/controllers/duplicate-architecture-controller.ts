@@ -12,7 +12,10 @@ import {
   findOwnedArchitecture,
 } from '#app/architectures/services/owned-architecture'
 
-/** RM-19: the copy holds the same diagrams and starts private, with no link and no code. */
+/**
+ * RM-19: the copy holds the same diagrams, lands in the same project and
+ * starts private, with no link and no code.
+ */
 export default class DuplicateArchitectureController {
   async handle({ params, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
@@ -25,6 +28,7 @@ export default class DuplicateArchitectureController {
       const created = await Architecture.create(
         {
           userId: user.id,
+          projectId: source.projectId,
           title,
           description: source.description,
           visibility: ArchitectureVisibility.Private,

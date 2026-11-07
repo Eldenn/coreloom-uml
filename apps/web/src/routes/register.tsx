@@ -35,7 +35,7 @@ function RegisterPage() {
           setError(undefined)
           try {
             await register(email, password, name || undefined)
-            await navigate({ to: '/architectures', replace: true })
+            await navigate({ to: '/projects', replace: true })
           } catch (err) {
             setError(getErrorMessage(err, t.signup.emailTaken))
           }

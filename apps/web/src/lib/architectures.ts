@@ -1,5 +1,5 @@
 // Query and mutation hooks for architectures and their diagrams (the pattern of src/lib/query.ts).
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { client } from '@/lib/client'
 
@@ -29,52 +29,81 @@ export const DIAGRAM_KINDS = [
 
 export const architectureKeys = {
   all: ['architectures'] as const,
-  list: (search: string) => ['architectures', 'list', search] as const,
+  list: (projectId: number, search: string) =>
+    ['architectures', 'list', projectId, search] as const,
   detail: (id: number) => ['architectures', 'detail', id] as const,
 }
 
-export function useArchitectures(search: string) {
+/** Projects show how many architectures they hold: a change to the set refreshes them too. */
+const PROJECTS_KEY = ['projects'] as const
+
+/** The architectures of one project. */
+export function useArchitectures(projectId: number, search: string) {
   return useQuery({
-    queryKey: architectureKeys.list(search),
+    queryKey: architectureKeys.list(projectId, search),
     queryFn: () =>
       client.api.architectures.index({
-        query: { perPage: 100, ...(search ? { search } : {}) },
+        query: { perPage: 100, projectId, ...(search ? { search } : {}) },
       }),
   })
 }
 
-export function useArchitecture(id: number) {
-  return useQuery({
+/** One architecture with its diagrams; the editor's route loader reads it too, for the breadcrumbs. */
+export const architectureQueryOptions = (id: number) =>
+  queryOptions({
     queryKey: architectureKeys.detail(id),
     queryFn: async () => (await client.api.architectures.show({ params: { id } })).architecture,
   })
+
+export function useArchitecture(id: number) {
+  return useQuery(architectureQueryOptions(id))
+}
+
+function useInvalidateArchitectureSets() {
+  const queryClient = useQueryClient()
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: architectureKeys.all }),
+      queryClient.invalidateQueries({ queryKey: PROJECTS_KEY }),
+    ])
 }
 
 export function useCreateArchitecture() {
-  const queryClient = useQueryClient()
+  const invalidate = useInvalidateArchitectureSets()
   return useMutation({
     mutationFn: (body: {
+      projectId: number
       title: string
       description?: string | null
       diagram?: { kind: DiagramKind }
     }) => client.api.architectures.store({ body }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: architectureKeys.all }),
+    onSuccess: invalidate,
   })
 }
 
 export function useDuplicateArchitecture() {
-  const queryClient = useQueryClient()
+  const invalidate = useInvalidateArchitectureSets()
   return useMutation({
     mutationFn: (id: number) => client.api.architectures.duplicate({ params: { id } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: architectureKeys.all }),
+    onSuccess: invalidate,
+  })
+}
+
+/** Moves an architecture to another of the user's projects. */
+export function useMoveArchitecture() {
+  const invalidate = useInvalidateArchitectureSets()
+  return useMutation({
+    mutationFn: ({ id, projectId }: { id: number; projectId: number }) =>
+      client.api.architectures.update({ params: { id }, body: { projectId } }),
+    onSuccess: invalidate,
   })
 }
 
 export function useDeleteArchitecture() {
-  const queryClient = useQueryClient()
+  const invalidate = useInvalidateArchitectureSets()
   return useMutation({
     mutationFn: (id: number) => client.api.architectures.destroy({ params: { id } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: architectureKeys.all }),
+    onSuccess: invalidate,
   })
 }
 
