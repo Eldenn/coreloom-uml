@@ -2,7 +2,7 @@
 // editor, saved automatically, and the Share dialog for its link and access code.
 import type { UmlDiagramKind } from '@coreloom-uml/uml'
 import { useQueryClient } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { Share2Icon } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
@@ -16,6 +16,7 @@ import { toast } from '@/components/ui/sonner'
 import {
   type ArchitectureDetail,
   architectureKeys,
+  architectureQueryOptions,
   DIAGRAM_KINDS,
   type DiagramKind,
   useAddDiagram,
@@ -28,8 +29,10 @@ import {
   useUpdateArchitecture,
 } from '@/lib/architectures'
 import { getErrorMessage } from '@/lib/client'
+import { projectCrumbs } from '@/lib/crumbs'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { useT } from '@/lib/locale'
+import { type Project, projectQueryOptions } from '@/lib/projects'
 import { useDiagramAutosave } from '@/lib/use-diagram-autosave'
 
 export const Route = createFileRoute('/_authed/architectures/$id')({
@@ -38,9 +41,38 @@ export const Route = createFileRoute('/_authed/architectures/$id')({
     stringify: ({ id }) => ({ id: String(id) }),
   },
   validateSearch: z.object({ diagram: z.number().int().optional().catch(undefined) }),
-  staticData: { crumb: (t) => t.nav.architectures, fullWidth: true },
+  // Its project and title, for the breadcrumbs; the page shows its own error if it can't load.
+  loader: async ({ context: { queryClient }, params: { id } }): Promise<CrumbData | null> => {
+    try {
+      const architecture = await queryClient.query({
+        ...architectureQueryOptions(id),
+        staleTime: 'static',
+      })
+      const project = await queryClient.query({
+        ...projectQueryOptions(architecture.projectId),
+        staleTime: 'static',
+      })
+      return { project, id, title: architecture.title }
+    } catch {
+      return null
+    }
+  },
+  staticData: {
+    crumb: (t, data) => {
+      const crumb = data as CrumbData | null
+      const trail = projectCrumbs(t, crumb?.project)
+      return crumb ? [...trail, { label: crumb.title, href: `/architectures/${crumb.id}` }] : trail
+    },
+    fullWidth: true,
+  },
   component: ArchitecturePage,
 })
+
+interface CrumbData {
+  project: Project
+  id: number
+  title: string
+}
 
 function ArchitecturePage() {
   const t = useT()
@@ -74,6 +106,7 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
   const kinds = useCoreloomI18n().messages.diagram.kinds
   const { diagram: selected } = Route.useSearch()
   const navigate = Route.useNavigate()
+  const router = useRouter()
   const autosave = useDiagramAutosave(architecture)
   const updateArchitecture = useUpdateArchitecture(architecture.id)
   const add = useAddDiagram(architecture.id)
@@ -119,7 +152,11 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
       <DiagramWorkspace
         title={architecture.title}
         onTitleChange={(title) => {
-          updateArchitecture.mutate({ title }, { onError: failed })
+          updateArchitecture.mutate(
+            { title },
+            // The breadcrumbs read the title through the route loader.
+            { onSuccess: () => void router.invalidate(), onError: failed },
+          )
         }}
         diagrams={diagrams.map((d) => ({
           id: String(d.id),
