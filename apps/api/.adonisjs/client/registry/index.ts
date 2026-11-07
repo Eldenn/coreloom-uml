@@ -204,6 +204,24 @@ const routes = {
     tokens: [{"old":"/account/avatar","type":0,"val":"account","end":""},{"old":"/account/avatar","type":0,"val":"avatar","end":""}],
     types: placeholder as Registry['account.avatar_destroy']['types'],
   },
+  'account.api_tokens.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/account/api-tokens',
+    tokens: [{"old":"/account/api-tokens","type":0,"val":"account","end":""},{"old":"/account/api-tokens","type":0,"val":"api-tokens","end":""}],
+    types: placeholder as Registry['account.api_tokens.index']['types'],
+  },
+  'account.api_tokens.store': {
+    methods: ["POST"],
+    pattern: '/account/api-tokens',
+    tokens: [{"old":"/account/api-tokens","type":0,"val":"account","end":""},{"old":"/account/api-tokens","type":0,"val":"api-tokens","end":""}],
+    types: placeholder as Registry['account.api_tokens.store']['types'],
+  },
+  'account.api_tokens.destroy': {
+    methods: ["DELETE"],
+    pattern: '/account/api-tokens/:id',
+    tokens: [{"old":"/account/api-tokens/:id","type":0,"val":"account","end":""},{"old":"/account/api-tokens/:id","type":0,"val":"api-tokens","end":""},{"old":"/account/api-tokens/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['account.api_tokens.destroy']['types'],
+  },
 } as const satisfies Record<string, AdonisEndpoint>
 
 export { routes }

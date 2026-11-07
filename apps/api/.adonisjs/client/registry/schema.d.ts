@@ -403,4 +403,40 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/account/controllers/avatar-controller').default['destroy']>>>
     }
   }
+  'account.api_tokens.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/account/api-tokens'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/api-tokens/controllers/api-tokens-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/api-tokens/controllers/api-tokens-controller').default['index']>>>
+    }
+  }
+  'account.api_tokens.store': {
+    methods: ["POST"]
+    pattern: '/account/api-tokens'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/api-tokens/validators/api-tokens-input').createApiTokenInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/api-tokens/validators/api-tokens-input').createApiTokenInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/api-tokens/controllers/api-tokens-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/api-tokens/controllers/api-tokens-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'account.api_tokens.destroy': {
+    methods: ["DELETE"]
+    pattern: '/account/api-tokens/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/api-tokens/controllers/api-tokens-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/api-tokens/controllers/api-tokens-controller').default['destroy']>>>
+    }
+  }
 }
