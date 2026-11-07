@@ -1,5 +1,6 @@
 // A share link (RM-25 to RM-29): the architecture read-only, behind its access code when it's
 // protected. No sign-in needed; the owner opening their own link gets "Open in the editor".
+import type { UmlSpec } from '@coreloom-uml/uml'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { PencilIcon } from 'lucide-react'
 import * as React from 'react'
@@ -18,7 +19,6 @@ import {
   useSharedArchitecture,
   useUnlockShared,
 } from '@/lib/shared'
-import type { UmlSpec } from '@/lib/uml'
 
 /** Matches the API's access codes (`ACCESS_CODE_ALPHABET` / `ACCESS_CODE_LENGTH`). */
 const ACCESS_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'

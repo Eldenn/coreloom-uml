@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import type { UmlDirection, UmlLayout, UmlNote } from '@/lib/uml'
+import type { UmlDirection, UmlLayout, UmlNote } from './uml.ts'
 
 // ── Use case diagram ────────────────────────────────────────────────────────────────────────────
 
@@ -43,7 +43,15 @@ interface UseCaseDiagram {
 
 /** `flowEnd` stops one flow (a circle with a cross); `end` stops the whole activity. */
 type ActivityNodeKind =
-  'action' | 'decision' | 'merge' | 'start' | 'end' | 'flowEnd' | 'fork' | 'join' | 'partition'
+  | 'action'
+  | 'decision'
+  | 'merge'
+  | 'start'
+  | 'end'
+  | 'flowEnd'
+  | 'fork'
+  | 'join'
+  | 'partition'
 
 interface ActivityNode {
   id: string
@@ -80,7 +88,13 @@ interface ActivityDiagram {
  * (a runtime, a container), `artifact` a file that is deployed, `component` a piece of software.
  */
 type DeploymentNodeKind =
-  'node' | 'device' | 'environment' | 'artifact' | 'component' | 'database' | 'cloud'
+  | 'node'
+  | 'device'
+  | 'environment'
+  | 'artifact'
+  | 'component'
+  | 'database'
+  | 'cloud'
 
 interface DeploymentNode {
   id: string
@@ -198,7 +212,11 @@ interface PackageDiagram {
 }
 
 type ElementDiagram =
-  UseCaseDiagram | ActivityDiagram | DeploymentDiagram | ComponentDiagram | PackageDiagram
+  | UseCaseDiagram
+  | ActivityDiagram
+  | DeploymentDiagram
+  | ComponentDiagram
+  | PackageDiagram
 
 /** The element kinds of each diagram, in the order a toolbar lists them. */
 const USE_CASE_KINDS: readonly UseCaseElementKind[] = ['actor', 'usecase', 'system']

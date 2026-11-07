@@ -54,6 +54,16 @@
   },
   "overrides": [
     {
+      "includes": ["**/packages/uml/src/**/*.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noAssignInExpressions": "off"
+          }
+        }
+      }
+    },
+    {
       "includes": ["**/apps/api/**/*.ts"],
       "javascript": {
         "formatter": {

@@ -77,7 +77,7 @@ stripped down); the whole front end is built with [coreloom-ui](https://github.c
 | Code quality | Biome (`apps/api`, root); ESLint + Prettier with coreloom-ui's rules (`apps/web`) |
 | Unit & integration tests | Japa (`apps/api`). `apps/web` screen tests (Playwright + axe, as in coreloom-ui) are not written yet — see [Not yet included](#not-yet-included). |
 | UI | coreloom-ui (Tailwind CSS v4, Radix, shadcn), installed into `apps/web/src/components` |
-| Diagrams | coreloom-ui's `DiagramEditor` / `UmlDiagram` and its `uml` library (Mermaid, PlantUML, JSON) |
+| Diagrams | coreloom-ui's `DiagramEditor` / `UmlDiagram`; the UML model and its Mermaid, PlantUML and JSON conversion in `packages/uml`, shared by the web app and the API |
 
 ## Repository Layout
 
@@ -88,8 +88,9 @@ coreloom-uml/
 │   │                         #   app/architectures/ is the reference domain — copy it for new user-owned resources
 │   └── web/                  # React 19 + Vite SPA built with coreloom-ui (sign-in, architectures, editor, settings)
 ├── packages/
-│   ├── config/                # Shared TypeScript config — copied from coreloom, unmodified
-│   └── auth-policy/          # Password policy — copied from coreloom (consumed from source, no build step)
+│   ├── config/               # Shared TypeScript config — copied from coreloom, unmodified
+│   ├── auth-policy/          # Password policy — copied from coreloom (consumed from source, no build step)
+│   └── uml/                  # UML model + Mermaid/PlantUML/JSON conversion, shared by web and api (zod only)
 └── infra/
     ├── docker-compose.yml         # local dev: postgres (+ postgres-init, which creates the dev and
     │                              #   test databases on every `up`) + redis + mailpit + minio + bull-board

@@ -1,4 +1,4 @@
-// Coreloom UI — Mermaid text for UML diagrams. `parseMermaid` reads the subset of Mermaid that
+// Coreloom UML — Mermaid text for UML diagrams. `parseMermaid` reads the subset of Mermaid that
 // covers class, sequence, state, entity–relationship and C4 diagrams, and flowcharts as activity
 // diagrams, into Coreloom's UML model, tolerantly: what it can't read becomes a problem on its line
 // and the rest still draws. `toMermaid` writes a diagram back (positions people dragged go in a
@@ -6,21 +6,21 @@
 // flowchart any Mermaid renderer draws, which reads back as an activity diagram (PlantUML and JSON
 // keep them whole; `isMermaidSpec` says which kinds round-trip).
 // No `mermaid` dependency: the parsers are plain functions, and nothing is rendered as HTML.
-import type { UmlParseResult, UmlSpec } from '@/lib/uml'
+import type { UmlParseResult, UmlSpec } from './uml.ts'
 import type {
   ActivityDiagram,
   ComponentDiagram,
   DeploymentDiagram,
   PackageDiagram,
   UseCaseDiagram,
-} from '@/lib/uml-elements'
-import { c4Level, c4ToMermaid, parseC4Diagram } from '@/lib/uml-mermaid-c4'
-import { classToMermaid, parseClassDiagram } from '@/lib/uml-mermaid-class'
-import { erToMermaid, parseErDiagram } from '@/lib/uml-mermaid-er'
-import { activityToMermaid, isFlowchart, parseFlowchart } from '@/lib/uml-mermaid-flowchart'
-import { parseSequenceDiagram, sequenceToMermaid } from '@/lib/uml-mermaid-sequence'
-import { parseStateDiagram, stateToMermaid } from '@/lib/uml-mermaid-state'
-import { frontMatter, layoutLine, sourceLines, withLayoutLine } from '@/lib/uml-text'
+} from './uml-elements.ts'
+import { c4Level, c4ToMermaid, parseC4Diagram } from './uml-mermaid-c4.ts'
+import { classToMermaid, parseClassDiagram } from './uml-mermaid-class.ts'
+import { erToMermaid, parseErDiagram } from './uml-mermaid-er.ts'
+import { activityToMermaid, isFlowchart, parseFlowchart } from './uml-mermaid-flowchart.ts'
+import { parseSequenceDiagram, sequenceToMermaid } from './uml-mermaid-sequence.ts'
+import { parseStateDiagram, stateToMermaid } from './uml-mermaid-state.ts'
+import { frontMatter, layoutLine, sourceLines, withLayoutLine } from './uml-text.ts'
 
 /** Reads Mermaid text whose first line names one of the supported diagram types. */
 function parseMermaid(input: string): UmlParseResult {

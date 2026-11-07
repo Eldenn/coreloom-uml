@@ -1,3 +1,4 @@
+import type { UmlSpec } from '@coreloom-uml/uml'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { CopyIcon, NetworkIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
@@ -40,7 +41,6 @@ import {
 } from '@/lib/architectures'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { useT } from '@/lib/locale'
-import type { UmlSpec } from '@/lib/uml'
 
 export const Route = createFileRoute('/_authed/architectures/')({
   // `?new=true` opens the "New architecture" dialog (the ⌘K action links here).

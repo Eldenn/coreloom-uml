@@ -5,7 +5,7 @@ import type {
   SequenceParticipant,
   SequenceStep,
   UmlProblem,
-} from '@/lib/uml'
+} from './uml.ts'
 import {
   type Groups,
   lineBreaks,
@@ -14,7 +14,7 @@ import {
   problem,
   type SourceLine,
   titleBlock,
-} from '@/lib/uml-text'
+} from './uml-text.ts'
 
 const NAME = '[\\w.]+(?: [\\w.]+)*?'
 const ARROW = '-->>|->>|--x|-x|--\\)|-\\)|-->|->'

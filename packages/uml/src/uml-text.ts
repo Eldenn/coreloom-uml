@@ -1,12 +1,12 @@
-// Coreloom UI — the line reader the Mermaid parsers share: lines without comments or blanks, with
+// Coreloom UML — the line reader the Mermaid parsers share: lines without comments or blanks, with
 // their numbers; quoted strings; comma-separated macro arguments; and the problems a parser reports.
 import {
-  umlElementIds,
   type UmlLayout,
   type UmlParseResult,
   type UmlProblem,
   type UmlSpec,
-} from '@/lib/uml'
+  umlElementIds,
+} from './uml.ts'
 
 interface SourceLine {
   /** 1-based, in the text the user typed. */
@@ -169,8 +169,8 @@ export {
   problem,
   quote,
   type SourceLine,
-  sourceLines,
   STYLING,
+  sourceLines,
   titleBlock,
   unquote,
   withLayoutLine,

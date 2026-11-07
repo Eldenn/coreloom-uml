@@ -16,7 +16,7 @@ import {
   text,
   type UseCaseDiagram,
   usecaseSchema,
-} from '@/lib/uml-elements'
+} from './uml-elements.ts'
 
 /** Where the layout flows: top to bottom, bottom to top, left to right, right to left. */
 type UmlDirection = 'TB' | 'BT' | 'LR' | 'RL'
@@ -187,7 +187,14 @@ interface SequenceParticipant {
  * `lost` -x, `dottedLost` --x, `async` -), `dottedAsync` --).
  */
 type SequenceArrow =
-  'sync' | 'reply' | 'line' | 'dottedLine' | 'lost' | 'dottedLost' | 'async' | 'dottedAsync'
+  | 'sync'
+  | 'reply'
+  | 'line'
+  | 'dottedLine'
+  | 'lost'
+  | 'dottedLost'
+  | 'async'
+  | 'dottedAsync'
 
 type SequenceBlockKind = 'loop' | 'alt' | 'opt' | 'par' | 'critical' | 'break'
 
@@ -290,13 +297,21 @@ interface UmlProblem {
   line: number
   severity: 'error' | 'warning'
   code:
-    'empty' | 'header' | 'syntax' | 'unclosed' | 'unexpected' | 'unsupported' | 'json' | 'schema'
+    | 'empty'
+    | 'header'
+    | 'syntax'
+    | 'unclosed'
+    | 'unexpected'
+    | 'unsupported'
+    | 'json'
+    | 'schema'
   text?: string
 }
 
 /** What parsing gives: the diagram it could read (null when it couldn't tell which), and problems. */
 type UmlParseResult =
-  { diagram: UmlSpec; problems: UmlProblem[] } | { diagram: null; problems: UmlProblem[] }
+  | { diagram: UmlSpec; problems: UmlProblem[] }
+  | { diagram: null; problems: UmlProblem[] }
 
 // ── JSON ────────────────────────────────────────────────────────────────────────────────────────
 
@@ -592,7 +607,6 @@ export {
   type UmlClass,
   type UmlDiagramKind,
   type UmlDirection,
-  umlElementIds,
   type UmlLayout,
   type UmlNote,
   type UmlParseResult,
@@ -601,4 +615,5 @@ export {
   type UmlSpec,
   type UmlState,
   type UseCaseDiagram,
+  umlElementIds,
 }
