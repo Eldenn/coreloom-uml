@@ -13,6 +13,11 @@ pnpm changeset
 Answer the prompts: which package(s) changed (`@coreloom-uml/api`, `@coreloom-uml/web`,
 or both — they version together, see `.changeset/config.json`'s `fixed`
 group), the bump type (patch/minor/major), and a one- or two-line summary.
+A change to the CLI picks `@coreloom-uml/cli`: it is the only package
+published to npm and versions on its own (outside the `fixed` group), with its
+own `apps/cli/CHANGELOG.md`; `changesets.yml` publishes it once the "Version
+Packages" PR is merged, when the `NPM_TOKEN` secret exists.
+
 This writes a random-named `.md` file under `.changeset/` — commit it as part
 of the PR. `.github/workflows/require-changeset.yml` fails CI on pull
 requests that don't add one.

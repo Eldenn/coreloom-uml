@@ -1,0 +1,14 @@
+{
+  "extends": "@coreloom-uml/config/tsconfig/node",
+  "compilerOptions": {
+    "noEmit": true,
+    // Bundled by tsup; `@coreloom-uml/catalog` is TypeScript source whose relative imports name
+    // the `.ts` file, so this package's own imports do the same.
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    // The catalog's types are inferred from zod, whose optional fields are `?: T | undefined`.
+    "exactOptionalPropertyTypes": false
+  },
+  "include": ["src", "test", "tsup.config.ts", "vitest.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

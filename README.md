@@ -85,7 +85,7 @@ stripped down); the whole front end is built with [coreloom-ui](https://github.c
 | Unit & integration tests | Japa (`apps/api`). `apps/web` screen tests (Playwright + axe, as in coreloom-ui) are not written yet — see [Not yet included](#not-yet-included). |
 | UI | coreloom-ui (Tailwind CSS v4, Radix, shadcn), installed into `apps/web/src/components` |
 | Diagrams | coreloom-ui's `DiagramEditor` / `UmlDiagram`; the UML model and its Mermaid, PlantUML and JSON conversion in `packages/uml`, shared by the web app and the API |
-| Agent conventions | `packages/catalog`: the questionnaires, slot registry and per-tool templates from which `renderAgentContext` deterministically renders a project's `AGENTS.md` (plus pointer files for tools that do not read it natively) |
+| Agent conventions | `packages/catalog`: the questionnaires, slot registry and per-tool templates from which `renderAgentContext` deterministically renders a project's `AGENTS.md` (plus pointer files for tools that do not read it natively); `apps/cli` (`@coreloom-uml/cli`, published on npm) writes them into a repository |
 
 ## Repository Layout
 
@@ -94,7 +94,8 @@ coreloom-uml/
 ├── apps/
 │   ├── api/                  # AdonisJS v7 backend — same app/ domain layout as coreloom
 │   │                         #   app/architectures/ is the reference domain — copy it for new user-owned resources
-│   └── web/                  # React 19 + Vite SPA built with coreloom-ui (sign-in, architectures, editor, settings)
+│   ├── web/                  # React 19 + Vite SPA built with coreloom-ui (sign-in, architectures, editor, settings)
+│   └── cli/                  # `@coreloom-uml/cli` (npm): pulls a project's agent conventions into a repository
 ├── packages/
 │   ├── config/               # Shared TypeScript config — copied from coreloom, unmodified
 │   ├── auth-policy/          # Password policy — copied from coreloom (consumed from source, no build step)
@@ -258,6 +259,15 @@ changes since the previous generation and the recommendations, and copy the CLI 
 installs them. When `impact.stale` is true the tab shows a « To regenerate » badge and lists what a
 new generation would change.
 
+The CLI (`apps/cli`, published as `@coreloom-uml/cli`, see its
+[README](apps/cli/README.md)) writes the latest generation into a repository:
+`npx @coreloom-uml/cli pull --api-url <url> --project <id>`, authenticated by an API key (`read`
+is enough) from `CORELOOM_UML_API_KEY` or `coreloom-uml config set-key`. It only rewrites the
+managed block between the `coreloom-uml:begin` / `coreloom-uml:end` markers, records what it wrote
+in `.coreloom-uml.json` (no secret), and stops (exit code 2) rather than overwrite a block edited by
+hand. `status` compares the local blocks with that manifest. It is a single ESM file bundled by
+tsup with the catalog inside; its tests (Vitest) run against a fixture HTTP server.
+
 ### Security headers
 
 `@adonisjs/shield` (`config/shield.ts`) adds `X-Frame-Options: DENY`,
@@ -365,8 +375,11 @@ edits a changelog by hand. In short:
    `apps/api/CHANGELOG.md` / `apps/web/CHANGELOG.md`.
 3. **Merging that "Version Packages" PR is the release.** With no changesets
    left pending, `changesets.yml` runs `scripts/tag-release.mjs` instead,
-   which tags the commit `vX.Y.Z` and pushes the tag — nothing to publish to
-   any registry, every workspace package is private.
+   which tags the commit `vX.Y.Z` and pushes the tag. Then, if the
+   repository secret `NPM_TOKEN` is set, `pnpm changeset publish` publishes
+   `@coreloom-uml/cli`, the only public package, when its version is not on
+   npm yet (it versions on its own, outside the `fixed` group); every other
+   package is private.
 4. The pushed tag runs **`.github/workflows/release.yml`** (reruns CI against
    the tagged commit, publishes a GitHub Release from the matching changelog
    sections), which on success runs **`.github/workflows/deploy-production.yml`**
