@@ -11,6 +11,7 @@ import {
   type Questionnaire,
   renderAgentContext,
   Section,
+  type Skill,
   type SkillSuggestions,
   type StoredAnswer,
   sectionOrder,
@@ -139,10 +140,19 @@ export function render(inputs: AgentConfigInputs): AgentContextOutput {
   })
 }
 
-/** The catalog's skills that fit the inputs, matched like `render` reads them. */
-export function suggestSkills(inputs: AgentConfigInputs): SkillSuggestions {
+/**
+ * The catalog's skills that fit the inputs (answers read like `render` reads them, and the kinds
+ * of the project's diagrams).
+ */
+export function suggestSkills(
+  inputs: AgentConfigInputs,
+  skills: readonly Skill[],
+): SkillSuggestions {
   const { questionnaires, answers } = resolveInputs(inputs)
-  return matchSkills({ questionnaires, answers, targets: inputs.targets })
+  const diagramKinds = inputs.project.architectures.flatMap((architecture) =>
+    architecture.diagrams.map((diagram) => diagram.kind),
+  )
+  return matchSkills({ questionnaires, answers, targets: inputs.targets, diagramKinds }, skills)
 }
 
 /**
