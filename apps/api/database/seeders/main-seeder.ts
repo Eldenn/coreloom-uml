@@ -2,6 +2,7 @@ import { BaseSeeder } from '@adonisjs/lucid/seeders'
 import { DateTime } from 'luxon'
 import { ArchitectureVisibility } from '#app/architectures/constants/visibility'
 import Architecture from '#app/architectures/models/architecture'
+import { defaultProjectFor } from '#app/projects/services/owned-project'
 import User from '#app/users/models/user'
 
 export default class MainSeeder extends BaseSeeder {
@@ -22,8 +23,10 @@ export default class MainSeeder extends BaseSeeder {
     if (Number(count[0].$extras.total) > 0) return
 
     // Empty diagrams open on the editor's template for their kind.
+    const project = await defaultProjectFor(user)
     const architecture = await Architecture.create({
       userId: user.id,
+      projectId: project.id,
       title: 'Sample architecture',
       description: 'Seeded for the demo. Log in as demo@coreloom-uml.dev to see it.',
       visibility: ArchitectureVisibility.Private,

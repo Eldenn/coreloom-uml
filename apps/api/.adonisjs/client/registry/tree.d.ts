@@ -17,6 +17,13 @@ export interface ApiDefinition {
   users: {
     show: typeof routes['users.show']
   }
+  projects: {
+    index: typeof routes['projects.index']
+    store: typeof routes['projects.store']
+    show: typeof routes['projects.show']
+    update: typeof routes['projects.update']
+    destroy: typeof routes['projects.destroy']
+  }
   architectures: {
     index: typeof routes['architectures.index']
     store: typeof routes['architectures.store']
@@ -29,6 +36,8 @@ export interface ApiDefinition {
       reorder: typeof routes['architectures.diagrams.reorder']
       update: typeof routes['architectures.diagrams.update']
       destroy: typeof routes['architectures.diagrams.destroy']
+      sourceShow: typeof routes['architectures.diagrams.source_show']
+      sourceUpdate: typeof routes['architectures.diagrams.source_update']
     }
     sharing: {
       show: typeof routes['architectures.sharing.show']
@@ -36,6 +45,9 @@ export interface ApiDefinition {
       regenerateLink: typeof routes['architectures.sharing.regenerate_link']
       regenerateCode: typeof routes['architectures.sharing.regenerate_code']
     }
+  }
+  uml: {
+    validate: typeof routes['uml.validate']
   }
   shared: {
     show: typeof routes['shared.show']
@@ -48,5 +60,10 @@ export interface ApiDefinition {
     avatarShow: typeof routes['account.avatar_show']
     avatarUpdate: typeof routes['account.avatar_update']
     avatarDestroy: typeof routes['account.avatar_destroy']
+    apiTokens: {
+      index: typeof routes['account.api_tokens.index']
+      store: typeof routes['account.api_tokens.store']
+      destroy: typeof routes['account.api_tokens.destroy']
+    }
   }
 }

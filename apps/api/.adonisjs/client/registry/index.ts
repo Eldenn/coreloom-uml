@@ -72,6 +72,36 @@ const routes = {
     tokens: [{"old":"/users/:id","type":0,"val":"users","end":""},{"old":"/users/:id","type":1,"val":"id","end":""}],
     types: placeholder as Registry['users.show']['types'],
   },
+  'projects.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/projects',
+    tokens: [{"old":"/projects","type":0,"val":"projects","end":""}],
+    types: placeholder as Registry['projects.index']['types'],
+  },
+  'projects.store': {
+    methods: ["POST"],
+    pattern: '/projects',
+    tokens: [{"old":"/projects","type":0,"val":"projects","end":""}],
+    types: placeholder as Registry['projects.store']['types'],
+  },
+  'projects.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/projects/:id',
+    tokens: [{"old":"/projects/:id","type":0,"val":"projects","end":""},{"old":"/projects/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['projects.show']['types'],
+  },
+  'projects.update': {
+    methods: ["PATCH"],
+    pattern: '/projects/:id',
+    tokens: [{"old":"/projects/:id","type":0,"val":"projects","end":""},{"old":"/projects/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['projects.update']['types'],
+  },
+  'projects.destroy': {
+    methods: ["DELETE"],
+    pattern: '/projects/:id',
+    tokens: [{"old":"/projects/:id","type":0,"val":"projects","end":""},{"old":"/projects/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['projects.destroy']['types'],
+  },
   'architectures.index': {
     methods: ["GET","HEAD"],
     pattern: '/architectures',
@@ -132,6 +162,18 @@ const routes = {
     tokens: [{"old":"/architectures/:id/diagrams/:diagramId","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/diagrams/:diagramId","type":1,"val":"id","end":""},{"old":"/architectures/:id/diagrams/:diagramId","type":0,"val":"diagrams","end":""},{"old":"/architectures/:id/diagrams/:diagramId","type":1,"val":"diagramId","end":""}],
     types: placeholder as Registry['architectures.diagrams.destroy']['types'],
   },
+  'architectures.diagrams.source_show': {
+    methods: ["GET","HEAD"],
+    pattern: '/architectures/:id/diagrams/:diagramId/source',
+    tokens: [{"old":"/architectures/:id/diagrams/:diagramId/source","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/diagrams/:diagramId/source","type":1,"val":"id","end":""},{"old":"/architectures/:id/diagrams/:diagramId/source","type":0,"val":"diagrams","end":""},{"old":"/architectures/:id/diagrams/:diagramId/source","type":1,"val":"diagramId","end":""},{"old":"/architectures/:id/diagrams/:diagramId/source","type":0,"val":"source","end":""}],
+    types: placeholder as Registry['architectures.diagrams.source_show']['types'],
+  },
+  'architectures.diagrams.source_update': {
+    methods: ["PUT"],
+    pattern: '/architectures/:id/diagrams/:diagramId/source',
+    tokens: [{"old":"/architectures/:id/diagrams/:diagramId/source","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/diagrams/:diagramId/source","type":1,"val":"id","end":""},{"old":"/architectures/:id/diagrams/:diagramId/source","type":0,"val":"diagrams","end":""},{"old":"/architectures/:id/diagrams/:diagramId/source","type":1,"val":"diagramId","end":""},{"old":"/architectures/:id/diagrams/:diagramId/source","type":0,"val":"source","end":""}],
+    types: placeholder as Registry['architectures.diagrams.source_update']['types'],
+  },
   'architectures.sharing.show': {
     methods: ["GET","HEAD"],
     pattern: '/architectures/:id/sharing',
@@ -155,6 +197,12 @@ const routes = {
     pattern: '/architectures/:id/sharing/regenerate-code',
     tokens: [{"old":"/architectures/:id/sharing/regenerate-code","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/sharing/regenerate-code","type":1,"val":"id","end":""},{"old":"/architectures/:id/sharing/regenerate-code","type":0,"val":"sharing","end":""},{"old":"/architectures/:id/sharing/regenerate-code","type":0,"val":"regenerate-code","end":""}],
     types: placeholder as Registry['architectures.sharing.regenerate_code']['types'],
+  },
+  'uml.validate': {
+    methods: ["POST"],
+    pattern: '/uml/validate',
+    tokens: [{"old":"/uml/validate","type":0,"val":"uml","end":""},{"old":"/uml/validate","type":0,"val":"validate","end":""}],
+    types: placeholder as Registry['uml.validate']['types'],
   },
   'shared.show': {
     methods: ["GET","HEAD"],
@@ -203,6 +251,24 @@ const routes = {
     pattern: '/account/avatar',
     tokens: [{"old":"/account/avatar","type":0,"val":"account","end":""},{"old":"/account/avatar","type":0,"val":"avatar","end":""}],
     types: placeholder as Registry['account.avatar_destroy']['types'],
+  },
+  'account.api_tokens.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/account/api-tokens',
+    tokens: [{"old":"/account/api-tokens","type":0,"val":"account","end":""},{"old":"/account/api-tokens","type":0,"val":"api-tokens","end":""}],
+    types: placeholder as Registry['account.api_tokens.index']['types'],
+  },
+  'account.api_tokens.store': {
+    methods: ["POST"],
+    pattern: '/account/api-tokens',
+    tokens: [{"old":"/account/api-tokens","type":0,"val":"account","end":""},{"old":"/account/api-tokens","type":0,"val":"api-tokens","end":""}],
+    types: placeholder as Registry['account.api_tokens.store']['types'],
+  },
+  'account.api_tokens.destroy': {
+    methods: ["DELETE"],
+    pattern: '/account/api-tokens/:id',
+    tokens: [{"old":"/account/api-tokens/:id","type":0,"val":"account","end":""},{"old":"/account/api-tokens/:id","type":0,"val":"api-tokens","end":""},{"old":"/account/api-tokens/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['account.api_tokens.destroy']['types'],
   },
 } as const satisfies Record<string, AdonisEndpoint>
 

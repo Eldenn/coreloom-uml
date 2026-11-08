@@ -5,7 +5,7 @@
 export const en = {
   brand: 'Coreloom UML',
   nav: {
-    architectures: 'Architectures',
+    projects: 'Projects',
     settings: 'Settings',
   },
   shell: {
@@ -32,12 +32,45 @@ export const en = {
     failed: 'This verification link is invalid or has expired.',
     continue: 'Continue',
   },
+  projects: {
+    title: 'Projects',
+    description: 'Your design work, one project at a time: its architectures and, soon, more.',
+    new: 'New project',
+    emptyTitle: 'No project yet',
+    emptyDescription: 'Create one to hold the architectures of a system or a product.',
+    search: 'Search projects',
+    createTitle: 'New project',
+    createDescription: 'A project holds the architectures of one system or product.',
+    editTitle: 'Rename the project',
+    nameLabel: 'Name',
+    nameRequired: 'Give it a name.',
+    descriptionLabel: 'Description',
+    create: 'Create',
+    save: 'Save',
+    cancel: 'Cancel',
+    open: 'Open',
+    rename: 'Rename',
+    renamed: 'Project saved.',
+    delete: 'Delete',
+    deleted: 'Project deleted.',
+    deleteTitle: (name: string) => `Delete “${name}”?`,
+    deleteText: (count: number) =>
+      count === 0
+        ? 'It holds no architecture.'
+        : `Its ${count === 1 ? 'architecture goes' : `${count} architectures go`} with it, with their diagrams and share links. People who had a link can no longer open it.`,
+    architectureCount: (count: number) =>
+      count === 1 ? '1 architecture' : `${count} architectures`,
+    actions: (name: string) => `Actions for ${name}`,
+    loadFailed: 'The projects could not be loaded.',
+    notFound: 'This project could not be loaded.',
+    retry: 'Retry',
+  },
   architectures: {
     title: 'Architectures',
-    description: 'Your software architectures, each with its UML diagrams.',
+    description: 'The software architectures of this project, each with its UML diagrams.',
     new: 'New architecture',
     emptyTitle: 'No architecture yet',
-    emptyDescription: 'Create one to start drawing its diagrams.',
+    emptyDescription: 'This project has none. Create one to start drawing its diagrams.',
     search: 'Search architectures',
     createTitle: 'New architecture',
     createDescription: 'It starts private, with one diagram. You can add more views later.',
@@ -57,6 +90,13 @@ export const en = {
       'Its diagrams and share links go with it. People who had the link can no longer open it.',
     loadFailed: 'The architectures could not be loaded.',
     retry: 'Retry',
+    move: 'Move to another project',
+    moveTitle: (title: string) => `Move “${title}”`,
+    moveDescription: 'Its diagrams and share link go with it.',
+    moveTarget: 'Project',
+    moveTargetRequired: 'Pick a project.',
+    moveSubmit: 'Move',
+    moved: 'Architecture moved.',
   },
   shared: {
     unavailableTitle: 'This link is not available',
@@ -99,6 +139,15 @@ export const en = {
     emailInvalid: 'Enter a valid email address.',
     currentPasswordRequired: 'Enter your current password.',
     wrongPassword: 'Your current password is incorrect.',
+    apiTokensHint:
+      'API keys let scripts and agents use your projects and architectures through the API, with an Authorization: Bearer header.',
+    scopeRead: 'Read',
+    scopeReadHint: 'List and open projects, architectures and diagrams.',
+    scopeWrite: 'Write',
+    scopeWriteHint: 'Create, change and delete them. Cannot overwrite changes made elsewhere.',
+    apiTokenCreateFailed: 'The key could not be created.',
+    apiTokenRevoked: 'Key revoked.',
+    apiTokenRevokeFailed: 'The key could not be revoked.',
   },
 }
 
@@ -107,7 +156,7 @@ export type Messages = typeof en
 export const fr: Messages = {
   brand: 'Coreloom UML',
   nav: {
-    architectures: 'Architectures',
+    projects: 'Projets',
     settings: 'Réglages',
   },
   shell: {
@@ -135,12 +184,47 @@ export const fr: Messages = {
     failed: 'Ce lien de vérification n’est pas valide ou a expiré.',
     continue: 'Continuer',
   },
+  projects: {
+    title: 'Projets',
+    description:
+      'Votre travail de conception, projet par projet : ses architectures et bientôt davantage.',
+    new: 'Nouveau projet',
+    emptyTitle: 'Aucun projet',
+    emptyDescription: 'Créez-en un pour regrouper les architectures d’un système ou d’un produit.',
+    search: 'Rechercher un projet',
+    createTitle: 'Nouveau projet',
+    createDescription: 'Un projet regroupe les architectures d’un système ou d’un produit.',
+    editTitle: 'Renommer le projet',
+    nameLabel: 'Nom',
+    nameRequired: 'Donnez-lui un nom.',
+    descriptionLabel: 'Description',
+    create: 'Créer',
+    save: 'Enregistrer',
+    cancel: 'Annuler',
+    open: 'Ouvrir',
+    rename: 'Renommer',
+    renamed: 'Projet enregistré.',
+    delete: 'Supprimer',
+    deleted: 'Projet supprimé.',
+    deleteTitle: (name: string) => `Supprimer « ${name} » ?`,
+    deleteText: (count: number) =>
+      count === 0
+        ? 'Il ne contient aucune architecture.'
+        : `${count === 1 ? 'Son architecture disparaît' : `Ses ${count} architectures disparaissent`} avec lui, avec leurs diagrammes et leurs liens de partage. Les personnes qui avaient un lien ne peuvent plus l’ouvrir.`,
+    architectureCount: (count: number) =>
+      count <= 1 ? `${count} architecture` : `${count} architectures`,
+    actions: (name: string) => `Actions pour ${name}`,
+    loadFailed: 'Les projets n’ont pas pu être chargés.',
+    notFound: 'Ce projet n’a pas pu être chargé.',
+    retry: 'Réessayer',
+  },
   architectures: {
     title: 'Architectures',
-    description: 'Vos architectures logicielles, chacune avec ses diagrammes UML.',
+    description: 'Les architectures logicielles de ce projet, chacune avec ses diagrammes UML.',
     new: 'Nouvelle architecture',
     emptyTitle: 'Aucune architecture',
-    emptyDescription: 'Créez-en une pour commencer à dessiner ses diagrammes.',
+    emptyDescription:
+      'Ce projet n’en contient aucune. Créez-en une pour commencer à dessiner ses diagrammes.',
     search: 'Rechercher une architecture',
     createTitle: 'Nouvelle architecture',
     createDescription:
@@ -161,6 +245,13 @@ export const fr: Messages = {
       'Ses diagrammes et ses liens de partage disparaissent avec elle. Les personnes qui avaient le lien ne peuvent plus l’ouvrir.',
     loadFailed: 'Les architectures n’ont pas pu être chargées.',
     retry: 'Réessayer',
+    move: 'Déplacer vers un autre projet',
+    moveTitle: (title: string) => `Déplacer « ${title} »`,
+    moveDescription: 'Ses diagrammes et son lien de partage la suivent.',
+    moveTarget: 'Projet',
+    moveTargetRequired: 'Choisissez un projet.',
+    moveSubmit: 'Déplacer',
+    moved: 'Architecture déplacée.',
   },
   shared: {
     unavailableTitle: 'Ce lien n’est pas disponible',
@@ -204,5 +295,15 @@ export const fr: Messages = {
     emailInvalid: 'Saisissez une adresse email valide.',
     currentPasswordRequired: 'Saisissez votre mot de passe actuel.',
     wrongPassword: 'Votre mot de passe actuel est incorrect.',
+    apiTokensHint:
+      'Les clés permettent à des scripts et à des agents d’utiliser vos projets et vos architectures par l’API, avec un en-tête Authorization: Bearer.',
+    scopeRead: 'Lecture',
+    scopeReadHint: 'Lister et ouvrir les projets, les architectures et leurs diagrammes.',
+    scopeWrite: 'Écriture',
+    scopeWriteHint:
+      'Les créer, les modifier et les supprimer. Sans écraser des modifications faites ailleurs.',
+    apiTokenCreateFailed: 'La clé n’a pas pu être créée.',
+    apiTokenRevoked: 'Clé révoquée.',
+    apiTokenRevokeFailed: 'La clé n’a pas pu être révoquée.',
   },
 }

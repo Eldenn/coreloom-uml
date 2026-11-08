@@ -1,6 +1,7 @@
 import testUtils from '@adonisjs/core/services/test_utils'
 import { test } from '@japa/runner'
 import Architecture from '#app/architectures/models/architecture'
+import { defaultProjectFor } from '#app/projects/services/owned-project'
 import User from '#app/users/models/user'
 
 function makeUser(email: string) {
@@ -76,10 +77,17 @@ test.group('Architectures', (group) => {
   }) => {
     const user = await makeUser('arch-list@example.com')
     const other = await makeUser('arch-list-other@example.com')
+    const project = await defaultProjectFor(user)
+    const otherProject = await defaultProjectFor(other)
     await Architecture.createMany([
-      { userId: user.id, title: 'Payments 100%', visibility: 'public' },
-      { userId: user.id, title: 'Search', visibility: 'private' },
-      { userId: other.id, title: 'Payments elsewhere', visibility: 'public' },
+      { userId: user.id, projectId: project.id, title: 'Payments 100%', visibility: 'public' },
+      { userId: user.id, projectId: project.id, title: 'Search', visibility: 'private' },
+      {
+        userId: other.id,
+        projectId: otherProject.id,
+        title: 'Payments elsewhere',
+        visibility: 'public',
+      },
     ])
 
     const all = await client.get('/architectures').headers(json).loginAs(user)
@@ -127,6 +135,7 @@ test.group('Architectures', (group) => {
     const intruder = await makeUser('arch-intruder@example.com')
     const architecture = await Architecture.create({
       userId: owner.id,
+      projectId: (await defaultProjectFor(owner)).id,
       title: 'Secret',
       visibility: 'private',
     })
@@ -182,7 +191,7 @@ test.group('Architectures', (group) => {
       .patch(`/architectures/${source.id}/diagrams/${source.diagrams[0].id}`)
       .headers(json)
       .loginAs(user)
-      .json({ content: { kind: 'c4', elements: [] }, version: 1 })
+      .json({ content: { kind: 'c4', level: 'context', elements: [], relations: [] }, version: 1 })
     await Architecture.query()
       .where('id', source.id)
       .update({ visibility: 'public', share_token: 'token' })
@@ -197,7 +206,13 @@ test.group('Architectures', (group) => {
       architecture: {
         title: 'Origin (copy)',
         visibility: 'private',
-        diagrams: [{ kind: 'c4', content: { kind: 'c4', elements: [] }, version: 1 }],
+        diagrams: [
+          {
+            kind: 'c4',
+            content: { kind: 'c4', level: 'context', elements: [], relations: [] },
+            version: 1,
+          },
+        ],
       },
     })
     const stored = await Architecture.findOrFail(copy.body().architecture.id)

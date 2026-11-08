@@ -1,6 +1,6 @@
 import router from '@adonisjs/core/services/router'
 import { middleware } from '#start/kernel'
-import { authThrottle } from '#start/limiter'
+import { apiTokenThrottle, authThrottle } from '#start/limiter'
 
 /*
 |--------------------------------------------------------------------------
@@ -86,12 +86,34 @@ router
 
 /*
 |--------------------------------------------------------------------------
+| Projects: the top-level container of an account's design work
+|--------------------------------------------------------------------------
+|
+| A project holds artifacts; architectures (below) are the first kind, listed
+| with `GET /architectures?projectId=`. Same guards as the architectures.
+*/
+const projectsController = () => import('#app/projects/controllers/projects-controller')
+router
+  .group(() => {
+    router.get('/', [projectsController, 'index']).as('projects.index')
+    router.post('/', [projectsController, 'store']).as('projects.store')
+    router.get('/:id', [projectsController, 'show']).as('projects.show')
+    router.patch('/:id', [projectsController, 'update']).as('projects.update')
+    router.delete('/:id', [projectsController, 'destroy']).as('projects.destroy')
+  })
+  .prefix('/projects')
+  .where('id', router.matchers.number())
+  .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
+
+/*
+|--------------------------------------------------------------------------
 | Architectures and their diagrams (reference user-owned resource — copy this for new domains)
 |--------------------------------------------------------------------------
 */
 const architecturesController = () =>
   import('#app/architectures/controllers/architectures-controller')
 const diagramsController = () => import('#app/diagrams/controllers/diagrams-controller')
+const diagramSourceController = () => import('#app/diagrams/controllers/diagram-source-controller')
 const sharingController = () => import('#app/sharing/controllers/sharing-controller')
 router
   .group(() => {
@@ -121,6 +143,13 @@ router
     router
       .delete('/:id/diagrams/:diagramId', [diagramsController, 'destroy'])
       .as('architectures.diagrams.destroy')
+    // The diagram as Mermaid, PlantUML or JSON text (`?format=`), converted on the way in and out.
+    router
+      .get('/:id/diagrams/:diagramId/source', [diagramSourceController, 'show'])
+      .as('architectures.diagrams.source_show')
+    router
+      .put('/:id/diagrams/:diagramId/source', [diagramSourceController, 'update'])
+      .as('architectures.diagrams.source_update')
 
     // Sharing: the owner's settings (RM-20 to RM-24).
     router.get('/:id/sharing', [sharingController, 'show']).as('architectures.sharing.show')
@@ -135,6 +164,20 @@ router
   .prefix('/architectures')
   .where('id', router.matchers.number())
   .where('diagramId', router.matchers.number())
+  // The session or an API token (see `app/api-tokens`).
+  .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
+
+/*
+|--------------------------------------------------------------------------
+| UML: check a diagram (text or JSON) the way a save would, without storing it
+|--------------------------------------------------------------------------
+*/
+router
+  .post('/uml/validate', [
+    () => import('#app/diagrams/controllers/validate-diagram-controller'),
+    'handle',
+  ])
+  .as('uml.validate')
   .use(middleware.auth())
 
 /*
@@ -187,5 +230,16 @@ router
     router.get('/account/avatar', [avatarController, 'show']).as('account.avatar_show')
     router.post('/account/avatar', [avatarController, 'update']).as('account.avatar_update')
     router.delete('/account/avatar', [avatarController, 'destroy']).as('account.avatar_destroy')
+
+    // API tokens: managed with the session only (a token cannot mint tokens).
+    const apiTokensController = () => import('#app/api-tokens/controllers/api-tokens-controller')
+    router.get('/account/api-tokens', [apiTokensController, 'index']).as('account.api_tokens.index')
+    router
+      .post('/account/api-tokens', [apiTokensController, 'store'])
+      .as('account.api_tokens.store')
+    router
+      .delete('/account/api-tokens/:id', [apiTokensController, 'destroy'])
+      .as('account.api_tokens.destroy')
+      .where('id', router.matchers.number())
   })
   .use(middleware.auth())

@@ -18,7 +18,6 @@ import {
   useSharedArchitecture,
   useUnlockShared,
 } from '@/lib/shared'
-import type { UmlSpec } from '@/lib/uml'
 
 /** Matches the API's access codes (`ACCESS_CODE_ALPHABET` / `ACCESS_CODE_LENGTH`). */
 const ACCESS_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -112,9 +111,7 @@ function SharedViewer({
   const t = useT()
   // Views that were never drawn have nothing to show a visitor.
   const diagrams = architecture.diagrams.flatMap((d) =>
-    d.content
-      ? [{ id: String(d.id), title: d.title, diagram: d.content as unknown as UmlSpec }]
-      : [],
+    d.content ? [{ id: String(d.id), title: d.title, diagram: d.content }] : [],
   )
   return (
     <DiagramViewer

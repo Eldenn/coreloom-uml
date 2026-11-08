@@ -139,6 +139,66 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/users/controllers/users-controller').default['show']>>>
     }
   }
+  'projects.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/projects'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/projects/validators/projects-input').listProjectsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/projects/controllers/projects-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/projects/controllers/projects-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'projects.store': {
+    methods: ["POST"]
+    pattern: '/projects'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/projects/validators/projects-input').createProjectInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/projects/validators/projects-input').createProjectInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/projects/controllers/projects-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/projects/controllers/projects-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'projects.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/projects/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/projects/controllers/projects-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/projects/controllers/projects-controller').default['show']>>>
+    }
+  }
+  'projects.update': {
+    methods: ["PATCH"]
+    pattern: '/projects/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/projects/validators/projects-input').updateProjectInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/projects/validators/projects-input').updateProjectInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/projects/controllers/projects-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/projects/controllers/projects-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'projects.destroy': {
+    methods: ["DELETE"]
+    pattern: '/projects/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/projects/controllers/projects-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/projects/controllers/projects-controller').default['destroy']>>>
+    }
+  }
   'architectures.index': {
     methods: ["GET","HEAD"]
     pattern: '/architectures'
@@ -259,6 +319,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/diagrams/controllers/diagrams-controller').default['destroy']>>>
     }
   }
+  'architectures.diagrams.source_show': {
+    methods: ["GET","HEAD"]
+    pattern: '/architectures/:id/diagrams/:diagramId/source'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; diagramId: ParamValue }
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/diagrams/validators/diagrams-input').showDiagramSourceInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/diagrams/controllers/diagram-source-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/diagrams/controllers/diagram-source-controller').default['show']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'architectures.diagrams.source_update': {
+    methods: ["PUT"]
+    pattern: '/architectures/:id/diagrams/:diagramId/source'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/diagrams/validators/diagrams-input').updateDiagramSourceInput)>>
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; diagramId: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/diagrams/validators/diagrams-input').updateDiagramSourceInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/diagrams/controllers/diagram-source-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/diagrams/controllers/diagram-source-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'architectures.sharing.show': {
     methods: ["GET","HEAD"]
     pattern: '/architectures/:id/sharing'
@@ -305,6 +389,18 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#app/sharing/controllers/sharing-controller').default['regenerateCode']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/sharing/controllers/sharing-controller').default['regenerateCode']>>>
+    }
+  }
+  'uml.validate': {
+    methods: ["POST"]
+    pattern: '/uml/validate'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/diagrams/validators/diagrams-input').validateDiagramInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/diagrams/validators/diagrams-input').validateDiagramInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/diagrams/controllers/validate-diagram-controller').default['handle']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/diagrams/controllers/validate-diagram-controller').default['handle']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'shared.show': {
@@ -401,6 +497,42 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#app/account/controllers/avatar-controller').default['destroy']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/account/controllers/avatar-controller').default['destroy']>>>
+    }
+  }
+  'account.api_tokens.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/account/api-tokens'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/api-tokens/controllers/api-tokens-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/api-tokens/controllers/api-tokens-controller').default['index']>>>
+    }
+  }
+  'account.api_tokens.store': {
+    methods: ["POST"]
+    pattern: '/account/api-tokens'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/api-tokens/validators/api-tokens-input').createApiTokenInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/api-tokens/validators/api-tokens-input').createApiTokenInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/api-tokens/controllers/api-tokens-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/api-tokens/controllers/api-tokens-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'account.api_tokens.destroy': {
+    methods: ["DELETE"]
+    pattern: '/account/api-tokens/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/api-tokens/controllers/api-tokens-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/api-tokens/controllers/api-tokens-controller').default['destroy']>>>
     }
   }
 }

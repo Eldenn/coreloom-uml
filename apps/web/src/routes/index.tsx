@@ -9,5 +9,5 @@ export const Route = createFileRoute('/')({
 function Home() {
   const { user, isLoading } = useAuth()
   if (isLoading) return null
-  return <Navigate to={user ? '/architectures' : '/login'} replace />
+  return <Navigate to={user ? '/projects' : '/login'} replace />
 }
