@@ -108,6 +108,51 @@ function useFileImport({
   return { importFile, notice, clear }
 }
 
+/** True when what is dragged holds files (not text or a link from the page). */
+function draggingFiles(event: React.DragEvent): boolean {
+  return Array.from(event.dataTransfer.types).includes('Files')
+}
+
+/**
+ * Files dropped on an area: `dragging` while files are held over it, `onFiles` with the dropped
+ * ones. The handlers run in the capture phase, so the area's children (the code editor would
+ * paste a dropped file's text) never see files. Text and links dragged inside the page pass by.
+ */
+function useFileDrop({ enabled, onFiles }: { enabled: boolean; onFiles: (files: File[]) => void }) {
+  const [dragging, setDragging] = React.useState(false)
+  // dragenter and dragleave fire for every child crossed: count them to know when files leave.
+  const depth = React.useRef(0)
+  const take = (event: React.DragEvent) => {
+    if (!enabled || !draggingFiles(event)) return false
+    event.preventDefault()
+    event.stopPropagation()
+    return true
+  }
+  const handlers = {
+    onDragEnterCapture: (event: React.DragEvent) => {
+      if (!take(event)) return
+      depth.current += 1
+      setDragging(true)
+    },
+    onDragOverCapture: (event: React.DragEvent) => {
+      if (take(event)) event.dataTransfer.dropEffect = 'copy'
+    },
+    onDragLeaveCapture: (event: React.DragEvent) => {
+      if (!take(event)) return
+      depth.current = Math.max(0, depth.current - 1)
+      if (depth.current === 0) setDragging(false)
+    },
+    onDropCapture: (event: React.DragEvent) => {
+      if (!take(event)) return
+      depth.current = 0
+      setDragging(false)
+      const files = Array.from(event.dataTransfer.files)
+      if (files.length > 0) onFiles(files)
+    },
+  }
+  return { dragging: enabled && dragging, handlers }
+}
+
 export {
   DIAGRAM_FILE_ACCEPT,
   type DiagramFileRead,
@@ -117,5 +162,6 @@ export {
   readDiagramFile,
   sniffFormat,
   titleOfFile,
+  useFileDrop,
   useFileImport,
 }
