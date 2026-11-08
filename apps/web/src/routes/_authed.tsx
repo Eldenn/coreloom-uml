@@ -9,7 +9,7 @@ import {
   useRouter,
   useRouterState,
 } from '@tanstack/react-router'
-import { FolderIcon, LanguagesIcon, PlusIcon, SettingsIcon } from 'lucide-react'
+import { FolderIcon, LanguagesIcon, PlusIcon, SettingsIcon, SparklesIcon } from 'lucide-react'
 import * as React from 'react'
 
 import { meQueryOptions, useAuth } from '@/auth/auth-context'
@@ -145,6 +145,12 @@ function AuthedLayout() {
               isActive: isActive('/projects') || isActive('/architectures'),
             },
             {
+              title: t.nav.skills,
+              url: '/skills',
+              icon: SparklesIcon,
+              isActive: isActive('/skills'),
+            },
+            {
               title: t.nav.settings,
               url: '/settings',
               icon: SettingsIcon,
@@ -162,6 +168,11 @@ function AuthedLayout() {
               label: t.nav.projects,
               icon: FolderIcon,
               onSelect: () => void navigate({ to: '/projects' }),
+            },
+            {
+              label: t.nav.skills,
+              icon: SparklesIcon,
+              onSelect: () => void navigate({ to: '/skills' }),
             },
             {
               label: t.nav.settings,
