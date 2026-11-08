@@ -16,7 +16,11 @@ export async function findOwnedProject(
   { withCounts = false } = {},
 ): Promise<Project | null> {
   const query = Project.query().where('id', id)
-  if (withCounts) query.withCount('architectures')
+  if (withCounts) {
+    query
+      .withCount('architectures')
+      .withCount('agentConfig', (counted) => counted.as('agent_configs_count'))
+  }
   const project = await query.first()
   if (!project || !assertOwner(project, user)) return null
   return project

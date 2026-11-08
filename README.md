@@ -218,12 +218,38 @@ hashed in `auth_access_tokens`; the secret is shown once, at creation.
 - Each key is named, has a `read` and/or `write` ability, and expires after
   1 to 365 days or never. `GET` needs `read`, every other method `write`
   (403 otherwise).
-- Only the `/projects` and `/architectures` routes accept a key
-  (`middleware.auth({ guards: ['web', 'api'] })` + `middleware.tokenAbility()`).
+- Only the `/projects` (agent conventions included), `/architectures` and `/questionnaires`
+  routes accept a key (`middleware.auth({ guards: ['web', 'api'] })` + `middleware.tokenAbility()`).
 - A key cannot `force` a diagram save: on a version conflict it gets the 409
   and must reload the latest version.
 - Each key is limited to 120 requests per minute (`apiTokenThrottle`); an
   account holds 20 keys at most. Both are in `app/api-tokens/constants`.
+
+### Agent conventions
+
+A project can hold one agent configuration (`app/agent-configs/`, tables `agent_configs`,
+`agent_config_answers`, `agent_config_rules`, `agent_config_generations`): the catalog
+questionnaires it uses, the answers, the accepted rules, the owner's notes and the target tools.
+Those are the source of truth; files only exist in its generations, rendered by
+`renderAgentContext` from `packages/catalog`.
+
+- `GET /questionnaires` and `GET /questionnaires/:questionnaireId` serve the catalog (questions
+  without their fragments), so the web app always shows the server's version.
+- `GET|PUT|DELETE /projects/:id/agent-config` reads, creates (201) or updates (200) and deletes
+  it; `PUT …/answers` sets or removes answers (checked against their question, 422 otherwise);
+  `POST|PATCH|DELETE …/rules[/:ruleId]` manage accepted rules (50 at most, in the configuration's
+  sections).
+- `POST …/generations` renders the current state into an immutable generation (files with their
+  managed block and `blockHash`, recommendations; the newest 50 are kept). `GET …/generations`
+  lists them, `GET …/generations/latest` is what the CLI pulls.
+- Every read and write of the configuration returns `impact`: the latest generation's inputs and
+  the current state are both rendered with the current catalog and compared, giving `stale`, the
+  changed questions and, per file, the changed sections (`null` before the first generation).
+- `revision` goes up on every change to the answers, rules, notes, targets or questionnaires.
+  A questionnaire answered against an older catalog version is listed in
+  `outdatedQuestionnaires`; saving the configuration again moves it to the current version through
+  the questionnaire's migrations.
+- No input may contain the `coreloom-uml:` marker prefix (422).
 
 ### Security headers
 

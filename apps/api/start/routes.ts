@@ -90,9 +90,15 @@ router
 |--------------------------------------------------------------------------
 |
 | A project holds artifacts; architectures (below) are the first kind, listed
-| with `GET /architectures?projectId=`. Same guards as the architectures.
+| with `GET /architectures?projectId=`, and its agent conventions the second
+| (`/projects/:id/agent-config`). Same guards as the architectures.
 */
 const projectsController = () => import('#app/projects/controllers/projects-controller')
+const agentConfigController = () => import('#app/agent-configs/controllers/agent-config-controller')
+const agentRulesController = () =>
+  import('#app/agent-configs/controllers/agent-config-rules-controller')
+const agentGenerationsController = () =>
+  import('#app/agent-configs/controllers/agent-config-generations-controller')
 router
   .group(() => {
     router.get('/', [projectsController, 'index']).as('projects.index')
@@ -100,9 +106,67 @@ router
     router.get('/:id', [projectsController, 'show']).as('projects.show')
     router.patch('/:id', [projectsController, 'update']).as('projects.update')
     router.delete('/:id', [projectsController, 'destroy']).as('projects.destroy')
+
+    // Agent conventions: the project's configuration (one per project) and its generations.
+    router
+      .get('/:id/agent-config', [agentConfigController, 'show'])
+      .as('projects.agent_config.show')
+    router
+      .put('/:id/agent-config', [agentConfigController, 'update'])
+      .as('projects.agent_config.update')
+    router
+      .delete('/:id/agent-config', [agentConfigController, 'destroy'])
+      .as('projects.agent_config.destroy')
+    router
+      .put('/:id/agent-config/answers', [
+        () => import('#app/agent-configs/controllers/agent-config-answers-controller'),
+        'update',
+      ])
+      .as('projects.agent_config.answers.update')
+    router
+      .post('/:id/agent-config/rules', [agentRulesController, 'store'])
+      .as('projects.agent_config.rules.store')
+    router
+      .patch('/:id/agent-config/rules/:ruleId', [agentRulesController, 'update'])
+      .as('projects.agent_config.rules.update')
+    router
+      .delete('/:id/agent-config/rules/:ruleId', [agentRulesController, 'destroy'])
+      .as('projects.agent_config.rules.destroy')
+    router
+      .post('/:id/agent-config/generations', [agentGenerationsController, 'store'])
+      .as('projects.agent_config.generations.store')
+    router
+      .get('/:id/agent-config/generations', [agentGenerationsController, 'index'])
+      .as('projects.agent_config.generations.index')
+    // What the CLI pulls. Declared before `/:generationId` so `latest` isn't read as an id.
+    router
+      .get('/:id/agent-config/generations/latest', [agentGenerationsController, 'latest'])
+      .as('projects.agent_config.generations.latest')
+    router
+      .get('/:id/agent-config/generations/:generationId', [agentGenerationsController, 'show'])
+      .as('projects.agent_config.generations.show')
   })
   .prefix('/projects')
   .where('id', router.matchers.number())
+  .where('ruleId', router.matchers.number())
+  .where('generationId', router.matchers.number())
+  .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
+
+/*
+|--------------------------------------------------------------------------
+| Questionnaires of the agent conventions catalog (`@coreloom-uml/catalog`)
+|--------------------------------------------------------------------------
+|
+| Served by the API so the web app always shows the server's version.
+*/
+const questionnairesController = () =>
+  import('#app/agent-configs/controllers/questionnaires-controller')
+router
+  .group(() => {
+    router.get('/', [questionnairesController, 'index']).as('questionnaires.index')
+    router.get('/:questionnaireId', [questionnairesController, 'show']).as('questionnaires.show')
+  })
+  .prefix('/questionnaires')
   .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
 
 /*

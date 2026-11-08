@@ -7,6 +7,96 @@
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
+export class AgentConfigAnswerSchema extends BaseModel {
+  static $columns = ['agentConfigId', 'createdAt', 'details', 'id', 'questionId', 'questionnaireId', 'updatedAt', 'value'] as const
+  $columns = AgentConfigAnswerSchema.$columns
+  @column()
+  declare agentConfigId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare details: string | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare questionId: string
+  @column()
+  declare questionnaireId: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare value: any
+}
+
+export class AgentConfigGenerationSchema extends BaseModel {
+  static $columns = ['agentConfigId', 'catalogVersion', 'createdAt', 'files', 'id', 'inputs', 'recommendations', 'revision', 'skills', 'updatedAt'] as const
+  $columns = AgentConfigGenerationSchema.$columns
+  @column()
+  declare agentConfigId: number
+  @column()
+  declare catalogVersion: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare files: any
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare inputs: any
+  @column()
+  declare recommendations: any
+  @column()
+  declare revision: number
+  @column()
+  declare skills: any
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class AgentConfigRuleSchema extends BaseModel {
+  static $columns = ['agentConfigId', 'createdAt', 'id', 'position', 'section', 'source', 'text', 'updatedAt'] as const
+  $columns = AgentConfigRuleSchema.$columns
+  @column()
+  declare agentConfigId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare position: number
+  @column()
+  declare section: string
+  @column()
+  declare source: string
+  @column()
+  declare text: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class AgentConfigSchema extends BaseModel {
+  static $columns = ['createdAt', 'id', 'notes', 'projectId', 'questionnaires', 'revision', 'targets', 'updatedAt', 'userId'] as const
+  $columns = AgentConfigSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare notes: string | null
+  @column()
+  declare projectId: number
+  @column()
+  declare questionnaires: any
+  @column()
+  declare revision: number
+  @column()
+  declare targets: any
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
+}
+
 export class ArchitectureSchema extends BaseModel {
   static $columns = ['accessCode', 'accessVersion', 'createdAt', 'description', 'id', 'projectId', 'shareToken', 'title', 'updatedAt', 'userId', 'visibility'] as const
   $columns = ArchitectureSchema.$columns

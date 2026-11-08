@@ -19,6 +19,7 @@ export default class ProjectsController {
     const query = Project.query()
       .where('userId', user.id)
       .withCount('architectures')
+      .withCount('agentConfig', (query) => query.as('agent_configs_count'))
       .orderBy('updatedAt', 'desc')
       .orderBy('id', 'desc')
     if (search) query.whereILike('name', likePattern(search))
