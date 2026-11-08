@@ -17,6 +17,7 @@ import {
 import { listAgentGenerationsInput } from '#app/agent-configs/validators/agent-configs-input'
 import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
 import { paginate } from '#app/shared/pagination/paginate'
+import { suggestableSkills } from '#app/skills/services/skills-catalog'
 
 /**
  * Generations: frozen renders of a configuration. A new one is always rendered from the current
@@ -32,6 +33,7 @@ export default class AgentConfigGenerationsController {
     const project = await findOwnedProject(params.id, user)
     if (!project) return response.notFound(PROJECT_NOT_FOUND)
 
+    const skills = await suggestableSkills()
     const generation = await db.transaction(async (trx) => {
       const config = await findProjectAgentConfig(project, user, trx)
       if (!config) return null
@@ -46,7 +48,7 @@ export default class AgentConfigGenerationsController {
           inputs,
           files: output.files,
           recommendations: output.recommendations,
-          skills: suggestSkills(inputs),
+          skills: suggestSkills(inputs, skills),
         },
         { client: trx },
       )

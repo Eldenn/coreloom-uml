@@ -1,4 +1,5 @@
 export { answerProblem, fragmentTexts, migrateAnswers, type StoredAnswer } from './answers.ts'
+export { DIAGRAM_KINDS, type DiagramKind } from './diagram-kinds.ts'
 export {
   COMPATIBLE_SKILLS_MAX,
   CONFLICTING_SKILLS_MAX,
@@ -41,12 +42,17 @@ export {
   renderAgentContext,
 } from './render/render-agent-context.ts'
 export {
+  ACCEPTED_AUDIT_RISKS,
   ANSWER_TEXT_MAX_LENGTH,
   type AnswerValue,
+  AuditRisk,
   answerValueSchema,
+  type DiagramAffinity,
+  diagramAffinitySchema,
   type Fragment,
   type FragmentCondition,
   fragmentSchema,
+  isSlotAffinity,
   LOCALES,
   type Localized,
   localizedSchema,
@@ -60,8 +66,13 @@ export {
   SCALE_MIN,
   type Skill,
   type SkillAffinity,
+  SkillOrigin,
+  type SkillProvenance,
+  type SlotAffinity,
   skillAffinitySchema,
+  skillProvenanceSchema,
   skillSchema,
+  slotAffinitySchema,
 } from './schemas.ts'
 export {
   RESERVED_SECTIONS,
@@ -70,7 +81,13 @@ export {
   SHARED_SECTIONS,
   sectionOrder,
 } from './sections.ts'
-export { SKILL_TARGET_SOURCES, SKILLS, SKILLS_VERIFIED_ON } from './skills.ts'
+export {
+  SKILL_SEARCH_PLAN,
+  SKILL_TOPICS,
+  type SkillSearchQuery,
+  SkillTopic,
+} from './skill-search-plan.ts'
+export { SKILL_TARGET_SOURCES, SKILLS, SKILLS_MAX, SKILLS_VERIFIED_ON } from './skills.ts'
 export { isSlot, SLOTS, type Slot } from './slots.ts'
 export { TARGET_TEMPLATES } from './targets/index.ts'
 export {

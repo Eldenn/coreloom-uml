@@ -140,6 +140,18 @@ export default await Env.create(new URL('../', import.meta.url), {
 
   /*
   |--------------------------------------------------------------------------
+  | Skills catalog
+  |--------------------------------------------------------------------------
+  | `node ace skills:setup` (run after the migrations) schedules the weekly
+  | skills.sh search when SKILLS_REFRESH_ENABLED=true. SKILLS_GITHUB_TOKEN is a
+  | GitHub token with no scope: it raises GitHub's rate limit so each run can
+  | check up to 200 skills instead of 10.
+  */
+  SKILLS_REFRESH_ENABLED: Env.schema.boolean.optional(),
+  SKILLS_GITHUB_TOKEN: Env.schema.string.optional(),
+
+  /*
+  |--------------------------------------------------------------------------
   | LLM providers (agent conventions: rule proposals, bring your own key)
   |--------------------------------------------------------------------------
   | The server holds no provider key: each request carries the user's. Hosted

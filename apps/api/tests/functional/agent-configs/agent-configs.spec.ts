@@ -634,6 +634,33 @@ test.group('Agent configs - generations', (group) => {
     assert.deepEqual(shown.body().generation.skills, fitting.skills)
   })
 
+  test('suggests the skills that fit the kinds of the project diagrams', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    const project = await createProject(client, user)
+    const architecture = await client
+      .post('/architectures')
+      .headers(json)
+      .loginAs(user)
+      .json({ projectId: project.id, title: 'Checkout' })
+    architecture.assertStatus(201)
+    const diagram = await client
+      .post(`/architectures/${architecture.body().architecture.id}/diagrams`)
+      .headers(json)
+      .loginAs(user)
+      .json({ title: 'Context', kind: 'c4' })
+    diagram.assertStatus(201)
+    await createConfig(client, user, project.id)
+
+    const generation = await generate(client, user, project.id)
+    assert.deepEqual(
+      generation.skills.compatible.map((skill) => skill.id),
+      ['c4-architecture', 'mermaid-diagrams'],
+    )
+  })
+
   test('answers 404 for the latest generation before the first one', async ({ client }) => {
     const user = await makeUser()
     const project = await createProject(client, user)

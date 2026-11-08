@@ -273,16 +273,39 @@ tsup with the catalog inside; its tests (Vitest) run against a fixture HTTP serv
 #### Skills
 
 Every generation also lists third-party skills (Agent Skills `SKILL.md` folders) that fit the
-answers, or go against them. The 8 entries of `packages/catalog/src/skills.ts` are curated by hand,
-pinned to a tag or a commit, and re-checked (with `SKILLS_VERIFIED_ON`) whenever the catalog's
-version changes; nothing is fetched at run time. `matchSkills` is deterministic: for each affinity
-whose slot is answered, +1 when the answer is in the skill's range or among its values, −1 when a
-scale answer is 2 or more away from the range. A skill is compatible with a score of at least 1 and
-no −1 (5 at most), conflicting as soon as it has a −1 (3 at most, each with its reasons), and only
-suggested for one of the configuration's targets. The generation stores a copy of each suggestion,
-so an older generation keeps showing what was suggested then. The screen and the end of
-`coreloom-uml pull` show them as links only, never as a command to run, marked as third-party
-resources not checked by Coreloom.
+answers and the project, or go against the answers. Suggestions draw from the hand-picked skills of
+`packages/catalog/src/skills-data.ts` and the eligible skills of the API's `skills` table (below);
+all are links only, each pinned to a tag or a commit, and generating fetches nothing.
+`matchSkills` is deterministic: for each affinity whose slot is answered, +1 when the answer is in
+the skill's range or among its values, −1 when a scale answer is 2 or more away from the range; a
+diagram affinity counts +1 when the project holds a diagram of one of its kinds (C4, sequence…). A
+skill is compatible with a score of at least 1 and no −1 (5 at most), conflicting as soon as it has
+a −1 (3 at most, each with its reasons), and only suggested for one of the configuration's targets.
+The generation stores a copy of each suggestion with its security audits, so an older generation
+keeps showing what was suggested then. The screen and the end of `coreloom-uml pull` show them as
+links only, never as a command to run, marked as third-party resources not checked by Coreloom.
+
+The catalog grows on its own and keeps everything it finds. Every Monday at 06:00 UTC the
+`RefreshSkillsJob` (BullMQ, run by the `queue:work` worker) searches [skills.sh](https://skills.sh)
+for each query of `packages/catalog/src/skill-search-plan.ts`, each with a topic and, for the ones
+that fit a question or a diagram kind, the affinity its results get. Every skill found is kept in
+the `skills` table, with its installs, audits, licence, topics and when it was first and last seen,
+and each run adds a row per skill to `skill_snapshots`, so the history can be charted. A found skill
+is **eligible** (suggested) only with at least 500 installs, a passing security audit (Gen, Socket,
+Snyk: safe or low risk only), an open licence and a `SKILL.md`, which is then pinned to the current
+commit (re-pinned only when its folder changes); otherwise it stays catalogued with the reason. Up to
+200 skills are checked on GitHub per run, most installed first (10 without `SKILLS_GITHUB_TOKEN`);
+the rest wait for the next run. A failed search or audit request stops the run without changing
+anything.
+
+```bash
+node ace skills:setup                      # copy the hand-picked skills; schedule the search when SKILLS_REFRESH_ENABLED=true
+node ace skills:refresh                    # run the search now
+node ace skills:block <slug> --reason "…"  # never suggest it again (--unblock to undo)
+```
+
+`skills:setup` runs on every deploy after the migrations (see `infra/docker-compose.*.yml`), where
+`SKILLS_REFRESH_ENABLED` defaults to `true`.
 
 #### Rule proposals with the user's own LLM (bring your own key)
 
