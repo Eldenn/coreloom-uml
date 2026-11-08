@@ -1,4 +1,5 @@
-// One project: its architectures as cards, and the project's own actions (rename, delete).
+// One project: its architectures as cards, its agent conventions in a second tab, and the
+// project's own actions (rename, delete).
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
 import {
   CopyIcon,
@@ -11,6 +12,7 @@ import {
 import * as React from 'react'
 import { z } from 'zod'
 
+import { AgentConfigTab, type AgentConfigView } from '@/agent-configs/agent-config-tab'
 import { PageHeader } from '@/components/app-shell'
 import { DiagramCard } from '@/components/diagram-card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -24,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -38,6 +41,8 @@ import { useAppForm } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useAgentConfig } from '@/lib/agent-configs'
 import {
   type ArchitectureSummary,
   DIAGRAM_KINDS,
@@ -60,8 +65,14 @@ export const Route = createFileRoute('/_authed/projects/$projectId')({
     parse: ({ projectId }) => ({ projectId: z.coerce.number().int().positive().parse(projectId) }),
     stringify: ({ projectId }) => ({ projectId: String(projectId) }),
   },
-  // `?new=true` opens the "New architecture" dialog.
-  validateSearch: z.object({ new: z.boolean().optional().catch(undefined) }),
+  // `?new=true` opens the "New architecture" dialog; `?tab=agents` shows the agent conventions,
+  // with `step=questions` for the questionnaire and `generation=<id>` for generated files.
+  validateSearch: z.object({
+    new: z.boolean().optional().catch(undefined),
+    tab: z.enum(['architectures', 'agents']).optional().catch(undefined),
+    step: z.enum(['questions']).optional().catch(undefined),
+    generation: z.coerce.number().int().positive().optional().catch(undefined),
+  }),
   // The project's name, for the breadcrumbs; the page shows its own error if it can't load.
   loader: ({ context: { queryClient }, params: { projectId } }) =>
     queryClient.query({ ...projectQueryOptions(projectId), staleTime: 'static' }).catch(() => null),
@@ -93,7 +104,7 @@ function ProjectView({ project }: { project: Project }) {
   const t = useT()
   const router = useRouter()
   const navigate = useNavigate({ from: Route.fullPath })
-  const { new: creating = false } = Route.useSearch()
+  const { new: creating = false, tab = 'architectures', step, generation } = Route.useSearch()
   const [editing, setEditing] = React.useState(false)
   const [deleting, setDeleting] = React.useState(false)
   const [search, setSearch] = React.useState('')
@@ -109,6 +120,10 @@ function ProjectView({ project }: { project: Project }) {
   const architectures = useArchitectures(project.id, query)
   const setCreating = (open: boolean) =>
     void navigate({ search: open ? { new: true } : {}, replace: true })
+  const setTab = (next: string) =>
+    void navigate({ search: next === 'agents' ? { tab: 'agents' } : {}, replace: true })
+  const setAgentView = (view: AgentConfigView) =>
+    void navigate({ search: { tab: 'agents', ...view } })
 
   return (
     <>
@@ -143,23 +158,41 @@ function ProjectView({ project }: { project: Project }) {
           </>
         }
       />
-      <Input
-        type="search"
-        className="sm:w-72"
-        value={search}
-        onChange={(e) => {
-          setSearch(e.target.value)
-        }}
-        placeholder={t.architectures.search}
-        aria-label={t.architectures.search}
-      />
-      <ArchitectureList
-        query={architectures}
-        searching={query !== ''}
-        onCreate={() => {
-          setCreating(true)
-        }}
-      />
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList variant="line">
+          <TabsTrigger value="architectures">{t.agents.tabArchitectures}</TabsTrigger>
+          <TabsTrigger value="agents">
+            {t.agents.tab}
+            <AgentConfigBadge project={project} />
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="architectures" className="flex flex-col gap-4">
+          <Input
+            type="search"
+            className="sm:w-72"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value)
+            }}
+            placeholder={t.architectures.search}
+            aria-label={t.architectures.search}
+          />
+          <ArchitectureList
+            query={architectures}
+            searching={query !== ''}
+            onCreate={() => {
+              setCreating(true)
+            }}
+          />
+        </TabsContent>
+        <TabsContent value="agents">
+          <AgentConfigTab
+            projectId={project.id}
+            view={{ step, generation }}
+            onViewChange={setAgentView}
+          />
+        </TabsContent>
+      </Tabs>
       <CreateArchitectureDialog project={project} open={creating} onOpenChange={setCreating} />
       <EditProjectDialog
         project={project}
@@ -176,6 +209,14 @@ function ProjectView({ project }: { project: Project }) {
       />
     </>
   )
+}
+
+/** "Needs regenerating" next to the tab's name, in words, when the latest files are stale. */
+function AgentConfigBadge({ project }: { project: Project }) {
+  const t = useT()
+  const config = useAgentConfig(project.id)
+  if (project.agentConfigCount === 0 || !config.data?.impact?.stale) return null
+  return <Badge variant="warning">{t.agents.stale}</Badge>
 }
 
 function ArchitectureList({
