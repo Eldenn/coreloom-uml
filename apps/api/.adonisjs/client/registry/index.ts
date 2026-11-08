@@ -168,6 +168,18 @@ const routes = {
     tokens: [{"old":"/projects/:id/agent-config/generations/:generationId","type":0,"val":"projects","end":""},{"old":"/projects/:id/agent-config/generations/:generationId","type":1,"val":"id","end":""},{"old":"/projects/:id/agent-config/generations/:generationId","type":0,"val":"agent-config","end":""},{"old":"/projects/:id/agent-config/generations/:generationId","type":0,"val":"generations","end":""},{"old":"/projects/:id/agent-config/generations/:generationId","type":1,"val":"generationId","end":""}],
     types: placeholder as Registry['projects.agent_config.generations.show']['types'],
   },
+  'projects.agent_config.proposals.store': {
+    methods: ["POST"],
+    pattern: '/projects/:id/agent-config/proposals',
+    tokens: [{"old":"/projects/:id/agent-config/proposals","type":0,"val":"projects","end":""},{"old":"/projects/:id/agent-config/proposals","type":1,"val":"id","end":""},{"old":"/projects/:id/agent-config/proposals","type":0,"val":"agent-config","end":""},{"old":"/projects/:id/agent-config/proposals","type":0,"val":"proposals","end":""}],
+    types: placeholder as Registry['projects.agent_config.proposals.store']['types'],
+  },
+  'llm.test': {
+    methods: ["POST"],
+    pattern: '/llm/test',
+    tokens: [{"old":"/llm/test","type":0,"val":"llm","end":""},{"old":"/llm/test","type":0,"val":"test","end":""}],
+    types: placeholder as Registry['llm.test']['types'],
+  },
   'questionnaires.index': {
     methods: ["GET","HEAD"],
     pattern: '/questionnaires',
