@@ -251,6 +251,13 @@ Those are the source of truth; files only exist in its generations, rendered by
   the questionnaire's migrations.
 - No input may contain the `coreloom-uml:` marker prefix (422).
 
+On the web, the project page's « Agent conventions » tab (`apps/web/src/agent-configs/`) walks
+through it: choose a questionnaire and the target tools, answer section by section (the draft is
+kept in the browser until saved), accept rules one by one, generate, then read the files, their
+changes since the previous generation and the recommendations, and copy the CLI command that
+installs them. When `impact.stale` is true the tab shows a « To regenerate » badge and lists what a
+new generation would change.
+
 ### Security headers
 
 `@adonisjs/shield` (`config/shield.ts`) adds `X-Frame-Options: DENY`,

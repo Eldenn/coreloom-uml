@@ -397,11 +397,20 @@ function useComponents(): Components {
   )
 }
 
+/** What `inline` keeps; everything else is unwrapped to its text. */
+const INLINE_ELEMENTS = ['p', 'code', 'em', 'strong', 'del', 'a', 'br']
+
+/** In `inline` mode a paragraph is just its content, so the text flows in its host. */
+function InlineParagraph({ children }: { children?: React.ReactNode }) {
+  return <>{children}</>
+}
+
 function Markdown({
   children,
   streaming = false,
   sources,
   codeBlocks,
+  inline = false,
   className,
 }: {
   /** The Markdown text. */
@@ -412,12 +421,22 @@ function Markdown({
   sources?: readonly CitationSource[]
   /** Renderers for fenced code by language; added to (and winning over) `MarkdownCodeBlocksContext`. */
   codeBlocks?: MarkdownCodeRenderers
+  /**
+   * One line of text inside a label, a title or a sentence: only inline code, emphasis, strong,
+   * strikethrough and links are kept, in a `<span>` with the surrounding text's style. Blocks
+   * (paragraphs, lists, headings, code blocks) lose their markup and keep their text.
+   */
+  inline?: boolean
   className?: string
 }) {
   const inherited = React.use(MarkdownCodeBlocksContext)
   const renderers = React.useMemo(() => ({ ...inherited, ...codeBlocks }), [inherited, codeBlocks])
   const block = React.useMemo(() => ({ renderers, streaming }), [renderers, streaming])
-  const components = useComponents()
+  const blockComponents = useComponents()
+  const components = React.useMemo<Components>(
+    () => (inline ? { ...blockComponents, p: InlineParagraph } : blockComponents),
+    [inline, blockComponents],
+  )
   const t = useCoreloomI18n().messages.ai.chat
   const prefix = `${React.useId()}-`
   const count = sources?.length ?? 0
@@ -447,6 +466,25 @@ function Markdown({
     }),
     [prefix, t],
   )
+  const markdown = (
+    <ReactMarkdown
+      remarkPlugins={remarkPlugins}
+      rehypePlugins={rehypePlugins}
+      remarkRehypeOptions={remarkRehypeOptions}
+      components={components}
+      allowedElements={inline ? INLINE_ELEMENTS : undefined}
+      unwrapDisallowed={inline}
+      skipHtml
+    >
+      {children}
+    </ReactMarkdown>
+  )
+  if (inline)
+    return (
+      <span data-slot="markdown" data-inline className={cn('min-w-0 break-words', className)}>
+        <SourcesContext value={sources ?? []}>{markdown}</SourcesContext>
+      </span>
+    )
   return (
     <div
       data-slot="markdown"
@@ -459,17 +497,7 @@ function Markdown({
       )}
     >
       <SourcesContext value={sources ?? []}>
-        <BlockContext value={block}>
-          <ReactMarkdown
-            remarkPlugins={remarkPlugins}
-            rehypePlugins={rehypePlugins}
-            remarkRehypeOptions={remarkRehypeOptions}
-            components={components}
-            skipHtml
-          >
-            {children}
-          </ReactMarkdown>
-        </BlockContext>
+        <BlockContext value={block}>{markdown}</BlockContext>
       </SourcesContext>
     </div>
   )

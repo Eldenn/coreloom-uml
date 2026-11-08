@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button'
 import { CharacterCount } from '@/components/ui/character-count'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ChipGroup, type ChipOption } from '@/components/ui/chip-group'
-import { RadioCard, RadioCardGroup } from '@/components/ui/choice-card'
+import { CheckboxCard, RadioCard, RadioCardGroup } from '@/components/ui/choice-card'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { Combobox } from '@/components/ui/combobox'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -1147,6 +1147,36 @@ function RadioCardField({
   )
 }
 
+/** A checkbox option; an `exclusive` one ("None of these") can't be ticked with another. */
+interface CheckOption extends Option {
+  exclusive?: boolean
+}
+
+/**
+ * The ticked values after one checkbox changes, in ticking order. Ticking an exclusive option
+ * clears the others; ticking another option clears the exclusive ones.
+ */
+function toggleChoice({
+  picked,
+  value,
+  checked,
+  exclusive,
+}: {
+  picked: readonly string[]
+  value: string
+  checked: boolean
+  exclusive: readonly string[]
+}): string[] {
+  const others = picked.filter((v) => v !== value)
+  if (!checked) return others
+  if (exclusive.includes(value)) return [value]
+  return [...others.filter((v) => !exclusive.includes(v)), value]
+}
+
+function exclusiveValues(options: readonly { value: string; exclusive?: boolean }[]): string[] {
+  return options.filter((o) => o.exclusive).map((o) => o.value)
+}
+
 /** Several checkboxes on one field; the value is the array of ticked values. */
 function CheckboxGroupField({
   label,
@@ -1154,11 +1184,12 @@ function CheckboxGroupField({
   className,
   options,
   disabled,
-}: FieldShellProps & { options: Option[]; disabled?: boolean }) {
+}: FieldShellProps & { options: CheckOption[]; disabled?: boolean }) {
   const meta = useFieldMeta()
   const field = meta.field
   const value = useSelector(field.store, (s) => s.value) as string[] | undefined
   const picked = value ?? []
+  const exclusive = exclusiveValues(options)
   return (
     <Field
       role="group"
@@ -1183,9 +1214,7 @@ function CheckboxGroupField({
               aria-invalid={meta.invalid || undefined}
               onCheckedChange={(c) => {
                 field.handleChange(
-                  c === true
-                    ? [...picked.filter((v) => v !== o.value), o.value]
-                    : picked.filter((v) => v !== o.value),
+                  toggleChoice({ picked, value: o.value, checked: c === true, exclusive }),
                 )
                 field.handleBlur()
               }}
@@ -1196,6 +1225,68 @@ function CheckboxGroupField({
       </div>
       {meta.invalid && <FieldError id={meta.errorId} errors={meta.issues} />}
     </Field>
+  )
+}
+
+/** Checkboxes drawn as cards (CheckboxCard); the value is the array of ticked values. */
+function CheckboxCardField({
+  label,
+  description,
+  className,
+  labelAction,
+  hideLabel,
+  options,
+  orientation = 'vertical',
+  disabled,
+}: VerticalShellProps & {
+  options: (CardOption & { exclusive?: boolean })[]
+  orientation?: 'vertical' | 'horizontal'
+  disabled?: boolean
+}) {
+  const meta = useFieldMeta()
+  const field = meta.field
+  const value = useSelector(field.store, (s) => s.value) as string[] | undefined
+  const picked = value ?? []
+  const exclusive = exclusiveValues(options)
+  return (
+    <VerticalShell
+      meta={meta}
+      label={label}
+      description={description}
+      className={className}
+      labelAction={labelAction}
+      hideLabel={hideLabel}
+      group
+    >
+      <div
+        role="group"
+        aria-labelledby={meta.labelId}
+        aria-describedby={describedBy(meta, description)}
+        data-orientation={orientation}
+        className={cn(
+          'grid gap-3',
+          orientation === 'horizontal' && 'grid-cols-[repeat(auto-fit,minmax(11rem,1fr))]',
+        )}
+      >
+        {options.map((o) => (
+          <CheckboxCard
+            key={o.value}
+            name={field.name}
+            value={o.value}
+            title={o.title}
+            description={o.description}
+            icon={o.icon}
+            disabled={(disabled ?? false) || (o.disabled ?? false)}
+            aria-invalid={meta.invalid || undefined}
+            checked={picked.includes(o.value)}
+            onCheckedChange={(checked) => {
+              field.handleChange(toggleChoice({ picked, value: o.value, checked, exclusive }))
+              field.handleBlur()
+            }}
+          />
+        ))}
+      </div>
+    </VerticalShell>
   )
 }
 
@@ -1726,6 +1817,7 @@ const { useAppForm, withForm, withFieldGroup } = createFormHook({
     SegmentedField,
     RadioCardField,
     CheckboxGroupField,
+    CheckboxCardField,
     KeyValueField,
     ChipField,
     ScaleField,
@@ -1750,8 +1842,10 @@ const { useAppForm, withForm, withFieldGroup } = createFormHook({
 })
 
 export {
+  CheckboxCardField,
   CheckboxField,
   CheckboxGroupField,
+  type CheckOption,
   ChipField,
   ColorField,
   ComboboxField,
@@ -1792,6 +1886,7 @@ export {
   TimeField,
   TimeRangeField,
   TimezoneField,
+  toggleChoice,
   TransferField,
   TreeSelectField,
   UnitField,
