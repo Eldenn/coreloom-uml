@@ -169,6 +169,10 @@ router
   .where('id', router.matchers.number())
   .use([middleware.auth(), llmThrottle])
 router
+  .get('/llm/providers', [() => import('#app/llm/controllers/llm-providers-controller'), 'index'])
+  .as('llm.providers')
+  .use(middleware.auth())
+router
   .post('/llm/test', [() => import('#app/llm/controllers/llm-test-controller'), 'handle'])
   .as('llm.test')
   .use([middleware.auth(), llmThrottle])

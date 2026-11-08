@@ -110,6 +110,7 @@ export function AgentConfigSummary({
       <AgentConfigRules
         projectId={projectId}
         config={config}
+        questionnaires={questionnaires}
         draft={ruleDraft}
         onDraftChange={setRuleDraft}
       />

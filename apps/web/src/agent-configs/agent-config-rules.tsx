@@ -1,9 +1,10 @@
-// Accepted rules: lines added to a section of AGENTS.md, written by hand here (or accepted from a
-// model's proposal once that lands). Ordered, edited and deleted one by one.
+// Accepted rules: lines added to a section of AGENTS.md, written by hand here or accepted from a
+// model's proposals (`RuleProposals`). Ordered, edited and deleted one by one.
 import { PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
+import { RuleProposals } from '@/agent-configs/agent-config-proposals'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -28,6 +29,7 @@ import { SortableList } from '@/components/ui/sortable-list'
 import {
   type AgentConfig,
   type AgentRule,
+  type Questionnaire,
   RULE_TEXT_MAX_LENGTH,
   RULES_MAX,
   useCreateRule,
@@ -53,11 +55,14 @@ function movedRule(before: string[], after: string[]): { id: string; position: n
 export function AgentConfigRules({
   projectId,
   config,
+  questionnaires,
   draft,
   onDraftChange,
 }: {
   projectId: number
   config: AgentConfig
+  /** Names the answer a proposed rule comes from. */
+  questionnaires: Questionnaire[]
   /** The open dialog, if any; the answers can open it to turn their details into a rule. */
   draft: RuleDraft | null
   onDraftChange: (draft: RuleDraft | null) => void
@@ -120,7 +125,8 @@ export function AgentConfigRules({
       <CardHeader>
         <CardTitle id="agent-rules-title">{t.agents.rulesTitle}</CardTitle>
         <CardDescription>{t.agents.rulesHint(RULES_MAX)}</CardDescription>
-        <CardAction>
+        <CardAction className="flex flex-wrap justify-end gap-2">
+          <RuleProposals projectId={projectId} config={config} questionnaires={questionnaires} />
           <Button
             ref={addRef}
             variant="outline"

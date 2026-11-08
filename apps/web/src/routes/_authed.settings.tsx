@@ -16,6 +16,7 @@ import { useAppForm } from '@/components/ui/form'
 import { toast } from '@/components/ui/sonner'
 import { client } from '@/lib/client'
 import { useT } from '@/lib/locale'
+import { LlmProviderSection } from '@/llm/llm-provider-section'
 
 export const Route = createFileRoute('/_authed/settings')({
   staticData: { crumb: (t) => t.nav.settings },
@@ -43,6 +44,7 @@ function SettingsPage() {
         <PasswordSection />
       )}
       <ApiTokensSection />
+      <LlmProviderSection />
       <SettingsSection title={t.settings.appearance}>
         <SettingsRow label={t.settings.theme}>
           <ThemeMenu />

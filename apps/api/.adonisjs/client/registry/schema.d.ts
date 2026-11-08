@@ -343,6 +343,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-proposals-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'llm.providers': {
+    methods: ["GET","HEAD"]
+    pattern: '/llm/providers'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/llm/controllers/llm-providers-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm/controllers/llm-providers-controller').default['index']>>>
+    }
+  }
   'llm.test': {
     methods: ["POST"]
     pattern: '/llm/test'

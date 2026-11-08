@@ -163,6 +163,41 @@ const THREE_PROPOSALS = JSON.stringify({
   ],
 })
 
+test.group('LLM - providers', (group) => {
+  group.each.setup(() => testUtils.db().withGlobalTransaction())
+
+  test('lists every kind with its needs, model suggestions and the allowed origins', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    const configured = llmConfig.allowedOrigins.splice(0, Infinity, OLLAMA)
+    try {
+      const response = await client.get('/llm/providers').headers(json).loginAs(user)
+
+      response.assertStatus(200)
+      const { providers, allowedBaseUrls } = response.body()
+      assert.deepEqual(allowedBaseUrls, [OLLAMA])
+      assert.deepEqual(
+        providers.map((p: { kind: string }) => p.kind),
+        ['anthropic', 'openai', 'mistral', 'ollama', 'openai-compatible'],
+      )
+      const byKind = new Map(providers.map((p: { kind: string }) => [p.kind, p]))
+      assert.containsSubset(byKind.get('anthropic'), { requiresApiKey: true, takesBaseUrl: false })
+      assert.containsSubset(byKind.get('ollama'), { requiresApiKey: false, takesBaseUrl: true })
+      assert.isNotEmpty((byKind.get('mistral') as { models: string[] }).models)
+      assert.deepEqual((byKind.get('openai-compatible') as { models: string[] }).models, [])
+    } finally {
+      llmConfig.allowedOrigins.splice(0, Infinity, ...configured)
+    }
+  })
+
+  test('needs a session', async ({ client }) => {
+    const response = await client.get('/llm/providers').headers(json)
+    response.assertStatus(401)
+  })
+})
+
 test.group('LLM - connection test', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
   group.each.teardown(() => app.container.restore(LanguageModels))
