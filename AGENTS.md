@@ -7,6 +7,13 @@ pull requests, issues, reviews or comments, no agent-specific files or folders (
 settings, plans), and no mention in code comments or docs. Commits are authored as
 `Matthieu Chane <matthieu.chanewenc@gmail.com>`. These instructions live in this `AGENTS.md`.
 
+One exception: the names of third-party coding tools used as **product data** (target identifiers
+such as `claude-code` or `cursor`, the file names those tools read such as `CLAUDE.md` or
+`GEMINI.md`, catalog entries and their URLs) are allowed in `packages/catalog`, its templates and
+tests, and in user-facing copy. They describe what the product generates for its users; they never
+credit or attribute this repository's code. Agent-specific files themselves stay out of the repository:
+`node scripts/check-agent-files.mjs` (run in CI) fails when one is tracked outside `packages/catalog`.
+
 ## Conventions
 
 Coreloom UML follows the same conventions as [coreloom](https://github.com/eldenn/coreloom),

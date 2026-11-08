@@ -66,6 +66,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Refuse committed coding-agent files
+        run: node scripts/check-agent-files.mjs
+
       - run: pnpm lint
 
       - run: pnpm check-types
