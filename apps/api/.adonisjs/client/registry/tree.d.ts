@@ -23,6 +23,29 @@ export interface ApiDefinition {
     show: typeof routes['projects.show']
     update: typeof routes['projects.update']
     destroy: typeof routes['projects.destroy']
+    agentConfig: {
+      show: typeof routes['projects.agent_config.show']
+      update: typeof routes['projects.agent_config.update']
+      destroy: typeof routes['projects.agent_config.destroy']
+      answers: {
+        update: typeof routes['projects.agent_config.answers.update']
+      }
+      rules: {
+        store: typeof routes['projects.agent_config.rules.store']
+        update: typeof routes['projects.agent_config.rules.update']
+        destroy: typeof routes['projects.agent_config.rules.destroy']
+      }
+      generations: {
+        store: typeof routes['projects.agent_config.generations.store']
+        index: typeof routes['projects.agent_config.generations.index']
+        latest: typeof routes['projects.agent_config.generations.latest']
+        show: typeof routes['projects.agent_config.generations.show']
+      }
+    }
+  }
+  questionnaires: {
+    index: typeof routes['questionnaires.index']
+    show: typeof routes['questionnaires.show']
   }
   architectures: {
     index: typeof routes['architectures.index']

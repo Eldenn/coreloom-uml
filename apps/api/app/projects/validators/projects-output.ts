@@ -6,6 +6,8 @@ export type ProjectOutput = {
   name: string
   description: string | null
   architectureCount: number
+  /** 0 or 1: a project has at most one agent configuration. */
+  agentConfigCount: number
   createdAt: string
   updatedAt: string
 }
