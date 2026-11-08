@@ -1,0 +1,218 @@
+import { z } from 'zod'
+import { RESERVED_SECTIONS, SHARED_SECTIONS } from './sections.ts'
+import { isSlot } from './slots.ts'
+
+/** Languages the catalog is written in. Rendered files are always English. */
+export const LOCALES = ['en', 'fr'] as const
+
+export const localizedSchema = z.object({ en: z.string().min(1), fr: z.string().min(1) })
+
+export type Localized = z.infer<typeof localizedSchema>
+
+export const QuestionType = {
+  Scale: 'scale',
+  Single: 'single',
+  Multi: 'multi',
+  Text: 'text',
+} as const
+
+export type QuestionType = (typeof QuestionType)[keyof typeof QuestionType]
+
+/** A scale answer goes from 1 ("strongly disagree") to 5 ("strongly agree"). */
+export const SCALE_MIN = 1
+export const SCALE_MAX = 5
+
+/** Longest free-text answer, and longest `{value}` once inlined in a fragment. */
+export const ANSWER_TEXT_MAX_LENGTH = 500
+export const FRAGMENT_VALUE_MAX_LENGTH = 200
+
+const KEBAB_CASE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+const SEMVER = /^\d+\.\d+\.\d+$/
+
+const scaleBound = z.number().int().min(SCALE_MIN).max(SCALE_MAX)
+
+/**
+ * When a fragment applies. Every condition given must hold. `other` holds when a single-choice
+ * answer is the free text of a `freeText` option rather than one of the listed values.
+ */
+export const fragmentConditionSchema = z
+  .object({
+    scaleAtLeast: scaleBound.optional(),
+    scaleAtMost: scaleBound.optional(),
+    equals: z.string().min(1).optional(),
+    includes: z.string().min(1).optional(),
+    other: z.literal(true).optional(),
+    answered: z.literal(true).optional(),
+  })
+  .strict()
+  .refine((when) => Object.values(when).some((value) => value !== undefined), {
+    message: 'A fragment needs at least one condition',
+  })
+
+export type FragmentCondition = z.infer<typeof fragmentConditionSchema>
+
+export const fragmentSchema = z
+  .object({
+    when: fragmentConditionSchema,
+    /** English, imperative, one line; may contain `{value}` for single and text answers. */
+    text: z
+      .string()
+      .min(3)
+      .max(300)
+      .refine((text) => !/[\r\n]/.test(text), { message: 'A fragment is one line' }),
+  })
+  .strict()
+
+export type Fragment = z.infer<typeof fragmentSchema>
+
+export const questionOptionSchema = z
+  .object({
+    value: z.string().regex(KEBAB_CASE),
+    label: localizedSchema,
+    /** Cannot be picked together with another option (multi only). */
+    exclusive: z.boolean().optional(),
+    /** Opens a text field whose content becomes the answer (single only). */
+    freeText: z.boolean().optional(),
+  })
+  .strict()
+
+export type QuestionOption = z.infer<typeof questionOptionSchema>
+
+export const questionSchema = z
+  .object({
+    id: z.string().regex(KEBAB_CASE),
+    type: z.enum(QuestionType),
+    slot: z.string().refine(isSlot, { message: 'Unknown slot: declare it in slots.ts' }),
+    section: z.string().min(1),
+    label: localizedSchema,
+    help: localizedSchema.optional(),
+    options: z.array(questionOptionSchema).optional(),
+    required: z.boolean(),
+    fragments: z.array(fragmentSchema),
+  })
+  .strict()
+  .superRefine((question, ctx) => {
+    const hasOptions = question.type === 'single' || question.type === 'multi'
+    if (hasOptions && (question.options?.length ?? 0) < 2) {
+      ctx.addIssue({ code: 'custom', path: ['options'], message: 'Needs at least two options' })
+    }
+    if (!hasOptions && question.options) {
+      ctx.addIssue({ code: 'custom', path: ['options'], message: `A ${question.type} has none` })
+    }
+    const values = question.options?.map((option) => option.value) ?? []
+    if (new Set(values).size !== values.length) {
+      ctx.addIssue({ code: 'custom', path: ['options'], message: 'Duplicate option value' })
+    }
+    question.options?.forEach((option, index) => {
+      if (option.exclusive && question.type !== 'multi') {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['options', index, 'exclusive'],
+          message: 'Only a multi-choice option can be exclusive',
+        })
+      }
+      if (option.freeText && question.type !== 'single') {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['options', index, 'freeText'],
+          message: 'Only a single-choice option can open a text field',
+        })
+      }
+    })
+    if (question.options && question.options.filter((option) => option.freeText).length > 1) {
+      ctx.addIssue({ code: 'custom', path: ['options'], message: 'At most one freeText option' })
+    }
+    question.fragments.forEach((fragment, index) => {
+      for (const problem of fragmentProblems(question, fragment, values)) {
+        ctx.addIssue({ code: 'custom', path: ['fragments', index], message: problem })
+      }
+    })
+  })
+
+export type Question = z.infer<typeof questionSchema>
+
+function fragmentProblems(question: Question, fragment: Fragment, values: string[]): string[] {
+  const { when } = fragment
+  const problems: string[] = []
+  const isScale = question.type === 'scale'
+  if ((when.scaleAtLeast !== undefined || when.scaleAtMost !== undefined) && !isScale) {
+    problems.push('Scale conditions apply to scale questions only')
+  }
+  if (when.equals !== undefined) {
+    if (question.type !== 'single') problems.push('`equals` applies to single questions only')
+    else if (!values.includes(when.equals)) problems.push(`Unknown option: ${when.equals}`)
+  }
+  if (when.includes !== undefined) {
+    if (question.type !== 'multi') problems.push('`includes` applies to multi questions only')
+    else if (!values.includes(when.includes)) problems.push(`Unknown option: ${when.includes}`)
+  }
+  if (when.other && !question.options?.some((option) => option.freeText)) {
+    problems.push('`other` needs a freeText option')
+  }
+  if (fragment.text.includes('{value}') && question.type !== 'single' && question.type !== 'text') {
+    problems.push('`{value}` is only filled for single and text answers')
+  }
+  return problems
+}
+
+export const questionnaireSchema = z
+  .object({
+    id: z.string().regex(KEBAB_CASE),
+    /** Bumped on any change to a question, an option or a fragment. */
+    version: z.string().regex(SEMVER),
+    title: localizedSchema,
+    description: localizedSchema,
+    /** Sections this questionnaire adds, in render order. */
+    sections: z.array(z.string().min(1)),
+    questions: z.array(questionSchema).min(1),
+    /** questionId → removed option → replacement option (`null` drops the answer). */
+    migrations: z.record(z.string(), z.record(z.string(), z.string().nullable())).optional(),
+  })
+  .strict()
+  .superRefine((questionnaire, ctx) => {
+    for (const section of questionnaire.sections) {
+      if (SHARED_SECTIONS.includes(section) || RESERVED_SECTIONS.includes(section)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['sections'],
+          message: `${section} is a shared or reserved section, not a questionnaire's own`,
+        })
+      }
+    }
+    const ids = new Set<string>()
+    const slots = new Set<string>()
+    questionnaire.questions.forEach((question, index) => {
+      if (ids.has(question.id)) {
+        ctx.addIssue({ code: 'custom', path: ['questions', index, 'id'], message: 'Duplicate id' })
+      }
+      ids.add(question.id)
+      if (slots.has(question.slot)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['questions', index, 'slot'],
+          message: 'Two questions feed the same slot',
+        })
+      }
+      slots.add(question.slot)
+      if (
+        !questionnaire.sections.includes(question.section) &&
+        !SHARED_SECTIONS.includes(question.section)
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['questions', index, 'section'],
+          message: `Not one of the questionnaire's sections nor a shared one: ${question.section}`,
+        })
+      }
+    })
+  })
+
+export type Questionnaire = z.infer<typeof questionnaireSchema>
+
+/**
+ * An answer: a scale value, a single choice or text, or the values of a multiple choice. A
+ * single choice whose `freeText` option was picked stores the typed text.
+ */
+export const answerValueSchema = z.union([z.number(), z.string(), z.array(z.string())])
+
+export type AnswerValue = z.infer<typeof answerValueSchema>

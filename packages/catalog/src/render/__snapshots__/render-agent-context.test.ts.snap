@@ -1,0 +1,55 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderAgentContext > renders the whole AGENTS.md block 1`] = `
+"<!-- coreloom-uml:begin · managed block, edits inside it are replaced on the next pull -->
+## Project
+
+This repository is **Shop**: Online shop for \\*rare\\* books
+
+Its architectures, as described in Coreloom UML:
+
+- **Orders**: Order taking and payment
+  - Order model (class diagram)
+  - Checkout (sequence diagram)
+- **Catalog**.
+
+## Working style
+
+- Comment only to explain why; never restate what the code does.
+
+## TypeScript
+
+- Never use \`any\`; prefer \`unknown\` with narrowing or an explicit type.
+- The code base is TypeScript \`strict\`: never loosen compiler options or silence errors with \`@ts-ignore\`.
+
+## React
+
+- Keep components small and focused; extract a component as soon as a part has its own state or responsibility.
+- Server state lives in TanStack Query; keep other state local to components and add no state library.
+- Style with Tailwind utility classes; do not add CSS files or inline styles.
+- Prefer \\\`useSuspenseQuery\\\` in routes.
+
+## Testing
+
+- Add or update unit tests for every change in logic.
+- Add or update an end-to-end test when a user journey changes.
+
+## Workflow
+
+- Ask before any structural decision (new dependency, new pattern, data model or public API change).
+
+## Tooling
+
+- Use pnpm for every install and script; never another package manager.
+- Before handing back, run: pnpm lint && pnpm test.
+
+## Project notes
+
+The notes below were written by the project owner.
+
+Deploys go through **staging** first.
+
+\\<script>alert(1)\\</script>
+<!-- coreloom-uml:end -->
+"
+`;
