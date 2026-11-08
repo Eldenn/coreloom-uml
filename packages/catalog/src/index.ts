@@ -1,5 +1,14 @@
 export { answerProblem, fragmentTexts, migrateAnswers, type StoredAnswer } from './answers.ts'
 export {
+  COMPATIBLE_SKILLS_MAX,
+  CONFLICTING_SKILLS_MAX,
+  matchSkills,
+  type SkillMatchInput,
+  type SkillReason,
+  type SkillSuggestion,
+  type SkillSuggestions,
+} from './match-skills.ts'
+export {
   MODEL_SUGGESTIONS,
   MODEL_SUGGESTIONS_VERIFIED_ON,
   PROVIDER_KINDS,
@@ -49,6 +58,10 @@ export {
   questionSchema,
   SCALE_MAX,
   SCALE_MIN,
+  type Skill,
+  type SkillAffinity,
+  skillAffinitySchema,
+  skillSchema,
 } from './schemas.ts'
 export {
   RESERVED_SECTIONS,
@@ -57,6 +70,7 @@ export {
   SHARED_SECTIONS,
   sectionOrder,
 } from './sections.ts'
+export { SKILL_TARGET_SOURCES, SKILLS, SKILLS_VERIFIED_ON } from './skills.ts'
 export { isSlot, SLOTS, type Slot } from './slots.ts'
 export { TARGET_TEMPLATES } from './targets/index.ts'
 export {

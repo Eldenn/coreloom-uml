@@ -86,6 +86,10 @@ async function generate(client: Client, user: User, projectId: number) {
     catalogVersion: string
     files: { path: string; kind: string; content: string; blockHash: string }[]
     recommendations: { target: string; title: string }[]
+    skills: {
+      compatible: { id: string; url: string; score: number }[]
+      conflicting: { id: string; reasons: Record<string, unknown>[] }[]
+    }
   }
 }
 
@@ -572,6 +576,62 @@ test.group('Agent configs - generations', (group) => {
       .loginAs(user)
     assert.equal(detail.body().config.latestGeneration.id, again.id)
     assert.deepEqual(detail.body().impact, { stale: false, changedQuestions: [], files: [] })
+  })
+
+  test('suggests the catalog skills that fit the answers, and keeps them per generation', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    const project = await createProject(client, user)
+    await createConfig(client, user, project.id)
+
+    const empty = await generate(client, user, project.id)
+    assert.deepEqual(empty.skills, { compatible: [], conflicting: [] })
+
+    await putAnswers(client, user, project.id, ALL_ANSWERS)
+    const fitting = await generate(client, user, project.id)
+    assert.deepEqual(
+      fitting.skills.compatible.map((skill) => [skill.id, skill.score]),
+      [
+        ['test-driven-development', 2],
+        ['writing-plans', 2],
+        ['systematic-debugging', 1],
+        ['verification-before-completion', 1],
+        ['brainstorming', 1],
+      ],
+    )
+    assert.deepEqual(fitting.skills.conflicting, [])
+    for (const skill of fitting.skills.compatible)
+      assert.match(skill.url, /^https:\/\/github\.com\//)
+
+    await putAnswers(client, user, project.id, [
+      answer('ask-before-act', 1),
+      answer('components-size', 1),
+    ])
+    const conflicting = await generate(client, user, project.id)
+    assert.deepEqual(
+      conflicting.skills.conflicting.map((skill) => skill.id),
+      ['brainstorming', 'writing-plans', 'react-composition-patterns'],
+    )
+    assert.deepEqual(conflicting.skills.conflicting[0].reasons, [
+      {
+        slot: 'workflow.autonomy',
+        questionLabel: {
+          en: 'The assistant asks me before a structural decision rather than choosing alone.',
+          fr: "L'assistant me pose une question avant une décision structurante plutôt que de choisir seul.",
+        },
+        yourAnswer: { en: '1 of 5', fr: '1 sur 5' },
+        skillExpects: { en: '4 to 5 of 5', fr: '4 à 5 sur 5' },
+      },
+    ])
+
+    // A generation is frozen: the earlier one still shows what was suggested then.
+    const shown = await client
+      .get(`/projects/${project.id}/agent-config/generations/${fitting.id}`)
+      .headers(json)
+      .loginAs(user)
+    assert.deepEqual(shown.body().generation.skills, fitting.skills)
   })
 
   test('answers 404 for the latest generation before the first one', async ({ client }) => {

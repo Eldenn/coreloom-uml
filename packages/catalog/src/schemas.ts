@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { RESERVED_SECTIONS, SHARED_SECTIONS } from './sections.ts'
 import { isSlot } from './slots.ts'
+import { Target } from './targets.ts'
 
 /** Languages the catalog is written in. Rendered files are always English. */
 export const LOCALES = ['en', 'fr'] as const
@@ -216,3 +217,51 @@ export type Questionnaire = z.infer<typeof questionnaireSchema>
 export const answerValueSchema = z.union([z.number(), z.string(), z.array(z.string())])
 
 export type AnswerValue = z.infer<typeof answerValueSchema>
+
+/**
+ * How a skill relates to one slot: a range on an agreement scale, or the options it fits. The
+ * catalog test checks each against the question that feeds the slot.
+ */
+export const skillAffinitySchema = z
+  .object({
+    slot: z.string().refine(isSlot, { message: 'Unknown slot: declare it in slots.ts' }),
+    scale: z
+      .object({ min: scaleBound, max: scaleBound })
+      .strict()
+      .refine((range) => range.min <= range.max, { message: '`min` is above `max`' })
+      .optional(),
+    values: z.array(z.string().regex(KEBAB_CASE)).min(1).optional(),
+  })
+  .strict()
+  .refine((affinity) => (affinity.scale === undefined) !== (affinity.values === undefined), {
+    message: 'An affinity has either a scale range or values',
+  })
+
+export type SkillAffinity = z.infer<typeof skillAffinitySchema>
+
+/**
+ * A third-party skill the screen and the CLI may point to. Links only: there is no install
+ * command, and the URL is pinned to a tag or a commit wherever the host allows it.
+ */
+export const skillSchema = z
+  .object({
+    id: z.string().regex(KEBAB_CASE),
+    name: z.string().min(1).max(80),
+    description: localizedSchema,
+    url: z.url({ protocol: /^https$/ }),
+    /** The tools that load it. */
+    targets: z.array(z.enum(Target)).min(1),
+    affinities: z.array(skillAffinitySchema).min(1),
+  })
+  .strict()
+  .superRefine((skill, ctx) => {
+    const slots = skill.affinities.map((affinity) => affinity.slot)
+    if (new Set(slots).size !== slots.length) {
+      ctx.addIssue({ code: 'custom', path: ['affinities'], message: 'A slot is listed twice' })
+    }
+    if (new Set(skill.targets).size !== skill.targets.length) {
+      ctx.addIssue({ code: 'custom', path: ['targets'], message: 'A target is listed twice' })
+    }
+  })
+
+export type Skill = z.infer<typeof skillSchema>

@@ -25,6 +25,7 @@ export type AgentGeneration = Awaited<
   ReturnType<typeof client.api.projects.agentConfig.generations.show>
 >['generation']
 export type AgentFile = AgentGeneration['files'][number]
+export type AgentSkill = AgentGeneration['skills']['compatible'][number]
 export type Target = AgentConfig['targets'][number]
 
 /** Every target the API accepts, in the order the screen lists them. */

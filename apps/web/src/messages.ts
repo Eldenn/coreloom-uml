@@ -231,6 +231,15 @@ export const en = {
     noPrevious: 'This is the first generation.',
     noChanges: 'Same content as the previous generation.',
     recommendationsTitle: 'Recommendations',
+    skillsTitle: 'Skills',
+    skillsThirdParty:
+      'Third-party resources, not checked by Coreloom. Read a skill before adding it to your tools.',
+    skillsCompatible: 'Fit your answers',
+    skillsConflicting: 'Go against your answers',
+    skillReason: (question: string, answer: string, expects: string) =>
+      `“${question.replace(/[.:]\s*$/, '')}”: you answered ${answer}, this skill expects ${expects}.`,
+    skillLink: 'Open',
+    skillOpen: (name: string) => `Open ${name} (new tab)`,
     installTitle: 'Install in a repository',
     installText:
       'Run this at the root of the repository. The CLI writes only the managed block of each file and keeps the rest.',
@@ -528,6 +537,15 @@ export const fr: Messages = {
     noPrevious: 'C’est la première génération.',
     noChanges: 'Même contenu que la génération précédente.',
     recommendationsTitle: 'Recommandations',
+    skillsTitle: 'Skills',
+    skillsThirdParty:
+      'Ressources tierces, non vérifiées par Coreloom. Lisez un skill avant de l’ajouter à vos outils.',
+    skillsCompatible: 'Compatibles avec vos réponses',
+    skillsConflicting: 'En contradiction avec vos réponses',
+    skillReason: (question: string, answer: string, expects: string) =>
+      `« ${question.replace(/[.:]\s*$/, '')} » : vous avez répondu ${answer}, ce skill attend ${expects}.`,
+    skillLink: 'Ouvrir',
+    skillOpen: (name: string) => `Ouvrir ${name} (nouvel onglet)`,
     installTitle: 'Installer dans un dépôt',
     installText:
       'Lancez cette commande à la racine du dépôt. Le CLI n’écrit que le bloc géré de chaque fichier et garde le reste.',

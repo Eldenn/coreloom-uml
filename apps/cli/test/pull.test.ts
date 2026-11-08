@@ -68,6 +68,9 @@ describe('pull', () => {
     expect(api.requests[0]?.authorization).toBe(`Bearer ${API_KEY}`)
     expect(recorder.output()).toContain('Nested rules')
     expect(recorder.output()).toContain('tidy-tests: https://example.com/tidy-tests')
+    // Only compatible skills with an https link are printed.
+    expect(recorder.output()).not.toContain('not-a-link')
+    expect(recorder.output()).not.toContain('loose-tests')
   })
 
   it('reads the project and the API URL from the manifest on the next pull', async () => {

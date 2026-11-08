@@ -80,8 +80,12 @@ function printOutcome(io: Io, generation: Generation) {
       for (const line of item.body.split('\n')) io.log(`    ${line}`)
     }
   }
+  // Links only, and only https ones: a skill is never installed nor run from here.
   const skills = generation.skills.compatible.filter(
-    (skill) => typeof skill.name === 'string' && typeof skill.url === 'string',
+    (skill) =>
+      typeof skill.name === 'string' &&
+      typeof skill.url === 'string' &&
+      skill.url.startsWith('https://'),
   )
   if (skills.length > 0) {
     io.log('\nCompatible skills (third-party resources, not checked by Coreloom UML):')

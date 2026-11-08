@@ -1,15 +1,32 @@
 // One generation: its files (tree, read-only viewer, download), what changed since the previous
-// generation, the recommendations, and how to install the files in a repository with the CLI.
+// generation, the recommendations, the skills that fit or go against the answers, and how to
+// install the files in a repository with the CLI.
 import { Link } from '@tanstack/react-router'
-import { ArrowLeftIcon, DownloadIcon, FileIcon, FolderIcon, KeyRoundIcon } from 'lucide-react'
+import {
+  ArrowLeftIcon,
+  DownloadIcon,
+  ExternalLinkIcon,
+  FileIcon,
+  FolderIcon,
+  KeyRoundIcon,
+} from 'lucide-react'
 import * as React from 'react'
 
+import { useLocalized } from '@/agent-configs/catalog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CodeViewer } from '@/components/ui/code-viewer'
 import { DiffViewer } from '@/components/ui/diff-viewer'
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemTitle,
+} from '@/components/ui/item'
 import { Markdown } from '@/components/ui/markdown'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { RelativeTime } from '@/components/ui/relative-time'
@@ -18,6 +35,7 @@ import { TreeView, type TreeViewNode } from '@/components/ui/tree-view'
 import {
   type AgentFile,
   type AgentGeneration,
+  type AgentSkill,
   useGeneration,
   useGenerations,
 } from '@/lib/agent-configs'
@@ -156,6 +174,7 @@ export function AgentConfigGeneration({
           </CardContent>
         </Card>
       )}
+      <SkillsCard skills={current.skills} />
       <InstallCard projectId={projectId} />
     </div>
   )
@@ -265,6 +284,76 @@ function Changes({
       wrap
     />
   ))
+}
+
+/** Third-party skills: links only, never a command to copy. */
+function SkillsCard({ skills }: { skills: AgentGeneration['skills'] }) {
+  const t = useT()
+  if (skills.compatible.length === 0 && skills.conflicting.length === 0) return null
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t.agents.skillsTitle}</CardTitle>
+        <CardDescription>{t.agents.skillsThirdParty}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-6">
+        {skills.compatible.length > 0 && (
+          <SkillList title={t.agents.skillsCompatible} skills={skills.compatible} />
+        )}
+        {skills.conflicting.length > 0 && (
+          <SkillList title={t.agents.skillsConflicting} skills={skills.conflicting} />
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function SkillList({ title, skills }: { title: string; skills: AgentSkill[] }) {
+  const t = useT()
+  const localized = useLocalized()
+  const id = React.useId()
+  return (
+    <section aria-labelledby={id} className="flex flex-col gap-2">
+      <h3 id={id} className="m-0 text-[14px] font-medium text-foreground">
+        {title}
+      </h3>
+      <ItemGroup className="gap-2">
+        {skills.map((skill) => (
+          <Item key={skill.id} variant="outline" size="sm">
+            <ItemContent>
+              <ItemTitle>{skill.name}</ItemTitle>
+              <ItemDescription>{localized(skill.description)}</ItemDescription>
+              {skill.reasons.length > 0 && (
+                <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-[13px] text-muted-foreground">
+                  {skill.reasons.map((reason) => (
+                    <li key={reason.slot}>
+                      {t.agents.skillReason(
+                        localized(reason.questionLabel),
+                        localized(reason.yourAnswer),
+                        localized(reason.skillExpects),
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </ItemContent>
+            <ItemActions>
+              <Button variant="outline" size="sm" asChild>
+                <a
+                  href={skill.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={t.agents.skillOpen(skill.name)}
+                >
+                  <ExternalLinkIcon /> {t.agents.skillLink}
+                </a>
+              </Button>
+            </ItemActions>
+          </Item>
+        ))}
+      </ItemGroup>
+    </section>
+  )
 }
 
 function InstallCard({ projectId }: { projectId: number }) {

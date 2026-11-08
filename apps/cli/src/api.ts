@@ -1,7 +1,10 @@
 import type { AgentContextFile, Recommendation } from '@coreloom-uml/catalog'
 import { CliError } from './errors.ts'
 
-/** A skill as the API lists it; the list stays empty until skills land in the catalog. */
+/**
+ * A skill as the API lists it (`SkillSuggestion` in the catalog), reduced to what the CLI prints.
+ * Generations made before the skills catalog hold empty lists.
+ */
 export type GenerationSkill = { name?: unknown; url?: unknown }
 
 /** `GET /projects/:id/agent-config/generations/latest`, reduced to what the CLI reads. */

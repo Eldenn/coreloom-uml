@@ -7,7 +7,7 @@ import {
   serializeAgentGeneration,
   serializeAgentGenerationSummary,
 } from '#app/agent-configs/serializers/agent-config-serializer'
-import { currentInputs, render } from '#app/agent-configs/services/agent-context'
+import { currentInputs, render, suggestSkills } from '#app/agent-configs/services/agent-context'
 import {
   AGENT_CONFIG_NOT_FOUND,
   AGENT_GENERATION_NOT_FOUND,
@@ -23,7 +23,10 @@ import { paginate } from '#app/shared/pagination/paginate'
  * state, never merged with an older one; `latest` is what the CLI pulls.
  */
 export default class AgentConfigGenerationsController {
-  /** Renders synchronously; only the newest AGENT_GENERATIONS_KEPT generations are kept. */
+  /**
+   * Renders synchronously, with the skills that fit the answers; only the newest AGENT_GENERATIONS_KEPT
+   * generations are kept.
+   */
   async store({ params, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
     const project = await findOwnedProject(params.id, user)
@@ -43,7 +46,7 @@ export default class AgentConfigGenerationsController {
           inputs,
           files: output.files,
           recommendations: output.recommendations,
-          skills: { compatible: [], conflicting: [] },
+          skills: suggestSkills(inputs),
         },
         { client: trx },
       )
