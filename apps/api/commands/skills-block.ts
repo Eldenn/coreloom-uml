@@ -20,12 +20,14 @@ export default class SkillsBlock extends BaseCommand {
 
   async run() {
     const { setSkillBlocked } = await import('#app/skills/services/skills-catalog')
+    const { default: SkillsEvents } = await import('#app/skills/services/skills-events')
     const found = await setSkillBlocked(this.slug, !this.unblock, this.reason)
     if (!found) {
       this.logger.error(`No skill "${this.slug}" in the catalog`)
       this.exitCode = 1
       return
     }
+    await (await this.app.container.make(SkillsEvents)).publish('catalog.updated')
     this.logger.success(`${this.slug} ${this.unblock ? 'unblocked' : 'blocked'}`)
   }
 }
