@@ -1,9 +1,17 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { composeQuestionnaires, findQuestionnaire, QUESTIONNAIRES } from './questionnaires/index.ts'
-import { type Question, type Questionnaire, questionnaireSchema, skillSchema } from './schemas.ts'
+import {
+  isSlotAffinity,
+  type Question,
+  type Questionnaire,
+  questionnaireSchema,
+  skillAffinitySchema,
+  skillSchema,
+} from './schemas.ts'
 import { RESERVED_SECTIONS, SHARED_SECTIONS, sectionOrder } from './sections.ts'
-import { SKILL_TARGET_SOURCES, SKILLS, SKILLS_VERIFIED_ON } from './skills.ts'
+import { SKILL_SEARCH_PLAN } from './skill-search-plan.ts'
+import { SKILL_TARGET_SOURCES, SKILLS, SKILLS_MAX, SKILLS_VERIFIED_ON } from './skills.ts'
 import { SLOTS } from './slots.ts'
 import { TARGET_TEMPLATES } from './targets/index.ts'
 import { TARGETS } from './targets.ts'
@@ -65,9 +73,11 @@ describe('the real catalog', () => {
     }
   })
 
-  it('has 6 to 8 skills, each passing its schema, with unique ids', () => {
+  it(`has 6 to ${SKILLS_MAX} skills, each passing its schema, with unique ids and URLs`, () => {
     expect(SKILLS.length).toBeGreaterThanOrEqual(6)
-    expect(SKILLS.length).toBeLessThanOrEqual(8)
+    expect(SKILLS.length).toBeLessThanOrEqual(SKILLS_MAX)
+    expect(new Set(SKILLS.map((skill) => skill.url)).size).toBe(SKILLS.length)
+    for (const skill of SKILLS) expect(skill.origin).toBe('manual')
     for (const skill of SKILLS) {
       const result = skillSchema.safeParse(skill)
       expect(result.success ? [] : result.error.issues).toEqual([])
@@ -87,7 +97,7 @@ describe('the real catalog', () => {
   it('matches every skill affinity to the question that feeds its slot', () => {
     const questions = QUESTIONNAIRES.flatMap((questionnaire) => questionnaire.questions)
     for (const skill of SKILLS) {
-      for (const affinity of skill.affinities) {
+      for (const affinity of skill.affinities.filter(isSlotAffinity)) {
         const question = questions.find((item) => item.slot === affinity.slot)
         expect(question, `${skill.id}: no question feeds ${affinity.slot}`).toBeDefined()
         if (affinity.scale) expect(question?.type).toBe('scale')
@@ -97,6 +107,21 @@ describe('the real catalog', () => {
           for (const value of affinity.values) expect(options).toContain(value)
         }
       }
+    }
+  })
+
+  it('gives every search query an affinity that passes the schema and fits its question', () => {
+    const questions = QUESTIONNAIRES.flatMap((questionnaire) => questionnaire.questions)
+    const queries = SKILL_SEARCH_PLAN.map((item) => item.query)
+    expect(new Set(queries).size).toBe(queries.length)
+    for (const { query, affinity } of SKILL_SEARCH_PLAN) {
+      if (!affinity) continue
+      expect(skillAffinitySchema.safeParse(affinity).success, query).toBe(true)
+      if (!isSlotAffinity(affinity)) continue
+      const question = questions.find((item) => item.slot === affinity.slot)
+      if (affinity.scale) expect(question?.type, query).toBe('scale')
+      const options = question?.options?.map((option) => option.value) ?? []
+      for (const value of affinity.values ?? []) expect(options, query).toContain(value)
     }
   })
 
@@ -217,6 +242,7 @@ describe('skillSchema', () => {
     url: 'https://example.com/a-skill',
     targets: ['cursor'],
     affinities: [{ slot: 'typescript.any', scale: { min: 4, max: 5 } }],
+    origin: 'manual',
   }
 
   it('accepts a valid skill', () => {
@@ -229,6 +255,9 @@ describe('skillSchema', () => {
       { ...valid, targets: ['vim'] },
       { ...valid, url: 'http://example.com/a-skill' },
       { ...valid, install: 'npx something' },
+      { ...valid, origin: 'search' },
+      { ...valid, affinities: [{ diagramKinds: ['flowchart'] }] },
+      { ...valid, affinities: [{ diagramKinds: ['c4'] }, { diagramKinds: ['class'] }] },
     ]) {
       expect(skillSchema.safeParse(skill).success).toBe(false)
     }

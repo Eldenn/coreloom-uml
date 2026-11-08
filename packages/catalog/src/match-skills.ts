@@ -1,14 +1,15 @@
 import { answerProblem } from './answers.ts'
 import {
   type AnswerValue,
+  type AuditRisk,
+  isSlotAffinity,
   type Localized,
   type Question,
   type Questionnaire,
   SCALE_MAX,
   type Skill,
-  type SkillAffinity,
+  type SlotAffinity,
 } from './schemas.ts'
-import { SKILLS } from './skills.ts'
 import type { Slot } from './slots.ts'
 import type { Target } from './targets.ts'
 
@@ -36,6 +37,8 @@ export type SkillSuggestion = {
   targets: Target[]
   score: number
   reasons: SkillReason[]
+  /** The registry's security audits when the search found it; empty for a manual entry. */
+  audits: { provider: string; risk: AuditRisk; analyzedAt: string }[]
 }
 
 export type SkillSuggestions = {
@@ -49,6 +52,8 @@ export type SkillMatchInput = {
   /** Already migrated to the questionnaires' current version. */
   answers: readonly { questionnaireId: string; questionId: string; value: AnswerValue }[]
   targets: readonly Target[]
+  /** The kinds of the project's diagrams, in any order, repeats allowed. */
+  diagramKinds: readonly string[]
 }
 
 /** A gap of this much between a scale answer and a skill's range is a contradiction. */
@@ -57,15 +62,13 @@ const CONFLICT_GAP = 2
 /**
  * Suggests skills from the answers, deterministically. For each affinity whose slot has an
  * answer: +1 when the answer is in the range or among the values; −1 when the question is a
- * scale and the answer is 2 or more away from the range; 0 otherwise. A skill is compatible
+ * scale and the answer is 2 or more away from the range; 0 otherwise. A diagram affinity counts
+ * +1 when the project holds a diagram of one of its kinds, 0 otherwise. A skill is compatible
  * with a score of 1 or more and no −1, and conflicting as soon as it has a −1. Only skills that
  * load in one of the configuration's targets are suggested. Compatible skills come by score,
  * conflicting ones by number of reasons, then both in catalog order.
  */
-export function matchSkills(
-  input: SkillMatchInput,
-  skills: readonly Skill[] = SKILLS,
-): SkillSuggestions {
+export function matchSkills(input: SkillMatchInput, skills: readonly Skill[]): SkillSuggestions {
   const bySlot = answeredSlots(input)
   const compatible: SkillSuggestion[] = []
   const conflicting: SkillSuggestion[] = []
@@ -75,6 +78,10 @@ export function matchSkills(
     let score = 0
     const reasons: SkillReason[] = []
     for (const affinity of skill.affinities) {
+      if (!isSlotAffinity(affinity)) {
+        if (affinity.diagramKinds.some((kind) => input.diagramKinds.includes(kind))) score += 1
+        continue
+      }
       const answered = bySlot.get(affinity.slot)
       if (!answered) continue
       const points = affinityScore(affinity, answered.value)
@@ -91,11 +98,12 @@ export function matchSkills(
     const suggestion: SkillSuggestion = {
       id: skill.id,
       name: skill.name,
-      description: skill.description,
+      description: { en: skill.description.en, fr: skill.description.fr ?? skill.description.en },
       url: skill.url,
       targets: [...skill.targets],
       score,
       reasons,
+      audits: skill.provenance?.audits.map((audit) => ({ ...audit })) ?? [],
     }
     if (reasons.length > 0) conflicting.push(suggestion)
     else if (score >= 1) compatible.push(suggestion)
@@ -124,7 +132,7 @@ function answeredSlots(input: SkillMatchInput): Map<string, AnsweredSlot> {
   return slots
 }
 
-function affinityScore(affinity: SkillAffinity, value: AnswerValue): number {
+function affinityScore(affinity: SlotAffinity, value: AnswerValue): number {
   if (affinity.scale) {
     if (typeof value !== 'number') return 0
     const { min, max } = affinity.scale

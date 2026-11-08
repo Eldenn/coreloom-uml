@@ -323,6 +323,15 @@ function SkillList({ title, skills }: { title: string; skills: AgentSkill[] }) {
             <ItemContent>
               <ItemTitle>{skill.name}</ItemTitle>
               <ItemDescription>{localized(skill.description)}</ItemDescription>
+              {skill.audits.length > 0 && (
+                <p className="m-0 text-[13px] text-muted-foreground">
+                  {t.agents.skillAudits(
+                    skill.audits
+                      .map((audit) => `${audit.provider} (${t.agents.auditRisks[audit.risk]})`)
+                      .join(', '),
+                  )}
+                </p>
+              )}
               {skill.reasons.length > 0 && (
                 <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-[13px] text-muted-foreground">
                   {skill.reasons.map((reason) => (

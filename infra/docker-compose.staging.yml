@@ -37,11 +37,12 @@ services:
       # file lives. For a manual build, pass `--project-directory ..` too.
       context: .
       dockerfile: apps/api/Dockerfile
-    # Migrations, then the default account from DEFAULT_ACCOUNT_* (idempotent).
+    # Migrations, the default account from DEFAULT_ACCOUNT_*, then the hand-picked skills
+    # and the weekly skills.sh search (all idempotent).
     command:
       - sh
       - '-c'
-      - 'node ace migration:run --force && node ace account:ensure-default'
+      - 'node ace migration:run --force && node ace account:ensure-default && node ace skills:setup'
     restart: 'no'
     environment:
       NODE_ENV: production
@@ -51,6 +52,8 @@ services:
       DEFAULT_ACCOUNT_EMAIL: '${DEFAULT_ACCOUNT_EMAIL}'
       DEFAULT_ACCOUNT_PASSWORD: '${DEFAULT_ACCOUNT_PASSWORD}'
       DEFAULT_ACCOUNT_NAME: '${DEFAULT_ACCOUNT_NAME:-}'
+      SKILLS_REFRESH_ENABLED: '${SKILLS_REFRESH_ENABLED:-true}'
+      SKILLS_GITHUB_TOKEN: '${SKILLS_GITHUB_TOKEN:-}'
       FRONTEND_URL: '${SERVICE_URL_WEB}'
       DB_HOST: postgres
       DB_PORT: '5432'
@@ -88,6 +91,8 @@ services:
       DEFAULT_ACCOUNT_EMAIL: '${DEFAULT_ACCOUNT_EMAIL}'
       DEFAULT_ACCOUNT_PASSWORD: '${DEFAULT_ACCOUNT_PASSWORD}'
       DEFAULT_ACCOUNT_NAME: '${DEFAULT_ACCOUNT_NAME:-}'
+      SKILLS_REFRESH_ENABLED: '${SKILLS_REFRESH_ENABLED:-true}'
+      SKILLS_GITHUB_TOKEN: '${SKILLS_GITHUB_TOKEN:-}'
       # Origins an `ollama` / `openai-compatible` LLM provider may call (comma-separated).
       LLM_ALLOWED_BASE_URLS: '${LLM_ALLOWED_BASE_URLS:-}'
       FRONTEND_URL: '${SERVICE_URL_WEB}'
@@ -165,6 +170,8 @@ services:
       DEFAULT_ACCOUNT_EMAIL: '${DEFAULT_ACCOUNT_EMAIL}'
       DEFAULT_ACCOUNT_PASSWORD: '${DEFAULT_ACCOUNT_PASSWORD}'
       DEFAULT_ACCOUNT_NAME: '${DEFAULT_ACCOUNT_NAME:-}'
+      SKILLS_REFRESH_ENABLED: '${SKILLS_REFRESH_ENABLED:-true}'
+      SKILLS_GITHUB_TOKEN: '${SKILLS_GITHUB_TOKEN:-}'
       FRONTEND_URL: '${SERVICE_URL_WEB}'
       DB_HOST: postgres
       DB_PORT: '5432'

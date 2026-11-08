@@ -238,6 +238,15 @@ export const en = {
     skillsConflicting: 'Go against your answers',
     skillReason: (question: string, answer: string, expects: string) =>
       `“${question.replace(/[.:]\s*$/, '')}”: you answered ${answer}, this skill expects ${expects}.`,
+    skillAudits: (audits: string) => `skills.sh security audits: ${audits}.`,
+    auditRisks: {
+      safe: 'safe',
+      low: 'low risk',
+      medium: 'medium risk',
+      high: 'high risk',
+      critical: 'critical',
+      unknown: 'unknown',
+    },
     skillLink: 'Open',
     skillOpen: (name: string) => `Open ${name} (new tab)`,
     installTitle: 'Install in a repository',
@@ -608,6 +617,15 @@ export const fr: Messages = {
     skillsConflicting: 'En contradiction avec vos réponses',
     skillReason: (question: string, answer: string, expects: string) =>
       `« ${question.replace(/[.:]\s*$/, '')} » : vous avez répondu ${answer}, ce skill attend ${expects}.`,
+    skillAudits: (audits: string) => `Audits de sécurité skills.sh : ${audits}.`,
+    auditRisks: {
+      safe: 'sûr',
+      low: 'risque faible',
+      medium: 'risque moyen',
+      high: 'risque élevé',
+      critical: 'critique',
+      unknown: 'inconnu',
+    },
     skillLink: 'Ouvrir',
     skillOpen: (name: string) => `Ouvrir ${name} (nouvel onglet)`,
     installTitle: 'Installer dans un dépôt',

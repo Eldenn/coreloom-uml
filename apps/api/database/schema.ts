@@ -193,6 +193,78 @@ export class ProjectSchema extends BaseModel {
   declare userId: number
 }
 
+export class SkillSnapshotSchema extends BaseModel {
+  static $columns = ['audits', 'eligible', 'id', 'ineligibleReason', 'installs', 'skillId', 'takenAt'] as const
+  $columns = SkillSnapshotSchema.$columns
+  @column()
+  declare audits: any
+  @column()
+  declare eligible: boolean
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare ineligibleReason: string | null
+  @column()
+  declare installs: number
+  @column()
+  declare skillId: number
+  @column.dateTime()
+  declare takenAt: DateTime
+}
+
+export class SkillSchema extends BaseModel {
+  static $columns = ['affinities', 'audits', 'checkedAt', 'contentSha', 'createdAt', 'description', 'eligible', 'firstSeenAt', 'id', 'ineligibleReason', 'installs', 'lastSeenAt', 'license', 'name', 'origin', 'registryId', 'slug', 'source', 'status', 'statusReason', 'targets', 'topics', 'updatedAt', 'url'] as const
+  $columns = SkillSchema.$columns
+  @column()
+  declare affinities: any
+  @column()
+  declare audits: any
+  @column.dateTime()
+  declare checkedAt: DateTime | null
+  @column()
+  declare contentSha: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare description: any
+  @column()
+  declare eligible: boolean
+  @column.dateTime()
+  declare firstSeenAt: DateTime | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare ineligibleReason: string | null
+  @column()
+  declare installs: number | null
+  @column.dateTime()
+  declare lastSeenAt: DateTime | null
+  @column()
+  declare license: string | null
+  @column()
+  declare name: string
+  @column()
+  declare origin: string
+  @column()
+  declare registryId: string | null
+  @column()
+  declare slug: string
+  @column()
+  declare source: string | null
+  @column()
+  declare status: string
+  @column()
+  declare statusReason: string | null
+  @column()
+  declare targets: any
+  @column()
+  declare topics: any
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare url: string
+}
+
 export class UserSchema extends BaseModel {
   static $columns = ['avatarKey', 'createdAt', 'email', 'emailVerifiedAt', 'fullName', 'id', 'password', 'updatedAt'] as const
   $columns = UserSchema.$columns

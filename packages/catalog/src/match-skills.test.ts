@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { COMPATIBLE_SKILLS_MAX, CONFLICTING_SKILLS_MAX, matchSkills } from './match-skills.ts'
 import { findQuestionnaire } from './questionnaires/index.ts'
 import type { AnswerValue, Questionnaire, Skill } from './schemas.ts'
+import { SKILLS } from './skills.ts'
 
 const frontendReact = findQuestionnaire('frontend-react') as Questionnaire
 
@@ -14,6 +15,7 @@ function skill(id: string, overrides: Partial<Skill> = {}): Skill {
     url: `https://example.com/${id}`,
     targets: ['claude-code'],
     affinities: [{ slot: 'typescript.any', scale: { min: 4, max: 5 } }],
+    origin: 'manual',
     ...overrides,
   }
 }
@@ -22,6 +24,7 @@ function match(
   answers: Record<string, AnswerValue>,
   skills: Skill[],
   targets: Skill['targets'] = ['claude-code'],
+  diagramKinds: string[] = [],
 ) {
   return matchSkills(
     {
@@ -32,6 +35,7 @@ function match(
         value,
       })),
       targets,
+      diagramKinds,
     },
     skills,
   )
@@ -51,6 +55,7 @@ describe('matchSkills', () => {
         targets: ['claude-code'],
         score: 1,
         reasons: [],
+        audits: [],
       },
     ])
     expect(result.conflicting).toEqual([])
@@ -152,6 +157,36 @@ describe('matchSkills', () => {
     expect(conflicting).toHaveLength(CONFLICTING_SKILLS_MAX)
   })
 
+  it('counts +1 when the project holds a diagram of one of the kinds, never −1', () => {
+    const c4 = skill('c4', { affinities: [{ diagramKinds: ['c4', 'component'] }] })
+    expect(match({}, [c4], ['claude-code'], ['sequence', 'component']).compatible).toMatchObject([
+      { id: 'c4', score: 1 },
+    ])
+    expect(match({}, [c4], ['claude-code'], ['sequence'])).toEqual({
+      compatible: [],
+      conflicting: [],
+    })
+  })
+
+  it('falls back to English when a description has no French, and copies the audits', () => {
+    const found = skill('found', {
+      description: { en: 'Only English.' },
+      origin: 'search',
+      provenance: {
+        registry: 'skills.sh',
+        id: 'someone/skills/found',
+        installs: 1200,
+        audits: [{ provider: 'snyk', risk: 'low', analyzedAt: '2026-11-01T00:00:00.000Z' }],
+        checkedOn: '2026-11-08',
+        contentSha: 'a'.repeat(40),
+      },
+    })
+    expect(match({ 'ts-any': 5 }, [found]).compatible[0]).toMatchObject({
+      description: { en: 'Only English.', fr: 'Only English.' },
+      audits: [{ provider: 'snyk', risk: 'low', analyzedAt: '2026-11-01T00:00:00.000Z' }],
+    })
+  })
+
   it('is deterministic', () => {
     const answers = { 'ts-any': 1, 'change-size': 5, 'tests-level': ['unit'] }
     expect(JSON.stringify(match(answers, [strictTyping]))).toBe(
@@ -162,15 +197,19 @@ describe('matchSkills', () => {
 
 describe('matchSkills with the real catalog', () => {
   it('suggests skills for a configuration that asks for small changes and tests', () => {
-    const result = matchSkills({
-      questionnaires: [frontendReact],
-      answers: [
-        { questionnaireId: 'frontend-react', questionId: 'change-size', value: 5 },
-        { questionnaireId: 'frontend-react', questionId: 'tests-level', value: ['unit'] },
-        { questionnaireId: 'frontend-react', questionId: 'ask-before-act', value: 1 },
-      ],
-      targets: ['claude-code'],
-    })
+    const result = matchSkills(
+      {
+        questionnaires: [frontendReact],
+        answers: [
+          { questionnaireId: 'frontend-react', questionId: 'change-size', value: 5 },
+          { questionnaireId: 'frontend-react', questionId: 'tests-level', value: ['unit'] },
+          { questionnaireId: 'frontend-react', questionId: 'ask-before-act', value: 1 },
+        ],
+        targets: ['claude-code'],
+        diagramKinds: [],
+      },
+      SKILLS,
+    )
     expect(result.compatible.map((item) => item.id)).toContain('test-driven-development')
     expect(result.conflicting.map((item) => item.id)).toEqual(['brainstorming', 'writing-plans'])
   })
