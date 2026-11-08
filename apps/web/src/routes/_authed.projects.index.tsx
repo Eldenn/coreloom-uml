@@ -189,6 +189,11 @@ function ProjectRow({ project }: { project: Project }) {
           )}
         </ItemContent>
         <ItemActions className="relative">
+          {project.agentConfigCount > 0 && (
+            <Badge variant="outline" className="hidden sm:inline-flex">
+              {t.agents.badge}
+            </Badge>
+          )}
           <Badge variant="secondary">
             {t.projects.architectureCount(project.architectureCount)}
           </Badge>
