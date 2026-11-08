@@ -1,10 +1,13 @@
 import { BaseModel, column } from '@adonisjs/lucid/orm'
-import type { AgentContextFile, Recommendation } from '@coreloom-uml/catalog'
+import type { AgentContextFile, Recommendation, SkillSuggestions } from '@coreloom-uml/catalog'
 import type { DateTime } from 'luxon'
 import type { AgentConfigInputs } from '#app/agent-configs/services/agent-context'
 
-/** Skill suggestions of a generation; filled once the skills catalog lands. */
-export type AgentGenerationSkills = { compatible: unknown[]; conflicting: unknown[] }
+/**
+ * Skill suggestions of a generation, copied from the catalog when it was rendered. Generations
+ * made before the skills catalog existed hold two empty lists.
+ */
+export type AgentGenerationSkills = SkillSuggestions
 
 const json = { prepare: (value: unknown) => JSON.stringify(value) }
 

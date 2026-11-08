@@ -270,6 +270,20 @@ in `.coreloom-uml.json` (no secret), and stops (exit code 2) rather than overwri
 hand. `status` compares the local blocks with that manifest. It is a single ESM file bundled by
 tsup with the catalog inside; its tests (Vitest) run against a fixture HTTP server.
 
+#### Skills
+
+Every generation also lists third-party skills (Agent Skills `SKILL.md` folders) that fit the
+answers, or go against them. The 8 entries of `packages/catalog/src/skills.ts` are curated by hand,
+pinned to a tag or a commit, and re-checked (with `SKILLS_VERIFIED_ON`) whenever the catalog's
+version changes; nothing is fetched at run time. `matchSkills` is deterministic: for each affinity
+whose slot is answered, +1 when the answer is in the skill's range or among its values, −1 when a
+scale answer is 2 or more away from the range. A skill is compatible with a score of at least 1 and
+no −1 (5 at most), conflicting as soon as it has a −1 (3 at most, each with its reasons), and only
+suggested for one of the configuration's targets. The generation stores a copy of each suggestion,
+so an older generation keeps showing what was suggested then. The screen and the end of
+`coreloom-uml pull` show them as links only, never as a command to run, marked as third-party
+resources not checked by Coreloom.
+
 #### Rule proposals with the user's own LLM (bring your own key)
 
 The server holds no provider key and stores none: the browser keeps the provider (`kind`,

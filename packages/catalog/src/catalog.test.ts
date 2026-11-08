@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { composeQuestionnaires, findQuestionnaire, QUESTIONNAIRES } from './questionnaires/index.ts'
-import { type Question, type Questionnaire, questionnaireSchema } from './schemas.ts'
+import { type Question, type Questionnaire, questionnaireSchema, skillSchema } from './schemas.ts'
 import { RESERVED_SECTIONS, SHARED_SECTIONS, sectionOrder } from './sections.ts'
+import { SKILL_TARGET_SOURCES, SKILLS, SKILLS_VERIFIED_ON } from './skills.ts'
 import { SLOTS } from './slots.ts'
 import { TARGET_TEMPLATES } from './targets/index.ts'
 import { TARGETS } from './targets.ts'
@@ -61,6 +62,48 @@ describe('the real catalog', () => {
       expect(template.verifiedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/)
       expect(template.sources.length).toBeGreaterThan(0)
       expect(template.readsAgentsMd).toBe(template.pointer === undefined)
+    }
+  })
+
+  it('has 6 to 8 skills, each passing its schema, with unique ids', () => {
+    expect(SKILLS.length).toBeGreaterThanOrEqual(6)
+    expect(SKILLS.length).toBeLessThanOrEqual(8)
+    for (const skill of SKILLS) {
+      const result = skillSchema.safeParse(skill)
+      expect(result.success ? [] : result.error.issues).toEqual([])
+    }
+    const ids = SKILLS.map((skill) => skill.id)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it('pins every skill URL to a tag or a commit', () => {
+    for (const skill of SKILLS) {
+      expect(skill.url).toMatch(
+        /^https:\/\/github\.com\/[^/]+\/[^/]+\/tree\/(v\d+\.\d+\.\d+|[0-9a-f]{40})\//,
+      )
+    }
+  })
+
+  it('matches every skill affinity to the question that feeds its slot', () => {
+    const questions = QUESTIONNAIRES.flatMap((questionnaire) => questionnaire.questions)
+    for (const skill of SKILLS) {
+      for (const affinity of skill.affinities) {
+        const question = questions.find((item) => item.slot === affinity.slot)
+        expect(question, `${skill.id}: no question feeds ${affinity.slot}`).toBeDefined()
+        if (affinity.scale) expect(question?.type).toBe('scale')
+        if (affinity.values) {
+          expect(['single', 'multi']).toContain(question?.type)
+          const options = question?.options?.map((option) => option.value) ?? []
+          for (const value of affinity.values) expect(options).toContain(value)
+        }
+      }
+    }
+  })
+
+  it('dates the skills and sources their targets', () => {
+    expect(SKILLS_VERIFIED_ON).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    for (const target of new Set(SKILLS.flatMap((skill) => skill.targets))) {
+      expect(SKILL_TARGET_SOURCES[target]).toMatch(/^https:\/\//)
     }
   })
 
@@ -163,5 +206,41 @@ describe('composeQuestionnaires', () => {
   it('refuses a questionnaire listed twice and an empty list', () => {
     expect(composeQuestionnaires([frontendReact, frontendReact]).ok).toBe(false)
     expect(composeQuestionnaires([]).ok).toBe(false)
+  })
+})
+
+describe('skillSchema', () => {
+  const valid = {
+    id: 'a-skill',
+    name: 'A skill',
+    description: { en: 'A skill.', fr: 'Un skill.' },
+    url: 'https://example.com/a-skill',
+    targets: ['cursor'],
+    affinities: [{ slot: 'typescript.any', scale: { min: 4, max: 5 } }],
+  }
+
+  it('accepts a valid skill', () => {
+    expect(skillSchema.safeParse(valid).success).toBe(true)
+  })
+
+  it('refuses an unknown slot, an unknown target, an http URL and an install field', () => {
+    for (const skill of [
+      { ...valid, affinities: [{ slot: 'typescript.unknown', values: ['x'] }] },
+      { ...valid, targets: ['vim'] },
+      { ...valid, url: 'http://example.com/a-skill' },
+      { ...valid, install: 'npx something' },
+    ]) {
+      expect(skillSchema.safeParse(skill).success).toBe(false)
+    }
+  })
+
+  it('refuses an affinity with both or neither of scale and values, or an inverted range', () => {
+    for (const affinity of [
+      { slot: 'typescript.any' },
+      { slot: 'typescript.any', scale: { min: 4, max: 5 }, values: ['x'] },
+      { slot: 'typescript.any', scale: { min: 5, max: 4 } },
+    ]) {
+      expect(skillSchema.safeParse({ ...valid, affinities: [affinity] }).success).toBe(false)
+    }
   })
 })

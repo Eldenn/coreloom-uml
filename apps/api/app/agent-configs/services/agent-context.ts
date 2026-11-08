@@ -6,10 +6,12 @@ import {
   findQuestionnaire,
   MANAGED_BLOCK_BEGIN,
   MANAGED_BLOCK_END,
+  matchSkills,
   migrateAnswers,
   type Questionnaire,
   renderAgentContext,
   Section,
+  type SkillSuggestions,
   type StoredAnswer,
   sectionOrder,
 } from '@coreloom-uml/catalog'
@@ -113,14 +115,20 @@ export async function currentInputs(
   }
 }
 
+/** The questionnaires of the inputs at their current version, and the answers migrated to it. */
+function resolveInputs(inputs: AgentConfigInputs) {
+  const questionnaires = resolveQuestionnaires(inputs.questionnaires)
+  let answers: StoredAnswer[] = inputs.answers
+  for (const questionnaire of questionnaires) answers = migrateAnswers(questionnaire, answers)
+  return { questionnaires, answers }
+}
+
 /**
  * Renders inputs with the current catalog: questionnaires are taken at their current version
  * and the answers go through its migrations first, so an older snapshot replays like a new one.
  */
 export function render(inputs: AgentConfigInputs): AgentContextOutput {
-  const questionnaires = resolveQuestionnaires(inputs.questionnaires)
-  let answers: StoredAnswer[] = inputs.answers
-  for (const questionnaire of questionnaires) answers = migrateAnswers(questionnaire, answers)
+  const { questionnaires, answers } = resolveInputs(inputs)
   return renderAgentContext({
     project: inputs.project,
     questionnaires,
@@ -129,6 +137,12 @@ export function render(inputs: AgentConfigInputs): AgentContextOutput {
     notes: inputs.notes,
     targets: inputs.targets,
   })
+}
+
+/** The catalog's skills that fit the inputs, matched like `render` reads them. */
+export function suggestSkills(inputs: AgentConfigInputs): SkillSuggestions {
+  const { questionnaires, answers } = resolveInputs(inputs)
+  return matchSkills({ questionnaires, answers, targets: inputs.targets })
 }
 
 /**

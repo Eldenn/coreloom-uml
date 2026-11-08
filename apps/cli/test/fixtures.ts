@@ -23,12 +23,15 @@ export function generation(id: number, files: Generation['files']): Generation {
   return {
     id,
     revision: id,
-    catalogVersion: '0.1.0',
+    catalogVersion: '0.2.0',
     files,
     recommendations: [{ target: 'generic', title: 'Nested rules', body: 'Use nested AGENTS.md.' }],
     skills: {
-      compatible: [{ name: 'tidy-tests', url: 'https://example.com/tidy-tests' }],
-      conflicting: [],
+      compatible: [
+        { name: 'tidy-tests', url: 'https://example.com/tidy-tests' },
+        { name: 'not-a-link', url: 'javascript:alert(1)' },
+      ],
+      conflicting: [{ name: 'loose-tests', url: 'https://example.com/loose-tests' }],
     },
   }
 }
