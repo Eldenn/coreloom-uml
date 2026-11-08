@@ -1,0 +1,43 @@
+{
+  "name": "@coreloom-uml/cli",
+  "version": "0.0.0",
+  "description": "Writes a Coreloom UML project's agent conventions (AGENTS.md and pointer files) into a repository, in a managed block.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "coreloom-uml": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Eldenn/coreloom-uml.git",
+    "directory": "apps/cli"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "lint": "biome check .",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@clack/prompts": "1.8.1",
+    "citty": "0.2.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.16",
+    "@coreloom-uml/catalog": "workspace:*",
+    "@coreloom-uml/config": "workspace:*",
+    "@types/node": "25.9.3",
+    "tsup": "9.0.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.9"
+  }
+}
