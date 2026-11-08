@@ -7,7 +7,13 @@
   "access": "restricted",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@coreloom-uml/config", "@coreloom-uml/auth-policy", "@coreloom-uml/uml", "@coreloom-uml/catalog"],
+  "ignore": [
+    "@coreloom-uml/config",
+    "@coreloom-uml/auth-policy",
+    "@coreloom-uml/uml",
+    "@coreloom-uml/catalog",
+    "@coreloom-uml/llm"
+  ],
   "privatePackages": {
     "version": true,
     "tag": false

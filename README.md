@@ -86,6 +86,7 @@ stripped down); the whole front end is built with [coreloom-ui](https://github.c
 | UI | coreloom-ui (Tailwind CSS v4, Radix, shadcn), installed into `apps/web/src/components` |
 | Diagrams | coreloom-ui's `DiagramEditor` / `UmlDiagram`; the UML model and its Mermaid, PlantUML and JSON conversion in `packages/uml`, shared by the web app and the API |
 | Agent conventions | `packages/catalog`: the questionnaires, slot registry and per-tool templates from which `renderAgentContext` deterministically renders a project's `AGENTS.md` (plus pointer files for tools that do not read it natively) |
+| LLM (bring your own key) | `packages/llm`: the Vercel AI SDK (`ai` 7, `@ai-sdk/*`) behind rule proposals and the connection test; Anthropic, OpenAI, Mistral, Ollama and OpenAI-compatible servers (allowlisted) |
 
 ## Repository Layout
 
@@ -99,7 +100,8 @@ coreloom-uml/
 │   ├── config/               # Shared TypeScript config — copied from coreloom, unmodified
 │   ├── auth-policy/          # Password policy — copied from coreloom (consumed from source, no build step)
 │   ├── uml/                  # UML model + Mermaid/PlantUML/JSON conversion, shared by web and api (zod only)
-│   └── catalog/              # Agent conventions: questionnaires, slots, per-tool templates, renderAgentContext (zod only)
+│   ├── catalog/              # Agent conventions: questionnaires, slots, per-tool templates, renderAgentContext (zod only)
+│   └── llm/                  # Calls with the user's own LLM key: providers, allowlist, connection test, rule proposals
 └── infra/
     ├── docker-compose.yml         # local dev: postgres (+ postgres-init, which creates the dev and
     │                              #   test databases on every `up`) + redis + mailpit + minio + bull-board
@@ -250,6 +252,33 @@ Those are the source of truth; files only exist in its generations, rendered by
   `outdatedQuestionnaires`; saving the configuration again moves it to the current version through
   the questionnaire's migrations.
 - No input may contain the `coreloom-uml:` marker prefix (422).
+
+#### Rule proposals with the user's own LLM (bring your own key)
+
+The server holds no provider key and stores none: the browser keeps the provider (`kind`,
+`model`, `baseUrl`) and its key, and sends them in the body of each call as
+`{ provider, apiKey }`. The calls live in `packages/llm` (Vercel AI SDK, structured output);
+the routes accept the session only (an API key gets 401) and share a budget of 10 calls a
+minute per user (`llmThrottle`).
+
+- `POST /llm/test` makes one tiny call ("Reply with OK.", 5 output tokens, 15 s) and answers
+  `{ ok: true, latencyMs }` or `{ ok: false, reason }`, with `reason` one of `unauthorized`,
+  `model_not_found`, `unreachable`, `timeout`, `rate_limited`, `unknown`.
+- `POST /projects/:id/agent-config/proposals` sends the answers, their "more details", the
+  free-text answers, the sections and the rules already rendered or accepted to the model (one
+  call, temperature 0.2, 2,000 output tokens, 60 s; input past ~8,000 tokens is cut, longest
+  notes first, and `truncated` says so). It answers `{ proposals: [{ section, text, basedOn }],
+  truncated }` after dropping unknown sections and duplicates and cleaning the text (one line,
+  no HTML, no marker). Nothing is stored: the owner accepts a proposal with
+  `POST …/rules` and `source: 'llm'`. Without notes, the model is not called.
+- A provider failure answers 502 `{ error, reason }`, never the provider's own error. Everything
+  else (manual rules, generations) works without a provider.
+- Providers: `anthropic`, `openai`, `mistral` (fixed URLs, a key is required, a `baseUrl` is
+  refused), `ollama` and `openai-compatible` (a `baseUrl` is required, the key is optional).
+  A `baseUrl` is accepted only when its origin is listed in `LLM_ALLOWED_BASE_URLS`
+  (comma-separated origins, empty by default), and redirects are never followed (422 otherwise).
+- Only the configuration id, provider kind, model, duration, proposal count and failure reason
+  are logged; `apiKey` fields are also redacted by the logger.
 
 ### Security headers
 

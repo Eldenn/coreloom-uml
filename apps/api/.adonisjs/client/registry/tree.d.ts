@@ -41,7 +41,13 @@ export interface ApiDefinition {
         latest: typeof routes['projects.agent_config.generations.latest']
         show: typeof routes['projects.agent_config.generations.show']
       }
+      proposals: {
+        store: typeof routes['projects.agent_config.proposals.store']
+      }
     }
+  }
+  llm: {
+    test: typeof routes['llm.test']
   }
   questionnaires: {
     index: typeof routes['questionnaires.index']

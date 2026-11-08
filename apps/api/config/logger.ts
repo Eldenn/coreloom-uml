@@ -9,6 +9,18 @@ const loggerConfig = defineConfig({
       enabled: true,
       name: env.get('APP_NAME', 'coreloom-uml-api'),
       level: env.get('LOG_LEVEL', 'info'),
+      // A provider key travels in request bodies (rule proposals, connection test): should one
+      // ever reach a log line, it is censored. The code never logs it on purpose.
+      redact: {
+        paths: [
+          'apiKey',
+          '*.apiKey',
+          '*.*.apiKey',
+          'headers.authorization',
+          '*.headers.authorization',
+        ],
+        censor: '[redacted]',
+      },
       transport: {
         targets: targets()
           .pushIf(!app.inProduction, targets.pretty())

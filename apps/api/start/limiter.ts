@@ -1,5 +1,6 @@
 import limiter from '@adonisjs/limiter/services/main'
 import { API_TOKEN_REQUESTS_PER_MINUTE } from '#app/api-tokens/constants/api-token'
+import { LLM_REQUESTS_PER_MINUTE } from '#app/llm/constants/llm'
 
 /**
  * Per-IP throttle on the auth endpoints (register/login/logout/me), guarding
@@ -20,4 +21,15 @@ export const apiTokenThrottle = limiter.define('api_token', ({ auth }) => {
     .allowRequests(API_TOKEN_REQUESTS_PER_MINUTE)
     .every('1 minute')
     .usingKey(`token_${token.identifier}`)
+})
+
+/**
+ * Per-user throttle on the calls made with the user's own LLM provider (connection test and
+ * rule proposals, one budget for both). Those routes accept the session only.
+ */
+export const llmThrottle = limiter.define('llm', ({ auth }) => {
+  return limiter
+    .allowRequests(LLM_REQUESTS_PER_MINUTE)
+    .every('1 minute')
+    .usingKey(`user_${auth.getUserOrFail().id}`)
 })
