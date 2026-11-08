@@ -29,6 +29,8 @@ interface SortableOption {
   label: string
   description?: string
   icon?: React.ReactNode
+  /** Buttons for this item (edit, delete), after the move buttons. Give each its own name. */
+  actions?: React.ReactNode
 }
 
 function SortableRow({
@@ -36,6 +38,7 @@ function SortableRow({
   index,
   total,
   numbered,
+  wrap,
   disabled,
   onMove,
 }: {
@@ -43,6 +46,7 @@ function SortableRow({
   index: number
   total: number
   numbered: boolean
+  wrap: boolean
   disabled?: boolean
   onMove: (from: number, to: number) => void
 }) {
@@ -86,9 +90,13 @@ function SortableRow({
       )}
       {option.icon}
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate">{option.label}</span>
+        <span className={wrap ? 'break-words' : 'truncate'}>{option.label}</span>
         {option.description ? (
-          <span className="truncate text-[12px] text-muted-foreground">{option.description}</span>
+          <span
+            className={cn('text-[12px] text-muted-foreground', wrap ? 'break-words' : 'truncate')}
+          >
+            {option.description}
+          </span>
         ) : null}
       </span>
       <Button
@@ -119,6 +127,7 @@ function SortableRow({
       >
         <ChevronDownIcon />
       </Button>
+      {option.actions}
     </li>
   )
 }
@@ -129,6 +138,7 @@ function SortableList({
   defaultValue,
   onValueChange,
   numbered = true,
+  wrap = false,
   disabled,
   className,
   'aria-label': ariaLabel,
@@ -142,6 +152,8 @@ function SortableList({
   onValueChange?: (value: string[]) => void
   /** Shows each item's rank (1, 2, 3…). */
   numbered?: boolean
+  /** Long labels and descriptions wrap onto more lines instead of being cut. */
+  wrap?: boolean
   disabled?: boolean
   className?: string
   'aria-label'?: string
@@ -222,6 +234,7 @@ function SortableList({
               index={index}
               total={ordered.length}
               numbered={numbered}
+              wrap={wrap}
               disabled={disabled}
               onMove={move}
             />
