@@ -310,6 +310,18 @@ minute per user (`llmThrottle`).
   (comma-separated origins, empty by default), and redirects are never followed (422 otherwise).
 - Only the configuration id, provider kind, model, duration, proposal count and failure reason
   are logged; `apiKey` fields are also redacted by the logger.
+- `GET /llm/providers` (session) tells the settings screen what it can offer: each kind with
+  `requiresApiKey`, `takesBaseUrl` and a few model suggestions (from `packages/catalog`), and
+  `allowedBaseUrls`, the origins of `LLM_ALLOWED_BASE_URLS`.
+
+On the web, Settings › « LLM provider » (`apps/web/src/llm/`) sets the provider: kind, model (a
+suggestion or any typed name), server URL for `ollama` and `openai-compatible`, and key. All of it
+is kept in this browser only, under `llm-provider` in `localStorage` (`src/lib/llm-provider.ts`),
+never sent anywhere but to these two routes. « Test » checks the form's values without saving them,
+the saved key is shown masked, and « Forget the key » removes the provider and its key. Once a
+provider is set, the rules card of the « Agent conventions » tab offers « Propose rules »: a side
+panel waits for the model (agent plan), then lists each proposal with its section and the answer
+it comes from, to accept, edit then accept, or ignore one by one (coreloom-ui's `SuggestionList`).
 
 ### Security headers
 

@@ -169,7 +169,7 @@ export function useSaveAnswers(projectId: number) {
 export function useCreateRule(projectId: number) {
   const refresh = useRefreshConfig(projectId)
   return useMutation({
-    mutationFn: (body: { section: string; text: string }) =>
+    mutationFn: (body: { section: string; text: string; source?: AgentRule['source'] }) =>
       client.api.projects.agentConfig.rules.store({ params: { id: projectId }, body }),
     onSuccess: refresh,
   })

@@ -47,6 +47,7 @@ export interface ApiDefinition {
     }
   }
   llm: {
+    providers: typeof routes['llm.providers']
     test: typeof routes['llm.test']
   }
   questionnaires: {

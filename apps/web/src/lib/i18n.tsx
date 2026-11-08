@@ -2453,6 +2453,21 @@ const en = {
       failed: 'This diagram couldn’t be drawn, so here is its text.',
     },
   },
+  suggestionList: {
+    label: 'Suggestions',
+    accept: 'Accept',
+    edit: 'Edit',
+    ignore: 'Ignore',
+    acceptEdited: 'Accept edit',
+    cancel: 'Cancel',
+    editLabel: 'Suggested text',
+    editHint: 'Ctrl+Enter accepts, Escape cancels.',
+    empty: 'No suggestions left.',
+    accepted: (left: number) =>
+      `Suggestion accepted. ${left === 0 ? 'None left.' : `${left} left.`}`,
+    ignored: (left: number) => `Suggestion ignored. ${left === 0 ? 'None left.' : `${left} left.`}`,
+    failed: 'That didn’t go through. The suggestion is still here.',
+  },
   saveStatus: {
     saved: 'Saved',
     saving: 'Saving…',
@@ -5297,6 +5312,22 @@ const fr: Messages = {
       view: 'Afficher en',
       failed: 'Ce diagramme n’a pas pu être dessiné : voici son texte.',
     },
+  },
+  suggestionList: {
+    label: 'Suggestions',
+    accept: 'Accepter',
+    edit: 'Modifier',
+    ignore: 'Ignorer',
+    acceptEdited: 'Accepter la version modifiée',
+    cancel: 'Annuler',
+    editLabel: 'Texte suggéré',
+    editHint: 'Ctrl+Entrée accepte, Échap annule.',
+    empty: 'Plus aucune suggestion.',
+    accepted: (left) =>
+      `Suggestion acceptée. ${left === 0 ? 'Il n’en reste aucune.' : `Il en reste ${left}.`}`,
+    ignored: (left) =>
+      `Suggestion ignorée. ${left === 0 ? 'Il n’en reste aucune.' : `Il en reste ${left}.`}`,
+    failed: 'L’action n’a pas abouti : la suggestion est toujours là.',
   },
   saveStatus: {
     saved: 'Enregistré',

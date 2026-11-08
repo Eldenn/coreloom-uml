@@ -1,5 +1,20 @@
 import type { RuleProposal } from '@coreloom-uml/llm'
-import type { LlmFailureReason } from '#app/llm/constants/llm'
+import type { LlmFailureReason, ProviderKind } from '#app/llm/constants/llm'
+
+/** `GET /llm/providers`: the provider kinds this server can call, for the settings screen. */
+export type LlmProvidersOutput = {
+  providers: {
+    kind: ProviderKind
+    /** A hosted provider needs the user's key; a local or private server may take none. */
+    requiresApiKey: boolean
+    /** Calls a server the user names, whose origin must be in `allowedBaseUrls`. */
+    takesBaseUrl: boolean
+    /** Model names to suggest; any other name is accepted. */
+    models: string[]
+  }[]
+  /** Origins (`LLM_ALLOWED_BASE_URLS`) a base URL may point to; empty when none is allowed. */
+  allowedBaseUrls: string[]
+}
 
 /** `POST /llm/test`: always 200, the outcome is in the body. */
 export type LlmTestOutput =
