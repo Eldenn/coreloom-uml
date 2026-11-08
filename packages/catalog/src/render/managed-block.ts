@@ -1,0 +1,48 @@
+import { sha256Hex } from './sha256.ts'
+
+/**
+ * The managed block: the only part of a repository file that Coreloom UML writes. The CLI
+ * replaces what lies between these markers and leaves the rest of the file alone.
+ */
+export const MANAGED_BLOCK_BEGIN =
+  '<!-- coreloom-uml:begin · managed block, edits inside it are replaced on the next pull -->'
+export const MANAGED_BLOCK_END = '<!-- coreloom-uml:end -->'
+
+/** What a begin marker is recognised by, whatever explanation follows it. */
+const BEGIN_PREFIX = '<!-- coreloom-uml:begin'
+
+/** Wraps a body in the markers. The block has no trailing newline. */
+export function wrapManagedBlock(body: string): string {
+  return `${MANAGED_BLOCK_BEGIN}\n${body.trim()}\n${MANAGED_BLOCK_END}`
+}
+
+/** `sha256:<hex>` of a block, markers included, trailing line breaks excluded. */
+export function hashManagedBlock(block: string): string {
+  return `sha256:${sha256Hex(block.replace(/\n+$/, ''))}`
+}
+
+export type ManagedBlockLocation = {
+  /** The block, from the start of the begin marker to the end of the end marker. */
+  block: string
+  start: number
+  end: number
+}
+
+/**
+ * Finds the managed block in a file's text. Returns `null` when there is none, and throws when
+ * the markers are unbalanced (a begin without an end, or more than one block), since rewriting
+ * such a file could lose the owner's text.
+ */
+export function findManagedBlock(text: string): ManagedBlockLocation | null {
+  const start = text.indexOf(BEGIN_PREFIX)
+  const endMarker = text.indexOf(MANAGED_BLOCK_END)
+  if (start === -1 && endMarker === -1) return null
+  if (start === -1 || endMarker === -1 || endMarker < start) {
+    throw new Error('Unbalanced coreloom-uml markers')
+  }
+  const end = endMarker + MANAGED_BLOCK_END.length
+  if (text.indexOf(BEGIN_PREFIX, start + 1) !== -1 || text.indexOf(MANAGED_BLOCK_END, end) !== -1) {
+    throw new Error('More than one coreloom-uml managed block')
+  }
+  return { block: text.slice(start, end), start, end }
+}

@@ -85,6 +85,7 @@ stripped down); the whole front end is built with [coreloom-ui](https://github.c
 | Unit & integration tests | Japa (`apps/api`). `apps/web` screen tests (Playwright + axe, as in coreloom-ui) are not written yet — see [Not yet included](#not-yet-included). |
 | UI | coreloom-ui (Tailwind CSS v4, Radix, shadcn), installed into `apps/web/src/components` |
 | Diagrams | coreloom-ui's `DiagramEditor` / `UmlDiagram`; the UML model and its Mermaid, PlantUML and JSON conversion in `packages/uml`, shared by the web app and the API |
+| Agent conventions | `packages/catalog`: the questionnaires, slot registry and per-tool templates from which `renderAgentContext` deterministically renders a project's `AGENTS.md` (plus pointer files for tools that do not read it natively) |
 
 ## Repository Layout
 
@@ -97,7 +98,8 @@ coreloom-uml/
 ├── packages/
 │   ├── config/               # Shared TypeScript config — copied from coreloom, unmodified
 │   ├── auth-policy/          # Password policy — copied from coreloom (consumed from source, no build step)
-│   └── uml/                  # UML model + Mermaid/PlantUML/JSON conversion, shared by web and api (zod only)
+│   ├── uml/                  # UML model + Mermaid/PlantUML/JSON conversion, shared by web and api (zod only)
+│   └── catalog/              # Agent conventions: questionnaires, slots, per-tool templates, renderAgentContext (zod only)
 └── infra/
     ├── docker-compose.yml         # local dev: postgres (+ postgres-init, which creates the dev and
     │                              #   test databases on every `up`) + redis + mailpit + minio + bull-board
