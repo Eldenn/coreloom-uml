@@ -331,6 +331,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-generations-controller').default['show']>>>
     }
   }
+  'projects.agent_config.proposals.store': {
+    methods: ["POST"]
+    pattern: '/projects/:id/agent-config/proposals'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/llm/validators/llm-input').llmCallInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/llm/validators/llm-input').llmCallInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-proposals-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-proposals-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'llm.test': {
+    methods: ["POST"]
+    pattern: '/llm/test'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/llm/validators/llm-input').llmCallInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/llm/validators/llm-input').llmCallInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/llm/controllers/llm-test-controller').default['handle']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm/controllers/llm-test-controller').default['handle']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'questionnaires.index': {
     methods: ["GET","HEAD"]
     pattern: '/questionnaires'

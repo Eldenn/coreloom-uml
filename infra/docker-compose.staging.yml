@@ -88,6 +88,8 @@ services:
       DEFAULT_ACCOUNT_EMAIL: '${DEFAULT_ACCOUNT_EMAIL}'
       DEFAULT_ACCOUNT_PASSWORD: '${DEFAULT_ACCOUNT_PASSWORD}'
       DEFAULT_ACCOUNT_NAME: '${DEFAULT_ACCOUNT_NAME:-}'
+      # Origins an `ollama` / `openai-compatible` LLM provider may call (comma-separated).
+      LLM_ALLOWED_BASE_URLS: '${LLM_ALLOWED_BASE_URLS:-}'
       FRONTEND_URL: '${SERVICE_URL_WEB}'
       DB_HOST: postgres
       DB_PORT: '5432'

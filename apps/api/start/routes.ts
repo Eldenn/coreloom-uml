@@ -1,6 +1,6 @@
 import router from '@adonisjs/core/services/router'
 import { middleware } from '#start/kernel'
-import { apiTokenThrottle, authThrottle } from '#start/limiter'
+import { apiTokenThrottle, authThrottle, llmThrottle } from '#start/limiter'
 
 /*
 |--------------------------------------------------------------------------
@@ -151,6 +151,27 @@ router
   .where('ruleId', router.matchers.number())
   .where('generationId', router.matchers.number())
   .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
+
+/*
+|--------------------------------------------------------------------------
+| Calls with the user's own LLM provider (bring your own key)
+|--------------------------------------------------------------------------
+|
+| The key travels in the body of each request and is never stored or logged.
+| Session only (an API token is refused), 10 calls a minute per user.
+*/
+router
+  .post('/projects/:id/agent-config/proposals', [
+    () => import('#app/agent-configs/controllers/agent-config-proposals-controller'),
+    'store',
+  ])
+  .as('projects.agent_config.proposals.store')
+  .where('id', router.matchers.number())
+  .use([middleware.auth(), llmThrottle])
+router
+  .post('/llm/test', [() => import('#app/llm/controllers/llm-test-controller'), 'handle'])
+  .as('llm.test')
+  .use([middleware.auth(), llmThrottle])
 
 /*
 |--------------------------------------------------------------------------

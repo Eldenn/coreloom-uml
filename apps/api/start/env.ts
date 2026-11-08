@@ -137,4 +137,17 @@ export default await Env.create(new URL('../', import.meta.url), {
   DEFAULT_ACCOUNT_PASSWORD: requiredInProduction,
   DEFAULT_ACCOUNT_NAME: Env.schema.string.optional(),
   REGISTRATION_ENABLED: Env.schema.boolean.optional(),
+
+  /*
+  |--------------------------------------------------------------------------
+  | LLM providers (agent conventions: rule proposals, bring your own key)
+  |--------------------------------------------------------------------------
+  | The server holds no provider key: each request carries the user's. Hosted
+  | providers (Anthropic, OpenAI, Mistral) have a fixed URL; `ollama` and
+  | `openai-compatible` call a URL the user names, which is accepted only when
+  | its origin (scheme, host, port) is listed here, comma-separated. Empty by
+  | default: no such provider can be used until an origin is allowed.
+  | Example: LLM_ALLOWED_BASE_URLS=http://localhost:11434,https://llm.internal
+  */
+  LLM_ALLOWED_BASE_URLS: Env.schema.string.optional(),
 })

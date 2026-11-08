@@ -1,0 +1,15 @@
+{
+  "extends": "@coreloom-uml/config/tsconfig/node",
+  "compilerOptions": {
+    "noEmit": true,
+    // Consumed as TypeScript source, by Node (the API, the CLI's bundler) and by Vite if ever
+    // needed, which strip the types without resolving `.js` to `.ts`: relative imports name the
+    // `.ts` file, and only erasable syntax is allowed.
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    // The types are inferred from zod, whose optional fields are `?: T | undefined`.
+    "exactOptionalPropertyTypes": false
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}
