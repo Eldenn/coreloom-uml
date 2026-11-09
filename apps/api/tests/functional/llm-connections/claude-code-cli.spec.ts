@@ -4,11 +4,11 @@ import { join } from 'node:path'
 import { test } from '@japa/runner'
 import ClaudeCodeCli from '#app/llm-connections/services/claude-code-cli'
 
-/** A stand-in `claude` on PATH that exits at once with code 3, without reading stdin. */
-async function stubBinary() {
+/** A stand-in `claude` on PATH; by default it exits at once with code 3, without reading stdin. */
+async function stubBinary(body = 'exit 3') {
   const bin = await mkdtemp(join(tmpdir(), 'claude-stub-'))
   const script = join(bin, 'claude')
-  await writeFile(script, '#!/bin/sh\nexit 3\n')
+  await writeFile(script, `#!/bin/sh\n${body}\n`)
   await chmod(script, 0o755)
   const path = process.env.PATH
   process.env.PATH = `${bin}:${path}`
@@ -46,5 +46,35 @@ test.group('Claude Code binary runner', () => {
       signal: AbortSignal.abort(),
     })
     assert.isTrue(outcome.timedOut)
+  })
+
+  test('too much output fails the call without reading as a timeout', async ({
+    assert,
+    cleanup,
+  }) => {
+    cleanup(await stubBinary('head -c 2000000 /dev/zero'))
+    const dir = await mkdtemp(join(tmpdir(), 'claude-home-'))
+    cleanup(() => rm(dir, { recursive: true, force: true }))
+    const outcome = await new ClaudeCodeCli().run(['-p'], {
+      stdin: '',
+      configDir: dir,
+      timeoutMs: 10_000,
+    })
+    assert.isNull(outcome.exitCode)
+    assert.isFalse(outcome.timedOut)
+  })
+
+  test('reads a sign-in URL printed over several chunks in full', async ({ assert, cleanup }) => {
+    const url = 'https://claude.com/cai/oauth/authorize?code=true&client_id=x&state=y'
+    cleanup(
+      await stubBinary(
+        `printf 'Visit ${url.slice(0, 50)}'; sleep 0.3; printf '${url.slice(50)}\\n'; sleep 5`,
+      ),
+    )
+    const dir = await mkdtemp(join(tmpdir(), 'claude-home-'))
+    cleanup(() => rm(dir, { recursive: true, force: true }))
+    const login = new ClaudeCodeCli().login(dir)
+    cleanup(() => login.kill())
+    assert.equal(await login.url, url)
   })
 })

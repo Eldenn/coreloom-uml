@@ -1,5 +1,4 @@
 import app from '@adonisjs/core/services/app'
-import testUtils from '@adonisjs/core/services/test_utils'
 import db from '@adonisjs/lucid/services/db'
 import redis from '@adonisjs/redis/services/main'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
@@ -9,6 +8,7 @@ import LlmConnection from '#app/llm-connections/models/llm-connection'
 import { attemptKey } from '#app/llm-connections/services/codex-attempts'
 import CodexOAuth from '#app/llm-connections/services/codex-oauth'
 import User from '#app/users/models/user'
+import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
 import { codexJwt, fakeCodexOAuth } from './fakes.js'
 
@@ -35,7 +35,7 @@ async function allowPoll(attemptId: string) {
 }
 
 test.group('ChatGPT subscription - device code', (group) => {
-  group.each.setup(() => testUtils.db().withGlobalTransaction())
+  group.each.setup(() => withDefaultFlags())
   group.each.teardown(() => app.container.restore(CodexOAuth))
 
   test('connects after the user enters the code, and says so again on the next poll', async ({

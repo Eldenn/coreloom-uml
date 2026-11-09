@@ -23,3 +23,6 @@ export const CLAUDE_STATUS_TTL_MS = 30_000
 
 /** A Claude sign-in left waiting for its code is stopped after this delay. */
 export const CLAUDE_LOGIN_TIMEOUT_MS = 600_000
+
+/** A Claude sign-in whose binary prints no sign-in page within this delay is stopped. */
+export const CLAUDE_LOGIN_URL_TIMEOUT_MS = 30_000

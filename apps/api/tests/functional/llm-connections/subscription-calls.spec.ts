@@ -1,5 +1,4 @@
 import app from '@adonisjs/core/services/app'
-import testUtils from '@adonisjs/core/services/test_utils'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import type { LanguageModel, LlmCredential, ProviderSettings } from '@coreloom-uml/llm'
 import { answeringModel } from '@coreloom-uml/llm/testing'
@@ -9,6 +8,7 @@ import LanguageModels from '#app/llm/services/language-models'
 import { saveCodexTokens } from '#app/llm-connections/services/codex-connections'
 import CodexOAuth from '#app/llm-connections/services/codex-oauth'
 import User from '#app/users/models/user'
+import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { codexJwt, fakeCodexOAuth } from './fakes.js'
 
 const json = { accept: 'application/json' }
@@ -46,7 +46,7 @@ async function connectCodex(user: User, expiresInMs = 3600_000) {
 }
 
 test.group('LLM calls with a subscription', (group) => {
-  group.each.setup(() => testUtils.db().withGlobalTransaction())
+  group.each.setup(() => withDefaultFlags())
   group.each.teardown(() => {
     app.container.restore(LanguageModels)
     app.container.restore(CodexOAuth)

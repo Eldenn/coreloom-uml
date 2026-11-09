@@ -1,9 +1,9 @@
-import testUtils from '@adonisjs/core/services/test_utils'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import { test } from '@japa/runner'
 import { stateOf } from '#app/feature-flags/services/feature-flags'
 import User from '#app/users/models/user'
 import env from '#start/env'
+import { withDefaultFlags } from '#tests/helpers/feature-flags'
 
 const json = { accept: 'application/json' }
 const ADMIN = 'flags-admin@example.com'
@@ -16,7 +16,7 @@ function makeUser(email = `flags-${Math.random().toString(36).slice(2)}@example.
 }
 
 test.group('Feature flags routes', (group) => {
-  group.each.setup(() => testUtils.db().withGlobalTransaction())
+  group.each.setup(() => withDefaultFlags())
   group.each.setup(() => {
     env.set('DEFAULT_ACCOUNT_EMAIL', ADMIN)
     env.set('DEFAULT_ACCOUNT_PASSWORD', 'the-default-passphrase')

@@ -1,7 +1,6 @@
 import { stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import app from '@adonisjs/core/services/app'
-import testUtils from '@adonisjs/core/services/test_utils'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import type { ClaudeRun } from '@coreloom-uml/llm'
 import { test } from '@japa/runner'
@@ -10,6 +9,7 @@ import ClaudeCodeCli, { type ClaudeLogin } from '#app/llm-connections/services/c
 import { startClaudeLogin } from '#app/llm-connections/services/claude-code-connections'
 import User from '#app/users/models/user'
 import llmConfig from '#config/llm'
+import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs } from '#tests/helpers/leaks'
 
 const json = { accept: 'application/json' }
@@ -88,7 +88,7 @@ async function exists(path: string) {
 }
 
 test.group('Claude subscription', (group) => {
-  group.each.setup(() => testUtils.db().withGlobalTransaction())
+  group.each.setup(() => withDefaultFlags())
   group.each.teardown(() => app.container.restore(ClaudeCodeCli))
 
   test('signs in through the binary, in the account own private folder', async ({
@@ -239,6 +239,38 @@ test.group('Claude subscription', (group) => {
       response.assertStatus(200)
       assert.containsSubset(response.body(), expected)
     }
+  })
+
+  test('lists a never-signed-in account as not connected without a folder or the binary', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    await enableClaude(user)
+    const record = fakeClaude({ loggedIn: true })
+    const providers = await client.get('/llm/providers').headers(json).loginAs(user)
+    const entry = providers.body().providers.find((p: { kind: string }) => p.kind === 'claude-code')
+    assert.containsSubset(entry, { connected: false })
+    assert.deepEqual(record.dirs, [])
+    assert.isNull(await exists(join(llmConfig.claudeCodeHome, String(user.id))))
+  })
+
+  test('a sign-in whose binary prints no page fails after a short delay', async ({ assert }) => {
+    const user = await makeUser()
+    let killed = 0
+    app.container.swap(ClaudeCodeCli, () => {
+      const fake = new ClaudeCodeCli()
+      fake.login = () => ({
+        url: new Promise<string>(() => {}),
+        submit: async () => false,
+        kill: () => {
+          killed++
+        },
+      })
+      return fake
+    })
+    await assert.rejects(() => startClaudeLogin(user, { urlTimeoutMs: 20 }))
+    assert.equal(killed, 1)
   })
 
   test('is not found while the flag is off', async ({ client }) => {

@@ -1,8 +1,10 @@
-import { mkdir, rm } from 'node:fs/promises'
+import { mkdir, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import app from '@adonisjs/core/services/app'
+import { LlmCallError, LlmFailureReason } from '@coreloom-uml/llm'
 import {
   CLAUDE_LOGIN_TIMEOUT_MS,
+  CLAUDE_LOGIN_URL_TIMEOUT_MS,
   CLAUDE_STATUS_TTL_MS,
 } from '#app/llm-connections/constants/llm-connections'
 import ClaudeCodeCli, { type ClaudeLogin } from '#app/llm-connections/services/claude-code-cli'
@@ -26,6 +28,14 @@ function folder(user: Person): string {
   return join(llmConfig.claudeCodeHome, String(user.id))
 }
 
+/** Whether the account's folder exists: without it, the binary was never signed in for it. */
+async function hasFolder(user: Person): Promise<boolean> {
+  return stat(folder(user)).then(
+    () => true,
+    () => false,
+  )
+}
+
 /** The account's own `CLAUDE_CONFIG_DIR`, created private (0700) on first use. */
 export async function claudeConfigDir(user: Person): Promise<string> {
   const dir = folder(user)
@@ -46,6 +56,8 @@ function stopLogin(user: Person, only?: ClaudeLogin): void {
 export async function claudeConnected(user: Person): Promise<boolean> {
   const cached = statuses.get(user.id)
   if (cached && Date.now() - cached.at < CLAUDE_STATUS_TTL_MS) return cached.connected
+  // Never signed in here: answer without creating the folder or starting the binary.
+  if (!(await hasFolder(user))) return false
   const cli = await app.container.make(ClaudeCodeCli)
   const connected = await cli.status(await claudeConfigDir(user))
   statuses.set(user.id, { connected, at: Date.now() })
@@ -54,11 +66,12 @@ export async function claudeConnected(user: Person): Promise<boolean> {
 
 /**
  * Starts the binary's sign-in and returns the page it prints. One per account: a new one stops
- * the previous one, and one left waiting stops after `timeoutMs`.
+ * the previous one, and one left waiting stops after `timeoutMs`. A binary that prints no page
+ * within `urlTimeoutMs` is stopped, and the call fails with a `timeout` `LlmCallError`.
  */
 export async function startClaudeLogin(
   user: Person,
-  options: { timeoutMs?: number } = {},
+  options: { timeoutMs?: number; urlTimeoutMs?: number } = {},
 ): Promise<string> {
   const cli = await app.container.make(ClaudeCodeCli)
   const dir = await claudeConfigDir(user)
@@ -72,11 +85,20 @@ export async function startClaudeLogin(
   )
   timer.unref()
   logins.set(user.id, { login, timer })
+  let urlTimer: NodeJS.Timeout | undefined
+  const late = new Promise<never>((_resolve, reject) => {
+    urlTimer = setTimeout(
+      () => reject(new LlmCallError(LlmFailureReason.Timeout)),
+      options.urlTimeoutMs ?? CLAUDE_LOGIN_URL_TIMEOUT_MS,
+    )
+  })
   try {
-    return await login.url
+    return await Promise.race([login.url, late])
   } catch (error) {
     stopLogin(user, login)
     throw error
+  } finally {
+    clearTimeout(urlTimer)
   }
 }
 
@@ -100,7 +122,9 @@ export async function forgetClaude(user: Person): Promise<void> {
 /** Signs the binary out for this account, then removes its folder. */
 export async function disconnectClaude(user: Person): Promise<void> {
   stopLogin(user)
-  const cli = await app.container.make(ClaudeCodeCli)
-  await cli.logout(await claudeConfigDir(user))
+  if (await hasFolder(user)) {
+    const cli = await app.container.make(ClaudeCodeCli)
+    await cli.logout(folder(user))
+  }
   await forgetClaude(user)
 }

@@ -1,4 +1,3 @@
-import testUtils from '@adonisjs/core/services/test_utils'
 import db from '@adonisjs/lucid/services/db'
 import { FEATURE_FLAGS, FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import { test } from '@japa/runner'
@@ -12,6 +11,7 @@ import {
   updateFlag,
 } from '#app/feature-flags/services/feature-flags'
 import User from '#app/users/models/user'
+import { withDefaultFlags } from '#tests/helpers/feature-flags'
 
 const KEY = FeatureFlagKey.LlmSubscriptionChatgpt
 const ON = { enabled: true, rollout: 100, rules: [] }
@@ -24,7 +24,7 @@ function makeUser() {
 }
 
 test.group('Feature flags service', (group) => {
-  group.each.setup(() => testUtils.db().withGlobalTransaction())
+  group.each.setup(() => withDefaultFlags())
 
   test('reads the declared default when nothing is stored', async ({ assert }) => {
     const user = await makeUser()

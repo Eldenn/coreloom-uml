@@ -5,6 +5,11 @@ import type { client } from '@/lib/client'
 type ProvidersBody = Awaited<ReturnType<typeof client.api.llm.providers>>
 export type ProviderKind = ProvidersBody['providers'][number]['kind']
 
+/** Longest values the API accepts (`apps/api/app/llm/constants/llm.ts`). */
+export const LLM_MODEL_MAX_LENGTH = 200
+export const LLM_BASE_URL_MAX_LENGTH = 2000
+export const LLM_API_KEY_MAX_LENGTH = 1000
+
 /**
  * A provider as this browser keeps it. A key kind keeps its key (empty for a server that takes
  * none) and maybe a base URL; a subscription kind keeps neither: the server holds the connection.
