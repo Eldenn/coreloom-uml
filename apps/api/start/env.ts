@@ -162,4 +162,11 @@ export default await Env.create(new URL('../', import.meta.url), {
   | Example: LLM_ALLOWED_BASE_URLS=http://localhost:11434,https://llm.internal
   */
   LLM_ALLOWED_BASE_URLS: Env.schema.string.optional(),
+
+  /*
+  | Claude subscriptions run the `claude` binary (Claude Code) with one config
+  | folder per account under this path. Mount a persistent volume there in
+  | production. Defaults to `tmp/claude` inside the app.
+  */
+  CLAUDE_CODE_HOME: Env.schema.string.optional(),
 })

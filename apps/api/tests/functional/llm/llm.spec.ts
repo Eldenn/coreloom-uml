@@ -1,6 +1,6 @@
 import app from '@adonisjs/core/services/app'
 import testUtils from '@adonisjs/core/services/test_utils'
-import type { LanguageModel, ProviderSettings } from '@coreloom-uml/llm'
+import type { LanguageModel, LlmCredential, ProviderSettings } from '@coreloom-uml/llm'
 import { APICallError, answeringModel, failingModel } from '@coreloom-uml/llm/testing'
 import { test } from '@japa/runner'
 import type { TestContext } from '@japa/runner/core'
@@ -27,7 +27,7 @@ function makeUser() {
 
 /** Every model the API builds during a test is this one; records what it was built with. */
 function useModel(model: LanguageModel) {
-  const built: { provider: ProviderSettings; apiKey: string }[] = []
+  const built: { provider: ProviderSettings; apiKey: LlmCredential }[] = []
   app.container.swap(LanguageModels, () => {
     const fake = new LanguageModels()
     fake.create = (provider, apiKey) => {

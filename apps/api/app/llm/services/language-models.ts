@@ -1,21 +1,32 @@
+import app from '@adonisjs/core/services/app'
 import {
   baseUrlProblem,
   createLanguageModel,
   type LanguageModel,
+  type LlmCredential,
   LlmFailureReason,
   type ProviderSettings,
   requiresApiKey,
 } from '@coreloom-uml/llm'
 import type { LlmFailureOutput } from '#app/llm/validators/llm-output'
+import { ProviderKind } from '#app/llm-connections/constants/llm-connections'
+import ClaudeCodeCli from '#app/llm-connections/services/claude-code-cli'
 import llmConfig from '#config/llm'
 
+/** A `claude-code` model name: one token that cannot read as a flag of the binary. */
+const CLAUDE_MODEL = /^[A-Za-z0-9][A-Za-z0-9._:[\]-]*$/
+
 /**
- * Builds the model a request calls. Resolved from the container, so tests swap it for the AI
- * SDK's mock model (`app.container.swap(LanguageModels, ...)`) and never reach a provider.
+ * Builds the model a request calls, with a key or a connected subscription
+ * (`resolveCredential`). Resolved from the container, so tests swap it for the AI SDK's mock model
+ * (`app.container.swap(LanguageModels, ...)`) and never reach a provider.
  */
 export default class LanguageModels {
-  create(provider: ProviderSettings, apiKey: string): LanguageModel {
-    return createLanguageModel(provider, apiKey)
+  create(provider: ProviderSettings, credential: LlmCredential): LanguageModel {
+    return createLanguageModel(provider, credential, {
+      claudeRun: async (args, options) =>
+        (await app.container.make(ClaudeCodeCli)).run(args, options),
+    })
   }
 }
 
@@ -25,6 +36,9 @@ export default class LanguageModels {
  */
 export function providerProblem(provider: ProviderSettings, apiKey: string): string | null {
   if (requiresApiKey(provider.kind) && !apiKey) return `A ${provider.kind} provider needs a key`
+  if (provider.kind === ProviderKind.ClaudeCode && !CLAUDE_MODEL.test(provider.model)) {
+    return 'A claude-code model is a single name, such as sonnet'
+  }
   return baseUrlProblem(provider, llmConfig.allowedOrigins)
 }
 
