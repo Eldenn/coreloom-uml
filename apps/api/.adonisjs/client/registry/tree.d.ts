@@ -49,6 +49,22 @@ export interface ApiDefinition {
   llm: {
     providers: typeof routes['llm.providers']
     test: typeof routes['llm.test']
+    connections: {
+      openaiCodex: {
+        attempts: {
+          store: typeof routes['llm.connections.openai_codex.attempts.store']
+          show: typeof routes['llm.connections.openai_codex.attempts.show']
+        }
+        destroy: typeof routes['llm.connections.openai_codex.destroy']
+      }
+      claudeCode: {
+        login: {
+          store: typeof routes['llm.connections.claude_code.login.store']
+          code: typeof routes['llm.connections.claude_code.login.code']
+        }
+        destroy: typeof routes['llm.connections.claude_code.destroy']
+      }
+    }
   }
   questionnaires: {
     index: typeof routes['questionnaires.index']

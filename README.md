@@ -348,7 +348,7 @@ minute per user (`llmThrottle`).
 
 - `POST /llm/test` makes one tiny call ("Reply with OK.", 5 output tokens, 15 s) and answers
   `{ ok: true, latencyMs }` or `{ ok: false, reason }`, with `reason` one of `unauthorized`,
-  `model_not_found`, `unreachable`, `timeout`, `rate_limited`, `unknown`.
+  `model_not_found`, `unreachable`, `timeout`, `rate_limited`, `subscription_expired`, `unknown`.
 - `POST /projects/:id/agent-config/proposals` sends the answers, their "more details", the
   free-text answers, the sections and the rules already rendered or accepted to the model (one
   call, temperature 0.2, 2,000 output tokens, 60 s; input past ~8,000 tokens is cut, longest
@@ -366,7 +366,8 @@ minute per user (`llmThrottle`).
   are logged; `apiKey` fields are also redacted by the logger.
 - `GET /llm/providers` (session) tells the settings screen what it can offer: each kind with
   `requiresApiKey`, `takesBaseUrl` and a few model suggestions (from `packages/catalog`), and
-  `allowedBaseUrls`, the origins of `LLM_ALLOWED_BASE_URLS`.
+  `allowedBaseUrls`, the origins of `LLM_ALLOWED_BASE_URLS`. Each kind also says how it
+  authenticates (`auth`: `apiKey` or `subscription`) and whether it is `connected`.
 
 On the web, Settings › « LLM provider » (`apps/web/src/llm/`) sets the provider: kind, model (a
 suggestion or any typed name), server URL for `ollama` and `openai-compatible`, and key. All of it
@@ -376,6 +377,35 @@ the saved key is shown masked, and « Forget the key » removes the provider and
 provider is set, the rules card of the « Agent conventions » tab offers « Propose rules »: a side
 panel waits for the model (agent plan), then lists each proposal with its section and the answer
 it comes from, to accept, edit then accept, or ignore one by one (coreloom-ui's `SuggestionList`).
+
+#### LLM subscriptions (ChatGPT, Claude)
+
+Instead of a key, each account can connect its own subscription: `openai-codex` (ChatGPT) and
+`claude-code` (Claude). Each kind sits behind its feature flag (`llm-subscription-chatgpt`,
+`llm-subscription-claude`, off by default): while it is off for an account, the kind is missing
+from `GET /llm/providers` and its routes answer 404. Once connected, `POST /llm/test` and the rule
+proposals work exactly as with a key (same answers, same failure reasons, plus
+`subscription_expired` when the connection is gone). The browser keeps only the kind and the model.
+
+- **ChatGPT** (`app/llm-connections/`, `packages/llm/src/codex.ts`): OpenAI's device code.
+  `POST /llm/connections/openai-codex/attempts` returns a code and OpenAI's page; the web app polls
+  `GET …/attempts/:attemptId` (`pending`, `connected`, `expired`, `denied`). Attempts wait in Redis
+  for 15 minutes, tied to their account (another account's attempt is a 404). The tokens are stored
+  in `llm_connections`, encrypted with `APP_KEY`, refreshed under a row lock when they expire within
+  a minute, and never returned, logged or traced. Changing `APP_KEY` or a revoked grant
+  disconnects the account. `DELETE /llm/connections/openai-codex` disconnects. The OAuth values come
+  from Hermes Agent's source, which connects the same way (checked on 2026-11-09, see
+  `CODEX_OAUTH`); calls name this product (`originator: coreloom-uml`).
+- **Claude**: only the official, unmodified `claude` binary (Claude Code, pinned in the API image)
+  signs in and holds the credentials, in one folder per account (`CLAUDE_CODE_HOME/<user id>`,
+  mode 0700). `POST /llm/connections/claude-code/login` starts `claude auth login` and returns the
+  page it prints; the user pastes the code back to `POST …/login/code`, which hands it to the
+  binary's stdin as is. A sign-in stops after 10 minutes, one per account at a time.
+  `DELETE /llm/connections/claude-code` signs the binary out and removes the folder, as does
+  deleting the account. Calls run `claude -p` with no tools and no shell. Usage counts against the
+  plan's monthly Agent SDK credit, then extra usage.
+- `CLAUDE_CODE_HOME` must be a persistent volume (`/data/claude` in the Compose stacks). Sign-ins
+  run in the API process, so keep a single API replica while Claude subscriptions are on.
 
 ### Security headers
 

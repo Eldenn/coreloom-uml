@@ -1,4 +1,6 @@
 // The flags the code checks. A flag is declared here once; the admin only edits its state.
+// A key is never reused: a removed flag's stored state stays in the database, and a new flag with
+// the same key would start from it.
 import type { FeatureFlagState } from './evaluate.ts'
 
 export const FeatureFlagKey = {

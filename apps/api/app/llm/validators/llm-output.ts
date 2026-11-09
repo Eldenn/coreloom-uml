@@ -1,3 +1,4 @@
+import type { ProviderAuth } from '@coreloom-uml/catalog'
 import type { RuleProposal } from '@coreloom-uml/llm'
 import type { LlmFailureReason, ProviderKind } from '#app/llm/constants/llm'
 
@@ -5,6 +6,10 @@ import type { LlmFailureReason, ProviderKind } from '#app/llm/constants/llm'
 export type LlmProvidersOutput = {
   providers: {
     kind: ProviderKind
+    /** A key sent with each call, or a subscription the user connects once. */
+    auth: ProviderAuth
+    /** Ready to call: always for a key kind; for a subscription, once connected. */
+    connected: boolean
     /** A hosted provider needs the user's key; a local or private server may take none. */
     requiresApiKey: boolean
     /** Calls a server the user names, whose origin must be in `allowedBaseUrls`. */

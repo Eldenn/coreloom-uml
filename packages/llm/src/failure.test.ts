@@ -1,6 +1,6 @@
 import { APICallError } from 'ai'
 import { describe, expect, it } from 'vitest'
-import { failureReason } from './failure.ts'
+import { failureReason, LlmCallError } from './failure.ts'
 
 function apiError(statusCode?: number, cause?: unknown) {
   return new APICallError({
@@ -42,5 +42,11 @@ describe('failureReason', () => {
     expect(failureReason(new Error('boom'))).toBe('unknown')
     expect(failureReason('boom')).toBe('unknown')
     expect(failureReason(null)).toBe('unknown')
+  })
+
+  it('keeps the reason of a call already reduced, even inside a wrapper', () => {
+    const error = new LlmCallError('subscription_expired')
+    expect(failureReason(error)).toBe('subscription_expired')
+    expect(failureReason(new Error('wrapped', { cause: error }))).toBe('subscription_expired')
   })
 })

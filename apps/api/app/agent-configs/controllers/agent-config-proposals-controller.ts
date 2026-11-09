@@ -15,6 +15,8 @@ import {
 import LanguageModels, { llmFailure, providerProblem } from '#app/llm/services/language-models'
 import { llmCallInput } from '#app/llm/validators/llm-input'
 import type { AgentProposalsOutput } from '#app/llm/validators/llm-output'
+import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
+import { resolveCredential } from '#app/llm-connections/services/llm-credential'
 import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
 
 /**
@@ -22,7 +24,8 @@ import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owne
  * answers into proposed rules. Nothing is stored: the owner accepts a proposal (possibly edited)
  * with `POST …/rules` and `source: 'llm'`. Session only.
  *
- * The key is read here, handed to the provider's client and dropped. A provider failure answers
+ * The key (or the user's connected subscription) is read here, handed to the provider's client and
+ * dropped. A provider failure answers
  * 502 with its reason only, never the provider's error; the configuration keeps working
  * without a model (manual rules, generations).
  */
@@ -38,6 +41,14 @@ export default class AgentConfigProposalsController {
     const key = apiKey ?? ''
     const problem = providerProblem(provider, key)
     if (problem) return response.unprocessableEntity({ error: { message: problem } })
+    const resolved = await resolveCredential(provider, key, user)
+    if ('notFound' in resolved) return response.notFound(SUBSCRIPTION_NOT_FOUND)
+
+    const log = { agentConfigId: config.id, kind: provider.kind, model: provider.model }
+    if ('reason' in resolved) {
+      logger.warn({ ...log, reason: resolved.reason }, 'agent rule proposals failed')
+      return response.badGateway(llmFailure(resolved.reason))
+    }
 
     const inputs = await currentInputs(config, project)
     const questionnaires = resolveQuestionnaires(inputs.questionnaires)
@@ -52,17 +63,19 @@ export default class AgentConfigProposalsController {
 
     const models = await app.container.make(LanguageModels)
     const started = performance.now()
-    const log = { agentConfigId: config.id, kind: provider.kind, model: provider.model }
     try {
-      const result: AgentProposalsOutput = await proposeRules(models.create(provider, key), {
-        questionnaires,
-        answers: answers.map((answer) => ({
-          ...answer,
-          details: details.get(`${answer.questionnaireId}/${answer.questionId}`) ?? null,
-        })),
-        rules: inputs.rules,
-        fragments: render(inputs).fragments,
-      })
+      const result: AgentProposalsOutput = await proposeRules(
+        models.create(provider, resolved.credential),
+        {
+          questionnaires,
+          answers: answers.map((answer) => ({
+            ...answer,
+            details: details.get(`${answer.questionnaireId}/${answer.questionId}`) ?? null,
+          })),
+          rules: inputs.rules,
+          fragments: render(inputs).fragments,
+        },
+      )
       logger.info(
         {
           ...log,

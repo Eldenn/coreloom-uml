@@ -178,6 +178,63 @@ router
   .use([middleware.auth(), llmThrottle])
 
 /*
+| Subscriptions (`app/llm-connections/`): an account connects its own ChatGPT or Claude
+| subscription instead of sending a key. Each kind sits behind its feature flag (404 while off).
+| Session only; starting a sign-in counts against the LLM limit, polling it does not.
+*/
+router
+  .group(() => {
+    router
+      .post('/attempts', [
+        () => import('#app/llm-connections/controllers/codex-connection-controller'),
+        'store',
+      ])
+      .as('attempts.store')
+      .use(llmThrottle)
+    router
+      .get('/attempts/:attemptId', [
+        () => import('#app/llm-connections/controllers/codex-connection-controller'),
+        'show',
+      ])
+      .as('attempts.show')
+      .where('attemptId', router.matchers.uuid())
+    router
+      .delete('/', [
+        () => import('#app/llm-connections/controllers/codex-connection-controller'),
+        'destroy',
+      ])
+      .as('destroy')
+  })
+  .prefix('/llm/connections/openai-codex')
+  .as('llm.connections.openai_codex')
+  .use(middleware.auth())
+router
+  .group(() => {
+    router
+      .post('/login', [
+        () => import('#app/llm-connections/controllers/claude-code-connection-controller'),
+        'store',
+      ])
+      .as('login.store')
+      .use(llmThrottle)
+    router
+      .post('/login/code', [
+        () => import('#app/llm-connections/controllers/claude-code-connection-controller'),
+        'code',
+      ])
+      .as('login.code')
+    router
+      .delete('/', [
+        () => import('#app/llm-connections/controllers/claude-code-connection-controller'),
+        'destroy',
+      ])
+      .as('destroy')
+  })
+  .prefix('/llm/connections/claude-code')
+  .as('llm.connections.claude_code')
+  .use(middleware.auth())
+
+/*
 |--------------------------------------------------------------------------
 | Questionnaires of the agent conventions catalog (`@coreloom-uml/catalog`)
 |--------------------------------------------------------------------------

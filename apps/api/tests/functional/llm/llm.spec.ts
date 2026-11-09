@@ -1,8 +1,6 @@
 import app from '@adonisjs/core/services/app'
-import logger from '@adonisjs/core/services/logger'
 import testUtils from '@adonisjs/core/services/test_utils'
-import db from '@adonisjs/lucid/services/db'
-import type { LanguageModel, ProviderSettings } from '@coreloom-uml/llm'
+import type { LanguageModel, LlmCredential, ProviderSettings } from '@coreloom-uml/llm'
 import { APICallError, answeringModel, failingModel } from '@coreloom-uml/llm/testing'
 import { test } from '@japa/runner'
 import type { TestContext } from '@japa/runner/core'
@@ -10,6 +8,7 @@ import { LLM_REQUESTS_PER_MINUTE } from '#app/llm/constants/llm'
 import LanguageModels from '#app/llm/services/language-models'
 import User from '#app/users/models/user'
 import llmConfig from '#config/llm'
+import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
 
 const json = { accept: 'application/json' }
 const Q = 'frontend-react'
@@ -28,7 +27,7 @@ function makeUser() {
 
 /** Every model the API builds during a test is this one; records what it was built with. */
 function useModel(model: LanguageModel) {
-  const built: { provider: ProviderSettings; apiKey: string }[] = []
+  const built: { provider: ProviderSettings; apiKey: LlmCredential }[] = []
   app.container.swap(LanguageModels, () => {
     const fake = new LanguageModels()
     fake.create = (provider, apiKey) => {
@@ -38,42 +37,6 @@ function useModel(model: LanguageModel) {
     return fake
   })
   return built
-}
-
-/** Every line logged during a test, serialized. */
-function captureLogs() {
-  const lines: string[] = []
-  const methods = ['trace', 'debug', 'info', 'warn', 'error', 'fatal'] as const
-  const originals = methods.map((method) => [method, logger[method]] as const)
-  for (const method of methods) {
-    ;(logger as unknown as Record<string, (...args: unknown[]) => void>)[method] = (
-      ...args: unknown[]
-    ) => {
-      lines.push(
-        JSON.stringify(args, (_key, value) => (value instanceof Error ? String(value) : value)),
-      )
-    }
-  }
-  return {
-    lines,
-    restore: () => {
-      for (const [method, original] of originals) {
-        ;(logger as unknown as Record<string, unknown>)[method] = original
-      }
-    },
-  }
-}
-
-/** The whole database, serialized. */
-async function dumpDatabase() {
-  const tables = await db
-    .from('information_schema.tables')
-    .where('table_schema', 'public')
-    .where('table_type', 'BASE TABLE')
-    .select('table_name')
-  const rows: unknown[] = []
-  for (const { table_name: table } of tables) rows.push(await db.from(table).select('*'))
-  return JSON.stringify(rows)
 }
 
 function providerError(statusCode: number) {

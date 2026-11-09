@@ -5,10 +5,13 @@ import { testConnection } from '@coreloom-uml/llm'
 import LanguageModels, { providerProblem } from '#app/llm/services/language-models'
 import { llmCallInput } from '#app/llm/validators/llm-input'
 import type { LlmTestOutput } from '#app/llm/validators/llm-output'
+import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
+import { resolveCredential } from '#app/llm-connections/services/llm-credential'
 
 /**
- * `POST /llm/test`: one tiny call with the user's provider and key, to check them before use.
- * Session only. The key is used for this call and dropped; only the outcome is logged.
+ * `POST /llm/test`: one tiny call with the user's provider and key (or connected subscription), to
+ * check them before use. Session only. The key is used for this call and dropped; only the outcome
+ * is logged.
  */
 export default class LlmTestController {
   async handle({ request, auth, response }: HttpContext) {
@@ -18,8 +21,13 @@ export default class LlmTestController {
     const problem = providerProblem(provider, key)
     if (problem) return response.unprocessableEntity({ error: { message: problem } })
 
+    const resolved = await resolveCredential(provider, key, user)
+    if ('notFound' in resolved) return response.notFound(SUBSCRIPTION_NOT_FOUND)
     const models = await app.container.make(LanguageModels)
-    const result: LlmTestOutput = await testConnection(models.create(provider, key))
+    const result: LlmTestOutput =
+      'reason' in resolved
+        ? { ok: false, reason: resolved.reason }
+        : await testConnection(models.create(provider, resolved.credential))
     logger.info(
       {
         userId: user.id,

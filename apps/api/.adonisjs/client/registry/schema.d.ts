@@ -367,6 +367,78 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm/controllers/llm-test-controller').default['handle']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'llm.connections.openai_codex.attempts.store': {
+    methods: ["POST"]
+    pattern: '/llm/connections/openai-codex/attempts'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/codex-connection-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/codex-connection-controller').default['store']>>>
+    }
+  }
+  'llm.connections.openai_codex.attempts.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/llm/connections/openai-codex/attempts/:attemptId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { attemptId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/codex-connection-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/codex-connection-controller').default['show']>>>
+    }
+  }
+  'llm.connections.openai_codex.destroy': {
+    methods: ["DELETE"]
+    pattern: '/llm/connections/openai-codex'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/codex-connection-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/codex-connection-controller').default['destroy']>>>
+    }
+  }
+  'llm.connections.claude_code.login.store': {
+    methods: ["POST"]
+    pattern: '/llm/connections/claude-code/login'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/claude-code-connection-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/claude-code-connection-controller').default['store']>>>
+    }
+  }
+  'llm.connections.claude_code.login.code': {
+    methods: ["POST"]
+    pattern: '/llm/connections/claude-code/login/code'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/llm-connections/validators/llm-connections-input').claudeCodeInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/llm-connections/validators/llm-connections-input').claudeCodeInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/claude-code-connection-controller').default['code']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/claude-code-connection-controller').default['code']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'llm.connections.claude_code.destroy': {
+    methods: ["DELETE"]
+    pattern: '/llm/connections/claude-code'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/claude-code-connection-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/claude-code-connection-controller').default['destroy']>>>
+    }
+  }
   'questionnaires.index': {
     methods: ["GET","HEAD"]
     pattern: '/questionnaires'

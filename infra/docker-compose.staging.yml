@@ -95,6 +95,8 @@ services:
       SKILLS_GITHUB_TOKEN: '${SKILLS_GITHUB_TOKEN:-}'
       # Origins an `ollama` / `openai-compatible` LLM provider may call (comma-separated).
       LLM_ALLOWED_BASE_URLS: '${LLM_ALLOWED_BASE_URLS:-}'
+      # Each account's Claude subscription lives in its own `claude` config folder here.
+      CLAUDE_CODE_HOME: /data/claude
       FRONTEND_URL: '${SERVICE_URL_WEB}'
       DB_HOST: postgres
       DB_PORT: '5432'
@@ -130,6 +132,9 @@ services:
       # silently, the API must not wait on (or fail with) SigNoz.
       OTEL_SERVICE_NAME: coreloom-uml-api-staging
       OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
+    volumes:
+      # The `claude` binary's per-account credentials: losing it signs every Claude subscription out.
+      - claude-config:/data/claude
     depends_on:
       postgres:
         condition: service_healthy
@@ -449,6 +454,7 @@ services:
         condition: service_completed_successfully
 
 volumes:
+  claude-config:
   postgres-data:
   redis-data:
   signoz-clickhouse:
