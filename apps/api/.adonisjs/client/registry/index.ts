@@ -204,6 +204,24 @@ const routes = {
     tokens: [{"old":"/llm/connections/openai-codex","type":0,"val":"llm","end":""},{"old":"/llm/connections/openai-codex","type":0,"val":"connections","end":""},{"old":"/llm/connections/openai-codex","type":0,"val":"openai-codex","end":""}],
     types: placeholder as Registry['llm.connections.openai_codex.destroy']['types'],
   },
+  'llm.connections.claude_code.login.store': {
+    methods: ["POST"],
+    pattern: '/llm/connections/claude-code/login',
+    tokens: [{"old":"/llm/connections/claude-code/login","type":0,"val":"llm","end":""},{"old":"/llm/connections/claude-code/login","type":0,"val":"connections","end":""},{"old":"/llm/connections/claude-code/login","type":0,"val":"claude-code","end":""},{"old":"/llm/connections/claude-code/login","type":0,"val":"login","end":""}],
+    types: placeholder as Registry['llm.connections.claude_code.login.store']['types'],
+  },
+  'llm.connections.claude_code.login.code': {
+    methods: ["POST"],
+    pattern: '/llm/connections/claude-code/login/code',
+    tokens: [{"old":"/llm/connections/claude-code/login/code","type":0,"val":"llm","end":""},{"old":"/llm/connections/claude-code/login/code","type":0,"val":"connections","end":""},{"old":"/llm/connections/claude-code/login/code","type":0,"val":"claude-code","end":""},{"old":"/llm/connections/claude-code/login/code","type":0,"val":"login","end":""},{"old":"/llm/connections/claude-code/login/code","type":0,"val":"code","end":""}],
+    types: placeholder as Registry['llm.connections.claude_code.login.code']['types'],
+  },
+  'llm.connections.claude_code.destroy': {
+    methods: ["DELETE"],
+    pattern: '/llm/connections/claude-code',
+    tokens: [{"old":"/llm/connections/claude-code","type":0,"val":"llm","end":""},{"old":"/llm/connections/claude-code","type":0,"val":"connections","end":""},{"old":"/llm/connections/claude-code","type":0,"val":"claude-code","end":""}],
+    types: placeholder as Registry['llm.connections.claude_code.destroy']['types'],
+  },
   'questionnaires.index': {
     methods: ["GET","HEAD"],
     pattern: '/questionnaires',

@@ -17,3 +17,9 @@ export type CodexAttemptStatus = (typeof CodexAttemptStatus)[keyof typeof CodexA
 
 /** The answer of a subscription route while its flag is off, or of a missing attempt. */
 export const SUBSCRIPTION_NOT_FOUND = { error: { message: 'Not found' } }
+
+/** How long `claude auth status` is trusted before asking the binary again. */
+export const CLAUDE_STATUS_TTL_MS = 30_000
+
+/** A Claude sign-in left waiting for its code is stopped after this delay. */
+export const CLAUDE_LOGIN_TIMEOUT_MS = 600_000

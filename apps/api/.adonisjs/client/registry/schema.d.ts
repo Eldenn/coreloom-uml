@@ -403,6 +403,42 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/codex-connection-controller').default['destroy']>>>
     }
   }
+  'llm.connections.claude_code.login.store': {
+    methods: ["POST"]
+    pattern: '/llm/connections/claude-code/login'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/claude-code-connection-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/claude-code-connection-controller').default['store']>>>
+    }
+  }
+  'llm.connections.claude_code.login.code': {
+    methods: ["POST"]
+    pattern: '/llm/connections/claude-code/login/code'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/llm-connections/validators/llm-connections-input').claudeCodeInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/llm-connections/validators/llm-connections-input').claudeCodeInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/claude-code-connection-controller').default['code']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/claude-code-connection-controller').default['code']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'llm.connections.claude_code.destroy': {
+    methods: ["DELETE"]
+    pattern: '/llm/connections/claude-code'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/claude-code-connection-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/claude-code-connection-controller').default['destroy']>>>
+    }
+  }
   'questionnaires.index': {
     methods: ["GET","HEAD"]
     pattern: '/questionnaires'

@@ -57,6 +57,13 @@ export interface ApiDefinition {
         }
         destroy: typeof routes['llm.connections.openai_codex.destroy']
       }
+      claudeCode: {
+        login: {
+          store: typeof routes['llm.connections.claude_code.login.store']
+          code: typeof routes['llm.connections.claude_code.login.code']
+        }
+        destroy: typeof routes['llm.connections.claude_code.destroy']
+      }
     }
   }
   questionnaires: {

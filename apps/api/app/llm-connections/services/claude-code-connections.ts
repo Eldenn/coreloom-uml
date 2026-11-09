@@ -1,13 +1,99 @@
-import { mkdir } from 'node:fs/promises'
+import { mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
+import app from '@adonisjs/core/services/app'
+import {
+  CLAUDE_LOGIN_TIMEOUT_MS,
+  CLAUDE_STATUS_TTL_MS,
+} from '#app/llm-connections/constants/llm-connections'
+import ClaudeCodeCli, { type ClaudeLogin } from '#app/llm-connections/services/claude-code-cli'
 import type User from '#app/users/models/user'
 import llmConfig from '#config/llm'
 
+/**
+ * A Claude subscription is held by the `claude` binary alone, in one folder per account: this code
+ * starts its sign-in, passes the pasted code to it, asks whether it is signed in, and signs it out.
+ * It never reads, stores, logs or returns the code or the credentials.
+ */
+
 type Person = Pick<User, 'id'>
+
+const statuses = new Map<number, { connected: boolean; at: number }>()
+// ponytail: sign-ins live in this API process; route a user to one instance (or move them to a
+// shared runner) before running several API replicas.
+const logins = new Map<number, { login: ClaudeLogin; timer: NodeJS.Timeout }>()
+
+function folder(user: Person): string {
+  return join(llmConfig.claudeCodeHome, String(user.id))
+}
 
 /** The account's own `CLAUDE_CONFIG_DIR`, created private (0700) on first use. */
 export async function claudeConfigDir(user: Person): Promise<string> {
-  const dir = join(llmConfig.claudeCodeHome, String(user.id))
+  const dir = folder(user)
   await mkdir(dir, { recursive: true, mode: 0o700 })
   return dir
+}
+
+function stopLogin(user: Person): void {
+  const running = logins.get(user.id)
+  if (!running) return
+  clearTimeout(running.timer)
+  running.login.kill()
+  logins.delete(user.id)
+}
+
+/** Whether the binary is signed in for this account; asked again after a short while. */
+export async function claudeConnected(user: Person): Promise<boolean> {
+  const cached = statuses.get(user.id)
+  if (cached && Date.now() - cached.at < CLAUDE_STATUS_TTL_MS) return cached.connected
+  const cli = await app.container.make(ClaudeCodeCli)
+  const connected = await cli.status(await claudeConfigDir(user))
+  statuses.set(user.id, { connected, at: Date.now() })
+  return connected
+}
+
+/**
+ * Starts the binary's sign-in and returns the page it prints. One per account: a new one stops
+ * the previous one, and one left waiting stops after `timeoutMs`.
+ */
+export async function startClaudeLogin(
+  user: Person,
+  options: { timeoutMs?: number } = {},
+): Promise<string> {
+  stopLogin(user)
+  const cli = await app.container.make(ClaudeCodeCli)
+  const login = cli.login(await claudeConfigDir(user))
+  const timer = setTimeout(() => stopLogin(user), options.timeoutMs ?? CLAUDE_LOGIN_TIMEOUT_MS)
+  timer.unref()
+  logins.set(user.id, { login, timer })
+  try {
+    return await login.url
+  } catch (error) {
+    stopLogin(user)
+    throw error
+  }
+}
+
+/** Hands the pasted code to the running sign-in; `null` when none is running. */
+export async function submitClaudeCode(user: Person, code: string): Promise<boolean | null> {
+  const running = logins.get(user.id)
+  if (!running) return null
+  const connected = await running.login.submit(code)
+  stopLogin(user)
+  statuses.set(user.id, { connected, at: Date.now() })
+  return connected
+}
+
+/** Removes the account's folder, credentials included, without asking the binary. */
+export async function forgetClaude(user: Person): Promise<void> {
+  stopLogin(user)
+  statuses.delete(user.id)
+  await rm(folder(user), { recursive: true, force: true })
+}
+
+/** Signs the binary out for this account, then removes its folder. */
+export async function disconnectClaude(user: Person): Promise<void> {
+  stopLogin(user)
+  const cli = await app.container.make(ClaudeCodeCli)
+  await cli.logout(await claudeConfigDir(user))
+  await forgetClaude(user)
 }

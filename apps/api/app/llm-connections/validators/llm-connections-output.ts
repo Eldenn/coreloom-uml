@@ -13,3 +13,9 @@ export type CodexAttemptOutput = {
 
 /** `GET /llm/connections/openai-codex/attempts/:attemptId`. */
 export type CodexAttemptStatusOutput = { status: CodexAttemptStatus }
+
+/** `POST /llm/connections/claude-code/login`: the page the `claude` binary printed. */
+export type ClaudeLoginOutput = { url: string }
+
+/** `POST /llm/connections/claude-code/login/code`. */
+export type ClaudeCodeOutput = { connected: boolean }

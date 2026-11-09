@@ -2,6 +2,7 @@ import { PROVIDER_KINDS, ProviderAuth, providerAuth } from '@coreloom-uml/catalo
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import { isFeatureEnabled } from '#app/feature-flags/services/feature-flags'
 import { ProviderKind } from '#app/llm-connections/constants/llm-connections'
+import { claudeConnected } from '#app/llm-connections/services/claude-code-connections'
 import { codexConnected } from '#app/llm-connections/services/codex-connections'
 import type User from '#app/users/models/user'
 
@@ -31,5 +32,5 @@ export async function enabledKinds(user: Person): Promise<ProviderKind[]> {
 export async function kindConnected(kind: ProviderKind, user: Person): Promise<boolean> {
   if (providerAuth(kind) === ProviderAuth.ApiKey) return true
   if (kind === ProviderKind.OpenAICodex) return codexConnected(user)
-  return false
+  return claudeConnected(user)
 }

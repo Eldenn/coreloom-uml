@@ -208,6 +208,31 @@ router
   .prefix('/llm/connections/openai-codex')
   .as('llm.connections.openai_codex')
   .use(middleware.auth())
+router
+  .group(() => {
+    router
+      .post('/login', [
+        () => import('#app/llm-connections/controllers/claude-code-connection-controller'),
+        'store',
+      ])
+      .as('login.store')
+      .use(llmThrottle)
+    router
+      .post('/login/code', [
+        () => import('#app/llm-connections/controllers/claude-code-connection-controller'),
+        'code',
+      ])
+      .as('login.code')
+    router
+      .delete('/', [
+        () => import('#app/llm-connections/controllers/claude-code-connection-controller'),
+        'destroy',
+      ])
+      .as('destroy')
+  })
+  .prefix('/llm/connections/claude-code')
+  .as('llm.connections.claude_code')
+  .use(middleware.auth())
 
 /*
 |--------------------------------------------------------------------------
