@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
+import { Route as AuthedFeatureFlagsRouteImport } from './routes/_authed.feature-flags'
 import { Route as AuthedSettingsRouteImport } from './routes/_authed.settings'
 import { Route as AuthedSkillsRouteImport } from './routes/_authed.skills'
 import { Route as STokenRouteImport } from './routes/s.$token'
@@ -57,6 +58,11 @@ const VerifyEmailRoute = VerifyEmailRouteImport.update({
   id: '/verify-email',
   path: '/verify-email',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedFeatureFlagsRoute = AuthedFeatureFlagsRouteImport.update({
+  id: '/feature-flags',
+  path: '/feature-flags',
+  getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedSettingsRoute = AuthedSettingsRouteImport.update({
   id: '/settings',
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/feature-flags': typeof AuthedFeatureFlagsRoute
   '/settings': typeof AuthedSettingsRoute
   '/skills': typeof AuthedSkillsRoute
   '/s/$token': typeof STokenRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/feature-flags': typeof AuthedFeatureFlagsRoute
   '/settings': typeof AuthedSettingsRoute
   '/skills': typeof AuthedSkillsRoute
   '/s/$token': typeof STokenRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/_authed/feature-flags': typeof AuthedFeatureFlagsRoute
   '/_authed/settings': typeof AuthedSettingsRoute
   '/_authed/skills': typeof AuthedSkillsRoute
   '/s/$token': typeof STokenRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/reset-password'
     | '/verify-email'
+    | '/feature-flags'
     | '/settings'
     | '/skills'
     | '/s/$token'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/reset-password'
     | '/verify-email'
+    | '/feature-flags'
     | '/settings'
     | '/skills'
     | '/s/$token'
@@ -182,6 +193,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/reset-password'
     | '/verify-email'
+    | '/_authed/feature-flags'
     | '/_authed/settings'
     | '/_authed/skills'
     | '/s/$token'
@@ -253,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/feature-flags': {
+      id: '/_authed/feature-flags'
+      path: '/feature-flags'
+      fullPath: '/feature-flags'
+      preLoaderRoute: typeof AuthedFeatureFlagsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/settings': {
       id: '/_authed/settings'
       path: '/settings'
@@ -306,6 +325,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthedRouteChildren {
+  AuthedFeatureFlagsRoute: typeof AuthedFeatureFlagsRoute
   AuthedSettingsRoute: typeof AuthedSettingsRoute
   AuthedSkillsRoute: typeof AuthedSkillsRoute
   AuthedArchitecturesIdRoute: typeof AuthedArchitecturesIdRoute
@@ -315,6 +335,7 @@ interface AuthedRouteChildren {
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedFeatureFlagsRoute: AuthedFeatureFlagsRoute,
   AuthedSettingsRoute: AuthedSettingsRoute,
   AuthedSkillsRoute: AuthedSkillsRoute,
   AuthedArchitecturesIdRoute: AuthedArchitecturesIdRoute,

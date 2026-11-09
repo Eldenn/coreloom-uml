@@ -102,4 +102,13 @@ export interface ApiDefinition {
       destroy: typeof routes['account.api_tokens.destroy']
     }
   }
+  features: {
+    index: typeof routes['features.index']
+  }
+  admin: {
+    featureFlags: {
+      index: typeof routes['admin.feature_flags.index']
+      update: typeof routes['admin.feature_flags.update']
+    }
+  }
 }

@@ -390,6 +390,24 @@ const routes = {
     tokens: [{"old":"/account/api-tokens/:id","type":0,"val":"account","end":""},{"old":"/account/api-tokens/:id","type":0,"val":"api-tokens","end":""},{"old":"/account/api-tokens/:id","type":1,"val":"id","end":""}],
     types: placeholder as Registry['account.api_tokens.destroy']['types'],
   },
+  'features.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/features',
+    tokens: [{"old":"/features","type":0,"val":"features","end":""}],
+    types: placeholder as Registry['features.index']['types'],
+  },
+  'admin.feature_flags.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/admin/feature-flags',
+    tokens: [{"old":"/admin/feature-flags","type":0,"val":"admin","end":""},{"old":"/admin/feature-flags","type":0,"val":"feature-flags","end":""}],
+    types: placeholder as Registry['admin.feature_flags.index']['types'],
+  },
+  'admin.feature_flags.update': {
+    methods: ["PUT"],
+    pattern: '/admin/feature-flags/:key',
+    tokens: [{"old":"/admin/feature-flags/:key","type":0,"val":"admin","end":""},{"old":"/admin/feature-flags/:key","type":0,"val":"feature-flags","end":""},{"old":"/admin/feature-flags/:key","type":1,"val":"key","end":""}],
+    types: placeholder as Registry['admin.feature_flags.update']['types'],
+  },
 } as const satisfies Record<string, AdonisEndpoint>
 
 export { routes }

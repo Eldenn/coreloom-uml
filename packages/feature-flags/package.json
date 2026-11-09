@@ -1,0 +1,23 @@
+{
+  "name": "@coreloom-uml/feature-flags",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.16",
+    "@coreloom-uml/config": "workspace:*",
+    "typescript": "6.0.3",
+    "vitest": "4.1.9"
+  }
+}

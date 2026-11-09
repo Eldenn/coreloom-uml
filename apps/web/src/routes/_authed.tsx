@@ -9,7 +9,14 @@ import {
   useRouter,
   useRouterState,
 } from '@tanstack/react-router'
-import { FolderIcon, LanguagesIcon, PlusIcon, SettingsIcon, SparklesIcon } from 'lucide-react'
+import {
+  FlagIcon,
+  FolderIcon,
+  LanguagesIcon,
+  PlusIcon,
+  SettingsIcon,
+  SparklesIcon,
+} from 'lucide-react'
 import * as React from 'react'
 
 import { meQueryOptions, useAuth } from '@/auth/auth-context'
@@ -150,6 +157,16 @@ function AuthedLayout() {
               icon: SparklesIcon,
               isActive: isActive('/skills'),
             },
+            ...(user.isAdmin
+              ? [
+                  {
+                    title: t.nav.featureFlags,
+                    url: '/feature-flags',
+                    icon: FlagIcon,
+                    isActive: isActive('/feature-flags'),
+                  },
+                ]
+              : []),
             {
               title: t.nav.settings,
               url: '/settings',
@@ -174,6 +191,15 @@ function AuthedLayout() {
               icon: SparklesIcon,
               onSelect: () => void navigate({ to: '/skills' }),
             },
+            ...(user.isAdmin
+              ? [
+                  {
+                    label: t.nav.featureFlags,
+                    icon: FlagIcon,
+                    onSelect: () => void navigate({ to: '/feature-flags' }),
+                  },
+                ]
+              : []),
             {
               label: t.nav.settings,
               icon: SettingsIcon,

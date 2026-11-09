@@ -7,6 +7,7 @@ export const en = {
   nav: {
     projects: 'Projects',
     skills: 'Skills',
+    featureFlags: 'Feature flags',
     settings: 'Settings',
   },
   shell: {
@@ -309,6 +310,16 @@ export const en = {
     apiTokenRevoked: 'Key revoked.',
     apiTokenRevokeFailed: 'The key could not be revoked.',
   },
+  featureFlags: {
+    title: 'Feature flags',
+    description:
+      'Turn features on for everyone, a share of people, or the accounts your rules pick. Only you, the default account, can change them.',
+    environment: 'This instance',
+    attributeEmail: 'Email',
+    attributeId: 'Account id',
+    loadFailed: 'The feature flags could not be loaded.',
+    saveFailed: 'The flag could not be saved.',
+  },
   skills: {
     title: 'Skills',
     description:
@@ -496,6 +507,7 @@ export const fr: Messages = {
   nav: {
     projects: 'Projets',
     skills: 'Skills',
+    featureFlags: 'Feature flags',
     settings: 'Réglages',
   },
   shell: {
@@ -804,6 +816,16 @@ export const fr: Messages = {
     apiTokenCreateFailed: 'La clé n’a pas pu être créée.',
     apiTokenRevoked: 'Clé révoquée.',
     apiTokenRevokeFailed: 'La clé n’a pas pu être révoquée.',
+  },
+  featureFlags: {
+    title: 'Feature flags',
+    description:
+      'Activez des fonctionnalités pour tout le monde, une part des comptes, ou ceux que vos règles ciblent. Seul le compte par défaut, le vôtre, peut les modifier.',
+    environment: 'Cette instance',
+    attributeEmail: 'Email',
+    attributeId: 'Identifiant du compte',
+    loadFailed: 'Les feature flags n’ont pas pu être chargés.',
+    saveFailed: 'Le flag n’a pas pu être enregistré.',
   },
   skills: {
     title: 'Skills',

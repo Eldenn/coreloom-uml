@@ -355,3 +355,34 @@ router
       .where('id', router.matchers.number())
   })
   .use(middleware.auth())
+
+/*
+|--------------------------------------------------------------------------
+| Feature flags (`@coreloom-uml/feature-flags`)
+|--------------------------------------------------------------------------
+|
+| Everyone reads the flags evaluated for them; only the admin (the default account) reads and
+| changes their states. Other accounts get a 404 on the admin routes.
+*/
+router
+  .get('/features', [() => import('#app/feature-flags/controllers/features-controller'), 'index'])
+  .as('features.index')
+  .use(middleware.auth())
+router
+  .group(() => {
+    router
+      .get('/', [
+        () => import('#app/feature-flags/controllers/admin-feature-flags-controller'),
+        'index',
+      ])
+      .as('index')
+    router
+      .put('/:key', [
+        () => import('#app/feature-flags/controllers/admin-feature-flags-controller'),
+        'update',
+      ])
+      .as('update')
+  })
+  .prefix('/admin/feature-flags')
+  .as('admin.feature_flags')
+  .use([middleware.auth(), middleware.admin()])

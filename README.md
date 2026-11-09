@@ -102,7 +102,8 @@ coreloom-uml/
 │   ├── auth-policy/          # Password policy — copied from coreloom (consumed from source, no build step)
 │   ├── uml/                  # UML model + Mermaid/PlantUML/JSON conversion, shared by web and api (zod only)
 │   ├── catalog/              # Agent conventions: questionnaires, slots, per-tool templates, renderAgentContext (zod only)
-│   └── llm/                  # Calls with the user's own LLM key: providers, allowlist, connection test, rule proposals
+│   ├── llm/                  # Calls with the user's own LLM key: providers, allowlist, connection test, rule proposals
+│   └── feature-flags/        # Feature flag declarations and their evaluation, shared by web and api (zod only)
 └── infra/
     ├── docker-compose.yml         # local dev: postgres (+ postgres-init, which creates the dev and
     │                              #   test databases on every `up`) + redis + mailpit + minio + bull-board
@@ -227,6 +228,15 @@ hashed in `auth_access_tokens`; the secret is shown once, at creation.
   and must reload the latest version.
 - Each key is limited to 120 requests per minute (`apiTokenThrottle`); an
   account holds 20 keys at most. Both are in `app/api-tokens/constants`.
+
+### Feature flags
+
+Some features are behind a flag, declared in `packages/feature-flags` and off by default. The
+default account (`DEFAULT_ACCOUNT_EMAIL`) is the instance's admin: it alone sees the **Feature
+flags** screen, where it turns a flag on or off, rolls it out to a share of accounts, or targets
+accounts by email or id, and reads who changed what. The API enforces each flag (a route behind an
+off flag answers 404); everyone else reads their evaluated flags from `GET /features`. With no
+default account configured, nobody can change the flags and they keep their stored state.
 
 ### Agent conventions
 
