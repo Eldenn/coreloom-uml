@@ -33,9 +33,10 @@ export async function claudeConfigDir(user: Person): Promise<string> {
   return dir
 }
 
-function stopLogin(user: Person): void {
+/** Stops the user's sign-in; with `only`, only if that sign-in is still the current one. */
+function stopLogin(user: Person, only?: ClaudeLogin): void {
   const running = logins.get(user.id)
-  if (!running) return
+  if (!running || (only && running.login !== only)) return
   clearTimeout(running.timer)
   running.login.kill()
   logins.delete(user.id)
@@ -59,16 +60,22 @@ export async function startClaudeLogin(
   user: Person,
   options: { timeoutMs?: number } = {},
 ): Promise<string> {
-  stopLogin(user)
   const cli = await app.container.make(ClaudeCodeCli)
-  const login = cli.login(await claudeConfigDir(user))
-  const timer = setTimeout(() => stopLogin(user), options.timeoutMs ?? CLAUDE_LOGIN_TIMEOUT_MS)
+  const dir = await claudeConfigDir(user)
+  // No await between stopping the previous sign-in and recording this one: two requests at once
+  // cannot both pass the stop and leave a process running.
+  stopLogin(user)
+  const login = cli.login(dir)
+  const timer = setTimeout(
+    () => stopLogin(user, login),
+    options.timeoutMs ?? CLAUDE_LOGIN_TIMEOUT_MS,
+  )
   timer.unref()
   logins.set(user.id, { login, timer })
   try {
     return await login.url
   } catch (error) {
-    stopLogin(user)
+    stopLogin(user, login)
     throw error
   }
 }

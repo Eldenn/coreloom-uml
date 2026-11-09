@@ -259,3 +259,54 @@ describe('createCodexModel', () => {
     ).rejects.toThrow()
   })
 })
+
+describe('review fixes', () => {
+  it('reads the answer from the output items when the completed response has none', async () => {
+    const item = {
+      type: 'message',
+      id: 'msg_1',
+      role: 'assistant',
+      status: 'completed',
+      content: [{ type: 'output_text', text: 'OK', annotations: [] }],
+    }
+    const response = {
+      id: 'resp_1',
+      object: 'response',
+      created_at: 1_700_000_000,
+      model: 'gpt-5.5',
+      status: 'completed',
+      output: [],
+      incomplete_details: null,
+      usage: { input_tokens: 5, output_tokens: 1, total_tokens: 6 },
+    }
+    const events = [
+      { type: 'response.output_item.done', output_index: 0, item },
+      { type: 'response.completed', response },
+    ]
+    const { fetch } = fakeFetch(
+      new Response(
+        events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join(''),
+        { status: 200, headers: { 'content-type': 'text/event-stream' } },
+      ),
+    )
+    const result = await generateText({
+      model: createCodexModel('gpt-5.5', CREDENTIAL, fetch),
+      prompt: 'P',
+      maxRetries: 0,
+    })
+    expect(result.text).toBe('OK')
+  })
+
+  it('keeps waiting when OpenAI rate-limits a poll', async () => {
+    const { fetch } = fakeFetch(json({}, 429))
+    expect(await pollDeviceAuthorization(fetch, { deviceAuthId: 'd', userCode: 'u' })).toBe(
+      'pending',
+    )
+  })
+
+  it('bounds every OAuth call in time', async () => {
+    const { fetch, seen } = fakeFetch(json({ access_token: ACCESS, expires_in: 600 }))
+    await refreshCodexTokens(fetch, 'r', NOW)
+    expect(first(seen).init.signal).toBeInstanceOf(AbortSignal)
+  })
+})

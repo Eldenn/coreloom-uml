@@ -139,8 +139,11 @@ export function useCodexAttempt(attempt: CodexAttempt | null) {
       return status
     },
     enabled: attempt !== null,
+    // Stops once settled, or once the attempt is gone (expired from the server: an error).
     refetchInterval: (query) =>
-      attempt && (query.state.data ?? 'pending') === 'pending' ? attempt.interval * 1000 : false,
+      attempt && query.state.status !== 'error' && (query.state.data ?? 'pending') === 'pending'
+        ? attempt.interval * 1000
+        : false,
   })
 }
 

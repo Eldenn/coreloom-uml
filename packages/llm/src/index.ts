@@ -9,6 +9,7 @@ export {
 } from './claude-code.ts'
 export {
   CODEX_OAUTH,
+  CODEX_OAUTH_TIMEOUT_MS,
   type CodexCredential,
   CodexGrantError,
   CodexOAuthError,

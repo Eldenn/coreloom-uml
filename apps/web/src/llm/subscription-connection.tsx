@@ -120,7 +120,8 @@ function ChatgptSignIn() {
       />
     )
   }
-  const ended = status.data === 'expired' || status.data === 'denied'
+  // An attempt the server no longer knows (an error) ended like an expired one.
+  const ended = status.isError || status.data === 'expired' || status.data === 'denied'
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">{t.llm.subscription.chatgptSteps}</p>
@@ -134,9 +135,9 @@ function ChatgptSignIn() {
       {ended ? (
         <Alert variant="destructive" role="status">
           <AlertDescription className="flex flex-wrap items-center gap-3">
-            {status.data === 'expired'
-              ? t.llm.subscription.chatgptExpired
-              : t.llm.subscription.chatgptDenied}
+            {status.data === 'denied'
+              ? t.llm.subscription.chatgptDenied
+              : t.llm.subscription.chatgptExpired}
             <Button type="button" variant="outline" size="sm" onClick={begin}>
               {t.llm.subscription.retry}
             </Button>

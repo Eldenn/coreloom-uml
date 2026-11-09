@@ -115,6 +115,28 @@ test.group('ChatGPT subscription - device code', (group) => {
     })
   })
 
+  test('a failed exchange does not undo a connection another poll made', async ({ client }) => {
+    const user = await makeUser()
+    await enableChatgpt(user)
+    fakeCodexOAuth({})
+    const attempt = (await client.post(ATTEMPTS).headers(json).loginAs(user)).body()
+    await allowPoll(attempt.attemptId)
+    // While this poll exchanges the code, another one has already connected the account.
+    const fake = fakeCodexOAuth({ pollStatus: 200, refreshStatus: 400, refresh: { error: 'x' } })
+    fake.beforeToken = async () => {
+      const stored = JSON.parse((await redis.get(attemptKey(attempt.attemptId))) ?? '{}')
+      await redis.set(
+        attemptKey(attempt.attemptId),
+        JSON.stringify({ ...stored, status: 'connected' }),
+        'EX',
+        60,
+      )
+    }
+    ;(await client.get(`${ATTEMPTS}/${attempt.attemptId}`).headers(json).loginAs(user)).assertBody({
+      status: 'connected',
+    })
+  })
+
   test("another account's attempt, or an unknown one, is not found", async ({ client }) => {
     const owner = await makeUser()
     const other = await makeUser()

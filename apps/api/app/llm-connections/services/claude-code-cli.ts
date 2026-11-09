@@ -75,17 +75,21 @@ export default class ClaudeCodeCli {
           killSignal: 'SIGKILL',
           maxBuffer: MAX_OUTPUT_BYTES,
           windowsHide: true,
+          signal: options.signal,
         },
         (error, stdout) => {
           const failure = error as (NodeJS.ErrnoException & { killed?: boolean }) | null
           resolve({
             exitCode: failure ? (typeof failure.code === 'number' ? failure.code : null) : 0,
             stdout: String(stdout),
-            timedOut: failure?.killed === true,
+            timedOut: failure?.killed === true || failure?.name === 'AbortError',
             missing: failure?.code === 'ENOENT',
           })
         },
       )
+      // A binary that exits before reading its prompt closes the pipe: the exit callback reports
+      // the failure, and the EPIPE must not reach the process as an uncaught error.
+      child.stdin?.on('error', () => {})
       child.stdin?.end(options.stdin)
     })
 
@@ -111,6 +115,7 @@ export default class ClaudeCodeCli {
       stdio: ['pipe', 'pipe', 'ignore'],
       windowsHide: true,
     })
+    child.stdin?.on('error', () => {})
     let output = ''
     const exited = new Promise<number | null>((resolve) => {
       child.once('exit', (code) => resolve(code))

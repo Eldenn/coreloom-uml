@@ -150,3 +150,24 @@ describe('createLanguageModel', () => {
     ).toBeTruthy()
   })
 })
+
+describe('abort', () => {
+  it('passes the caller timeout to the binary, and reads an abort as a timeout', async () => {
+    const signals: (AbortSignal | undefined)[] = []
+    const run: ClaudeRun = (_args, options) =>
+      new Promise((resolve) => {
+        signals.push(options.signal)
+        options.signal?.addEventListener('abort', () =>
+          resolve({ exitCode: null, stdout: '', timedOut: true, missing: false }),
+        )
+      })
+    const error = await generateText({
+      model: createClaudeCodeModel('sonnet', CREDENTIAL, run),
+      prompt: 'P',
+      timeout: 50,
+      maxRetries: 0,
+    }).catch((caught: unknown) => caught)
+    expect(signals[0]).toBeInstanceOf(AbortSignal)
+    expect(failureReason(error)).toBe('timeout')
+  })
+})

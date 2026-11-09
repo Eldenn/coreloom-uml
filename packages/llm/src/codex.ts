@@ -31,6 +31,9 @@ export const CODEX_OAUTH = {
     'https://github.com/NousResearch/hermes-agent/tree/86b9622f018463e5d2df1a372069ac5778df7dd5/hermes_cli',
 } as const
 
+/** Longest wait for one call to OpenAI's sign-in endpoints (a refresh holds a row lock). */
+export const CODEX_OAUTH_TIMEOUT_MS = 15_000
+
 /** Shortest wait between two polls, whatever the server suggests. */
 const MIN_INTERVAL_SECONDS = 3
 const DEFAULT_INTERVAL_SECONDS = 5
@@ -113,6 +116,7 @@ function postJson(fetch: typeof globalThis.fetch, url: string, body: object) {
     headers: { 'content-type': 'application/json', accept: 'application/json' },
     body: JSON.stringify(body),
     redirect: 'error',
+    signal: AbortSignal.timeout(CODEX_OAUTH_TIMEOUT_MS),
   })
 }
 
@@ -122,6 +126,7 @@ function postForm(fetch: typeof globalThis.fetch, url: string, body: Record<stri
     headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' },
     body: new URLSearchParams(body).toString(),
     redirect: 'error',
+    signal: AbortSignal.timeout(CODEX_OAUTH_TIMEOUT_MS),
   })
 }
 
@@ -157,7 +162,10 @@ export async function pollDeviceAuthorization(
     device_auth_id: attempt.deviceAuthId,
     user_code: attempt.userCode,
   })
-  if (response.status === 403 || response.status === 404) return 'pending'
+  // 403/404: not entered yet; 429: OpenAI asks to slow down. Either way, keep waiting.
+  if (response.status === 403 || response.status === 404 || response.status === 429) {
+    return 'pending'
+  }
   if (response.status >= 400 && response.status < 500) return 'denied'
   if (!response.ok) throw new CodexOAuthError('device authorization', response.status)
   const body = (await response.json()) as Record<string, unknown>
@@ -223,9 +231,14 @@ function instructionsOf(items: { role?: string; content?: unknown }[]): string {
     .join('\n\n')
 }
 
-/** The `response` of the `response.completed` event of a Responses stream, or null. */
+/**
+ * The `response` of the `response.completed` event of a Responses stream, or null. The Codex
+ * endpoint may complete with an empty `output` and deliver the answer only as
+ * `response.output_item.done` events: those items then stand in for it.
+ */
 async function completedResponse(stream: Response): Promise<unknown> {
   const text = await stream.text()
+  const items: unknown[] = []
   for (const block of text.split(/\r?\n\r?\n/)) {
     const data = block
       .split(/\r?\n/)
@@ -234,8 +247,18 @@ async function completedResponse(stream: Response): Promise<unknown> {
       .join('\n')
     if (!data || data === '[DONE]') continue
     try {
-      const event = JSON.parse(data) as { type?: string; response?: unknown }
-      if (event.type === 'response.completed' && event.response) return event.response
+      const event = JSON.parse(data) as {
+        type?: string
+        item?: unknown
+        response?: { output?: unknown[] }
+      }
+      if (event.type === 'response.output_item.done' && event.item) items.push(event.item)
+      if (event.type === 'response.completed' && event.response) {
+        const output = event.response.output
+        return Array.isArray(output) && output.length > 0
+          ? event.response
+          : { ...event.response, output: items }
+      }
     } catch {
       // A malformed event is skipped; a stream with no completed event fails below.
     }

@@ -13,6 +13,9 @@ import type User from '#app/users/models/user'
 
 type Person = Pick<User, 'id'>
 
+/** How long one poll keeps its lock while it exchanges the code (above the OAuth timeout). */
+const EXCHANGE_LOCK_SECONDS = 30
+
 /** An attempt as kept in Redis. The device id never leaves the server. */
 type StoredAttempt = {
   userId: number
@@ -105,10 +108,16 @@ export async function checkCodexAttempt(
   }
   if (result === 'pending') return CodexAttemptStatus.Pending
   if (result === 'denied') return settle(CodexAttemptStatus.Denied)
+  // The exchange may outlast the poll interval: hold the lock until it is done.
+  await redis.expire(`${attemptKey(attemptId)}:lock`, EXCHANGE_LOCK_SECONDS)
   try {
     await saveCodexTokens(user, await oauth.exchange(result))
   } catch (error) {
     logger.warn({ userId: user.id, error: (error as Error).name }, 'codex token exchange failed')
+    // Another poll may have connected the account meanwhile: never undo that.
+    const latest = await redis.get(attemptKey(attemptId))
+    const status = latest ? (JSON.parse(latest) as StoredAttempt).status : null
+    if (status === CodexAttemptStatus.Connected) return status
     return settle(CodexAttemptStatus.Denied)
   }
   logger.info({ userId: user.id }, 'chatgpt subscription connected')

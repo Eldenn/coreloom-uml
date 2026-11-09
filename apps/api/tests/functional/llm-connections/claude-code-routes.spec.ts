@@ -171,6 +171,13 @@ test.group('Claude subscription', (group) => {
     assert.equal(record.killed, 3)
   })
 
+  test('two sign-ins started together leave one running', async ({ assert }) => {
+    const user = await makeUser()
+    const record = fakeClaude({})
+    await Promise.all([startClaudeLogin(user), startClaudeLogin(user)])
+    assert.equal(record.killed, 1)
+  })
+
   test('signing out logs the binary out and removes the folder', async ({ client, assert }) => {
     const user = await makeUser()
     await enableClaude(user)

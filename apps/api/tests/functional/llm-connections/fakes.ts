@@ -28,6 +28,7 @@ type FakeOptions = {
  */
 export function fakeCodexOAuth(options: FakeOptions) {
   const seen: { url: string; body: string }[] = []
+  const hooks: { beforeToken?: () => Promise<void> } = {}
   const reply = (body: object, status = 200) =>
     new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
   const fetch: typeof globalThis.fetch = async (input, init) => {
@@ -47,6 +48,7 @@ export function fakeCodexOAuth(options: FakeOptions) {
       )
     }
     if (url.endsWith('/oauth/token')) {
+      await hooks.beforeToken?.()
       return reply(options.refresh ?? {}, options.refreshStatus ?? 200)
     }
     return reply({}, 404)
@@ -58,6 +60,9 @@ export function fakeCodexOAuth(options: FakeOptions) {
   })
   return {
     seen,
+    set beforeToken(hook: () => Promise<void>) {
+      hooks.beforeToken = hook
+    },
     calls: (path: string) => seen.filter((request) => request.url.endsWith(path)),
   }
 }

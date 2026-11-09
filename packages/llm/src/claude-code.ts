@@ -17,7 +17,7 @@ export type ClaudeCodeCredential = { kind: 'claude-code'; configDir: string }
 /** Runs `claude` with these arguments in this folder. Never through a shell. */
 export type ClaudeRun = (
   args: string[],
-  options: { stdin: string; configDir: string; timeoutMs: number },
+  options: { stdin: string; configDir: string; timeoutMs: number; signal?: AbortSignal },
 ) => Promise<{
   exitCode: number | null
   stdout: string
@@ -113,9 +113,11 @@ export function createClaudeCodeModel(
         stdin,
         configDir: credential.configDir,
         timeoutMs: CLAUDE_CODE_TIMEOUT_MS,
+        // The caller's own timeout (connection test, proposals) stops the binary too.
+        signal: options.abortSignal,
       })
       if (outcome.missing) throw new LlmCallError('unreachable')
-      if (outcome.timedOut) throw new LlmCallError('timeout')
+      if (outcome.timedOut || options.abortSignal?.aborted) throw new LlmCallError('timeout')
       const result = parse(outcome.stdout)
       if (outcome.exitCode !== 0 || !result || result.is_error === true) {
         throw new LlmCallError(reasonOf(result))
