@@ -6,19 +6,22 @@ import { z } from 'zod'
 export const FLAG_OPERATORS = ['in', 'not-in', 'contains', 'starts-with'] as const
 export type FeatureFlagOperator = (typeof FLAG_OPERATORS)[number]
 
+/** What a rule can read: the context the API evaluates with (`{ id, email }`). */
+export const FLAG_ATTRIBUTES = ['email', 'id'] as const
+export type FeatureFlagAttribute = (typeof FLAG_ATTRIBUTES)[number]
+
 /** Bounds on a stored state, checked by the schema and by the API's input. */
 export const FEATURE_FLAG_LIMITS = {
   rules: 20,
   values: 50,
   valueLength: 200,
-  attributeLength: 50,
   ruleIdLength: 100,
 } as const
 
 export const featureFlagRuleSchema = z.object({
   id: z.string().min(1).max(FEATURE_FLAG_LIMITS.ruleIdLength),
   /** The context attribute it reads (`email`, `id`). */
-  attribute: z.string().min(1).max(FEATURE_FLAG_LIMITS.attributeLength),
+  attribute: z.enum(FLAG_ATTRIBUTES),
   operator: z.enum(FLAG_OPERATORS),
   values: z.array(z.string().max(FEATURE_FLAG_LIMITS.valueLength)).max(FEATURE_FLAG_LIMITS.values),
   /** What people matched by this rule get. */

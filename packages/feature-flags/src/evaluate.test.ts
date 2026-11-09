@@ -76,6 +76,11 @@ describe('featureFlagStateSchema', () => {
     )
   })
 
+  it('refuses a rule on an attribute the context does not carry', () => {
+    const state = { enabled: true, rollout: 0, rules: [{ ...rule(), attribute: 'plan', operator: 'not-in' }] }
+    expect(featureFlagStateSchema.safeParse(state).success).toBe(false)
+  })
+
   it('accepts every declared default state', () => {
     for (const flag of FEATURE_FLAGS) {
       expect(featureFlagStateSchema.safeParse(flag.defaultState).success).toBe(true)

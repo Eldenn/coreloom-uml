@@ -84,6 +84,7 @@ test.group('Feature flags routes', (group) => {
     const rule = { id: 'r', attribute: 'email', operator: 'in', values: ['a'], serve: true }
     for (const state of [
       { ...ON, rollout: 101 },
+      { ...ON, rules: [{ ...rule, attribute: 'plan', operator: 'not-in' }] },
       { ...ON, rules: [{ ...rule, operator: 'regex' }] },
       { ...ON, rules: Array.from({ length: 21 }, (_, i) => ({ ...rule, id: `r${i}` })) },
     ]) {

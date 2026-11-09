@@ -1,6 +1,10 @@
 // The admin's feature flags: coreloom-ui's FeatureFlags block on the API's flags. Only the
 // default account (`user.isAdmin`) gets here; the API refuses everyone else anyway.
-import { FEATURE_FLAG_ENVIRONMENT, type FeatureFlagKey } from '@coreloom-uml/feature-flags'
+import {
+  FEATURE_FLAG_ENVIRONMENT,
+  type FeatureFlagKey,
+  type FeatureFlagState,
+} from '@coreloom-uml/feature-flags'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 
 import { meQueryOptions } from '@/auth/auth-context'
@@ -64,8 +68,16 @@ function FeatureFlagsPage() {
           ]}
           onChange={(key, _environment, state) =>
             update
-              .mutateAsync({ key: key as FeatureFlagKey, state })
-              .catch(() => toast.error(t.featureFlags.saveFailed))
+              .mutateAsync({
+                // The block only offers the `email` and `id` attributes; the API checks the rest.
+                key: key as FeatureFlagKey,
+                state: state as FeatureFlagState,
+              })
+              .catch((error: unknown) => {
+                // Rethrown so the block keeps its panel and the admin's draft open.
+                toast.error(t.featureFlags.saveFailed)
+                throw error
+              })
           }
         />
       )}
