@@ -14,7 +14,10 @@ export {
   MODEL_SUGGESTIONS_VERIFIED_ON,
   PROVIDER_KINDS,
   PROVIDER_KINDS_WITH_BASE_URL,
+  PROVIDER_KINDS_WITH_SUBSCRIPTION,
+  ProviderAuth,
   ProviderKind,
+  providerAuth,
 } from './models.ts'
 export {
   type Composition,
