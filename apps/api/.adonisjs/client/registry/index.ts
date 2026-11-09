@@ -186,6 +186,24 @@ const routes = {
     tokens: [{"old":"/llm/test","type":0,"val":"llm","end":""},{"old":"/llm/test","type":0,"val":"test","end":""}],
     types: placeholder as Registry['llm.test']['types'],
   },
+  'llm.connections.openai_codex.attempts.store': {
+    methods: ["POST"],
+    pattern: '/llm/connections/openai-codex/attempts',
+    tokens: [{"old":"/llm/connections/openai-codex/attempts","type":0,"val":"llm","end":""},{"old":"/llm/connections/openai-codex/attempts","type":0,"val":"connections","end":""},{"old":"/llm/connections/openai-codex/attempts","type":0,"val":"openai-codex","end":""},{"old":"/llm/connections/openai-codex/attempts","type":0,"val":"attempts","end":""}],
+    types: placeholder as Registry['llm.connections.openai_codex.attempts.store']['types'],
+  },
+  'llm.connections.openai_codex.attempts.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/llm/connections/openai-codex/attempts/:attemptId',
+    tokens: [{"old":"/llm/connections/openai-codex/attempts/:attemptId","type":0,"val":"llm","end":""},{"old":"/llm/connections/openai-codex/attempts/:attemptId","type":0,"val":"connections","end":""},{"old":"/llm/connections/openai-codex/attempts/:attemptId","type":0,"val":"openai-codex","end":""},{"old":"/llm/connections/openai-codex/attempts/:attemptId","type":0,"val":"attempts","end":""},{"old":"/llm/connections/openai-codex/attempts/:attemptId","type":1,"val":"attemptId","end":""}],
+    types: placeholder as Registry['llm.connections.openai_codex.attempts.show']['types'],
+  },
+  'llm.connections.openai_codex.destroy': {
+    methods: ["DELETE"],
+    pattern: '/llm/connections/openai-codex',
+    tokens: [{"old":"/llm/connections/openai-codex","type":0,"val":"llm","end":""},{"old":"/llm/connections/openai-codex","type":0,"val":"connections","end":""},{"old":"/llm/connections/openai-codex","type":0,"val":"openai-codex","end":""}],
+    types: placeholder as Registry['llm.connections.openai_codex.destroy']['types'],
+  },
   'questionnaires.index': {
     methods: ["GET","HEAD"],
     pattern: '/questionnaires',
