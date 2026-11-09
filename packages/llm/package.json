@@ -17,6 +17,7 @@
     "@ai-sdk/mistral": "4.0.80",
     "@ai-sdk/openai": "4.0.109",
     "@ai-sdk/openai-compatible": "3.0.85",
+    "@ai-sdk/provider": "4.0.36",
     "@coreloom-uml/catalog": "workspace:*",
     "ai": "7.0.163",
     "zod": "4.6.7"

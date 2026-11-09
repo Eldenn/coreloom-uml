@@ -1,6 +1,13 @@
 export type { LanguageModel } from 'ai'
 export { baseUrlProblem, parseAllowedOrigins } from './allowlist.ts'
 export {
+  CLAUDE_CODE_TIMEOUT_MS,
+  type ClaudeCodeCredential,
+  type ClaudeRun,
+  createClaudeCodeModel,
+  jsonFromText,
+} from './claude-code.ts'
+export {
   CODEX_OAUTH,
   type CodexCredential,
   CodexGrantError,
@@ -46,6 +53,7 @@ export {
 export {
   createLanguageModel,
   fetchWithoutRedirects,
+  type LlmCredential,
   type ProviderSettings,
   requiresApiKey,
   takesBaseUrl,
