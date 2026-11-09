@@ -202,6 +202,29 @@ export class FeatureFlagSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
+export class LlmConnectionSchema extends BaseModel {
+  static $columns = ['accessToken', 'accountId', 'createdAt', 'expiresAt', 'id', 'kind', 'refreshToken', 'updatedAt', 'userId'] as const
+  $columns = LlmConnectionSchema.$columns
+  @column()
+  declare accessToken: string
+  @column()
+  declare accountId: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare kind: string
+  @column()
+  declare refreshToken: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
+}
+
 export class ProjectSchema extends BaseModel {
   static $columns = ['createdAt', 'description', 'id', 'name', 'updatedAt', 'userId'] as const
   $columns = ProjectSchema.$columns
