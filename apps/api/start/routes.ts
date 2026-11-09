@@ -90,7 +90,8 @@ router
 |--------------------------------------------------------------------------
 |
 | A project holds artifacts; architectures (below) are the first kind, listed
-| with `GET /architectures?projectId=`, and its agent conventions the second
+| with `GET /architectures?projectId=` (an architecture may also stand outside any
+| project, listed by plain `GET /architectures`), and its agent conventions the second
 | (`/projects/:id/agent-config`). Same guards as the architectures.
 */
 const projectsController = () => import('#app/projects/controllers/projects-controller')

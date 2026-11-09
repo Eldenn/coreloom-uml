@@ -16,11 +16,7 @@ import {
   updateArchitectureInput,
 } from '#app/architectures/validators/architectures-input'
 import { DEFAULT_DIAGRAM } from '#app/diagrams/constants/diagram'
-import {
-  defaultProjectFor,
-  findOwnedProject,
-  PROJECT_NOT_FOUND,
-} from '#app/projects/services/owned-project'
+import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
 import { likePattern } from '#app/shared/database/like-pattern'
 import { paginate } from '#app/shared/pagination/paginate'
 
@@ -58,7 +54,7 @@ export default class ArchitecturesController {
       const created = await Architecture.create(
         {
           userId: user.id,
-          projectId: (project ?? (await defaultProjectFor(user, trx))).id,
+          projectId: project?.id ?? null,
           title,
           description: description ?? null,
           visibility: ArchitectureVisibility.Private,
@@ -94,7 +90,8 @@ export default class ArchitecturesController {
 
     const { projectId, title, description } = await request.validateUsing(updateArchitectureInput)
     if (projectId !== undefined && projectId !== architecture.projectId) {
-      if (!(await findOwnedProject(projectId, user))) return response.notFound(PROJECT_NOT_FOUND)
+      if (projectId !== null && !(await findOwnedProject(projectId, user)))
+        return response.notFound(PROJECT_NOT_FOUND)
       architecture.projectId = projectId
     }
     if (title !== undefined) architecture.title = title

@@ -2,7 +2,8 @@ import { BaseSeeder } from '@adonisjs/lucid/seeders'
 import { DateTime } from 'luxon'
 import { ArchitectureVisibility } from '#app/architectures/constants/visibility'
 import Architecture from '#app/architectures/models/architecture'
-import { defaultProjectFor } from '#app/projects/services/owned-project'
+import { DEFAULT_PROJECT_NAME } from '#app/projects/constants/limits'
+import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
 
 export default class MainSeeder extends BaseSeeder {
@@ -23,7 +24,10 @@ export default class MainSeeder extends BaseSeeder {
     if (Number(count[0].$extras.total) > 0) return
 
     // Empty diagrams open on the editor's template for their kind.
-    const project = await defaultProjectFor(user)
+    const project = await Project.firstOrCreate(
+      { userId: user.id, name: DEFAULT_PROJECT_NAME },
+      { userId: user.id, name: DEFAULT_PROJECT_NAME },
+    )
     const architecture = await Architecture.create({
       userId: user.id,
       projectId: project.id,

@@ -13,12 +13,12 @@ const projectIdInput = () => vine.number().withoutDecimals().min(1)
 
 /**
  * `POST /architectures` — created with one empty diagram (RM-11), in
- * `projectId` (one of the caller's projects), or in their default project
- * when it is omitted.
+ * `projectId` (one of the caller's projects), or outside any project when it
+ * is omitted or null.
  */
 export const createArchitectureInput = vine.create(
   vine.object({
-    projectId: projectIdInput().optional(),
+    projectId: projectIdInput().nullable().optional(),
     title: titleInput(),
     description: descriptionInput().optional(),
     diagram: vine
@@ -30,10 +30,13 @@ export const createArchitectureInput = vine.create(
   }),
 )
 
-/** `PATCH /architectures/:id` — omitted fields are left as-is; `projectId` moves it. */
+/**
+ * `PATCH /architectures/:id` — omitted fields are left as-is; `projectId` moves
+ * it, null takes it out of its project.
+ */
 export const updateArchitectureInput = vine.create(
   vine.object({
-    projectId: projectIdInput().optional(),
+    projectId: projectIdInput().nullable().optional(),
     title: titleInput().optional(),
     description: descriptionInput().optional(),
   }),

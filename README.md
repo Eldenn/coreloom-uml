@@ -46,11 +46,12 @@ silently.
   environment (`DEFAULT_ACCOUNT_EMAIL`, `DEFAULT_ACCOUNT_PASSWORD`, `DEFAULT_ACCOUNT_NAME`), created
   or updated at deploy time by `node ace account:ensure-default`. Self-registration is off unless
   `REGISTRATION_ENABLED=true`.
-- **Projects.** `/projects` (CRUD) lists them with their architecture count; architectures are
-  listed per project with `GET /architectures?projectId=`, created in one with `projectId` (or in
-  the account's oldest project, created as "Default project" if needed, when it is omitted) and
-  moved with `PATCH /architectures/:id { projectId }`. Deleting a project deletes its
-  architectures. The editor stays at `/architectures/:id`.
+- **Projects.** `/projects` (CRUD) lists them with their architecture count. An architecture
+  belongs to one project or to none: `GET /architectures` lists them all (`?projectId=` for one
+  project), `POST /architectures` creates one in `projectId` (outside any project when it is
+  omitted or null) and `PATCH /architectures/:id { projectId }` moves it (null takes it out).
+  Deleting a project deletes its architectures. The app lists them all at `/architectures`; the
+  editor is at `/architectures/:id`.
 - **Sharing.** An architecture is private by default. It can be made **public** (anyone with the
   link sees it, read-only) or **protected** (the link plus an access code the server generates when
   the visibility is set; regenerating it shuts out everyone who entered the old one).

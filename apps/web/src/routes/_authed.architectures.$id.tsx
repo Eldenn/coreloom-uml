@@ -29,7 +29,7 @@ import {
   useUpdateArchitecture,
 } from '@/lib/architectures'
 import { getErrorMessage } from '@/lib/client'
-import { projectCrumbs } from '@/lib/crumbs'
+import { architectureCrumbs } from '@/lib/crumbs'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { useT } from '@/lib/locale'
 import { type Project, projectQueryOptions } from '@/lib/projects'
@@ -41,17 +41,20 @@ export const Route = createFileRoute('/_authed/architectures/$id')({
     stringify: ({ id }) => ({ id: String(id) }),
   },
   validateSearch: z.object({ diagram: z.number().int().optional().catch(undefined) }),
-  // Its project and title, for the breadcrumbs; the page shows its own error if it can't load.
+  // Its project (if any) and title, for the breadcrumbs; the page shows its own error if it can't load.
   loader: async ({ context: { queryClient }, params: { id } }): Promise<CrumbData | null> => {
     try {
       const architecture = await queryClient.query({
         ...architectureQueryOptions(id),
         staleTime: 'static',
       })
-      const project = await queryClient.query({
-        ...projectQueryOptions(architecture.projectId),
-        staleTime: 'static',
-      })
+      const project =
+        architecture.projectId === null
+          ? null
+          : await queryClient.query({
+              ...projectQueryOptions(architecture.projectId),
+              staleTime: 'static',
+            })
       return { project, id, title: architecture.title }
     } catch {
       return null
@@ -60,7 +63,7 @@ export const Route = createFileRoute('/_authed/architectures/$id')({
   staticData: {
     crumb: (t, data) => {
       const crumb = data as CrumbData | null
-      const trail = projectCrumbs(t, crumb?.project)
+      const trail = architectureCrumbs(t, crumb?.project)
       return crumb ? [...trail, { label: crumb.title, href: `/architectures/${crumb.id}` }] : trail
     },
     fullWidth: true,
@@ -69,7 +72,7 @@ export const Route = createFileRoute('/_authed/architectures/$id')({
 })
 
 interface CrumbData {
-  project: Project
+  project: Project | null
   id: number
   title: string
 }

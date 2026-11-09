@@ -29,7 +29,7 @@ export const DIAGRAM_KINDS = [
 
 export const architectureKeys = {
   all: ['architectures'] as const,
-  list: (projectId: number, search: string) =>
+  list: (projectId: number | undefined, search: string) =>
     ['architectures', 'list', projectId, search] as const,
   detail: (id: number) => ['architectures', 'detail', id] as const,
 }
@@ -37,13 +37,17 @@ export const architectureKeys = {
 /** Projects show how many architectures they hold: a change to the set refreshes them too. */
 const PROJECTS_KEY = ['projects'] as const
 
-/** The architectures of one project. */
-export function useArchitectures(projectId: number, search: string) {
+/** The architectures of one project, or all of them (in a project or not) without `projectId`. */
+export function useArchitectures(projectId: number | undefined, search: string) {
   return useQuery({
     queryKey: architectureKeys.list(projectId, search),
     queryFn: () =>
       client.api.architectures.index({
-        query: { perPage: 100, projectId, ...(search ? { search } : {}) },
+        query: {
+          perPage: 100,
+          ...(projectId ? { projectId } : {}),
+          ...(search ? { search } : {}),
+        },
       }),
   })
 }
@@ -72,7 +76,7 @@ export function useCreateArchitecture() {
   const invalidate = useInvalidateArchitectureSets()
   return useMutation({
     mutationFn: (body: {
-      projectId: number
+      projectId: number | null
       title: string
       description?: string | null
       diagram?: { kind: DiagramKind }
@@ -89,11 +93,11 @@ export function useDuplicateArchitecture() {
   })
 }
 
-/** Moves an architecture to another of the user's projects. */
+/** Moves an architecture to another of the user's projects, or out of its project (null). */
 export function useMoveArchitecture() {
   const invalidate = useInvalidateArchitectureSets()
   return useMutation({
-    mutationFn: ({ id, projectId }: { id: number; projectId: number }) =>
+    mutationFn: ({ id, projectId }: { id: number; projectId: number | null }) =>
       client.api.architectures.update({ params: { id }, body: { projectId } }),
     onSuccess: invalidate,
   })

@@ -8,7 +8,7 @@ import User from '#app/users/models/user'
 
 /**
  * A software architecture: a titled set of UML diagrams (its views), owned by
- * one user and held by one of their projects.
+ * one user and held by one of their projects, or by none.
  */
 export default class Architecture extends BaseModel {
   @column({ isPrimary: true })
@@ -17,9 +17,9 @@ export default class Architecture extends BaseModel {
   @column()
   declare userId: number
 
-  /** Always one of the owner's projects. */
+  /** One of the owner's projects, or null for an architecture outside any project. */
   @column()
-  declare projectId: number
+  declare projectId: number | null
 
   @column()
   declare title: string

@@ -5,8 +5,8 @@ import type { Paginated } from '#app/shared/pagination/paginate'
 /** JSON shape of an architecture's own fields. */
 export type ArchitectureOutput = {
   id: number
-  /** The project that holds it. */
-  projectId: number
+  /** The project that holds it, or null when it stands on its own. */
+  projectId: number | null
   title: string
   description: string | null
   visibility: ArchitectureVisibility

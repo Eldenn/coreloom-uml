@@ -13,6 +13,7 @@ import {
   FlagIcon,
   FolderIcon,
   LanguagesIcon,
+  NetworkIcon,
   PlusIcon,
   SettingsIcon,
   SparklesIcon,
@@ -75,15 +76,10 @@ function LanguageMenu() {
   )
 }
 
-function AuthedLayout() {
+/** The page's breadcrumbs, from the matched routes' `staticData.crumb` / loader data. */
+function useCrumbs() {
   const t = useT()
-  const { user, isLoading, logout } = useAuth()
-  const navigate = useNavigate()
-  const router = useRouter()
-  const location = useLocation()
-  const signingOut = React.useRef(false)
-  // The page's breadcrumbs come from the matched routes' `staticData.crumb` / loader data.
-  const crumbs = useRouterState({
+  return useRouterState({
     select: (state) =>
       state.matches.flatMap((match) => {
         const crumb = match.staticData.crumb?.(t, match.loaderData)
@@ -93,6 +89,16 @@ function AuthedLayout() {
           : crumb
       }),
   })
+}
+
+function AuthedLayout() {
+  const t = useT()
+  const { user, isLoading, logout } = useAuth()
+  const navigate = useNavigate()
+  const router = useRouter()
+  const location = useLocation()
+  const signingOut = React.useRef(false)
+  const crumbs = useCrumbs()
 
   const fullWidth = useRouterState({
     select: (state) => state.matches.some((match) => match.staticData.fullWidth),
@@ -148,8 +154,13 @@ function AuthedLayout() {
               title: t.nav.projects,
               url: '/projects',
               icon: FolderIcon,
-              // An architecture opens inside its project.
-              isActive: isActive('/projects') || isActive('/architectures'),
+              isActive: isActive('/projects'),
+            },
+            {
+              title: t.nav.architectures,
+              url: '/architectures',
+              icon: NetworkIcon,
+              isActive: isActive('/architectures'),
             },
             {
               title: t.nav.skills,
@@ -187,6 +198,11 @@ function AuthedLayout() {
               onSelect: () => void navigate({ to: '/projects' }),
             },
             {
+              label: t.nav.architectures,
+              icon: NetworkIcon,
+              onSelect: () => void navigate({ to: '/architectures' }),
+            },
+            {
               label: t.nav.skills,
               icon: SparklesIcon,
               onSelect: () => void navigate({ to: '/skills' }),
@@ -214,6 +230,11 @@ function AuthedLayout() {
               label: t.projects.new,
               icon: PlusIcon,
               onSelect: () => void navigate({ to: '/projects', search: { new: true } }),
+            },
+            {
+              label: t.architectures.new,
+              icon: PlusIcon,
+              onSelect: () => void navigate({ to: '/architectures', search: { new: true } }),
             },
           ],
         },
