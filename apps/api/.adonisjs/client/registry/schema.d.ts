@@ -775,4 +775,40 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/api-tokens/controllers/api-tokens-controller').default['destroy']>>>
     }
   }
+  'features.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/features'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/feature-flags/controllers/features-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/feature-flags/controllers/features-controller').default['index']>>>
+    }
+  }
+  'admin.feature_flags.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/admin/feature-flags'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/feature-flags/controllers/admin-feature-flags-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/feature-flags/controllers/admin-feature-flags-controller').default['index']>>>
+    }
+  }
+  'admin.feature_flags.update': {
+    methods: ["PUT"]
+    pattern: '/admin/feature-flags/:key'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/feature-flags/validators/feature-flags-input').updateFeatureFlagInput)>>
+      paramsTuple: [ParamValue]
+      params: { key: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/feature-flags/validators/feature-flags-input').updateFeatureFlagInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/feature-flags/controllers/admin-feature-flags-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/feature-flags/controllers/admin-feature-flags-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
 }

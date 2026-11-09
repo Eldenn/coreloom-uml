@@ -25,6 +25,8 @@ export type UserOutput = {
    * environment: the app hides the forms that would change them.
    */
   managedByEnvironment: boolean
+  /** The admin, for now the default account: the only one who edits feature flags. */
+  isAdmin: boolean
 }
 
 export function serializeUser(user: User): UserOutput {
@@ -35,5 +37,6 @@ export function serializeUser(user: User): UserOutput {
     emailVerifiedAt: user.emailVerifiedAt?.toISO() ?? null,
     avatarUrl: user.avatarKey ? '/account/avatar' : null,
     managedByEnvironment: isDefaultAccount(user),
+    isAdmin: isDefaultAccount(user),
   }
 }

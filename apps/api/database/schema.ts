@@ -176,6 +176,32 @@ export class DiagramSchema extends BaseModel {
   declare version: number
 }
 
+export class FeatureFlagChangeSchema extends BaseModel {
+  static $columns = ['createdAt', 'flagKey', 'id', 'text', 'userId'] as const
+  $columns = FeatureFlagChangeSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare flagKey: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare text: string
+  @column()
+  declare userId: number | null
+}
+
+export class FeatureFlagSchema extends BaseModel {
+  static $columns = ['key', 'state', 'updatedAt'] as const
+  $columns = FeatureFlagSchema.$columns
+  @column({ isPrimary: true })
+  declare key: string
+  @column()
+  declare state: any
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class ProjectSchema extends BaseModel {
   static $columns = ['createdAt', 'description', 'id', 'name', 'updatedAt', 'userId'] as const
   $columns = ProjectSchema.$columns
