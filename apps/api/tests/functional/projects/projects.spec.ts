@@ -2,7 +2,6 @@ import testUtils from '@adonisjs/core/services/test_utils'
 import { test } from '@japa/runner'
 import type { TestContext } from '@japa/runner/core'
 import Architecture from '#app/architectures/models/architecture'
-import { DEFAULT_PROJECT_NAME } from '#app/projects/constants/limits'
 import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
 
@@ -156,20 +155,48 @@ test.group('Projects - architectures', (group) => {
     )
   })
 
-  test('puts an architecture created without a project in the default one', async ({
+  test('keeps an architecture created without a project outside any project', async ({
     client,
     assert,
   }) => {
     const user = await makeUser()
+    const project = await createProject(client, user, 'Held')
+    await createArchitecture(client, user, { projectId: project.id, title: 'In' })
 
-    const first = await createArchitecture(client, user, { title: 'A' })
-    const second = await createArchitecture(client, user, { title: 'B' })
+    const omitted = await createArchitecture(client, user, { title: 'A' })
+    const explicit = await createArchitecture(client, user, { projectId: null, title: 'B' })
 
-    const projects = await Project.query().where('userId', user.id)
-    assert.lengthOf(projects, 1)
-    assert.equal(projects[0].name, DEFAULT_PROJECT_NAME)
-    assert.equal(first.body().architecture.projectId, projects[0].id)
-    assert.equal(second.body().architecture.projectId, projects[0].id)
+    assert.isNull(omitted.body().architecture.projectId)
+    assert.isNull(explicit.body().architecture.projectId)
+    assert.lengthOf(await Project.query().where('userId', user.id), 1)
+
+    const all = await client.get('/architectures').headers(json).loginAs(user)
+    assert.sameMembers(
+      all.body().data.map((a: { title: string }) => a.title),
+      ['In', 'A', 'B'],
+    )
+  })
+
+  test('takes an architecture out of its project, and puts it back', async ({ client }) => {
+    const user = await makeUser()
+    const project = await createProject(client, user, 'Home')
+    const created = await createArchitecture(client, user, { projectId: project.id, title: 'A' })
+    const id = created.body().architecture.id
+
+    const out = await client
+      .patch(`/architectures/${id}`)
+      .headers(json)
+      .loginAs(user)
+      .json({ projectId: null })
+    out.assertStatus(200)
+    out.assertBodyContains({ architecture: { projectId: null } })
+
+    const back = await client
+      .patch(`/architectures/${id}`)
+      .headers(json)
+      .loginAs(user)
+      .json({ projectId: project.id })
+    back.assertBodyContains({ architecture: { projectId: project.id } })
   })
 
   test('refuses another user project as the target, on create and on move', async ({ client }) => {

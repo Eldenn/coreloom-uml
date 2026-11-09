@@ -13,3 +13,10 @@ export function projectCrumbs(t: Messages, project: Project | null | undefined):
   const trail = [{ label: t.nav.projects, href: '/projects' }]
   return project ? [...trail, { label: project.name, href: `/projects/${project.id}` }] : trail
 }
+
+/** The trail of an architecture's editor: its project's, or Architectures when it has none. */
+export function architectureCrumbs(t: Messages, project: Project | null | undefined): Crumb[] {
+  return project
+    ? projectCrumbs(t, project)
+    : [{ label: t.nav.architectures, href: '/architectures' }]
+}

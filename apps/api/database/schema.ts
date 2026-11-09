@@ -111,7 +111,7 @@ export class ArchitectureSchema extends BaseModel {
   @column({ isPrimary: true })
   declare id: number
   @column()
-  declare projectId: number
+  declare projectId: number | null
   @column()
   declare shareToken: string | null
   @column()
