@@ -62,6 +62,8 @@ export type SearchOptions = {
   minInstalls: number
   /** The most skills checked on GitHub in this run, most installed first. */
   githubChecks: number
+  /** Told what the run is doing, step by step (the command prints it). */
+  onProgress?: (message: string) => void
 }
 
 /**
@@ -134,6 +136,7 @@ export async function searchSkills(options: SearchOptions): Promise<SearchResult
   }
 
   const candidates = await collectCandidates(options, http, report)
+  options.onProgress?.(`${candidates.length} candidates, checking audits and GitHub`)
   const usedSlugs = new Set(options.known.map((skill) => skill.slug))
   const auditCache = new Map<string, Record<string, Record<string, unknown>> | null>()
   const records: SkillRecord[] = []
@@ -191,6 +194,9 @@ export async function searchSkills(options: SearchOptions): Promise<SearchResult
       continue
     }
     budget -= 1
+    options.onProgress?.(
+      `GitHub check ${options.githubChecks - budget}/${options.githubChecks}: ${record.registryId}`,
+    )
     try {
       await checkOnGithub(record, candidate, github, http)
       record.checked = true
@@ -242,7 +248,8 @@ async function collectCandidates(
 
   const byId = new Map<string, Candidate>()
   let failed = 0
-  for (const item of options.plan) {
+  for (const [index, item] of options.plan.entries()) {
+    options.onProgress?.(`search ${index + 1}/${options.plan.length}: "${item.query}"`)
     let hits: SearchHit[]
     try {
       hits = await searchSkillsSh(http, item.query)
@@ -518,6 +525,9 @@ function uniqueSlug(slug: string, source: string, used: Set<string>): string {
   return id
 }
 
+/** A request that takes longer fails instead of blocking the whole run. */
+const REQUEST_TIMEOUT_MS = 30_000
+
 class Http {
   private readonly fetchFn: typeof fetch
   private readonly githubToken: string | undefined
@@ -537,19 +547,31 @@ class Http {
   }
 
   async status(url: string): Promise<number> {
-    const response = await this.fetchFn(url, { headers: this.headers(url), redirect: 'manual' })
+    const response = await this.fetchFn(url, {
+      headers: this.headers(url),
+      redirect: 'manual',
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    })
     return response.status
   }
 
   async json(url: string): Promise<unknown> {
-    const response = await this.fetchFn(url, { headers: this.headers(url), redirect: 'manual' })
+    const response = await this.fetchFn(url, {
+      headers: this.headers(url),
+      redirect: 'manual',
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    })
     if (response.status === 404) throw new SkipError(`not found: ${new URL(url).pathname}`)
     if (!response.ok) throw new Error(`${response.status} from ${new URL(url).host}`)
     return response.json()
   }
 
   async text(url: string): Promise<string> {
-    const response = await this.fetchFn(url, { headers: this.headers(url), redirect: 'manual' })
+    const response = await this.fetchFn(url, {
+      headers: this.headers(url),
+      redirect: 'manual',
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    })
     if (!response.ok)
       throw new SkipError(`cannot read ${new URL(url).pathname} (${response.status})`)
     return response.text()

@@ -15,7 +15,10 @@ export default class SkillsRefresh extends BaseCommand {
     const { renderReport } = await import('#app/skills/services/skills-search')
     const { default: SkillsEvents } = await import('#app/skills/services/skills-events')
     try {
-      const report = await refreshCatalog({ githubToken: env.get('SKILLS_GITHUB_TOKEN') })
+      const report = await refreshCatalog({
+        githubToken: env.get('SKILLS_GITHUB_TOKEN'),
+        onProgress: (message) => this.logger.info(message),
+      })
       await (await this.app.container.make(SkillsEvents)).publish('catalog.refreshed')
       this.logger.success(renderReport(report))
     } catch (error) {

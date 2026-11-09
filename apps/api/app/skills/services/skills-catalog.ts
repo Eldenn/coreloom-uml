@@ -47,6 +47,7 @@ export type RefreshCatalogOptions = {
   fetch?: typeof fetch
   githubToken?: string
   now?: DateTime
+  onProgress?: (message: string) => void
 }
 
 /**
@@ -79,6 +80,7 @@ export async function refreshCatalog(options: RefreshCatalogOptions = {}): Promi
     plan: SKILL_SEARCH_PLAN,
     fetch: options.fetch ?? fetch,
     githubToken: options.githubToken,
+    onProgress: options.onProgress,
     minInstalls: SKILLS_SEARCH_LIMITS.minInstalls,
     githubChecks: options.githubToken
       ? SKILLS_SEARCH_LIMITS.githubChecks
