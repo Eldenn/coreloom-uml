@@ -1,6 +1,8 @@
-// Settings, "LLM provider": the user's own provider for proposed rules (bring your own key).
-// Everything stays in this browser (`useStoredProvider`); "Test" sends the form's values to
-// `POST /llm/test` without saving them, and "Forget the key" removes the provider and its key.
+// Settings, "LLM provider": the user's own provider for proposed rules (bring your own key, or a
+// connected ChatGPT or Claude subscription). The settings stay in this browser
+// (`useStoredProvider`); "Test" sends the form's values to `POST /llm/test` without saving them,
+// and "Forget the key" removes the provider and its key. A subscription is connected on the
+// server (`SubscriptionConnection`), and its kinds show only while their flag is on.
 import { useSelector } from '@tanstack/react-form'
 import { PlugZapIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
@@ -15,6 +17,7 @@ import { SecretValue } from '@/components/ui/secret-value'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
 import { Spinner } from '@/components/ui/spinner'
+import { useFeature } from '@/lib/feature-flags'
 import {
   LLM_API_KEY_MAX_LENGTH,
   LLM_BASE_URL_MAX_LENGTH,
@@ -30,6 +33,7 @@ import {
 } from '@/lib/llm-provider'
 import { useLocale, useT } from '@/lib/locale'
 import { useProviderFailureText } from '@/llm/provider-failure'
+import { SubscriptionConnection } from '@/llm/subscription-connection'
 
 interface ProviderFields {
   kind: ProviderKind
@@ -38,9 +42,21 @@ interface ProviderFields {
   apiKey: string
 }
 
+/** The flag behind each subscription kind; the API already leaves out a kind whose flag is off. */
+function useVisibleKind() {
+  const chatgpt = useFeature('llm-subscription-chatgpt')
+  const claude = useFeature('llm-subscription-claude')
+  const flags: Partial<Record<ProviderKind, boolean>> = {
+    'openai-codex': chatgpt,
+    'claude-code': claude,
+  }
+  return (kind: ProviderKind) => flags[kind] ?? true
+}
+
 export function LlmProviderSection() {
   const t = useT()
   const providers = useLlmProviders()
+  const visible = useVisibleKind()
   if (providers.isError)
     return (
       <SettingsSection title={t.llm.providerTitle} description={t.llm.providerHint}>
@@ -52,7 +68,7 @@ export function LlmProviderSection() {
   if (!providers.data) return <Skeleton className="h-80 w-full" />
   return (
     <ProviderForm
-      providers={providers.data.providers}
+      providers={providers.data.providers.filter((p) => visible(p.kind))}
       allowedBaseUrls={providers.data.allowedBaseUrls}
     />
   )
@@ -86,19 +102,24 @@ function savedKey(stored: StoredProvider | null, kind: ProviderKind): string | n
   return stored?.kind === kind && stored.apiKey ? stored.apiKey : null
 }
 
+function isSubscription(info: ProviderInfo | undefined): boolean {
+  return info?.auth === 'subscription'
+}
+
 /** The form's values as a provider to save or test. */
 function toProvider(
   fields: ProviderFields,
   providers: ProviderInfo[],
   stored: StoredProvider | null,
 ): StoredProvider {
+  const info = providers.find((p) => p.kind === fields.kind)
+  // A subscription keeps no key and no base URL in this browser.
+  if (isSubscription(info)) return { kind: fields.kind, model: fields.model.trim() }
   return {
     kind: fields.kind,
     model: fields.model.trim(),
     apiKey: fields.apiKey.trim() || (savedKey(stored, fields.kind) ?? ''),
-    ...(providers.find((p) => p.kind === fields.kind)?.takesBaseUrl
-      ? { baseUrl: fields.baseUrl.trim() }
-      : {}),
+    ...(info?.takesBaseUrl ? { baseUrl: fields.baseUrl.trim() } : {}),
   }
 }
 
@@ -178,6 +199,9 @@ function ProviderForm({
   const info = providers.find((p) => p.kind === kind)
   const saved = savedKey(stored, kind)
   const models = modelNames(info, model)
+  const subscription = isSubscription(info)
+  // A key kind is always "connected"; a subscription once the user connected it.
+  const untestable = info?.connected === false
 
   const footer = (
     <span className="flex flex-wrap gap-2">
@@ -185,7 +209,8 @@ function ProviderForm({
         type="button"
         variant="outline"
         size="sm"
-        disabled={test.pending}
+        disabled={test.pending || untestable}
+        title={untestable ? t.llm.subscription.connectFirst : undefined}
         aria-busy={test.pending || undefined}
         onClick={() => {
           void (async () => {
@@ -267,16 +292,22 @@ function ProviderForm({
           )}
         </form.AppField>
       )}
-      {saved && <SavedKey value={saved} />}
-      <form.AppField name="apiKey">
-        {(field) => (
-          <field.PasswordField
-            label={t.llm.apiKey}
-            autoComplete="off"
-            description={<KeyHint saved={!!saved} optional={info?.requiresApiKey === false} />}
-          />
-        )}
-      </form.AppField>
+      {info && subscription ? (
+        <SubscriptionConnection provider={info} />
+      ) : (
+        <>
+          {saved && <SavedKey value={saved} />}
+          <form.AppField name="apiKey">
+            {(field) => (
+              <field.PasswordField
+                label={t.llm.apiKey}
+                autoComplete="off"
+                description={<KeyHint saved={!!saved} optional={info?.requiresApiKey === false} />}
+              />
+            )}
+          </form.AppField>
+        </>
+      )}
       {test.outcome && (
         <Alert variant={test.outcome.ok ? 'success' : 'destructive'} role="status">
           <AlertDescription>{test.outcome.text}</AlertDescription>

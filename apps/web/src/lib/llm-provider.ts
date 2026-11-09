@@ -1,15 +1,25 @@
-// The user's own LLM provider (bring your own key). The settings live in this browser only,
-// under `llm-provider` in localStorage: the server keeps no copy and receives the key in the body
-// of each call (`POST /llm/test`, `POST /projects/:id/agent-config/proposals`), then drops it.
+// The user's own LLM provider: a key (bring your own key) or a connected subscription (ChatGPT,
+// Claude). The settings live in this browser only, under `llm-provider` in localStorage: the server
+// keeps no copy and receives the key in the body of each call (`POST /llm/test`,
+// `POST /projects/:id/agent-config/proposals`), then drops it. A subscription is connected once,
+// on the server; this browser only keeps its kind and model.
 import { useMutation, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 
 import { client, TuyauError } from '@/lib/client'
+import {
+  callBody,
+  parseStoredProvider,
+  type ProviderKind,
+  type StoredProvider,
+} from '@/lib/llm-provider-body'
+import { queryClient } from '@/lib/query'
+
+export type { ProviderKind, StoredProvider }
 
 type ProvidersBody = Awaited<ReturnType<typeof client.api.llm.providers>>
 
 export type ProviderInfo = ProvidersBody['providers'][number]
-export type ProviderKind = ProviderInfo['kind']
 export type LlmFailureReason = Extract<
   Awaited<ReturnType<typeof client.api.llm.test>>,
   { ok: false }
@@ -17,14 +27,6 @@ export type LlmFailureReason = Extract<
 export type RuleProposal = Awaited<
   ReturnType<typeof client.api.projects.agentConfig.proposals.store>
 >['proposals'][number]
-
-/** A provider as this browser keeps it. `apiKey` is empty for a server that takes none. */
-export interface StoredProvider {
-  kind: ProviderKind
-  model: string
-  baseUrl?: string
-  apiKey: string
-}
 
 /** Longest values the API accepts (`apps/api/app/llm/constants/llm.ts`). */
 export const LLM_MODEL_MAX_LENGTH = 200
@@ -43,27 +45,11 @@ function readRaw(): string | null {
   }
 }
 
-function parse(raw: string | null): StoredProvider | null {
-  if (!raw) return null
-  try {
-    const value = JSON.parse(raw) as Partial<StoredProvider> | null
-    if (!value || typeof value.kind !== 'string' || typeof value.model !== 'string') return null
-    return {
-      kind: value.kind,
-      model: value.model,
-      apiKey: typeof value.apiKey === 'string' ? value.apiKey : '',
-      ...(typeof value.baseUrl === 'string' && value.baseUrl ? { baseUrl: value.baseUrl } : {}),
-    }
-  } catch {
-    return null
-  }
-}
-
 let cache: { raw: string | null; value: StoredProvider | null } = { raw: null, value: null }
 
 function snapshot(): StoredProvider | null {
   const raw = readRaw()
-  if (raw !== cache.raw) cache = { raw, value: parse(raw) }
+  if (raw !== cache.raw) cache = { raw, value: parseStoredProvider(raw) }
   return cache.value
 }
 
@@ -94,22 +80,12 @@ export function useStoredProvider(): StoredProvider | null {
   return React.useSyncExternalStore(subscribe, snapshot, () => null)
 }
 
-/** The body every call with the user's provider sends: the settings, and the key next to them. */
-function callBody(provider: StoredProvider) {
-  return {
-    provider: {
-      kind: provider.kind,
-      model: provider.model,
-      baseUrl: provider.baseUrl ?? null,
-    },
-    apiKey: provider.apiKey || null,
-  }
-}
-
 /** The kinds this server can call, with model suggestions and the allowed base URLs. */
+const PROVIDERS_KEY = ['llm', 'providers'] as const
+
 export function useLlmProviders() {
   return useQuery({
-    queryKey: ['llm', 'providers'],
+    queryKey: PROVIDERS_KEY,
     queryFn: () => client.api.llm.providers({}),
     staleTime: Infinity,
   })
@@ -130,6 +106,68 @@ export function useProposeRules(projectId: number) {
         params: { id: projectId },
         body: callBody(provider),
       }),
+  })
+}
+
+function refreshProviders() {
+  return queryClient.invalidateQueries({ queryKey: PROVIDERS_KEY })
+}
+
+export type CodexAttempt = Awaited<
+  ReturnType<typeof client.api.llm.connections.openaiCodex.attempts.store>
+>
+export type CodexAttemptStatus = Awaited<
+  ReturnType<typeof client.api.llm.connections.openaiCodex.attempts.show>
+>['status']
+
+/** Starts a ChatGPT sign-in: a code to type on OpenAI's page. */
+export function useStartCodexAttempt() {
+  return useMutation({
+    mutationFn: () => client.api.llm.connections.openaiCodex.attempts.store({}),
+  })
+}
+
+/** Where the ChatGPT sign-in stands, asked again every `interval` seconds while it waits. */
+export function useCodexAttempt(attempt: CodexAttempt | null) {
+  return useQuery({
+    queryKey: ['llm', 'codex-attempt', attempt?.attemptId ?? null],
+    queryFn: async () => {
+      const { status } = await client.api.llm.connections.openaiCodex.attempts.show({
+        params: { attemptId: attempt?.attemptId ?? '' },
+      })
+      if (status === 'connected') await refreshProviders()
+      return status
+    },
+    enabled: attempt !== null,
+    refetchInterval: (query) =>
+      attempt && (query.state.data ?? 'pending') === 'pending' ? attempt.interval * 1000 : false,
+  })
+}
+
+/** Starts a Claude sign-in: the page the `claude` binary printed. */
+export function useStartClaudeLogin() {
+  return useMutation({
+    mutationFn: () => client.api.llm.connections.claudeCode.login.store({}),
+  })
+}
+
+/** Gives the code copied from Claude's page to the waiting sign-in. */
+export function useSubmitClaudeCode() {
+  return useMutation({
+    mutationFn: (code: string) =>
+      client.api.llm.connections.claudeCode.login.code({ body: { code } }),
+    onSuccess: () => refreshProviders(),
+  })
+}
+
+/** Disconnects a subscription: the server forgets the tokens or signs the binary out. */
+export function useDisconnectSubscription() {
+  return useMutation({
+    mutationFn: (kind: ProviderKind) =>
+      kind === 'claude-code'
+        ? client.api.llm.connections.claudeCode.destroy({})
+        : client.api.llm.connections.openaiCodex.destroy({}),
+    onSuccess: () => refreshProviders(),
   })
 }
 
