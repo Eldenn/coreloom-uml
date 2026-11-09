@@ -4,6 +4,9 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { PROVIDER_KINDS_WITH_BASE_URL, ProviderKind } from '@coreloom-uml/catalog'
 import type { LanguageModel } from 'ai'
+import { fetchWithoutRedirects } from './fetch.ts'
+
+export { fetchWithoutRedirects }
 
 /**
  * A provider as the browser keeps it, without its key: the key travels next to it, in the body
@@ -25,13 +28,6 @@ export function takesBaseUrl(kind: ProviderKind): boolean {
 export function requiresApiKey(kind: ProviderKind): boolean {
   return !takesBaseUrl(kind)
 }
-
-/**
- * `fetch` that never follows a redirect: an allowlisted host cannot bounce the request (and its
- * key) somewhere else. A redirect fails like an unreachable server.
- */
-export const fetchWithoutRedirects: typeof fetch = (input, init) =>
-  fetch(input, { ...init, redirect: 'error' })
 
 /** Ollama serves its OpenAI-compatible API under `/v1`. */
 function ollamaBaseUrl(baseUrl: string): string {

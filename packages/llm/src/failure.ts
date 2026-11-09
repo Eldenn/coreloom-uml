@@ -10,6 +10,8 @@ export const LlmFailureReason = {
   Unreachable: 'unreachable',
   Timeout: 'timeout',
   RateLimited: 'rate_limited',
+  /** The connected subscription is gone (revoked, signed out): the user connects it again. */
+  SubscriptionExpired: 'subscription_expired',
   Unknown: 'unknown',
 } as const
 export type LlmFailureReason = (typeof LlmFailureReason)[keyof typeof LlmFailureReason]
@@ -22,6 +24,7 @@ export function failureReason(error: unknown, depth = 0): LlmFailureReason {
   if (depth > MAX_DEPTH || error === null || typeof error !== 'object') {
     return LlmFailureReason.Unknown
   }
+  if (error instanceof LlmCallError) return error.reason
   if (APICallError.isInstance(error)) {
     const status = error.statusCode
     if (status === 401 || status === 403) return LlmFailureReason.Unauthorized

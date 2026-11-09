@@ -1,6 +1,19 @@
 export type { LanguageModel } from 'ai'
 export { baseUrlProblem, parseAllowedOrigins } from './allowlist.ts'
 export {
+  CODEX_OAUTH,
+  type CodexCredential,
+  CodexGrantError,
+  CodexOAuthError,
+  type CodexTokens,
+  createCodexModel,
+  exchangeAuthorizationCode,
+  parseCodexTokens,
+  pollDeviceAuthorization,
+  refreshCodexTokens,
+  requestDeviceCode,
+} from './codex.ts'
+export {
   CONNECTION_TEST_MAX_OUTPUT_TOKENS,
   CONNECTION_TEST_PROMPT,
   CONNECTION_TEST_TIMEOUT_MS,
