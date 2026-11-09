@@ -10,6 +10,8 @@
 //
 // By default it reads and writes window.location (history.replaceState). With a router, pass
 // `searchParams` and `onSearchParamsChange` (Next.js: useSearchParams() and router.replace).
+// When the server filters and paginates, pass the page it returned as `rows` and its figures as
+// `server`:  useDataList({ rows: page.rows, searchKeys: [], facets, server: { total, counts } })
 import {
   CheckIcon,
   ChevronLeftIcon,
@@ -77,6 +79,61 @@ function writeParams(base: URLSearchParams, state: DataListState, facetKeys: str
   return params
 }
 
+/** What the server says about the list it filtered and paginated. */
+interface DataListServer {
+  /** Rows matching the current search and filters, across every page. */
+  total: number
+  /** Matching rows per facet option, each leaving its own facet's selection out. */
+  counts?: Record<string, Record<string, number>>
+}
+
+/** The rows that match, the counts per facet option and how many rows match in all. */
+interface DataListMatches<T> {
+  filtered: T[]
+  counts: Record<string, Record<string, number>>
+  matched: number
+}
+
+/** Search and facet counts done in the browser, over every row. */
+function filterRows<T extends object>(
+  rows: T[],
+  {
+    state,
+    searchKeys,
+    facets,
+  }: { state: DataListState; searchKeys: (keyof T & string)[]; facets: Facet<T>[] },
+): DataListMatches<T> {
+  const norm = (v: unknown) =>
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string -- row values are primitives; String() is the intended conversion
+    String(v ?? '')
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .toLowerCase()
+  const valueOf = (row: T, f: Facet<T>) =>
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string -- row values are primitives; String() is the intended conversion
+    f.get ? f.get(row) : String((row as Record<string, unknown>)[f.key] ?? '')
+  const q = norm(state.q.trim())
+  const matchesSearch = (row: T) => !q || searchKeys.some((k) => norm(row[k]).includes(q))
+  const matchesFacets = (row: T, except?: string) =>
+    facets.every(
+      (f) =>
+        f.key === except ||
+        !(state.facets[f.key] as string[] | undefined)?.length ||
+        state.facets[f.key].includes(valueOf(row, f)),
+    )
+
+  const filtered = rows.filter((r) => matchesSearch(r) && matchesFacets(r))
+  // Counts per option ignore the facet's own selection, so options stay comparable.
+  const counts: Record<string, Record<string, number>> = {}
+  for (const f of facets) {
+    counts[f.key] = {}
+    for (const r of rows)
+      if (matchesSearch(r) && matchesFacets(r, f.key))
+        counts[f.key][valueOf(r, f)] = (counts[f.key][valueOf(r, f)] ?? 0) + 1
+  }
+  return { filtered, counts, matched: filtered.length }
+}
+
 /** Filtering, facet counts and pagination for `rows`, with the state kept in the URL. */
 function useDataList<T extends object>({
   rows,
@@ -85,7 +142,9 @@ function useDataList<T extends object>({
   pageSize = 10,
   searchParams,
   onSearchParamsChange,
+  server,
 }: {
+  /** Every row; with `server`, the current page only. */
   rows: T[]
   /** Fields the search box matches (case- and accent-insensitive). */
   searchKeys: (keyof T & string)[]
@@ -94,6 +153,11 @@ function useDataList<T extends object>({
   /** Router-owned params; leave out to use window.location. */
   searchParams?: URLSearchParams
   onSearchParamsChange?: (params: URLSearchParams) => void
+  /**
+   * The server filters and paginates: `rows` is the page it returned for `state`, and the totals
+   * come from here. Search, facet counts and slicing are then left to it.
+   */
+  server?: DataListServer
 }) {
   const facetKeys = facets.map((f) => f.key)
   const controlled = searchParams !== undefined
@@ -133,37 +197,16 @@ function useDataList<T extends object>({
     }
   }
 
-  const norm = (v: unknown) =>
-    // eslint-disable-next-line @typescript-eslint/no-base-to-string -- row values are primitives; String() is the intended conversion
-    String(v ?? '')
-      .normalize('NFD')
-      .replace(/\p{Diacritic}/gu, '')
-      .toLowerCase()
-  const valueOf = (row: T, f: Facet<T>) =>
-    // eslint-disable-next-line @typescript-eslint/no-base-to-string -- row values are primitives; String() is the intended conversion
-    f.get ? f.get(row) : String((row as Record<string, unknown>)[f.key] ?? '')
-  const q = norm(state.q.trim())
-  const matchesSearch = (row: T) => !q || searchKeys.some((k) => norm(row[k]).includes(q))
-  const matchesFacets = (row: T, except?: string) =>
-    facets.every(
-      (f) =>
-        f.key === except ||
-        !(state.facets[f.key] as string[] | undefined)?.length ||
-        state.facets[f.key].includes(valueOf(row, f)),
-    )
-
-  const filtered = rows.filter((r) => matchesSearch(r) && matchesFacets(r))
-  // Counts per option ignore the facet's own selection, so options stay comparable.
-  const counts: Record<string, Record<string, number>> = {}
-  for (const f of facets) {
-    counts[f.key] = {}
-    for (const r of rows)
-      if (matchesSearch(r) && matchesFacets(r, f.key))
-        counts[f.key][valueOf(r, f)] = (counts[f.key][valueOf(r, f)] ?? 0) + 1
-  }
-  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const { filtered, counts, matched }: DataListMatches<T> = server
+    ? {
+        filtered: rows,
+        counts: Object.fromEntries(facets.map((f) => [f.key, server.counts?.[f.key] ?? {}])),
+        matched: server.total,
+      }
+    : filterRows(rows, { state, searchKeys, facets })
+  const pageCount = Math.max(1, Math.ceil(matched / pageSize))
   const page = Math.min(state.page, pageCount)
-  const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize)
+  const pageRows = server ? rows : filtered.slice((page - 1) * pageSize, page * pageSize)
   const isFiltered = !!state.q || Object.values(state.facets).some((v) => v.length > 0)
 
   return {
@@ -186,7 +229,9 @@ function useDataList<T extends object>({
     pageRows,
     page,
     pageCount,
-    total: rows.length,
+    /** Rows matching the search and filters, on every page. */
+    matched,
+    total: server ? server.total : rows.length,
     isFiltered,
   }
 }
@@ -368,7 +413,7 @@ function DataListToolbar({
         {!!actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
       </div>
       <p role="status" className="m-0 font-mono text-[12px] text-muted-foreground">
-        {t.results(formatNumber(list.filtered.length), list.filtered.length)}
+        {t.results(formatNumber(list.matched), list.matched)}
       </p>
     </div>
   )
@@ -439,6 +484,7 @@ export {
   type DataList,
   DataListEmpty,
   DataListPagination,
+  type DataListServer,
   DataListToolbar,
   type Facet,
   FacetedFilter,

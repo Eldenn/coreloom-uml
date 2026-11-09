@@ -17,6 +17,7 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as AuthedSettingsRouteImport } from './routes/_authed.settings'
+import { Route as AuthedSkillsRouteImport } from './routes/_authed.skills'
 import { Route as STokenRouteImport } from './routes/s.$token'
 import { Route as AuthedArchitecturesIndexRouteImport } from './routes/_authed.architectures.index'
 import { Route as AuthedArchitecturesIdRouteImport } from './routes/_authed.architectures.$id'
@@ -62,6 +63,11 @@ const AuthedSettingsRoute = AuthedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedSkillsRoute = AuthedSkillsRouteImport.update({
+  id: '/skills',
+  path: '/skills',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const STokenRoute = STokenRouteImport.update({
   id: '/s/$token',
   path: '/s/$token',
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
   '/settings': typeof AuthedSettingsRoute
+  '/skills': typeof AuthedSkillsRoute
   '/s/$token': typeof STokenRoute
   '/architectures/$id': typeof AuthedArchitecturesIdRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
   '/settings': typeof AuthedSettingsRoute
+  '/skills': typeof AuthedSkillsRoute
   '/s/$token': typeof STokenRoute
   '/architectures/$id': typeof AuthedArchitecturesIdRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
   '/_authed/settings': typeof AuthedSettingsRoute
+  '/_authed/skills': typeof AuthedSkillsRoute
   '/s/$token': typeof STokenRoute
   '/_authed/architectures/$id': typeof AuthedArchitecturesIdRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/verify-email'
     | '/settings'
+    | '/skills'
     | '/s/$token'
     | '/architectures/$id'
     | '/projects/$projectId'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/verify-email'
     | '/settings'
+    | '/skills'
     | '/s/$token'
     | '/architectures/$id'
     | '/projects/$projectId'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/verify-email'
     | '/_authed/settings'
+    | '/_authed/skills'
     | '/s/$token'
     | '/_authed/architectures/$id'
     | '/_authed/projects/$projectId'
@@ -248,6 +260,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedSettingsRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/skills': {
+      id: '/_authed/skills'
+      path: '/skills'
+      fullPath: '/skills'
+      preLoaderRoute: typeof AuthedSkillsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/s/$token': {
       id: '/s/$token'
       path: '/s/$token'
@@ -288,6 +307,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthedRouteChildren {
   AuthedSettingsRoute: typeof AuthedSettingsRoute
+  AuthedSkillsRoute: typeof AuthedSkillsRoute
   AuthedArchitecturesIdRoute: typeof AuthedArchitecturesIdRoute
   AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRoute
   AuthedArchitecturesIndexRoute: typeof AuthedArchitecturesIndexRoute
@@ -296,6 +316,7 @@ interface AuthedRouteChildren {
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedSettingsRoute: AuthedSettingsRoute,
+  AuthedSkillsRoute: AuthedSkillsRoute,
   AuthedArchitecturesIdRoute: AuthedArchitecturesIdRoute,
   AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRoute,
   AuthedArchitecturesIndexRoute: AuthedArchitecturesIndexRoute,

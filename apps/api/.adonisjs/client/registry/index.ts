@@ -198,6 +198,30 @@ const routes = {
     tokens: [{"old":"/questionnaires/:questionnaireId","type":0,"val":"questionnaires","end":""},{"old":"/questionnaires/:questionnaireId","type":1,"val":"questionnaireId","end":""}],
     types: placeholder as Registry['questionnaires.show']['types'],
   },
+  'skills.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/skills',
+    tokens: [{"old":"/skills","type":0,"val":"skills","end":""}],
+    types: placeholder as Registry['skills.index']['types'],
+  },
+  'skills.stats': {
+    methods: ["GET","HEAD"],
+    pattern: '/skills/stats',
+    tokens: [{"old":"/skills/stats","type":0,"val":"skills","end":""},{"old":"/skills/stats","type":0,"val":"stats","end":""}],
+    types: placeholder as Registry['skills.stats']['types'],
+  },
+  'skills.events': {
+    methods: ["GET","HEAD"],
+    pattern: '/skills/events',
+    tokens: [{"old":"/skills/events","type":0,"val":"skills","end":""},{"old":"/skills/events","type":0,"val":"events","end":""}],
+    types: placeholder as Registry['skills.events']['types'],
+  },
+  'skills.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/skills/:slug',
+    tokens: [{"old":"/skills/:slug","type":0,"val":"skills","end":""},{"old":"/skills/:slug","type":1,"val":"slug","end":""}],
+    types: placeholder as Registry['skills.show']['types'],
+  },
   'architectures.index': {
     methods: ["GET","HEAD"],
     pattern: '/architectures',

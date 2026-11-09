@@ -66,6 +66,7 @@ export default defineConfig({
     () => import('#start/routes'),
     () => import('#start/kernel'),
     () => import('#start/mail'),
+    () => import('#start/skills'),
   ],
 
   /*

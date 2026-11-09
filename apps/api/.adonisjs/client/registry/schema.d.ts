@@ -391,6 +391,54 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/questionnaires-controller').default['show']>>>
     }
   }
+  'skills.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/skills'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/skills/validators/skills-input').listSkillsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/skills-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/skills-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'skills.stats': {
+    methods: ["GET","HEAD"]
+    pattern: '/skills/stats'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/skills-controller').default['stats']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/skills-controller').default['stats']>>>
+    }
+  }
+  'skills.events': {
+    methods: ["GET","HEAD"]
+    pattern: '/skills/events'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/skills-events-controller').default['handle']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/skills-events-controller').default['handle']>>>
+    }
+  }
+  'skills.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/skills/:slug'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { slug: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/skills-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/skills-controller').default['show']>>>
+    }
+  }
   'architectures.index': {
     methods: ["GET","HEAD"]
     pattern: '/architectures'

@@ -25,3 +25,59 @@ export const SKILLS_SEARCH_LIMITS = {
   githubChecks: 200,
   githubChecksWithoutToken: 10,
 } as const
+
+/**
+ * Where a skill stands, as the Skills screen filters it: `suggested` (active and eligible: a
+ * generation may point to it), `catalogued` (active but failing a check) or `blocked`.
+ */
+export const SkillState = {
+  Suggested: 'suggested',
+  Catalogued: 'catalogued',
+  Blocked: 'blocked',
+} as const
+
+export type SkillState = (typeof SkillState)[keyof typeof SkillState]
+
+export const SKILL_STATES = Object.values(SkillState) as readonly SkillState[]
+
+/**
+ * A skill's worst security audit, from worst to best; `none` when skills.sh has no audit for it
+ * (a hand-picked skill the search has not matched yet). `unknown` ranks below `medium`: the
+ * auditor could not tell, which keeps the skill out of suggestions but is not a finding.
+ */
+export const SKILL_RISK_LEVELS = [
+  'critical',
+  'high',
+  'medium',
+  'unknown',
+  'low',
+  'safe',
+  'none',
+] as const
+
+export type SkillRiskLevel = (typeof SKILL_RISK_LEVELS)[number]
+
+/** How `GET /skills` orders the catalog. `trending`: installs gained since the previous run. */
+export const SkillSort = {
+  Installs: 'installs',
+  Trending: 'trending',
+  Newest: 'newest',
+  Name: 'name',
+} as const
+
+export type SkillSort = (typeof SkillSort)[keyof typeof SkillSort]
+
+export const SKILL_SORTS = Object.values(SkillSort) as readonly SkillSort[]
+
+/** How many search runs `GET /skills/stats` and a skill's history go back (half a year). */
+export const SKILLS_HISTORY_RUNS = 26
+
+/** Longest search text `GET /skills` takes. */
+export const SKILLS_SEARCH_MAX_LENGTH = 100
+
+/**
+ * Live updates (`GET /skills/events`): the Redis channel the worker publishes on when the
+ * catalog changes, and how often an open stream gets a comment line so proxies keep it open.
+ */
+export const SKILLS_EVENTS_CHANNEL = 'skills:catalog'
+export const SKILLS_EVENTS_HEARTBEAT_MS = 25_000

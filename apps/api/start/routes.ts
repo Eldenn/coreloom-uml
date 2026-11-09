@@ -196,6 +196,29 @@ router
 
 /*
 |--------------------------------------------------------------------------
+| Skills catalog (read-only, shared by every account)
+|--------------------------------------------------------------------------
+|
+| Hand-picked skills and those the weekly search finds on skills.sh (see
+| `app/skills`). `events` is a Server-Sent Events stream that says when the
+| catalog changed. `stats` and `events` come before `/:slug`.
+*/
+const skillsController = () => import('#app/skills/controllers/skills-controller')
+router
+  .group(() => {
+    router.get('/', [skillsController, 'index']).as('skills.index')
+    router.get('/stats', [skillsController, 'stats']).as('skills.stats')
+    router
+      .get('/events', [() => import('#app/skills/controllers/skills-events-controller'), 'handle'])
+      .as('skills.events')
+    router.get('/:slug', [skillsController, 'show']).as('skills.show')
+  })
+  .prefix('/skills')
+  .where('slug', /^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
+
+/*
+|--------------------------------------------------------------------------
 | Architectures and their diagrams (reference user-owned resource — copy this for new domains)
 |--------------------------------------------------------------------------
 */

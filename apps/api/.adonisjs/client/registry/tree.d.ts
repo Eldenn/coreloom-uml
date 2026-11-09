@@ -54,6 +54,12 @@ export interface ApiDefinition {
     index: typeof routes['questionnaires.index']
     show: typeof routes['questionnaires.show']
   }
+  skills: {
+    index: typeof routes['skills.index']
+    stats: typeof routes['skills.stats']
+    events: typeof routes['skills.events']
+    show: typeof routes['skills.show']
+  }
   architectures: {
     index: typeof routes['architectures.index']
     store: typeof routes['architectures.store']

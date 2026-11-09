@@ -307,6 +307,27 @@ node ace skills:block <slug> --reason "…"  # never suggest it again (--unblock
 `skills:setup` runs on every deploy after the migrations (see `infra/docker-compose.*.yml`), where
 `SKILLS_REFRESH_ENABLED` defaults to `true`.
 
+#### The Skills screen
+
+`/skills` in the web app shows the whole catalog as a live dashboard: key figures with their
+trend, installs and catalog growth at each weekly search, the audit and topic breakdowns, the
+skills gaining installs, and a ranked list (search, topic, diagram, status and audit filters with
+counts, sort by installs, trending, newest or name, pages) whose state is in the URL. A row opens
+the skill's sheet: source, licence, audits, why it is not suggested, installs at each search.
+
+| Route | What |
+| --- | --- |
+| `GET /skills` | The catalog filtered (`search`, `topic`, `diagramKind`, `state`, `risk`; a filter given several times matches any of its values), sorted (`sort=installs\|trending\|newest\|name`) and paginated, with `facets`: each filter's counts under the other filters |
+| `GET /skills/stats` | Totals, the last 26 search runs (skills returned, installs, new, eligible), audit and topic breakdowns, top gainers |
+| `GET /skills/:slug` | One skill with its run history and the reason it is not suggested |
+| `GET /skills/events` | Server-Sent Events: `catalog.refreshed` after a search, `catalog.updated` after `skills:block` |
+
+All four take the session or an API key with `read`. A skill's `state` is `suggested`, `catalogued`
+or `blocked`; its `risk` is its worst skills.sh audit (`none` without any). Live updates cross
+processes through Redis pub/sub (channel `skills:catalog`): the job and the commands publish, the
+HTTP server holds one subscription and pushes to every open stream; the screen then reloads its
+queries. Behind a proxy, keep `/skills/events` unbuffered (the response sets `X-Accel-Buffering: no`).
+
 #### Rule proposals with the user's own LLM (bring your own key)
 
 The server holds no provider key and stores none: the browser keeps the provider (`kind`,
