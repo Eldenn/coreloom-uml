@@ -12,7 +12,8 @@
     "@coreloom-uml/auth-policy",
     "@coreloom-uml/uml",
     "@coreloom-uml/catalog",
-    "@coreloom-uml/llm"
+    "@coreloom-uml/llm",
+    "@coreloom-uml/feature-flags"
   ],
   "privatePackages": {
     "version": true,

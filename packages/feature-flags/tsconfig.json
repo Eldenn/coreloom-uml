@@ -1,0 +1,15 @@
+{
+  "extends": "@coreloom-uml/config/tsconfig/node",
+  "compilerOptions": {
+    "noEmit": true,
+    // zod outputs `?: T | undefined`; the web app checks this code without exact optional properties.
+    "exactOptionalPropertyTypes": false,
+    // Consumed as TypeScript source, by Vite and by Node, which strips the types without
+    // resolving `.js` to `.ts`: relative imports name the `.ts` file, and only erasable syntax
+    // is allowed. (The API's tsconfig rewrites these extensions when it builds.)
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}
