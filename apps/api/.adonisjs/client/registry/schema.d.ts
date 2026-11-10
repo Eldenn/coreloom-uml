@@ -715,6 +715,66 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/sharing/controllers/sharing-controller').default['regenerateCode']>>>
     }
   }
+  'architectures.assistant.conversations.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/architectures/:id/assistant/conversations'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['index']>>>
+    }
+  }
+  'architectures.assistant.conversations.store': {
+    methods: ["POST"]
+    pattern: '/architectures/:id/assistant/conversations'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/assistant/validators/assistant-input').createConversationInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/assistant/validators/assistant-input').createConversationInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'architectures.assistant.conversations.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/architectures/:id/assistant/conversations/:conversationId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; conversationId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['show']>>>
+    }
+  }
+  'architectures.assistant.conversations.update': {
+    methods: ["PATCH"]
+    pattern: '/architectures/:id/assistant/conversations/:conversationId'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/assistant/validators/assistant-input').renameConversationInput)>>
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; conversationId: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/assistant/validators/assistant-input').renameConversationInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'architectures.assistant.conversations.destroy': {
+    methods: ["DELETE"]
+    pattern: '/architectures/:id/assistant/conversations/:conversationId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; conversationId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['destroy']>>>
+    }
+  }
   'uml.validate': {
     methods: ["POST"]
     pattern: '/uml/validate'

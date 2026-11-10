@@ -360,6 +360,36 @@ const routes = {
     tokens: [{"old":"/architectures/:id/sharing/regenerate-code","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/sharing/regenerate-code","type":1,"val":"id","end":""},{"old":"/architectures/:id/sharing/regenerate-code","type":0,"val":"sharing","end":""},{"old":"/architectures/:id/sharing/regenerate-code","type":0,"val":"regenerate-code","end":""}],
     types: placeholder as Registry['architectures.sharing.regenerate_code']['types'],
   },
+  'architectures.assistant.conversations.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/architectures/:id/assistant/conversations',
+    tokens: [{"old":"/architectures/:id/assistant/conversations","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations","type":0,"val":"conversations","end":""}],
+    types: placeholder as Registry['architectures.assistant.conversations.index']['types'],
+  },
+  'architectures.assistant.conversations.store': {
+    methods: ["POST"],
+    pattern: '/architectures/:id/assistant/conversations',
+    tokens: [{"old":"/architectures/:id/assistant/conversations","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations","type":0,"val":"conversations","end":""}],
+    types: placeholder as Registry['architectures.assistant.conversations.store']['types'],
+  },
+  'architectures.assistant.conversations.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/architectures/:id/assistant/conversations/:conversationId',
+    tokens: [{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"conversations","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":1,"val":"conversationId","end":""}],
+    types: placeholder as Registry['architectures.assistant.conversations.show']['types'],
+  },
+  'architectures.assistant.conversations.update': {
+    methods: ["PATCH"],
+    pattern: '/architectures/:id/assistant/conversations/:conversationId',
+    tokens: [{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"conversations","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":1,"val":"conversationId","end":""}],
+    types: placeholder as Registry['architectures.assistant.conversations.update']['types'],
+  },
+  'architectures.assistant.conversations.destroy': {
+    methods: ["DELETE"],
+    pattern: '/architectures/:id/assistant/conversations/:conversationId',
+    tokens: [{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"conversations","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":1,"val":"conversationId","end":""}],
+    types: placeholder as Registry['architectures.assistant.conversations.destroy']['types'],
+  },
   'uml.validate': {
     methods: ["POST"],
     pattern: '/uml/validate',

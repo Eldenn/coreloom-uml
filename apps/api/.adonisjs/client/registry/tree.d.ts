@@ -100,6 +100,15 @@ export interface ApiDefinition {
       regenerateLink: typeof routes['architectures.sharing.regenerate_link']
       regenerateCode: typeof routes['architectures.sharing.regenerate_code']
     }
+    assistant: {
+      conversations: {
+        index: typeof routes['architectures.assistant.conversations.index']
+        store: typeof routes['architectures.assistant.conversations.store']
+        show: typeof routes['architectures.assistant.conversations.show']
+        update: typeof routes['architectures.assistant.conversations.update']
+        destroy: typeof routes['architectures.assistant.conversations.destroy']
+      }
+    }
   }
   uml: {
     validate: typeof routes['uml.validate']

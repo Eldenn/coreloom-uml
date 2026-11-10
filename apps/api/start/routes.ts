@@ -347,6 +347,37 @@ router
 
 /*
 |--------------------------------------------------------------------------
+| Workspace assistant: conversations about an architecture (behind `diagram-assistant`)
+|--------------------------------------------------------------------------
+| Session only, unlike the architectures group: an API token never reaches the assistant.
+*/
+const assistantConversationsController = () =>
+  import('#app/assistant/controllers/assistant-conversations-controller')
+router
+  .group(() => {
+    router
+      .get('/conversations', [assistantConversationsController, 'index'])
+      .as('architectures.assistant.conversations.index')
+    router
+      .post('/conversations', [assistantConversationsController, 'store'])
+      .as('architectures.assistant.conversations.store')
+    router
+      .get('/conversations/:conversationId', [assistantConversationsController, 'show'])
+      .as('architectures.assistant.conversations.show')
+    router
+      .patch('/conversations/:conversationId', [assistantConversationsController, 'update'])
+      .as('architectures.assistant.conversations.update')
+    router
+      .delete('/conversations/:conversationId', [assistantConversationsController, 'destroy'])
+      .as('architectures.assistant.conversations.destroy')
+  })
+  .prefix('/architectures/:id/assistant')
+  .where('id', router.matchers.number())
+  .where('conversationId', router.matchers.number())
+  .use(middleware.auth())
+
+/*
+|--------------------------------------------------------------------------
 | UML: check a diagram (text or JSON) the way a save would, without storing it
 |--------------------------------------------------------------------------
 */
