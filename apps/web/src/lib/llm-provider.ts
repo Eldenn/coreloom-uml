@@ -99,7 +99,8 @@ const MODEL_CALL = { timeout: false } as const
 /** `POST /llm/test`: `{ ok, latencyMs }` or `{ ok: false, reason }`. */
 export function useTestProvider() {
   return useMutation({
-    mutationFn: (provider: StoredProvider) => client.api.llm.test({ body: callBody(provider), ...MODEL_CALL }),
+    mutationFn: (provider: StoredProvider) =>
+      client.api.llm.test({ body: callBody(provider), ...MODEL_CALL }),
   })
 }
 
