@@ -82,11 +82,13 @@ export function useRenameConversation(architectureId: number) {
 }
 
 export function useDeleteConversation(architectureId: number) {
-  const invalidate = useInvalidateAssistant(architectureId)
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (conversationId: number) =>
       api.conversations.destroy({ params: { id: architectureId, conversationId } }),
-    onSuccess: invalidate,
+    // Only the list: reading the deleted conversation again would answer 404.
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: [...assistantKeys.all(architectureId), 'list'] }),
   })
 }
 
