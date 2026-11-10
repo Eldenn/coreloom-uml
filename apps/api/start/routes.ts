@@ -355,6 +355,8 @@ const assistantConversationsController = () =>
   import('#app/assistant/controllers/assistant-conversations-controller')
 const assistantMessagesController = () =>
   import('#app/assistant/controllers/assistant-messages-controller')
+const assistantChangesController = () =>
+  import('#app/assistant/controllers/assistant-changes-controller')
 router
   .group(() => {
     router
@@ -379,10 +381,30 @@ router
     router
       .post('/conversations/:conversationId/context', [assistantMessagesController, 'context'])
       .as('architectures.assistant.context')
+    router
+      .post('/conversations/:conversationId/messages/:messageId/changes/:index/accept', [
+        assistantChangesController,
+        'accept',
+      ])
+      .as('architectures.assistant.changes.accept')
+    router
+      .post('/conversations/:conversationId/messages/:messageId/changes/:index/reject', [
+        assistantChangesController,
+        'reject',
+      ])
+      .as('architectures.assistant.changes.reject')
+    router
+      .post('/conversations/:conversationId/messages/:messageId/changes/:index/undo', [
+        assistantChangesController,
+        'undo',
+      ])
+      .as('architectures.assistant.changes.undo')
   })
   .prefix('/architectures/:id/assistant')
   .where('id', router.matchers.number())
   .where('conversationId', router.matchers.number())
+  .where('messageId', router.matchers.number())
+  .where('index', router.matchers.number())
   .use(middleware.auth())
 
 /*

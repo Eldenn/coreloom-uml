@@ -112,6 +112,11 @@ export interface ApiDefinition {
         store: typeof routes['architectures.assistant.messages.store']
       }
       context: typeof routes['architectures.assistant.context']
+      changes: {
+        accept: typeof routes['architectures.assistant.changes.accept']
+        reject: typeof routes['architectures.assistant.changes.reject']
+        undo: typeof routes['architectures.assistant.changes.undo']
+      }
     }
   }
   uml: {

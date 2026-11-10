@@ -799,6 +799,42 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-messages-controller').default['context']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'architectures.assistant.changes.accept': {
+    methods: ["POST"]
+    pattern: '/architectures/:id/assistant/conversations/:conversationId/messages/:messageId/changes/:index/accept'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue, ParamValue, ParamValue]
+      params: { id: ParamValue; conversationId: ParamValue; messageId: ParamValue; index: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-changes-controller').default['accept']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-changes-controller').default['accept']>>>
+    }
+  }
+  'architectures.assistant.changes.reject': {
+    methods: ["POST"]
+    pattern: '/architectures/:id/assistant/conversations/:conversationId/messages/:messageId/changes/:index/reject'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue, ParamValue, ParamValue]
+      params: { id: ParamValue; conversationId: ParamValue; messageId: ParamValue; index: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-changes-controller').default['reject']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-changes-controller').default['reject']>>>
+    }
+  }
+  'architectures.assistant.changes.undo': {
+    methods: ["POST"]
+    pattern: '/architectures/:id/assistant/conversations/:conversationId/messages/:messageId/changes/:index/undo'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue, ParamValue, ParamValue]
+      params: { id: ParamValue; conversationId: ParamValue; messageId: ParamValue; index: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-changes-controller').default['undo']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-changes-controller').default['undo']>>>
+    }
+  }
   'uml.validate': {
     methods: ["POST"]
     pattern: '/uml/validate'

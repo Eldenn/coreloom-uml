@@ -50,6 +50,10 @@ export type StoredChange = {
   status: ChangeStatus
   appliedVersion: number | null
   problems: UmlProblem[]
+  /** Set when an update is accepted: the view's kind before, restored by an undo. */
+  baseKind?: string
+  /** Set when a delete is accepted: where the view stood, where an undo puts it back. */
+  position?: number
 }
 
 /** The languages the assistant replies in: the interface's. */

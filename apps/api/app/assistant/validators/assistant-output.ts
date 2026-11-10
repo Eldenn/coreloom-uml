@@ -8,7 +8,12 @@ export type ConversationOutput = {
 }
 
 /** A stored change without its internal base fields, plus its position in the message. */
-export type ChangeOutput = Omit<StoredChange, 'baseTitle' | 'baseFormat'> & { index: number }
+export type ChangeOutput = Omit<
+  StoredChange,
+  'baseTitle' | 'baseFormat' | 'baseKind' | 'position'
+> & {
+  index: number
+}
 
 export type MessageOutput = {
   id: number
