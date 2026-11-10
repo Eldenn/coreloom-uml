@@ -122,6 +122,7 @@ export type {
   UseCaseRelation,
   UseCaseRelationKind,
 } from './uml-elements.ts'
+export { keepLayout, withoutLayout } from './uml-layout-merge.ts'
 export { isMermaidSpec, type MermaidSpec, parseMermaid, toMermaid } from './uml-mermaid.ts'
 export { isPlantUml, parsePlantUml, toPlantUml } from './uml-plantuml.ts'
 export {
