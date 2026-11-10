@@ -775,6 +775,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['destroy']>>>
     }
   }
+  'architectures.assistant.conversations.continue': {
+    methods: ["POST"]
+    pattern: '/architectures/:id/assistant/conversations/:conversationId/continue'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/assistant/validators/assistant-input').continueConversationInput)>>
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; conversationId: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/assistant/validators/assistant-input').continueConversationInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['continue']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['continue']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'architectures.assistant.messages.store': {
     methods: ["POST"]
     pattern: '/architectures/:id/assistant/conversations/:conversationId/messages'
@@ -797,6 +809,18 @@ export interface Registry {
       query: ExtractQuery<InferInput<(typeof import('#app/assistant/validators/assistant-input').assistantContextInput)>>
       response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-messages-controller').default['context']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-messages-controller').default['context']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'architectures.assistant.messages.destroy': {
+    methods: ["DELETE"]
+    pattern: '/architectures/:id/assistant/conversations/:conversationId/messages/:messageId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue, ParamValue]
+      params: { id: ParamValue; conversationId: ParamValue; messageId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-messages-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-messages-controller').default['destroy']>>>
     }
   }
   'architectures.assistant.changes.accept': {

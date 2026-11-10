@@ -34,6 +34,9 @@ import { DIAGRAM_NOT_FOUND } from '#app/diagrams/services/owned-diagram'
 import { llmFailure, userLanguageModel } from '#app/llm/services/language-models'
 import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
 
+const MESSAGE_NOT_FOUND = { error: { message: 'Message not found' } } as const
+const NOT_A_SUMMARY = { error: { message: 'Only a summary can be deleted.' } } as const
+
 const CONTEXT_FULL = {
   error: { message: 'The conversation is too long for the model.', code: 'context_full' },
 } as const
@@ -136,6 +139,24 @@ export default class AssistantMessagesController {
 
     const source = await assistantSource(found.architecture, found.conversation, view)
     return response.ok({ budget: assistantBudget(source) })
+  }
+
+  /** `DELETE …/conversations/:conversationId/messages/:messageId` — a summary only. */
+  async destroy({ params, auth, response }: HttpContext) {
+    const user = auth.getUserOrFail()
+    if (!(await assistantEnabled(user))) return response.notFound(ASSISTANT_NOT_FOUND)
+    const found = await findOwnedConversation(params.id, params.conversationId, user)
+    if (!found) return response.notFound(MESSAGE_NOT_FOUND)
+
+    const message = await AssistantMessage.query()
+      .where('id', params.messageId)
+      .where('conversationId', found.conversation.id)
+      .first()
+    if (!message) return response.notFound(MESSAGE_NOT_FOUND)
+    if (message.role !== AssistantRole.Summary) return response.conflict(NOT_A_SUMMARY)
+
+    await message.delete()
+    return response.noContent()
   }
 }
 

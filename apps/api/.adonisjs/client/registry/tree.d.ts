@@ -107,9 +107,11 @@ export interface ApiDefinition {
         show: typeof routes['architectures.assistant.conversations.show']
         update: typeof routes['architectures.assistant.conversations.update']
         destroy: typeof routes['architectures.assistant.conversations.destroy']
+        continue: typeof routes['architectures.assistant.conversations.continue']
       }
       messages: {
         store: typeof routes['architectures.assistant.messages.store']
+        destroy: typeof routes['architectures.assistant.messages.destroy']
       }
       context: typeof routes['architectures.assistant.context']
       changes: {

@@ -375,12 +375,25 @@ router
       .delete('/conversations/:conversationId', [assistantConversationsController, 'destroy'])
       .as('architectures.assistant.conversations.destroy')
     router
+      .post('/conversations/:conversationId/continue', [
+        assistantConversationsController,
+        'continue',
+      ])
+      .as('architectures.assistant.conversations.continue')
+      .use(llmThrottle)
+    router
       .post('/conversations/:conversationId/messages', [assistantMessagesController, 'store'])
       .as('architectures.assistant.messages.store')
       .use(llmThrottle)
     router
       .post('/conversations/:conversationId/context', [assistantMessagesController, 'context'])
       .as('architectures.assistant.context')
+    router
+      .delete('/conversations/:conversationId/messages/:messageId', [
+        assistantMessagesController,
+        'destroy',
+      ])
+      .as('architectures.assistant.messages.destroy')
     router
       .post('/conversations/:conversationId/messages/:messageId/changes/:index/accept', [
         assistantChangesController,

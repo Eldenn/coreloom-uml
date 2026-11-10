@@ -390,6 +390,12 @@ const routes = {
     tokens: [{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"conversations","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":1,"val":"conversationId","end":""}],
     types: placeholder as Registry['architectures.assistant.conversations.destroy']['types'],
   },
+  'architectures.assistant.conversations.continue': {
+    methods: ["POST"],
+    pattern: '/architectures/:id/assistant/conversations/:conversationId/continue',
+    tokens: [{"old":"/architectures/:id/assistant/conversations/:conversationId/continue","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/continue","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/continue","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/continue","type":0,"val":"conversations","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/continue","type":1,"val":"conversationId","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/continue","type":0,"val":"continue","end":""}],
+    types: placeholder as Registry['architectures.assistant.conversations.continue']['types'],
+  },
   'architectures.assistant.messages.store': {
     methods: ["POST"],
     pattern: '/architectures/:id/assistant/conversations/:conversationId/messages',
@@ -401,6 +407,12 @@ const routes = {
     pattern: '/architectures/:id/assistant/conversations/:conversationId/context',
     tokens: [{"old":"/architectures/:id/assistant/conversations/:conversationId/context","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/context","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/context","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/context","type":0,"val":"conversations","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/context","type":1,"val":"conversationId","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/context","type":0,"val":"context","end":""}],
     types: placeholder as Registry['architectures.assistant.context']['types'],
+  },
+  'architectures.assistant.messages.destroy': {
+    methods: ["DELETE"],
+    pattern: '/architectures/:id/assistant/conversations/:conversationId/messages/:messageId',
+    tokens: [{"old":"/architectures/:id/assistant/conversations/:conversationId/messages/:messageId","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages/:messageId","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages/:messageId","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages/:messageId","type":0,"val":"conversations","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages/:messageId","type":1,"val":"conversationId","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages/:messageId","type":0,"val":"messages","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages/:messageId","type":1,"val":"messageId","end":""}],
+    types: placeholder as Registry['architectures.assistant.messages.destroy']['types'],
   },
   'architectures.assistant.changes.accept': {
     methods: ["POST"],

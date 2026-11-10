@@ -30,10 +30,6 @@ export async function assistantSource(
   selection: ViewSelection,
 ): Promise<AssistantSource> {
   const { message, currentDiagramId, diagramIds, locale } = selection
-  const messages = await AssistantMessage.query()
-    .where('conversationId', conversation.id)
-    .orderBy('id', 'asc')
-
   return {
     architecture: architecture.title,
     views: architecture.diagrams
@@ -48,10 +44,20 @@ export async function assistantSource(
         content: diagram.content,
         current: diagram.id === currentDiagramId,
       })),
-    history: messages.map(historyTurn),
+    history: await conversationHistory(conversation),
     message,
     locale,
   }
+}
+
+/** The stored conversation as the model reads it: a proposed change is one `changeLine`. */
+export async function conversationHistory(
+  conversation: AssistantConversation,
+): Promise<AssistantTurn[]> {
+  const messages = await AssistantMessage.query()
+    .where('conversationId', conversation.id)
+    .orderBy('id', 'asc')
+  return messages.map(historyTurn)
 }
 
 function historyTurn(message: AssistantMessage): AssistantTurn {

@@ -37,3 +37,8 @@ export const assistantContextInput = vine.create(
     ...viewSelection(),
   }),
 )
+
+/** `POST …/assistant/conversations/:conversationId/continue` — the model summarizes the history. */
+export const continueConversationInput = vine.create(
+  vine.object({ ...llmCallFields(), locale: vine.enum(ASSISTANT_LOCALES) }),
+)
