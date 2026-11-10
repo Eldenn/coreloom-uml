@@ -45,7 +45,8 @@ export function useChangeActions(
       const result = await applyChange(autosave, action, change, () =>
         changeAction.mutateAsync({ conversationId, messageId, index: change.index, action }),
       )
-      if (result === null) toast.error(t.saveFirst)
+      if ('refused' in result)
+        toast.error(result.refused === 'unreadable' ? t.fixEditsFirst : t.saveFirst)
     } catch (error) {
       toast.error(changeErrorText(error, t))
     }

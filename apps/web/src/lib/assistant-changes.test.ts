@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { applyChange, budgetLevel } from './assistant-changes'
+import { applyChange, budgetLevel, type FlushResult } from './assistant-changes'
 
 const budget = (history: number) => ({
   system: 100,
@@ -25,7 +25,7 @@ describe('budgetLevel', () => {
   })
 })
 
-function fakeAutosave(flushResult: boolean) {
+function fakeAutosave(flushResult: FlushResult) {
   const calls: string[] = []
   return {
     calls,
@@ -49,17 +49,17 @@ function fakeAutosave(flushResult: boolean) {
 
 describe('applyChange', () => {
   it('flushes before and resets after', async () => {
-    const autosave = fakeAutosave(true)
+    const autosave = fakeAutosave('saved')
     const result = await applyChange(autosave, 'accept', { diagramId: 7 }, () => {
       autosave.calls.push('action')
       return Promise.resolve('done')
     })
-    expect(result).toBe('done')
+    expect(result).toEqual({ done: 'done' })
     expect(autosave.calls).toEqual(['flush 7', 'hold', 'action', 'reset 7', 'release'])
   })
 
   it('holds saves back from the action until the reset', async () => {
-    const autosave = fakeAutosave(true)
+    const autosave = fakeAutosave('saved')
     let saveRanDuringAction = false
     await applyChange(autosave, 'accept', { diagramId: 7 }, () => {
       // What the debounce timer would see while the accept is in flight.
@@ -71,7 +71,7 @@ describe('applyChange', () => {
   })
 
   it('does not reset and passes the error on when the action fails', async () => {
-    const autosave = fakeAutosave(true)
+    const autosave = fakeAutosave('saved')
     const stale = new Error('409 stale change')
     await expect(
       applyChange(autosave, 'accept', { diagramId: 7 }, () => Promise.reject(stale)),
@@ -80,17 +80,27 @@ describe('applyChange', () => {
   })
 
   it('does not call the action when the flush fails', async () => {
-    const autosave = fakeAutosave(false)
+    const autosave = fakeAutosave('failed')
     const result = await applyChange(autosave, 'undo', { diagramId: 7 }, () => {
       autosave.calls.push('action')
       return Promise.resolve('done')
     })
-    expect(result).toBeNull()
+    expect(result).toEqual({ refused: 'failed' })
+    expect(autosave.calls).toEqual(['flush 7'])
+  })
+
+  it('does not send the action nor reset the view when its text does not read', async () => {
+    const autosave = fakeAutosave('unreadable')
+    const result = await applyChange(autosave, 'accept', { diagramId: 7 }, () => {
+      autosave.calls.push('action')
+      return Promise.resolve('done')
+    })
+    expect(result).toEqual({ refused: 'unreadable' })
     expect(autosave.calls).toEqual(['flush 7'])
   })
 
   it('leaves the editor alone for a reject or a view not created yet', async () => {
-    const autosave = fakeAutosave(false)
+    const autosave = fakeAutosave('failed')
     const action = () => {
       autosave.calls.push('action')
       return Promise.resolve('done')

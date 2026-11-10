@@ -473,6 +473,8 @@ export const en = {
     reject: 'Reject',
     undo: 'Undo',
     saveFirst: 'Your edits to this view could not be saved: the change was not applied.',
+    fixEditsFirst:
+      'Your edits to this view don’t read as a diagram yet: fix or undo them first. The change was not applied.',
     actionFailed: 'That didn’t work. Try again.',
     conflicts: {
       not_pending: 'This change was already answered.',
@@ -1110,6 +1112,8 @@ export const fr: Messages = {
     undo: 'Annuler',
     saveFirst:
       'Vos modifications de cette vue n’ont pas pu être enregistrées : le changement n’a pas été appliqué.',
+    fixEditsFirst:
+      'Vos modifications de cette vue ne se lisent pas encore comme un diagramme : corrigez-les ou annulez-les d’abord. Le changement n’a pas été appliqué.',
     actionFailed: 'Cela n’a pas fonctionné. Réessayez.',
     conflicts: {
       not_pending: 'Ce changement a déjà reçu une réponse.',

@@ -18,6 +18,7 @@ import {
   type Diagram,
   useSaveDiagram,
 } from '@/lib/architectures'
+import type { FlushResult } from '@/lib/assistant-changes'
 import { TuyauError } from '@/lib/client'
 
 /** Quiet time after the last change before the changes are saved. */
@@ -55,6 +56,8 @@ export function useDiagramAutosave(architecture: ArchitectureDetail) {
   const [savedAt, setSavedAt] = React.useState<Date>()
   const [conflictId, setConflictId] = React.useState<number | null>(null)
   const pending = React.useRef(new Map<number, Pending>())
+  /** Views whose text does not read as a diagram: kept as a draft, never saved. */
+  const unreadable = React.useRef(new Set<number>())
   const queryClient = useQueryClient()
   const architectureId = architecture.id
 
@@ -123,24 +126,28 @@ export function useDiagramAutosave(architecture: ArchitectureDetail) {
     [enqueue, saveChange, markConflict, saved],
   )
 
-  /** Saves only this view's pending change: `false` when that save failed or met a conflict. */
+  /**
+   * Saves only this view's pending change: `failed` when that save failed or met a conflict,
+   * `unreadable` (nothing saved) when the view's text does not read as a diagram.
+   */
   const flushDiagram = (diagramId: number) =>
-    enqueue(async () => {
+    enqueue(async (): Promise<FlushResult> => {
+      if (unreadable.current.has(diagramId)) return 'unreadable'
       const change = pending.current.get(diagramId)
-      if (!change) return true
+      if (!change) return 'saved'
       try {
         await saveChange(diagramId, change, false)
       } catch (error) {
         if (isConflict(error)) markConflict(diagramId)
         setState('error')
-        return false
+        return 'failed'
       }
       // Another view's conflict stays on screen until it is settled.
       if (conflict.current === null || conflict.current === diagramId) {
         markConflict(null)
         saved()
       }
-      return true
+      return 'saved'
     })
 
   React.useEffect(() => {
@@ -159,7 +166,11 @@ export function useDiagramAutosave(architecture: ArchitectureDetail) {
   ) => {
     setDrafts((all) => ({ ...all, [diagram.id]: { value, format } }))
     // Text that can't be read yet stays a draft; the last good diagram stays saved.
-    if (!result.diagram || result.problems.some((p) => p.severity === 'error')) return
+    if (!result.diagram || result.problems.some((p) => p.severity === 'error')) {
+      unreadable.current.add(diagram.id)
+      return
+    }
+    unreadable.current.delete(diagram.id)
     const unchanged =
       JSON.stringify(result.diagram) === JSON.stringify(diagram.content) &&
       format === diagram.format
@@ -174,6 +185,7 @@ export function useDiagramAutosave(architecture: ArchitectureDetail) {
    */
   const discard = (diagramId: number) => {
     pending.current.delete(diagramId)
+    unreadable.current.delete(diagramId)
     setDrafts(({ [diagramId]: _dropped, ...rest }) => rest)
     if (conflict.current !== null && conflict.current !== diagramId) return
     markConflict(null)
