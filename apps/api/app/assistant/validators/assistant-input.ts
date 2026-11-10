@@ -8,6 +8,14 @@ import { llmCallFields } from '#app/llm/validators/llm-input'
 
 const titleInput = () => vine.string().trim().minLength(1).maxLength(ASSISTANT_TITLE_MAX_LENGTH)
 
+/** `GET …/assistant/conversations` query params. */
+export const listConversationsInput = vine.create(
+  vine.object({
+    page: vine.number().withoutDecimals().min(1).optional(),
+    perPage: vine.number().withoutDecimals().min(1).optional(),
+  }),
+)
+
 /** `POST …/assistant/conversations` — an empty conversation; the title may come later. */
 export const createConversationInput = vine.create(vine.object({ title: titleInput().optional() }))
 

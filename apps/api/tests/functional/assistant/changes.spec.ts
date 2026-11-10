@@ -87,7 +87,7 @@ async function setup(email: string) {
   const updateOf = (target: Diagram, extra: Partial<StoredChange> = {}) => ({
     op: 'update' as const,
     diagramId: target.id,
-    kind: 'class',
+    kind: 'class' as const,
     title: target.title,
     format: target.format,
     before: target.content,

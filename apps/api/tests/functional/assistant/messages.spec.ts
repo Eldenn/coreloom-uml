@@ -246,6 +246,25 @@ test.group('Assistant messages', (group) => {
     assert.isNotEmpty(change.problems)
   })
 
+  test('stores a failed create of an unknown kind without a kind', async ({ client, assert }) => {
+    const { user, diagram, base } = await setup('assist-msg-failed-kind@example.com')
+    const invalid = answer([
+      { op: 'create', kind: 'flowchart', title: 'Flow', diagram: '{"kind":"flowchart"}' },
+    ])
+    useModel(sequenceModel([invalid, invalid]).model)
+
+    const response = await client
+      .post(`${base}/messages`)
+      .headers(json)
+      .loginAs(user)
+      .json(ask(diagram.id))
+
+    response.assertStatus(200)
+    const [change] = response.body().messages[1].changes
+    assert.equal(change.status, 'failed')
+    assert.isNull(change.kind)
+  })
+
   test('answers 422 context_full and stores nothing', async ({ client, assert }) => {
     const { user, diagram, conversation, base } = await setup('assist-msg-full@example.com')
     await AssistantMessage.create({

@@ -1,5 +1,5 @@
 import type { UmlProblem, UmlSpec } from '@coreloom-uml/uml'
-import type { DiagramFormat } from '#app/diagrams/constants/diagram'
+import type { DiagramFormat, DiagramKind } from '#app/diagrams/constants/diagram'
 
 export const AssistantRole = {
   User: 'user',
@@ -30,28 +30,27 @@ export const ASSISTANT_MESSAGE_MAX_LENGTH = 4000
 export const ASSISTANT_TITLE_MAX_LENGTH = 200
 /** A conversation without a title takes the first characters of its first message. */
 export const ASSISTANT_TITLE_FROM_MESSAGE = 60
-/** Most conversations `GET …/assistant/conversations` returns. */
-export const ASSISTANT_CONVERSATIONS_LIMIT = 100
 
 /** A diagram change the assistant proposed, as stored in `assistant_messages.changes`. */
 export type StoredChange = {
   op: ChangeOp
   diagramId: number | null
-  kind: string
+  /** `null` only on a `failed` change whose kind the model left out or got wrong. */
+  kind: DiagramKind | null
   title: string
   format: DiagramFormat | null
   before: UmlSpec | null
   after: UmlSpec | null
   baseVersion: number | null
   baseTitle: string | null
-  baseFormat: string | null
+  baseFormat: DiagramFormat | null
   relayout: boolean
   placed: number
   status: ChangeStatus
   appliedVersion: number | null
   problems: UmlProblem[]
   /** Set when an update is accepted: the view's kind before, restored by an undo. */
-  baseKind?: string
+  baseKind?: DiagramKind
   /** Set when a delete is accepted: where the view stood, where an undo puts it back. */
   position?: number
 }

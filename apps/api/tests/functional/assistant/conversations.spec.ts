@@ -15,6 +15,7 @@ import { withDefaultFlags } from '#tests/helpers/feature-flags'
 
 const json = { accept: 'application/json' }
 const ON = { enabled: true, rollout: 100, rules: [] }
+const OFF = { enabled: false, rollout: 0, rules: [] }
 const KEY = 'sk-fixture-continue-never-stored'
 const summarize = {
   provider: { kind: 'mistral', model: 'mistral-small-latest' },
@@ -78,9 +79,9 @@ function makeUser(email: string) {
   return User.create({ email, password: 'a-very-strong-passphrase' })
 }
 
-async function setup(email: string, flagOn = true) {
+async function setup(email: string) {
   const user = await makeUser(email)
-  if (flagOn) await updateFlag(FeatureFlagKey.DiagramAssistant, ON, user)
+  await updateFlag(FeatureFlagKey.DiagramAssistant, ON, user)
   const architecture = await Architecture.create({
     userId: user.id,
     title: 'Shop',
@@ -93,18 +94,42 @@ test.group('Assistant conversations', (group) => {
   group.each.setup(() => withDefaultFlags())
   group.each.teardown(() => app.container.restore(LanguageModels))
 
-  test('404 while the flag is off', async ({ client }) => {
-    const { user, base } = await setup('assist-off@example.com', false)
+  test('404 while the flag is off, on real conversations and messages', async ({ client }) => {
+    const { user, architecture, base } = await setup('assist-off@example.com')
+    const conversation = await AssistantConversation.create({
+      architectureId: architecture.id,
+      userId: user.id,
+      title: 'Plan',
+    })
+    const summary = await AssistantMessage.create({
+      conversationId: conversation.id,
+      role: AssistantRole.Summary,
+      content: 'Earlier on.',
+    })
+    const path = `${base}/${conversation.id}`
+    useModel(recordingModel('The plan so far.').model)
+    await updateFlag(FeatureFlagKey.DiagramAssistant, OFF, user)
+
     for (const response of [
       await client.get(base).headers(json).loginAs(user),
       await client.post(base).headers(json).loginAs(user).json({}),
-      await client.get(`${base}/1`).headers(json).loginAs(user),
-      await client.patch(`${base}/1`).headers(json).loginAs(user).json({ title: 'x' }),
-      await client.delete(`${base}/1`).headers(json).loginAs(user),
-      await client.post(`${base}/1/continue`).headers(json).loginAs(user).json(summarize),
-      await client.delete(`${base}/1/messages/1`).headers(json).loginAs(user),
+      await client.get(path).headers(json).loginAs(user),
+      await client.patch(path).headers(json).loginAs(user).json({ title: 'x' }),
+      await client.delete(path).headers(json).loginAs(user),
+      await client.post(`${path}/continue`).headers(json).loginAs(user).json(summarize),
+      await client.delete(`${path}/messages/${summary.id}`).headers(json).loginAs(user),
     ])
       response.assertStatus(404)
+
+    // The same ids answer once the flag is back on: the 404s above came from the flag.
+    await updateFlag(FeatureFlagKey.DiagramAssistant, ON, user)
+    const show = await client.get(path).headers(json).loginAs(user)
+    show.assertStatus(200)
+    const removed = await client
+      .delete(`${path}/messages/${summary.id}`)
+      .headers(json)
+      .loginAs(user)
+    removed.assertStatus(204)
   })
 
   test('creates, lists, renames and deletes', async ({ client, assert }) => {
@@ -119,8 +144,19 @@ test.group('Assistant conversations', (group) => {
 
     const list = await client.get(base).headers(json).loginAs(user)
     list.assertStatus(200)
-    assert.lengthOf(list.body().conversations, 2)
-    assert.equal(list.body().conversations[0].id, untitled.body().conversation.id)
+    assert.lengthOf(list.body().data, 2)
+    assert.equal(list.body().data[0].id, untitled.body().conversation.id)
+    assert.deepEqual(list.body().meta, { page: 1, perPage: 20, total: 2, lastPage: 1 })
+
+    const second = await client.get(base).qs({ page: 2, perPage: 1 }).headers(json).loginAs(user)
+    second.assertStatus(200)
+    assert.deepEqual(
+      second.body().data.map((conversation: { id: number }) => conversation.id),
+      [id],
+    )
+    assert.deepEqual(second.body().meta, { page: 2, perPage: 1, total: 2, lastPage: 2 })
+    const zero = await client.get(base).qs({ perPage: 0 }).headers(json).loginAs(user)
+    zero.assertStatus(422)
 
     const show = await client.get(`${base}/${id}`).headers(json).loginAs(user)
     show.assertStatus(200)
@@ -186,11 +222,24 @@ test.group('Assistant conversations', (group) => {
     response.assertStatus(401)
   })
 
-  test('deleting the architecture deletes its conversations', async ({ client, assert }) => {
+  test('deleting the architecture deletes its conversations and messages', async ({
+    client,
+    assert,
+  }) => {
     const { user, architecture, base } = await setup('assist-cascade@example.com')
     const created = await client.post(base).headers(json).loginAs(user).json({})
-    await client.delete(`/architectures/${architecture.id}`).headers(json).loginAs(user)
+    const message = await AssistantMessage.create({
+      conversationId: created.body().conversation.id,
+      role: AssistantRole.User,
+      content: 'Hello',
+    })
+    const removed = await client
+      .delete(`/architectures/${architecture.id}`)
+      .headers(json)
+      .loginAs(user)
+    removed.assertStatus(204)
     assert.isNull(await AssistantConversation.find(created.body().conversation.id))
+    assert.isNull(await AssistantMessage.find(message.id))
   })
 
   test('continues a conversation that is over the budget, with its summary first', async ({
@@ -266,6 +315,27 @@ test.group('Assistant conversations', (group) => {
 
     response.assertStatus(502)
     assert.equal(response.body().reason, 'unauthorized')
+    const conversations = await AssistantConversation.query().where(
+      'architectureId',
+      architecture.id,
+    )
+    assert.lengthOf(conversations, 1)
+  })
+
+  test('continue: an empty summary is a 502 that stores nothing', async ({ client, assert }) => {
+    const { user, architecture, conversation, base } = await longConversation(
+      'assist-continue-empty@example.com',
+    )
+    useModel(recordingModel('   ').model)
+
+    const response = await client
+      .post(`${base}/${conversation.id}/continue`)
+      .headers(json)
+      .loginAs(user)
+      .json(summarize)
+
+    response.assertStatus(502)
+    assert.equal(response.body().reason, 'unknown')
     const conversations = await AssistantConversation.query().where(
       'architectureId',
       architecture.id,

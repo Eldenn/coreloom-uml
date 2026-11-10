@@ -9,7 +9,6 @@ export default class extends BaseSchema {
       table.increments('id')
       table
         .integer('conversation_id')
-        .unsigned()
         .notNullable()
         .references('id')
         .inTable('assistant_conversations')

@@ -722,9 +722,9 @@ export interface Registry {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
-      query: {}
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/assistant/validators/assistant-input').listConversationsInput)>>
       response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['index']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'architectures.assistant.conversations.store': {

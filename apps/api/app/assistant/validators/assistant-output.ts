@@ -1,4 +1,5 @@
 import type { AssistantRole, StoredChange } from '#app/assistant/constants/assistant'
+import type { Paginated } from '#app/shared/pagination/paginate'
 
 export type ConversationOutput = {
   id: number
@@ -6,6 +7,8 @@ export type ConversationOutput = {
   createdAt: string
   updatedAt: string
 }
+
+export type ConversationsListOutput = Paginated<ConversationOutput>
 
 /** A stored change without its internal base fields, plus its position in the message. */
 export type ChangeOutput = Omit<

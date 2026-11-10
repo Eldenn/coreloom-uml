@@ -9,22 +9,16 @@ export default class extends BaseSchema {
       table.increments('id')
       table
         .integer('architecture_id')
-        .unsigned()
         .notNullable()
         .references('id')
         .inTable('architectures')
         .onDelete('CASCADE')
-      table
-        .integer('user_id')
-        .unsigned()
-        .notNullable()
-        .references('id')
-        .inTable('users')
-        .onDelete('CASCADE')
+      table.integer('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE')
       table.string('title', 200).notNullable()
       table.timestamp('created_at', { useTz: true }).notNullable()
       table.timestamp('updated_at', { useTz: true }).notNullable()
       table.index(['architecture_id', 'updated_at'])
+      table.index('user_id')
     })
   }
 

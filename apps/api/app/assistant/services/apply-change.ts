@@ -9,7 +9,7 @@ import {
   type StoredChange,
 } from '#app/assistant/constants/assistant'
 import AssistantMessage from '#app/assistant/models/assistant-message'
-import { DiagramFormat, type DiagramKind } from '#app/diagrams/constants/diagram'
+import { DiagramFormat } from '#app/diagrams/constants/diagram'
 import Diagram from '#app/diagrams/models/diagram'
 import { checkDiagramValue } from '#app/diagrams/services/diagram-content'
 import { DIAGRAM_CHANGED, touchArchitecture } from '#app/diagrams/services/owned-diagram'
@@ -154,6 +154,9 @@ const STEPS: Record<ApplyChangeAction, StepFn> = {
     if (change.op === ChangeOp.Delete) {
       const checked = change.before === null ? null : checkDiagramValue(change.before)
       if (checked && !checked.diagram) return { invalid: checked.problems }
+      const kind = checked?.diagram?.kind ?? change.kind
+      // Unreachable: only a failed change has no kind, and a failed change is never accepted.
+      if (!kind) return { conflict: NOT_ACCEPTED, change }
       const position = change.position ?? 0
       await Diagram.query({ client: trx })
         .where('architectureId', architecture.id)
@@ -163,7 +166,7 @@ const STEPS: Record<ApplyChangeAction, StepFn> = {
         {
           architectureId: architecture.id,
           title: change.baseTitle ?? change.title,
-          kind: (checked?.diagram?.kind ?? change.kind) as DiagramKind,
+          kind,
           content: checked?.diagram ?? null,
           position,
           format: change.format ?? DiagramFormat.Json,
@@ -197,7 +200,7 @@ const STEPS: Record<ApplyChangeAction, StepFn> = {
     const checked = change.before === null ? null : checkDiagramValue(change.before)
     if (checked && !checked.diagram) return { invalid: checked.problems }
     diagram.content = checked?.diagram ?? null
-    diagram.kind = (checked?.diagram?.kind ?? change.baseKind ?? diagram.kind) as DiagramKind
+    diagram.kind = checked?.diagram?.kind ?? change.baseKind ?? diagram.kind
     diagram.title = change.baseTitle ?? diagram.title
     diagram.version += 1
     await diagram.save()

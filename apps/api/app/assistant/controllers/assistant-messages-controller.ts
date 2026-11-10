@@ -27,7 +27,11 @@ import {
 } from '#app/assistant/services/owned-conversation'
 import { askAssistantInput, assistantContextInput } from '#app/assistant/validators/assistant-input'
 import type { AskAssistantOutput } from '#app/assistant/validators/assistant-output'
-import { DIAGRAM_TITLE_MAX_LENGTH } from '#app/diagrams/constants/diagram'
+import {
+  DIAGRAM_KINDS,
+  DIAGRAM_TITLE_MAX_LENGTH,
+  type DiagramKind,
+} from '#app/diagrams/constants/diagram'
 import type Diagram from '#app/diagrams/models/diagram'
 import { checkDiagramValue } from '#app/diagrams/services/diagram-content'
 import { DIAGRAM_NOT_FOUND } from '#app/diagrams/services/owned-diagram'
@@ -160,6 +164,9 @@ export default class AssistantMessagesController {
   }
 }
 
+const knownKind = (kind: string | undefined): DiagramKind | null =>
+  DIAGRAM_KINDS.find((known) => known === kind) ?? null
+
 const problem = (text: string): UmlProblem => ({ line: 0, severity: 'error', code: 'schema', text })
 
 /**
@@ -175,7 +182,7 @@ function storedChange(change: ProposedChange, diagrams: readonly Diagram[]): Sto
   const base = {
     op: change.op,
     diagramId: target?.id ?? null,
-    kind: target?.kind ?? ('kind' in change ? (change.kind ?? '') : ''),
+    kind: target?.kind ?? ('kind' in change ? knownKind(change.kind) : null),
     title,
     format: target?.format ?? null,
     before: target?.content ?? null,

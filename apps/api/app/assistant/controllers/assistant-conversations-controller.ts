@@ -7,11 +7,7 @@ import {
   ARCHITECTURE_NOT_FOUND,
   findOwnedArchitecture,
 } from '#app/architectures/services/owned-architecture'
-import {
-  ASSISTANT_CONVERSATIONS_LIMIT,
-  ASSISTANT_TITLE_MAX_LENGTH,
-  AssistantRole,
-} from '#app/assistant/constants/assistant'
+import { ASSISTANT_TITLE_MAX_LENGTH, AssistantRole } from '#app/assistant/constants/assistant'
 import AssistantConversation from '#app/assistant/models/assistant-conversation'
 import AssistantMessage from '#app/assistant/models/assistant-message'
 import {
@@ -27,27 +23,29 @@ import {
 import {
   continueConversationInput,
   createConversationInput,
+  listConversationsInput,
   renameConversationInput,
 } from '#app/assistant/validators/assistant-input'
-import { llmFailure, userLanguageModel } from '#app/llm/services/language-models'
+import { LlmFailureReason, llmFailure, userLanguageModel } from '#app/llm/services/language-models'
 import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
+import { paginate } from '#app/shared/pagination/paginate'
 
 /** The caller's assistant conversations about one of their architectures. */
 export default class AssistantConversationsController {
-  async index({ params, auth, response }: HttpContext) {
+  async index({ params, request, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
     if (!(await assistantEnabled(user))) return response.notFound(ASSISTANT_NOT_FOUND)
     const architecture = await findOwnedArchitecture(params.id, user)
     if (!architecture) return response.notFound(ARCHITECTURE_NOT_FOUND)
 
-    const conversations = await AssistantConversation.query()
+    const { page, perPage } = await request.validateUsing(listConversationsInput)
+    const query = AssistantConversation.query()
       .where('architectureId', architecture.id)
       .where('userId', user.id)
       .orderBy('updatedAt', 'desc')
       .orderBy('id', 'desc')
-      .limit(ASSISTANT_CONVERSATIONS_LIMIT)
 
-    return response.ok({ conversations: conversations.map(serializeConversation) })
+    return response.ok(await paginate(query, { page, perPage }, serializeConversation))
   }
 
   async store({ params, request, auth, response }: HttpContext) {
@@ -110,10 +108,16 @@ export default class AssistantConversationsController {
       logger.warn({ ...log, durationMs, reason: error.reason }, 'assistant summary failed')
       return response.badGateway(llmFailure(error.reason))
     }
-    logger.info(
-      { ...log, durationMs: Math.round(performance.now() - started), turns: history.length },
-      'assistant summary',
-    )
+    const durationMs = Math.round(performance.now() - started)
+    if (!summary) {
+      // A blank summary would start an empty conversation: answered like any failed call.
+      logger.warn(
+        { ...log, durationMs, reason: LlmFailureReason.Unknown },
+        'assistant summary failed',
+      )
+      return response.badGateway(llmFailure(LlmFailureReason.Unknown))
+    }
+    logger.info({ ...log, durationMs, turns: history.length }, 'assistant summary')
 
     const next = await db.transaction(async (trx) => {
       const created = await AssistantConversation.create(
