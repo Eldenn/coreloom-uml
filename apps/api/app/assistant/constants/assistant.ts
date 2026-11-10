@@ -51,3 +51,6 @@ export type StoredChange = {
   appliedVersion: number | null
   problems: UmlProblem[]
 }
+
+/** The languages the assistant replies in: the interface's. */
+export const ASSISTANT_LOCALES = ['en', 'fr'] as const

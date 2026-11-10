@@ -1,4 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import { assistantBudget } from '@coreloom-uml/llm'
 import {
   ARCHITECTURE_NOT_FOUND,
   findOwnedArchitecture,
@@ -10,6 +11,7 @@ import {
   serializeConversation,
   serializeMessage,
 } from '#app/assistant/serializers/assistant-serializer'
+import { assistantSource } from '#app/assistant/services/assistant-context'
 import { ASSISTANT_NOT_FOUND, assistantEnabled } from '#app/assistant/services/assistant-flag'
 import {
   CONVERSATION_NOT_FOUND,
@@ -64,10 +66,17 @@ export default class AssistantConversationsController {
     const messages = await AssistantMessage.query()
       .where('conversationId', found.conversation.id)
       .orderBy('id', 'asc')
+    // Every view, none current, no message yet: the web asks `…/context` for its own selection.
+    const source = await assistantSource(found.architecture, found.conversation, {
+      message: '',
+      currentDiagramId: null,
+      locale: 'en',
+    })
 
     return response.ok({
       conversation: serializeConversation(found.conversation),
       messages: messages.map(serializeMessage),
+      budget: assistantBudget(source),
     })
   }
 

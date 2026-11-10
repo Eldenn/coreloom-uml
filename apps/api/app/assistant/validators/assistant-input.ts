@@ -1,5 +1,10 @@
 import vine from '@vinejs/vine'
-import { ASSISTANT_TITLE_MAX_LENGTH } from '#app/assistant/constants/assistant'
+import {
+  ASSISTANT_LOCALES,
+  ASSISTANT_MESSAGE_MAX_LENGTH,
+  ASSISTANT_TITLE_MAX_LENGTH,
+} from '#app/assistant/constants/assistant'
+import { llmCallFields } from '#app/llm/validators/llm-input'
 
 const titleInput = () => vine.string().trim().minLength(1).maxLength(ASSISTANT_TITLE_MAX_LENGTH)
 
@@ -8,3 +13,27 @@ export const createConversationInput = vine.create(vine.object({ title: titleInp
 
 /** `PATCH …/assistant/conversations/:conversationId` */
 export const renameConversationInput = vine.create(vine.object({ title: titleInput() }))
+
+/** The views the next message would send: the current one first, `diagramIds` (all when absent). */
+const viewSelection = () => ({
+  currentDiagramId: vine.number().withoutDecimals().positive().nullable(),
+  diagramIds: vine.array(vine.number().withoutDecimals().positive()).distinct().optional(),
+  locale: vine.enum(ASSISTANT_LOCALES),
+})
+
+/** `POST …/assistant/conversations/:conversationId/messages` */
+export const askAssistantInput = vine.create(
+  vine.object({
+    ...llmCallFields(),
+    message: vine.string().trim().minLength(1).maxLength(ASSISTANT_MESSAGE_MAX_LENGTH),
+    ...viewSelection(),
+  }),
+)
+
+/** `POST …/assistant/conversations/:conversationId/context` — no model call. */
+export const assistantContextInput = vine.create(
+  vine.object({
+    message: vine.string().trim().maxLength(ASSISTANT_MESSAGE_MAX_LENGTH).optional(),
+    ...viewSelection(),
+  }),
+)

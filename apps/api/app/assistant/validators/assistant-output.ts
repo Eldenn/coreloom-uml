@@ -17,3 +17,19 @@ export type MessageOutput = {
   changes: ChangeOutput[] | null
   createdAt: string
 }
+
+/** The input the next message would use, in estimated tokens; `skipped` views did not fit. */
+export type BudgetOutput = {
+  system: number
+  diagrams: number
+  history: number
+  max: number
+  skipped: number[]
+}
+
+export type AskAssistantOutput = {
+  messages: MessageOutput[]
+  budget: BudgetOutput
+  /** The ids of the views left out of this call because they did not fit. */
+  skipped: number[]
+}

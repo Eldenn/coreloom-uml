@@ -353,6 +353,8 @@ router
 */
 const assistantConversationsController = () =>
   import('#app/assistant/controllers/assistant-conversations-controller')
+const assistantMessagesController = () =>
+  import('#app/assistant/controllers/assistant-messages-controller')
 router
   .group(() => {
     router
@@ -370,6 +372,13 @@ router
     router
       .delete('/conversations/:conversationId', [assistantConversationsController, 'destroy'])
       .as('architectures.assistant.conversations.destroy')
+    router
+      .post('/conversations/:conversationId/messages', [assistantMessagesController, 'store'])
+      .as('architectures.assistant.messages.store')
+      .use(llmThrottle)
+    router
+      .post('/conversations/:conversationId/context', [assistantMessagesController, 'context'])
+      .as('architectures.assistant.context')
   })
   .prefix('/architectures/:id/assistant')
   .where('id', router.matchers.number())

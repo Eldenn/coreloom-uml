@@ -775,6 +775,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['destroy']>>>
     }
   }
+  'architectures.assistant.messages.store': {
+    methods: ["POST"]
+    pattern: '/architectures/:id/assistant/conversations/:conversationId/messages'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/assistant/validators/assistant-input').askAssistantInput)>>
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; conversationId: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/assistant/validators/assistant-input').askAssistantInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-messages-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-messages-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'architectures.assistant.context': {
+    methods: ["POST"]
+    pattern: '/architectures/:id/assistant/conversations/:conversationId/context'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/assistant/validators/assistant-input').assistantContextInput)>>
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; conversationId: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/assistant/validators/assistant-input').assistantContextInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-messages-controller').default['context']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-messages-controller').default['context']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'uml.validate': {
     methods: ["POST"]
     pattern: '/uml/validate'

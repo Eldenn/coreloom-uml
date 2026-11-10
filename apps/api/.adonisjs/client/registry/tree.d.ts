@@ -108,6 +108,10 @@ export interface ApiDefinition {
         update: typeof routes['architectures.assistant.conversations.update']
         destroy: typeof routes['architectures.assistant.conversations.destroy']
       }
+      messages: {
+        store: typeof routes['architectures.assistant.messages.store']
+      }
+      context: typeof routes['architectures.assistant.context']
     }
   }
   uml: {
