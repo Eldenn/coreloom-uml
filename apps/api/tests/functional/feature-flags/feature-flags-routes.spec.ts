@@ -1,4 +1,4 @@
-import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
+import { FEATURE_FLAGS, FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import { test } from '@japa/runner'
 import { stateOf } from '#app/feature-flags/services/feature-flags'
 import User from '#app/users/models/user'
@@ -46,8 +46,9 @@ test.group('Feature flags routes', (group) => {
     ).assertStatus(404)
     const features = await client.get('/features').headers(json).loginAs(user)
     features.assertStatus(200)
+    // Every declared flag is off by default.
     assert.deepEqual(features.body(), {
-      flags: { 'llm-subscription-chatgpt': false, 'llm-subscription-claude': false },
+      flags: Object.fromEntries(FEATURE_FLAGS.map((flag) => [flag.key, false])),
     })
   })
 
@@ -57,7 +58,7 @@ test.group('Feature flags routes', (group) => {
     const list = await client.get('/admin/feature-flags').headers(json).loginAs(admin)
     list.assertStatus(200)
     assert.equal(list.body().environment, 'instance')
-    assert.lengthOf(list.body().flags, 2)
+    assert.lengthOf(list.body().flags, FEATURE_FLAGS.length)
 
     const put = await client
       .put(`/admin/feature-flags/${KEY}`)
