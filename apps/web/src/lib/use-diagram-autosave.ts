@@ -60,39 +60,87 @@ export function useDiagramAutosave(architecture: ArchitectureDetail) {
 
   const draftOf = (diagram: Diagram) => drafts[diagram.id] ?? initialDraft(diagram)
 
-  const flush = React.useCallback(
-    async (force = false) => {
-      setState('saving')
-      for (const [diagramId, change] of [...pending.current]) {
-        // The cached copy: its `version` moves with every save.
-        const current = queryClient
-          .getQueryData<ArchitectureDetail>(architectureKeys.detail(architectureId))
-          ?.diagrams.find((d) => d.id === diagramId)
-        if (!current) {
-          pending.current.delete(diagramId)
-          continue
-        }
-        try {
-          await save.mutateAsync({
-            diagramId,
-            content: change.content,
-            format: change.format,
-            version: current.version,
-            force,
-          })
-          if (pending.current.get(diagramId) === change) pending.current.delete(diagramId)
-        } catch (error) {
-          if (isConflict(error)) setConflictId(diagramId)
-          setState('error')
-          return
-        }
+  // Saves run one at a time, so a view's flush waits for a save already on its way.
+  const queue = React.useRef<Promise<unknown>>(Promise.resolve())
+  const enqueue = React.useCallback(<T>(task: () => Promise<T>) => {
+    const run = queue.current.then(task)
+    queue.current = run
+    return run
+  }, [])
+  // Mirrors `conflictId` for calls made from an older render (an awaited assistant change).
+  const conflict = React.useRef<number | null>(null)
+  const markConflict = React.useCallback((diagramId: number | null) => {
+    conflict.current = diagramId
+    setConflictId(diagramId)
+  }, [])
+
+  /** Saves one view's pending change; a change dropped meanwhile (`reset`) is never sent. */
+  const saveChange = React.useCallback(
+    async (diagramId: number, change: Pending, force: boolean) => {
+      if (pending.current.get(diagramId) !== change) return
+      // The cached copy: its `version` moves with every save.
+      const current = queryClient
+        .getQueryData<ArchitectureDetail>(architectureKeys.detail(architectureId))
+        ?.diagrams.find((d) => d.id === diagramId)
+      if (!current) {
+        pending.current.delete(diagramId)
+        return
       }
-      setConflictId(null)
-      setSavedAt(new Date())
-      setState(pending.current.size ? 'unsaved' : 'saved')
+      await save.mutateAsync({
+        diagramId,
+        content: change.content,
+        format: change.format,
+        version: current.version,
+        force,
+      })
+      if (pending.current.get(diagramId) === change) pending.current.delete(diagramId)
     },
     [save, queryClient, architectureId],
   )
+
+  const saved = React.useCallback(() => {
+    setSavedAt(new Date())
+    setState(pending.current.size ? 'unsaved' : 'saved')
+  }, [])
+
+  const flush = React.useCallback(
+    (force = false) =>
+      enqueue(async () => {
+        setState('saving')
+        for (const [diagramId, change] of [...pending.current]) {
+          try {
+            await saveChange(diagramId, change, force)
+          } catch (error) {
+            if (isConflict(error)) markConflict(diagramId)
+            setState('error')
+            return
+          }
+        }
+        markConflict(null)
+        saved()
+      }),
+    [enqueue, saveChange, markConflict, saved],
+  )
+
+  /** Saves only this view's pending change: `false` when that save failed or met a conflict. */
+  const flushDiagram = (diagramId: number) =>
+    enqueue(async () => {
+      const change = pending.current.get(diagramId)
+      if (!change) return true
+      try {
+        await saveChange(diagramId, change, false)
+      } catch (error) {
+        if (isConflict(error)) markConflict(diagramId)
+        setState('error')
+        return false
+      }
+      // Another view's conflict stays on screen until it is settled.
+      if (conflict.current === null || conflict.current === diagramId) {
+        markConflict(null)
+        saved()
+      }
+      return true
+    })
 
   React.useEffect(() => {
     if (state !== 'unsaved') return
@@ -116,14 +164,18 @@ export function useDiagramAutosave(architecture: ArchitectureDetail) {
       format === diagram.format
     if (unchanged) return
     pending.current.set(diagram.id, { content: result.diagram, format })
-    if (conflictId === null) setState('unsaved')
+    if (conflict.current === null) setState('unsaved')
   }
 
-  /** Drops the local edits of a diagram, to show the copy saved elsewhere. */
+  /**
+   * Drops the local edits of a diagram, to show the copy saved elsewhere; other views keep theirs,
+   * and their conflict if they have one.
+   */
   const discard = (diagramId: number) => {
     pending.current.delete(diagramId)
     setDrafts(({ [diagramId]: _dropped, ...rest }) => rest)
-    setConflictId(null)
+    if (conflict.current !== null && conflict.current !== diagramId) return
+    markConflict(null)
     setState(pending.current.size ? 'unsaved' : 'saved')
   }
 
@@ -136,5 +188,8 @@ export function useDiagramAutosave(architecture: ArchitectureDetail) {
     retry: () => void flush(),
     overwrite: () => void flush(true),
     discard,
+    flushDiagram,
+    /** After an assistant change: the editor reads the server's copy of that view again. */
+    reset: discard,
   }
 }

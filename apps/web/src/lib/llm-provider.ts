@@ -94,7 +94,7 @@ export function useLlmProviders() {
  * A model call takes longer than ky's default 10 s timeout (a Claude subscription often does): the
  * API bounds each one itself and answers 502 `{ reason: 'timeout' }`, so the browser waits for it.
  */
-const MODEL_CALL = { timeout: false } as const
+export const MODEL_CALL = { timeout: false } as const
 
 /** `POST /llm/test`: `{ ok, latencyMs }` or `{ ok: false, reason }`. */
 export function useTestProvider() {
