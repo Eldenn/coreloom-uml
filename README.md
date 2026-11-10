@@ -55,6 +55,11 @@ silently.
 - **Sharing.** An architecture is private by default. It can be made **public** (anyone with the
   link sees it, read-only) or **protected** (the link plus an access code the server generates when
   the visibility is set; regenerating it shuts out everyone who entered the old one).
+- **Workspace assistant.** The architecture editor has an assistant panel: conversations kept per
+  architecture, answered by the user's own model (API key or subscription), that read the
+  architecture's views and propose view changes shown as diffs to accept, reject or undo. A gauge
+  shows how full the context is, and a long conversation can continue in a new one from its
+  summary. It is behind the `diagram-assistant` feature flag, off by default.
 
 The business rules (RM-xx, referenced in the code) are in the scoping document. The monorepo comes
 from [lightloom](https://github.com/eldenn/lightloom) (itself [coreloom](https://github.com/eldenn/coreloom)
