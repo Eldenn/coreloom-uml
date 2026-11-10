@@ -1,7 +1,7 @@
 // Query and mutation hooks for the workspace assistant of one architecture (the pattern of
 // src/lib/query.ts). Model calls (a message, continuing a conversation) send the user's provider in
 // the body, like src/lib/llm-provider.ts, and wait as long as the API bounds them.
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { architectureKeys } from '@/lib/architectures'
 import type { ChangeAction } from '@/lib/assistant-changes'
@@ -15,6 +15,8 @@ export { applyChange, budgetLevel } from '@/lib/assistant-changes'
 
 const api = client.api.architectures.assistant
 
+const CONVERSATIONS_PER_PAGE = 50
+
 export type ConversationSummary = Awaited<
   ReturnType<typeof api.conversations.index>
 >['data'][number]
@@ -24,8 +26,7 @@ export type ProposedChange = NonNullable<AssistantMessage['changes']>[number]
 
 export const assistantKeys = {
   all: (architectureId: number) => ['assistant', architectureId] as const,
-  list: (architectureId: number, page: number) =>
-    ['assistant', architectureId, 'list', page] as const,
+  list: (architectureId: number) => ['assistant', architectureId, 'list'] as const,
   conversation: (architectureId: number, conversationId: number) =>
     ['assistant', architectureId, 'conversation', conversationId] as const,
   context: (architectureId: number, conversationId: number, selection: ViewSelection) =>
@@ -38,11 +39,17 @@ export interface ViewSelection {
   diagramIds?: number[]
 }
 
-export function useConversations(architectureId: number, page = 1) {
-  return useQuery({
-    queryKey: assistantKeys.list(architectureId, page),
-    queryFn: () =>
-      api.conversations.index({ params: { id: architectureId }, query: { page, perPage: 50 } }),
+/** The conversations, newest first, a page at a time: `fetchNextPage` reads the next one. */
+export function useConversations(architectureId: number) {
+  return useInfiniteQuery({
+    queryKey: assistantKeys.list(architectureId),
+    queryFn: ({ pageParam }) =>
+      api.conversations.index({
+        params: { id: architectureId },
+        query: { page: pageParam, perPage: CONVERSATIONS_PER_PAGE },
+      }),
+    initialPageParam: 1,
+    getNextPageParam: ({ meta }) => (meta.page < meta.lastPage ? meta.page + 1 : undefined),
   })
 }
 
@@ -88,7 +95,7 @@ export function useDeleteConversation(architectureId: number) {
       api.conversations.destroy({ params: { id: architectureId, conversationId } }),
     // Only the list: reading the deleted conversation again would answer 404.
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: [...assistantKeys.all(architectureId), 'list'] }),
+      queryClient.invalidateQueries({ queryKey: assistantKeys.list(architectureId) }),
   })
 }
 

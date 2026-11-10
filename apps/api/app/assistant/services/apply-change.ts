@@ -18,17 +18,38 @@ export const ApplyChangeAction = { Accept: 'accept', Reject: 'reject', Undo: 'un
 export type ApplyChangeAction = (typeof ApplyChangeAction)[keyof typeof ApplyChangeAction]
 
 export const CHANGE_NOT_FOUND = { error: { message: 'Change not found' } } as const
-const NOT_PENDING = { message: 'This change is no longer pending.' } as const
-const NOT_ACCEPTED = { message: 'Only an accepted change can be undone.' } as const
+/** Why a change action was refused, for the web to say in the user's language. */
+export const ChangeConflictCode = {
+  NotPending: 'not_pending',
+  NotAccepted: 'not_accepted',
+  EditedSince: 'edited_since',
+  LastView: 'last_view',
+  Stale: 'stale',
+} as const
+export type ChangeConflictCode = (typeof ChangeConflictCode)[keyof typeof ChangeConflictCode]
+
+const NOT_PENDING = {
+  message: 'This change is no longer pending.',
+  code: ChangeConflictCode.NotPending,
+} as const
+const NOT_ACCEPTED = {
+  message: 'Only an accepted change can be undone.',
+  code: ChangeConflictCode.NotAccepted,
+} as const
 const EDITED_SINCE = {
   message: 'This view was changed after the change was applied: it can no longer be undone.',
+  code: ChangeConflictCode.EditedSince,
 } as const
-const LAST_VIEW = { message: 'An architecture keeps at least one diagram.' } as const
+const LAST_VIEW = {
+  message: 'An architecture keeps at least one diagram.',
+  code: ChangeConflictCode.LastView,
+} as const
+const STALE = { ...DIAGRAM_CHANGED, code: ChangeConflictCode.Stale } as const
 
 export type ChangeOutcome =
   | { change: StoredChange; diagram: Diagram | null }
   /** Refused; `change` is stored as is (`stale` when the view moved on). */
-  | { conflict: { message: string }; change: StoredChange }
+  | { conflict: { message: string; code: ChangeConflictCode }; change: StoredChange }
   | { invalid: UmlProblem[] }
   | { notFound: true }
 
@@ -209,7 +230,7 @@ const STEPS: Record<ApplyChangeAction, StepFn> = {
 }
 
 function stale(change: StoredChange): Step {
-  return { conflict: DIAGRAM_CHANGED, change: { ...change, status: ChangeStatus.Stale } }
+  return { conflict: STALE, change: { ...change, status: ChangeStatus.Stale } }
 }
 
 function viewsOf(architecture: Architecture, trx: TransactionClientContract) {

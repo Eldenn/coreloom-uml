@@ -99,6 +99,9 @@ function ArchitecturePage() {
   return <Workspace architecture={architecture} />
 }
 
+/** The window minus AppShell's header and gutters: the editor reaches the bottom. */
+const WORKSPACE_HEIGHT = 'calc(100svh - 7.5rem)'
+
 /** The kind given to an imported view whose text can't be read yet. */
 const IMPORT_FALLBACK_KIND: DiagramKind = 'class'
 
@@ -163,6 +166,7 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
         architecture={architecture}
         currentDiagramId={active?.id ?? null}
         autosave={autosave}
+        height={WORKSPACE_HEIGHT}
       >
         <DiagramWorkspace
           title={architecture.title}
@@ -246,8 +250,7 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
               onError: failed,
             })
           }}
-          // The window minus AppShell's header and gutters: the editor reaches the bottom.
-          height="calc(100svh - 7.5rem)"
+          height={WORKSPACE_HEIGHT}
           saveState={autosave.state}
           savedAt={autosave.savedAt}
           onRetrySave={autosave.retry}

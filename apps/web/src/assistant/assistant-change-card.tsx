@@ -19,11 +19,14 @@ const STATUS_VARIANT = {
   failed: 'destructive',
 } as const
 
-/** The text of one side of the diff, written as the editor writes it (JSON when it can't). */
+/**
+ * The text of one side of the diff, in the view's format as the editor writes it (JSON when that
+ * format can't hold the kind). A view not created yet has no format: Mermaid, as the server saves it.
+ */
 function diffText(spec: UmlSpec | null, format: DiagramFormat | null): string {
   if (!spec) return ''
-  const target: DiagramFormat = format && canWrite(spec.kind, format) ? format : 'json'
-  return writeDiagram(spec, target)
+  const wanted = format ?? 'mermaid'
+  return writeDiagram(spec, canWrite(spec.kind, wanted) ? wanted : 'json')
 }
 
 export function AssistantChangeCard({

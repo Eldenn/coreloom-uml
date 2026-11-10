@@ -474,6 +474,18 @@ export const en = {
     undo: 'Undo',
     saveFirst: 'Your edits to this view could not be saved: the change was not applied.',
     actionFailed: 'That didn’t work. Try again.',
+    conflicts: {
+      not_pending: 'This change was already answered.',
+      not_accepted: 'Only an accepted change can be undone.',
+      edited_since:
+        'This view was changed after the change was applied: it can no longer be undone.',
+      last_view: 'An architecture keeps at least one view: this one can’t be deleted.',
+      stale: 'The view changed after this proposal: the change is out of date.',
+    },
+    invalidChange: 'This view no longer reads as a valid diagram.',
+    loadMore: 'Load more',
+    shownOf: (shown: number, total: number) =>
+      `${String(shown)} of ${String(total)} conversations shown.`,
     ops: { create: 'New view', update: 'Change', delete: 'Deletion' },
     statuses: {
       pending: 'Pending',
@@ -1099,6 +1111,18 @@ export const fr: Messages = {
     saveFirst:
       'Vos modifications de cette vue n’ont pas pu être enregistrées : le changement n’a pas été appliqué.',
     actionFailed: 'Cela n’a pas fonctionné. Réessayez.',
+    conflicts: {
+      not_pending: 'Ce changement a déjà reçu une réponse.',
+      not_accepted: 'Seul un changement accepté peut être annulé.',
+      edited_since:
+        'Cette vue a été modifiée après l’application du changement : il ne peut plus être annulé.',
+      last_view: 'Une architecture garde au moins une vue : celle-ci ne peut pas être supprimée.',
+      stale: 'La vue a changé depuis cette proposition : le changement est périmé.',
+    },
+    invalidChange: 'Cette vue ne se lit plus comme un diagramme valide.',
+    loadMore: 'Afficher plus',
+    shownOf: (shown: number, total: number) =>
+      `${String(shown)} conversations affichées sur ${String(total)}.`,
     ops: { create: 'Nouvelle vue', update: 'Modification', delete: 'Suppression' },
     statuses: {
       pending: 'En attente',

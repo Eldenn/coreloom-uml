@@ -5,7 +5,8 @@ import { Link } from '@tanstack/react-router'
 import { PlusIcon, Trash2Icon, XIcon } from 'lucide-react'
 import * as React from 'react'
 
-import { type ChangeActions, MessageList } from '@/assistant/assistant-messages'
+import { MessageList } from '@/assistant/assistant-messages'
+import { useChangeActions } from '@/assistant/use-change-actions'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { ContextMeter } from '@/components/ui/context-meter'
@@ -31,14 +32,10 @@ import {
 import { toast } from '@/components/ui/sonner'
 import type { ArchitectureDetail } from '@/lib/architectures'
 import {
-  applyChange,
-  type AssistantMessage,
   type AutosaveControl,
   budgetLevel,
-  type ChangeAction,
-  type ProposedChange,
+  type ConversationSummary,
   useAskAssistant,
-  useChangeAction,
   useContextBudget,
   useContinueConversation,
   useConversation,
@@ -96,11 +93,14 @@ type PanelProps = React.ComponentProps<typeof AssistantPanel>
 export function AssistantLayout({
   open: requested,
   onOpenChange,
+  height,
   children,
   ...panel
 }: PanelProps & {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** CSS height of the side panel: the workspace's. */
+  height: string
   children: React.ReactNode
 }) {
   const t = useT().assistant
@@ -134,7 +134,8 @@ export function AssistantLayout({
           <ResizablePanel id="assistant" defaultSize="32" minSize={320}>
             <section
               aria-label={t.title}
-              className="flex h-[calc(100svh-7.5rem)] flex-col rounded-md border border-border bg-card"
+              className="flex flex-col rounded-md border border-border bg-card"
+              style={{ height }}
             >
               <div className="flex items-center justify-between border-b border-border px-3 py-2">
                 <h2 className="m-0 text-[14px] font-semibold text-foreground">{t.title}</h2>
@@ -172,91 +173,31 @@ export function AssistantPanel({
   const architectureId = architecture.id
   const list = useConversations(architectureId)
   const [chosen, setChosen] = React.useState<number | null>(null)
-  const conversations = list.data?.data ?? []
+  const conversations = list.data?.pages.flatMap((page) => page.data) ?? []
   const conversationId =
     conversations.find((c) => c.id === chosen)?.id ?? conversations.at(0)?.id ?? null
   const create = useCreateConversation(architectureId)
-  const rename = useRenameConversation(architectureId)
-  const remove = useDeleteConversation(architectureId)
-  const failed = (error: unknown) => toast.error(getErrorMessage(error, t.actionFailed))
   const current = conversations.find((c) => c.id === conversationId)
   const startConversation = () => {
     create.mutate(undefined, {
       onSuccess: ({ conversation }) => {
         setChosen(conversation.id)
       },
-      onError: failed,
+      onError: (error) => toast.error(getErrorMessage(error, t.actionFailed)),
     })
   }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-col gap-2 border-b border-border p-3">
-        <div className="flex items-center gap-2">
-          {conversations.length > 0 && (
-            <Select
-              value={conversationId === null ? '' : String(conversationId)}
-              onValueChange={(value) => {
-                setChosen(Number(value))
-              }}
-            >
-              <SelectTrigger size="sm" aria-label={t.conversation} className="min-w-0 flex-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {conversations.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>
-                    {c.title || t.untitled}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          <Button
-            size="icon-sm"
-            variant="outline"
-            aria-label={t.newConversation}
-            title={t.newConversation}
-            disabled={create.isPending}
-            onClick={startConversation}
-          >
-            <PlusIcon />
-          </Button>
-          {current && (
-            <Popconfirm
-              title={t.deleteConversationConfirm}
-              confirmLabel={t.delete}
-              destructive
-              onConfirm={() =>
-                remove.mutateAsync(current.id, {
-                  onSuccess: () => {
-                    setChosen(null)
-                  },
-                  onError: failed,
-                })
-              }
-            >
-              <Button size="icon-sm" variant="ghost" aria-label={t.deleteConversation}>
-                <Trash2Icon />
-              </Button>
-            </Popconfirm>
-          )}
-        </div>
-        {current && (
-          <EditableText
-            key={current.id}
-            value={current.title}
-            label={t.conversationTitle}
-            placeholder={t.untitled}
-            required
-            maxLength={CONVERSATION_TITLE_MAX_LENGTH}
-            className="text-[13px] font-semibold text-foreground"
-            onValueChange={(title) => {
-              rename.mutate({ conversationId: current.id, title }, { onError: failed })
-            }}
-          />
-        )}
-      </div>
+      <ConversationHeader
+        architectureId={architectureId}
+        list={list}
+        conversations={conversations}
+        current={current}
+        onChoose={setChosen}
+        onStart={startConversation}
+        starting={create.isPending}
+      />
       {conversationId === null ? (
         <div className="flex flex-1 flex-col items-start gap-3 p-4">
           {provider === null && <NoProvider />}
@@ -289,6 +230,116 @@ export function AssistantPanel({
   )
 }
 
+/** Which conversation is open, a new one, its title, deleting it; more pages when there are. */
+function ConversationHeader({
+  architectureId,
+  list,
+  conversations,
+  current,
+  onChoose,
+  onStart,
+  starting,
+}: {
+  architectureId: number
+  list: ReturnType<typeof useConversations>
+  conversations: ConversationSummary[]
+  current: ConversationSummary | undefined
+  onChoose: (conversationId: number | null) => void
+  onStart: () => void
+  starting: boolean
+}) {
+  const t = useT().assistant
+  const rename = useRenameConversation(architectureId)
+  const remove = useDeleteConversation(architectureId)
+  const failed = (error: unknown) => toast.error(getErrorMessage(error, t.actionFailed))
+  const total = list.data?.pages.at(-1)?.meta.total ?? 0
+  const conversationId = current?.id ?? null
+  return (
+    <div className="flex flex-col gap-2 border-b border-border p-3">
+      <div className="flex items-center gap-2">
+        {conversations.length > 0 && (
+          <Select
+            value={conversationId === null ? '' : String(conversationId)}
+            onValueChange={(value) => {
+              onChoose(Number(value))
+            }}
+          >
+            <SelectTrigger size="sm" aria-label={t.conversation} className="min-w-0 flex-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {conversations.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.title || t.untitled}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        <Button
+          size="icon-sm"
+          variant="outline"
+          aria-label={t.newConversation}
+          title={t.newConversation}
+          disabled={starting}
+          onClick={onStart}
+        >
+          <PlusIcon />
+        </Button>
+        {current && (
+          <Popconfirm
+            title={t.deleteConversationConfirm}
+            confirmLabel={t.delete}
+            destructive
+            onConfirm={() =>
+              remove
+                .mutateAsync(current.id, {
+                  onSuccess: () => {
+                    onChoose(null)
+                  },
+                  onError: failed,
+                })
+                // Told by the toast above; the popover only waits for the call.
+                .catch(() => undefined)
+            }
+          >
+            <Button size="icon-sm" variant="ghost" aria-label={t.deleteConversation}>
+              <Trash2Icon />
+            </Button>
+          </Popconfirm>
+        )}
+      </div>
+      {list.hasNextPage && (
+        <p className="m-0 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
+          {t.shownOf(conversations.length, total)}
+          <Button
+            size="sm"
+            variant="link"
+            disabled={list.isFetchingNextPage}
+            onClick={() => void list.fetchNextPage()}
+          >
+            {t.loadMore}
+          </Button>
+        </p>
+      )}
+      {current && (
+        <EditableText
+          key={current.id}
+          value={current.title}
+          label={t.conversationTitle}
+          placeholder={t.untitled}
+          required
+          maxLength={CONVERSATION_TITLE_MAX_LENGTH}
+          className="text-[13px] font-semibold text-foreground"
+          onValueChange={(title) => {
+            rename.mutate({ conversationId: current.id, title }, { onError: failed })
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
 function NoProvider() {
   const t = useT().assistant
   return (
@@ -301,33 +352,6 @@ function NoProvider() {
       </AlertDescription>
     </Alert>
   )
-}
-
-/** Accepts, rejects or undoes changes, through `applyChange` so the editor's text is kept. */
-function useChangeActions(
-  architectureId: number,
-  conversationId: number,
-  autosave: AutosaveControl,
-): ChangeActions {
-  const t = useT().assistant
-  const changeAction = useChangeAction(architectureId)
-  const act = async (messageId: number, change: ProposedChange, action: ChangeAction) => {
-    try {
-      const result = await applyChange(autosave, action, change, () =>
-        changeAction.mutateAsync({ conversationId, messageId, index: change.index, action }),
-      )
-      if (result === null) toast.error(t.saveFirst)
-    } catch (error) {
-      toast.error(getErrorMessage(error, t.actionFailed))
-    }
-  }
-  const acceptAll = async (message: AssistantMessage) => {
-    // One after the other: each one is applied, or turns stale, on its own.
-    for (const change of message.changes ?? []) {
-      if (change.status === 'pending') await act(message.id, change, 'accept')
-    }
-  }
-  return { act, acceptAll, busy: changeAction.isPending }
 }
 
 function Conversation({

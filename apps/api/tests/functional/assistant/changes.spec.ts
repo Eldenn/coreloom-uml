@@ -155,7 +155,7 @@ test.group('Assistant changes', (group) => {
 
       response.assertStatus(409)
       assert.equal(response.body().change.status, 'stale')
-      assert.exists(response.body().error.message)
+      assert.equal(response.body().error.code, 'stale')
       await message.refresh()
       assert.equal(message.changes?.[0].status, 'stale')
       await diagram.refresh()
@@ -213,6 +213,7 @@ test.group('Assistant changes', (group) => {
 
     response.assertStatus(409)
     assert.equal(response.body().error.message, 'An architecture keeps at least one diagram.')
+    assert.equal(response.body().error.code, 'last_view')
     await message.refresh()
     assert.equal(message.changes?.[0].status, 'pending')
     assert.lengthOf(await views(architecture.id), 1)
@@ -285,7 +286,7 @@ test.group('Assistant changes', (group) => {
     const response = await client.post(`${prefix}/0/undo`).headers(json).loginAs(user)
 
     response.assertStatus(409)
-    assert.exists(response.body().error.message)
+    assert.equal(response.body().error.code, 'edited_since')
     assert.equal(response.body().change.status, 'accepted')
     await message.refresh()
     assert.equal(message.changes?.[0].status, 'accepted')
@@ -302,6 +303,7 @@ test.group('Assistant changes', (group) => {
     const response = await client.post(`${prefix}/0/accept`).headers(json).loginAs(user)
 
     response.assertStatus(409)
+    assert.equal(response.body().error.code, 'not_pending')
     assert.equal(response.body().change.status, 'accepted')
     await diagram.refresh()
     assert.equal(diagram.version, 4)
