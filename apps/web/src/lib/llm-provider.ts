@@ -90,10 +90,17 @@ export function useLlmProviders() {
   })
 }
 
+/**
+ * A model call takes longer than ky's default 10 s timeout (a Claude subscription often does): the
+ * API bounds each one itself and answers 502 `{ reason: 'timeout' }`, so the browser waits for it.
+ */
+const MODEL_CALL = { timeout: false } as const
+
 /** `POST /llm/test`: `{ ok, latencyMs }` or `{ ok: false, reason }`. */
 export function useTestProvider() {
   return useMutation({
-    mutationFn: (provider: StoredProvider) => client.api.llm.test({ body: callBody(provider) }),
+    mutationFn: (provider: StoredProvider) =>
+      client.api.llm.test({ body: callBody(provider), ...MODEL_CALL }),
   })
 }
 
@@ -114,6 +121,7 @@ export function useProposeRules(projectId: number) {
           ...callBody(provider),
           ...(diagramIds ? { from: 'diagrams' as const, diagramIds } : {}),
         },
+        ...MODEL_CALL,
       }),
   })
 }
@@ -129,6 +137,7 @@ export function useImportAgentFile(projectId: number) {
       client.api.projects.agentConfig.imports.store({
         params: { id: projectId },
         body: { ...callBody(provider), content },
+        ...MODEL_CALL,
       }),
   })
 }
