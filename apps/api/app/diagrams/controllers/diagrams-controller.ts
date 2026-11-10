@@ -1,4 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import db from '@adonisjs/lucid/services/db'
+import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
+import Architecture from '#app/architectures/models/architecture'
 import {
   ARCHITECTURE_NOT_FOUND,
   findOwnedArchitecture,
@@ -58,52 +61,75 @@ export default class DiagramsController {
   }
 
   async update({ params, request, auth, response }: HttpContext) {
-    const architecture = await findOwnedArchitecture(params.id, auth.getUserOrFail())
-    if (!architecture) return response.notFound(ARCHITECTURE_NOT_FOUND)
-    const diagram = await findArchitectureDiagram(architecture, params.diagramId)
-    if (!diagram) return response.notFound(DIAGRAM_NOT_FOUND)
+    const owned = await findOwnedArchitecture(params.id, auth.getUserOrFail())
+    if (!owned) return response.notFound(ARCHITECTURE_NOT_FOUND)
+    if (!(await findArchitectureDiagram(owned, params.diagramId))) {
+      return response.notFound(DIAGRAM_NOT_FOUND)
+    }
 
     const { title, format, content, version, force } =
       await request.validateUsing(updateDiagramInput)
 
-    if (content !== undefined) {
-      // Checked against the shared UML schema (and the 1 MB limit) before anything else.
-      const checked = checkDiagramValue(content)
-      if (!checked.diagram) return response.unprocessableEntity(invalidDiagram(checked.problems))
-      // RM-16: two tabs on one diagram — the later save must not silently win.
-      if (version !== diagram.version && !force) {
-        return response.conflict({ error: DIAGRAM_CHANGED, diagram: serializeDiagram(diagram) })
-      }
-      diagram.content = checked.diagram
-      diagram.kind = checked.diagram.kind
-      diagram.version += 1
-    }
-    if (title !== undefined) diagram.title = title
-    if (format !== undefined) diagram.format = format
-    await diagram.save()
-    await touchArchitecture(architecture)
+    // The architecture is locked first, as the assistant's `applyChange` does: a save and an
+    // accepted or undone change on the same view never interleave.
+    return db.transaction(async (trx) => {
+      const architecture = await lockArchitecture(owned.id, trx)
+      const diagram = await architecture
+        .related('diagrams')
+        .query()
+        .where('id', params.diagramId)
+        .forUpdate()
+        .first()
+      if (!diagram) return response.notFound(DIAGRAM_NOT_FOUND)
 
-    return response.ok({ diagram: serializeDiagram(diagram) })
+      if (content !== undefined) {
+        // Checked against the shared UML schema (and the 1 MB limit) before anything else.
+        const checked = checkDiagramValue(content)
+        if (!checked.diagram) return response.unprocessableEntity(invalidDiagram(checked.problems))
+        // RM-16: two tabs on one diagram — the later save must not silently win.
+        if (version !== diagram.version && !force) {
+          return response.conflict({ error: DIAGRAM_CHANGED, diagram: serializeDiagram(diagram) })
+        }
+        diagram.content = checked.diagram
+        diagram.kind = checked.diagram.kind
+        diagram.version += 1
+      }
+      if (title !== undefined) diagram.title = title
+      if (format !== undefined) diagram.format = format
+      await diagram.save()
+      await touchArchitecture(architecture)
+
+      return response.ok({ diagram: serializeDiagram(diagram) })
+    })
   }
 
   /** An architecture keeps at least one diagram (RM-18). */
   async destroy({ params, auth, response }: HttpContext) {
-    const architecture = await findOwnedArchitecture(params.id, auth.getUserOrFail(), {
-      withDiagrams: true,
+    const owned = await findOwnedArchitecture(params.id, auth.getUserOrFail())
+    if (!owned) return response.notFound(ARCHITECTURE_NOT_FOUND)
+
+    // Locked so the count below holds against a concurrent delete (an assistant change included).
+    return db.transaction(async (trx) => {
+      const architecture = await lockArchitecture(owned.id, trx)
+      const diagrams = await architecture.related('diagrams').query().forUpdate()
+      const diagram = diagrams.find((d) => d.id === Number(params.diagramId))
+      if (!diagram) return response.notFound(DIAGRAM_NOT_FOUND)
+
+      if (diagrams.length === 1) {
+        return response.conflict({
+          error: { message: 'An architecture keeps at least one diagram.' },
+        })
+      }
+
+      await diagram.delete()
+      await touchArchitecture(architecture)
+
+      return response.noContent()
     })
-    if (!architecture) return response.notFound(ARCHITECTURE_NOT_FOUND)
-    const diagram = architecture.diagrams.find((d) => d.id === Number(params.diagramId))
-    if (!diagram) return response.notFound(DIAGRAM_NOT_FOUND)
-
-    if (architecture.diagrams.length === 1) {
-      return response.conflict({
-        error: { message: 'An architecture keeps at least one diagram.' },
-      })
-    }
-
-    await diagram.delete()
-    await touchArchitecture(architecture)
-
-    return response.noContent()
   }
+}
+
+/** The architecture row, locked until the transaction ends. */
+function lockArchitecture(id: number, trx: TransactionClientContract) {
+  return Architecture.query({ client: trx }).where('id', id).forUpdate().firstOrFail()
 }

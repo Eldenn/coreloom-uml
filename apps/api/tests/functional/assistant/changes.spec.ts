@@ -1,3 +1,5 @@
+import { setTimeout as sleep } from 'node:timers/promises'
+import db from '@adonisjs/lucid/services/db'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import type { UmlSpec } from '@coreloom-uml/uml'
 import { test } from '@japa/runner'
@@ -274,7 +276,7 @@ test.group('Assistant changes', (group) => {
 
   test('refuses undo after a later edit', async ({ client, assert }) => {
     const { user, diagram, propose, updateOf } = await setup('assist-chg-later@example.com')
-    const { prefix } = await propose([updateOf(diagram)])
+    const { message, prefix } = await propose([updateOf(diagram)])
     ;(await client.post(`${prefix}/0/accept`).headers(json).loginAs(user)).assertStatus(200)
     await diagram.refresh()
     diagram.version += 1
@@ -283,9 +285,13 @@ test.group('Assistant changes', (group) => {
     const response = await client.post(`${prefix}/0/undo`).headers(json).loginAs(user)
 
     response.assertStatus(409)
-    assert.equal(response.body().change.status, 'stale')
+    assert.exists(response.body().error.message)
+    assert.equal(response.body().change.status, 'accepted')
+    await message.refresh()
+    assert.equal(message.changes?.[0].status, 'accepted')
     await diagram.refresh()
     assert.deepEqual(diagram.content, AFTER)
+    assert.equal(diagram.version, 5)
   })
 
   test('refuses accepting twice', async ({ client, assert }) => {
@@ -299,6 +305,53 @@ test.group('Assistant changes', (group) => {
     assert.equal(response.body().change.status, 'accepted')
     await diagram.refresh()
     assert.equal(diagram.version, 4)
+  })
+
+  test('refuses an update the diagram schema no longer accepts', async ({ client, assert }) => {
+    const { user, diagram, propose, updateOf } = await setup('assist-chg-invalid@example.com')
+    const { message, prefix } = await propose([
+      updateOf(diagram, { after: { kind: 'class', classes: 'no' } as unknown as UmlSpec }),
+    ])
+
+    const response = await client.post(`${prefix}/0/accept`).headers(json).loginAs(user)
+
+    response.assertStatus(422)
+    assert.isNotEmpty(response.body().error.problems)
+    await message.refresh()
+    assert.equal(message.changes?.[0].status, 'pending')
+    await diagram.refresh()
+    assert.equal(diagram.version, 3)
+    assert.deepEqual(diagram.content, BEFORE)
+  })
+
+  test('a plain save waits while the architecture is locked by an apply', async ({
+    client,
+    assert,
+  }) => {
+    const { user, architecture, diagram } = await setup('assist-chg-lock@example.com')
+    // Holds the lock `applyChange` takes first, as an accept in flight would.
+    const trx = await db.transaction()
+    await Architecture.query({ client: trx }).where('id', architecture.id).forUpdate().firstOrFail()
+
+    let settled = false
+    const save = client
+      .patch(`/architectures/${architecture.id}/diagrams/${diagram.id}`)
+      .headers(json)
+      .loginAs(user)
+      .json({ content: AFTER, version: 3 })
+      .then((response) => {
+        settled = true
+        return response
+      })
+    await sleep(300)
+    assert.isFalse(settled)
+    await diagram.refresh()
+    assert.equal(diagram.version, 3)
+
+    await trx.commit()
+    const response = await save
+    response.assertStatus(200)
+    assert.equal(response.body().diagram.version, 4)
   })
 
   test('rejects a pending change', async ({ client, assert }) => {

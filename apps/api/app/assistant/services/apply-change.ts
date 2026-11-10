@@ -20,6 +20,9 @@ export type ApplyChangeAction = (typeof ApplyChangeAction)[keyof typeof ApplyCha
 export const CHANGE_NOT_FOUND = { error: { message: 'Change not found' } } as const
 const NOT_PENDING = { message: 'This change is no longer pending.' } as const
 const NOT_ACCEPTED = { message: 'Only an accepted change can be undone.' } as const
+const EDITED_SINCE = {
+  message: 'This view was changed after the change was applied: it can no longer be undone.',
+} as const
 const LAST_VIEW = { message: 'An architecture keeps at least one diagram.' } as const
 
 export type ChangeOutcome =
@@ -171,7 +174,8 @@ const STEPS: Record<ApplyChangeAction, StepFn> = {
       return { change: { ...undone, diagramId: diagram.id }, diagram, wrote: true }
     }
 
-    // The view must be exactly as the accept left it: same version, title and format.
+    // The view must be exactly as the accept left it: same version, title and format. If not,
+    // the change stays `accepted`: it is applied, only no longer undoable.
     const diagram = await lockedView(architecture, change.diagramId, trx)
     const title = change.op === ChangeOp.Create ? change.title : change.title || change.baseTitle
     const format = change.op === ChangeOp.Create ? change.format : change.baseFormat
@@ -181,7 +185,7 @@ const STEPS: Record<ApplyChangeAction, StepFn> = {
       diagram.title !== title ||
       diagram.format !== format
     ) {
-      return stale(change)
+      return { conflict: EDITED_SINCE, change }
     }
 
     if (change.op === ChangeOp.Create) {
