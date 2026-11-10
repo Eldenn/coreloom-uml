@@ -30,6 +30,13 @@ import { LlmFailureReason, llmFailure, userLanguageModel } from '#app/llm/servic
 import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
 import { paginate } from '#app/shared/pagination/paginate'
 
+const NOTHING_TO_SUMMARIZE = {
+  error: {
+    message: 'This conversation has no messages to summarize.',
+    code: 'nothing_to_summarize',
+  },
+} as const
+
 /** The caller's assistant conversations about one of their architectures. */
 export default class AssistantConversationsController {
   async index({ params, request, auth, response }: HttpContext) {
@@ -87,6 +94,9 @@ export default class AssistantConversationsController {
     const { architecture, conversation } = found
 
     const { provider, apiKey, locale } = await request.validateUsing(continueConversationInput)
+    const history = await conversationHistory(conversation)
+    // Nothing to summarize: a new conversation would be just as full.
+    if (history.length === 0) return response.conflict(NOTHING_TO_SUMMARIZE)
     const built = await userLanguageModel(provider, apiKey, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
@@ -97,7 +107,6 @@ export default class AssistantConversationsController {
       logger.warn({ ...log, reason: built.reason }, 'assistant summary failed')
       return response.badGateway(llmFailure(built.reason))
     }
-    const history = await conversationHistory(conversation)
     const started = performance.now()
     let summary: string
     try {

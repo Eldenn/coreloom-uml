@@ -322,6 +322,35 @@ test.group('Assistant conversations', (group) => {
     assert.lengthOf(conversations, 1)
   })
 
+  test('continue: 409 on a conversation with no messages, without a model call', async ({
+    client,
+    assert,
+  }) => {
+    const { user, architecture, base } = await setup('assist-continue-blank@example.com')
+    const conversation = await AssistantConversation.create({
+      architectureId: architecture.id,
+      userId: user.id,
+      title: 'Plan',
+    })
+    const { model, prompts } = recordingModel('The plan so far.')
+    useModel(model)
+
+    const response = await client
+      .post(`${base}/${conversation.id}/continue`)
+      .headers(json)
+      .loginAs(user)
+      .json(summarize)
+
+    response.assertStatus(409)
+    assert.equal(response.body().error.code, 'nothing_to_summarize')
+    assert.lengthOf(prompts, 0)
+    const conversations = await AssistantConversation.query().where(
+      'architectureId',
+      architecture.id,
+    )
+    assert.lengthOf(conversations, 1)
+  })
+
   test('continue: an empty summary is a 502 that stores nothing', async ({ client, assert }) => {
     const { user, architecture, conversation, base } = await longConversation(
       'assist-continue-empty@example.com',
