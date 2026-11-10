@@ -11,6 +11,26 @@ export {
   proposeArchitectureRules,
 } from './architecture.ts'
 export {
+  ASSISTANT_CHANGES_MAX,
+  ASSISTANT_INSTRUCTIONS,
+  ASSISTANT_MAX_INPUT_TOKENS,
+  ASSISTANT_MAX_OUTPUT_TOKENS,
+  ASSISTANT_TIMEOUT_MS,
+  ASSISTANT_WARN_RATIO,
+  type AssistantBudget,
+  AssistantContextFull,
+  type AssistantReply,
+  type AssistantSource,
+  type AssistantTurn,
+  type AssistantView,
+  askAssistant,
+  assistantBudget,
+  assistantOutputSchema,
+  changeLine,
+  type ProposedChange,
+  summarizeConversation,
+} from './assistant.ts'
+export {
   CLAUDE_CODE_TIMEOUT_MS,
   type ClaudeCodeCredential,
   type ClaudeRun,
