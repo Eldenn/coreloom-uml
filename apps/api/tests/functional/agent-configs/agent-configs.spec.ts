@@ -168,6 +168,7 @@ test.group('Agent configs - configuration', (group) => {
     })
     assert.deepEqual(created.config.ruleSections, [
       'Project',
+      'Architecture',
       'Working style',
       'TypeScript',
       'React',

@@ -99,6 +99,7 @@ export function serializeAgentGeneration(generation: AgentConfigGeneration): Age
 export function serializeAgentConfigDetail(
   config: AgentConfig,
   latest: AgentConfigGeneration | null,
+  diagrams: AgentConfigDetailOutput['diagrams'],
 ): AgentConfigDetailOutput {
   const configured = new Set(config.questionnaires.map((item) => item.id))
   return {
@@ -110,5 +111,6 @@ export function serializeAgentConfigDetail(
     rules: config.rules.map(serializeAgentRule),
     latestGeneration: latest ? serializeAgentGenerationSummary(latest) : null,
     outdatedQuestionnaires: outdatedQuestionnaires(config),
+    diagrams,
   }
 }

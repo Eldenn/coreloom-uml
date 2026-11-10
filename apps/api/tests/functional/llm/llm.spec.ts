@@ -126,6 +126,26 @@ const THREE_PROPOSALS = JSON.stringify({
   ],
 })
 
+/** An architecture of this project holding one class diagram written as Mermaid. */
+async function projectDiagram(client: Client, user: User, projectId: number) {
+  const architecture = await client
+    .post('/architectures')
+    .headers(json)
+    .loginAs(user)
+    .json({ title: 'Orders', projectId })
+  architecture.assertStatus(201)
+  const diagram = await client
+    .post(`/architectures/${architecture.body().architecture.id}/diagrams`)
+    .headers(json)
+    .loginAs(user)
+    .json({
+      title: 'Order model',
+      source: 'classDiagram\n  class Order\n  class Customer\n  Customer --> Order : places\n',
+    })
+  diagram.assertStatus(201)
+  return diagram.body().diagram as { id: number }
+}
+
 test.group('LLM - providers', (group) => {
   group.each.setup(() => withDefaultFlags())
 
@@ -337,6 +357,7 @@ test.group('LLM - rule proposals', (group) => {
         },
       ],
       truncated: false,
+      skipped: [],
     })
 
     // Nothing stored by the proposal itself.
@@ -454,5 +475,94 @@ test.group('LLM - rule proposals', (group) => {
     })
     response.assertStatus(422)
     if (built.length > 0) throw new Error('The model should not have been built')
+  })
+})
+
+test.group('LLM - rule proposals from diagrams', (group) => {
+  group.each.setup(() => withDefaultFlags())
+  group.each.teardown(() => app.container.restore(LanguageModels))
+
+  test('sends the diagrams as PlantUML and links each rule to its diagram', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    const project = await configuredProject(client, user)
+    const diagram = await projectDiagram(client, user, project.id)
+    const model = answeringModel(
+      JSON.stringify({
+        proposals: [
+          {
+            section: 'Architecture',
+            text: 'An `Order` is always placed by one `Customer`.',
+            basedOn: `diagram:${diagram.id}`,
+          },
+        ],
+      }),
+    )
+    useModel(model)
+
+    const response = await propose(client, user, project.id, {
+      provider: hosted,
+      apiKey: KEY,
+      from: 'diagrams',
+    })
+    response.assertStatus(200)
+    assert.deepEqual(response.body(), {
+      proposals: [
+        {
+          section: 'Architecture',
+          text: 'An `Order` is always placed by one `Customer`.',
+          basedOn: `diagram:${diagram.id}`,
+        },
+      ],
+      truncated: false,
+      skipped: [],
+    })
+    const config = await client
+      .get(`/projects/${project.id}/agent-config`)
+      .headers(json)
+      .loginAs(user)
+    assert.deepEqual(config.body().config.diagrams, [
+      { id: diagram.id, title: 'Order model', kind: 'class', architecture: 'Orders' },
+    ])
+
+    const prompt = JSON.stringify(model.doGenerateCalls[0])
+    assert.include(prompt, '@startuml')
+    assert.include(prompt, 'Customer')
+    assert.notInclude(prompt, 'Sauf dans les tests')
+    assert.notInclude(prompt, KEY)
+  })
+
+  test('calls no model when the project has no diagram content', async ({ client, assert }) => {
+    const user = await makeUser()
+    const project = await configuredProject(client, user)
+    const model = answeringModel(JSON.stringify({ proposals: [] }))
+    useModel(model)
+
+    const response = await propose(client, user, project.id, {
+      provider: hosted,
+      apiKey: KEY,
+      from: 'diagrams',
+    })
+    response.assertStatus(200)
+    assert.deepEqual(response.body(), { proposals: [], truncated: false, skipped: [] })
+    assert.lengthOf(model.doGenerateCalls, 0)
+  })
+
+  test('answers 404 for a diagram outside the project', async ({ client }) => {
+    const user = await makeUser()
+    const project = await configuredProject(client, user)
+    const other = await createProject(client, user)
+    const elsewhere = await projectDiagram(client, user, other.id)
+    useModel(answeringModel(JSON.stringify({ proposals: [] })))
+
+    const response = await propose(client, user, project.id, {
+      provider: hosted,
+      apiKey: KEY,
+      from: 'diagrams',
+      diagramIds: [elsewhere.id],
+    })
+    response.assertStatus(404)
   })
 })

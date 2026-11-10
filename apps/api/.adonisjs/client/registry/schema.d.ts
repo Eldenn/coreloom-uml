@@ -335,10 +335,10 @@ export interface Registry {
     methods: ["POST"]
     pattern: '/projects/:id/agent-config/proposals'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#app/llm/validators/llm-input').llmCallInput)>>
+      body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').agentProposalsInput)>>
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
-      query: ExtractQuery<InferInput<(typeof import('#app/llm/validators/llm-input').llmCallInput)>>
+      query: ExtractQuery<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').agentProposalsInput)>>
       response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-proposals-controller').default['store']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-proposals-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }

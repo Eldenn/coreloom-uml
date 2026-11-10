@@ -1,6 +1,16 @@
 export type { LanguageModel } from 'ai'
 export { baseUrlProblem, parseAllowedOrigins } from './allowlist.ts'
 export {
+  ARCHITECTURE_INSTRUCTIONS,
+  ARCHITECTURE_MAX_INPUT_TOKENS,
+  type ArchitectureDiagram,
+  type ArchitectureResult,
+  type ArchitectureSource,
+  architectureOutputSchema,
+  architecturePrompt,
+  proposeArchitectureRules,
+} from './architecture.ts'
+export {
   CLAUDE_CODE_TIMEOUT_MS,
   type ClaudeCodeCredential,
   type ClaudeRun,

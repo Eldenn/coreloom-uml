@@ -20,3 +20,13 @@ export const AGENT_ANSWER_DETAILS_MAX_LENGTH = 2000
 export const AGENT_ANSWERS_PER_REQUEST_MAX = 200
 /** Generations kept per configuration: past this, the oldest is deleted. */
 export const AGENT_GENERATIONS_KEPT = 50
+
+/** What a proposal call reads: the notes under the answers, or the project's diagrams. */
+export const AgentProposalSource = {
+  Answers: 'answers',
+  Diagrams: 'diagrams',
+} as const
+export type AgentProposalSource = (typeof AgentProposalSource)[keyof typeof AgentProposalSource]
+export const AGENT_PROPOSAL_SOURCES = Object.values(AgentProposalSource)
+/** Diagrams one proposal call can read. */
+export const AGENT_PROPOSAL_DIAGRAMS_MAX = 20
