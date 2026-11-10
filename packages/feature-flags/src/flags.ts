@@ -6,6 +6,7 @@ import type { FeatureFlagState } from './evaluate.ts'
 export const FeatureFlagKey = {
   LlmSubscriptionChatgpt: 'llm-subscription-chatgpt',
   LlmSubscriptionClaude: 'llm-subscription-claude',
+  DiagramAssistant: 'diagram-assistant',
 } as const
 
 export type FeatureFlagKey = (typeof FeatureFlagKey)[keyof typeof FeatureFlagKey]
@@ -35,6 +36,13 @@ export const FEATURE_FLAGS: readonly FeatureFlagDeclaration[] = [
     key: FeatureFlagKey.LlmSubscriptionClaude,
     name: 'Claude subscription sign-in',
     description: 'Lets people call the LLM with their Claude subscription through Claude Code.',
+    tags: ['llm'],
+    defaultState: OFF,
+  },
+  {
+    key: FeatureFlagKey.DiagramAssistant,
+    name: 'Workspace AI assistant',
+    description: 'Lets people ask a model about an architecture and accept the views it proposes.',
     tags: ['llm'],
     defaultState: OFF,
   },
