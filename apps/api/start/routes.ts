@@ -170,6 +170,14 @@ router
   .where('id', router.matchers.number())
   .use([middleware.auth(), llmThrottle])
 router
+  .post('/projects/:id/agent-config/imports', [
+    () => import('#app/agent-configs/controllers/agent-config-imports-controller'),
+    'store',
+  ])
+  .as('projects.agent_config.imports.store')
+  .where('id', router.matchers.number())
+  .use([middleware.auth(), llmThrottle])
+router
   .get('/llm/providers', [() => import('#app/llm/controllers/llm-providers-controller'), 'index'])
   .as('llm.providers')
   .use(middleware.auth())

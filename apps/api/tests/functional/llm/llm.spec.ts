@@ -566,3 +566,113 @@ test.group('LLM - rule proposals from diagrams', (group) => {
     response.assertStatus(404)
   })
 })
+
+function importFile(client: Client, user: User, projectId: number, content: string) {
+  return client
+    .post(`/projects/${projectId}/agent-config/imports`)
+    .headers(json)
+    .loginAs(user)
+    .json({ provider: hosted, apiKey: KEY, content })
+}
+
+const IMPORTED = JSON.stringify({
+  answers: [
+    { id: `${Q}/tests-level`, value: ['unit', 'e2e'], evidence: 'Write unit and e2e tests.' },
+    { id: `${Q}/styling`, value: 'tailwind', evidence: 'Tailwind only.' },
+    { id: `${Q}/ts-strict`, value: 'sometimes', evidence: 'not an option' },
+  ],
+  rules: [
+    { section: 'Workflow', text: 'Never push to main.' },
+    { section: 'Nowhere', text: 'Dropped.' },
+  ],
+})
+
+test.group('LLM - conventions file import', (group) => {
+  group.each.setup(() => withDefaultFlags())
+  group.each.teardown(() => app.container.restore(LanguageModels))
+
+  test('proposes the new answers that fit and the rules, and stores nothing', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    const project = await configuredProject(client, user)
+    const model = answeringModel(IMPORTED)
+    useModel(model)
+
+    const response = await importFile(client, user, project.id, '# Rules\n\nTailwind only.')
+    response.assertStatus(200)
+    assert.deepEqual(response.body(), {
+      answers: [
+        {
+          questionnaireId: Q,
+          questionId: 'tests-level',
+          value: ['unit', 'e2e'],
+          evidence: 'Write unit and e2e tests.',
+        },
+      ],
+      rules: [{ section: 'Workflow', text: 'Never push to main.' }],
+      truncated: false,
+    })
+    const prompt = JSON.stringify(model.doGenerateCalls[0])
+    assert.include(prompt, 'Tailwind only.')
+    assert.notInclude(prompt, KEY)
+
+    const config = await client
+      .get(`/projects/${project.id}/agent-config`)
+      .headers(json)
+      .loginAs(user)
+    assert.lengthOf(config.body().config.answers, 2)
+    assert.lengthOf(config.body().config.rules, 0)
+  })
+
+  test('leaves the managed block out of what the model reads', async ({ client, assert }) => {
+    const user = await makeUser()
+    const project = await configuredProject(client, user)
+    const model = answeringModel(JSON.stringify({ answers: [], rules: [] }))
+    useModel(model)
+
+    const content = [
+      'Hand-written line.',
+      '<!-- coreloom-uml:begin · managed block, edits inside it are replaced on the next pull -->',
+      'Generated line.',
+      '<!-- coreloom-uml:end -->',
+    ].join('\n')
+    ;(await importFile(client, user, project.id, content)).assertStatus(200)
+    const prompt = JSON.stringify(model.doGenerateCalls[0])
+    assert.include(prompt, 'Hand-written line.')
+    assert.notInclude(prompt, 'Generated line.')
+  })
+
+  test('refuses a file past the limit', async ({ client }) => {
+    const user = await makeUser()
+    const project = await configuredProject(client, user)
+    useModel(answeringModel(IMPORTED))
+    ;(await importFile(client, user, project.id, 'x'.repeat(50_001))).assertStatus(422)
+  })
+
+  test('a provider failure answers 502 with its reason, and the file is not logged', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    const project = await configuredProject(client, user)
+    useModel(failingModel(providerError(401)))
+    const logs = captureLogs()
+    const response = await importFile(client, user, project.id, 'Secret project codename Zephyr.')
+    logs.restore()
+
+    response.assertStatus(502)
+    assert.equal(response.body().reason, 'unauthorized')
+    assert.notInclude(logs.lines.join('\n'), 'Zephyr')
+    assert.notInclude(logs.lines.join('\n'), KEY)
+  })
+
+  test('another account cannot import into a project', async ({ client }) => {
+    const owner = await makeUser()
+    const project = await configuredProject(client, owner)
+    const stranger = await makeUser()
+    useModel(answeringModel(IMPORTED))
+    ;(await importFile(client, stranger, project.id, 'Anything.')).assertStatus(404)
+  })
+})

@@ -4,6 +4,7 @@ import type { FieldContext } from '@vinejs/vine/types'
 import {
   AGENT_ANSWER_DETAILS_MAX_LENGTH,
   AGENT_ANSWERS_PER_REQUEST_MAX,
+  AGENT_IMPORT_MAX_LENGTH,
   AGENT_NOTES_MAX_LENGTH,
   AGENT_PROPOSAL_DIAGRAMS_MAX,
   AGENT_PROPOSAL_SOURCES,
@@ -111,6 +112,17 @@ export const agentProposalsInput = vine.create(
       .maxLength(AGENT_PROPOSAL_DIAGRAMS_MAX)
       .distinct()
       .optional(),
+  }),
+)
+
+/**
+ * `POST /projects/:id/agent-config/imports`: the user's provider and the file to read. The file
+ * may hold a managed block (its markers included): it is left out before the model reads it.
+ */
+export const agentImportInput = vine.create(
+  vine.object({
+    ...llmCallFields(),
+    content: vine.string().trim().minLength(1).maxLength(AGENT_IMPORT_MAX_LENGTH),
   }),
 )
 

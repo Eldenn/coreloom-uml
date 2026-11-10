@@ -1,5 +1,4 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import app from '@adonisjs/core/services/app'
 import logger from '@adonisjs/core/services/logger'
 import { migrateAnswers, ruleSections } from '@coreloom-uml/catalog'
 import {
@@ -22,10 +21,9 @@ import {
 import { readProjectDiagrams } from '#app/agent-configs/services/project-diagrams'
 import { agentProposalsInput } from '#app/agent-configs/validators/agent-configs-input'
 import { DIAGRAM_NOT_FOUND } from '#app/diagrams/services/owned-diagram'
-import LanguageModels, { llmFailure, providerProblem } from '#app/llm/services/language-models'
+import { llmFailure, userLanguageModel } from '#app/llm/services/language-models'
 import type { AgentProposalsOutput } from '#app/llm/validators/llm-output'
 import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
-import { resolveCredential } from '#app/llm-connections/services/llm-credential'
 import type Project from '#app/projects/models/project'
 import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
 
@@ -53,11 +51,10 @@ export default class AgentConfigProposalsController {
       from === AgentProposalSource.Diagrams ? await readProjectDiagrams(project, diagramIds) : null
     if (diagrams === 'notFound') return response.notFound(DIAGRAM_NOT_FOUND)
 
-    const key = apiKey ?? ''
-    const problem = providerProblem(provider, key)
-    if (problem) return response.unprocessableEntity({ error: { message: problem } })
-    const resolved = await resolveCredential(provider, key, user)
-    if ('notFound' in resolved) return response.notFound(SUBSCRIPTION_NOT_FOUND)
+    const built = await userLanguageModel(provider, apiKey, user)
+    if ('problem' in built)
+      return response.unprocessableEntity({ error: { message: built.problem } })
+    if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)
 
     const log = {
       agentConfigId: config.id,
@@ -65,12 +62,11 @@ export default class AgentConfigProposalsController {
       model: provider.model,
       from: from ?? AgentProposalSource.Answers,
     }
-    if ('reason' in resolved) {
-      logger.warn({ ...log, reason: resolved.reason }, 'agent rule proposals failed')
-      return response.badGateway(llmFailure(resolved.reason))
+    if ('reason' in built) {
+      logger.warn({ ...log, reason: built.reason }, 'agent rule proposals failed')
+      return response.badGateway(llmFailure(built.reason))
     }
-
-    const model = (await app.container.make(LanguageModels)).create(provider, resolved.credential)
+    const { model } = built
     const started = performance.now()
     try {
       const result: AgentProposalsOutput = diagrams

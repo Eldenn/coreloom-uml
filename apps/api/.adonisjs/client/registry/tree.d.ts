@@ -44,6 +44,9 @@ export interface ApiDefinition {
       proposals: {
         store: typeof routes['projects.agent_config.proposals.store']
       }
+      imports: {
+        store: typeof routes['projects.agent_config.imports.store']
+      }
     }
   }
   llm: {

@@ -542,6 +542,24 @@ export const en = {
     proposalsSkipped: (titles: string) =>
       `Left out to fit what the model can read: ${titles}. Check fewer diagrams to include them.`,
     accepted: 'Rule added.',
+    importFile: 'Import a file',
+    importTitle: 'Import a conventions file',
+    importHint: (model: string) =>
+      `Paste your AGENTS.md, CLAUDE.md or another conventions file: ${model} turns it into answers and rules. Nothing is saved until you apply or accept them.`,
+    importLabel: 'The file',
+    importRun: 'Read the file',
+    importAgain: 'Import another file',
+    importReading: (model: string) => `${model} is reading the file…`,
+    importTruncated: 'The file was too long for the model: its end was left out.',
+    importAnswers: 'Answers',
+    importAnswersHint:
+      'The checked answers are applied together. An answer that would replace yours starts unchecked.',
+    importNoAnswers: 'The file gives no answer you do not already have.',
+    importReplaces: (current: string) => `Replaces: ${current}`,
+    importApply: (count: number) => `Apply the checked answers (${String(count)})`,
+    importApplied: 'Answers applied.',
+    importRules: 'Rules',
+    importNoRules: 'Nothing else in the file to turn into rules.',
     rulesFull: 'The rule list is full: remove a rule before accepting another.',
   },
 }
@@ -1099,6 +1117,24 @@ export const fr: Messages = {
     proposalsSkipped: (titles: string) =>
       `Laissés de côté pour tenir dans ce que le modèle peut lire : ${titles}. Cochez moins de diagrammes pour les inclure.`,
     accepted: 'Règle ajoutée.',
+    importFile: 'Importer un fichier',
+    importTitle: 'Importer un fichier de conventions',
+    importHint: (model: string) =>
+      `Collez votre AGENTS.md, CLAUDE.md ou un autre fichier de conventions : ${model} en tire des réponses et des règles. Rien n’est enregistré tant que vous ne les appliquez ou ne les acceptez pas.`,
+    importLabel: 'Le fichier',
+    importRun: 'Lire le fichier',
+    importAgain: 'Importer un autre fichier',
+    importReading: (model: string) => `${model} lit le fichier…`,
+    importTruncated: 'Le fichier était trop long pour le modèle : sa fin a été laissée de côté.',
+    importAnswers: 'Réponses',
+    importAnswersHint:
+      'Les réponses cochées sont appliquées ensemble. Une réponse qui remplacerait la vôtre est décochée au départ.',
+    importNoAnswers: 'Le fichier ne donne aucune réponse que vous n’avez pas déjà.',
+    importReplaces: (current: string) => `Remplace : ${current}`,
+    importApply: (count: number) => `Appliquer les réponses cochées (${String(count)})`,
+    importApplied: 'Réponses appliquées.',
+    importRules: 'Règles',
+    importNoRules: 'Rien d’autre à transformer en règles dans le fichier.',
     rulesFull: 'La liste des règles est pleine : retirez une règle avant d’en accepter une autre.',
   },
 }

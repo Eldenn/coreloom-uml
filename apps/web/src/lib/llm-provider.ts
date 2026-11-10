@@ -118,6 +118,21 @@ export function useProposeRules(projectId: number) {
   })
 }
 
+export type ImportedAnswer = Awaited<
+  ReturnType<typeof client.api.projects.agentConfig.imports.store>
+>['answers'][number]
+
+/** `POST …/agent-config/imports`: answers and rules read from a conventions file, nothing stored. */
+export function useImportAgentFile(projectId: number) {
+  return useMutation({
+    mutationFn: ({ provider, content }: { provider: StoredProvider; content: string }) =>
+      client.api.projects.agentConfig.imports.store({
+        params: { id: projectId },
+        body: { ...callBody(provider), content },
+      }),
+  })
+}
+
 function refreshProviders() {
   return queryClient.invalidateQueries({ queryKey: PROVIDERS_KEY })
 }

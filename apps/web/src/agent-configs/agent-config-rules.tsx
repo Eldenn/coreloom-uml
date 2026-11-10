@@ -4,6 +4,7 @@ import { PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
+import { AgentFileImport } from '@/agent-configs/agent-config-import'
 import { RuleProposals } from '@/agent-configs/agent-config-proposals'
 import { Button } from '@/components/ui/button'
 import {
@@ -126,6 +127,7 @@ export function AgentConfigRules({
         <CardTitle id="agent-rules-title">{t.agents.rulesTitle}</CardTitle>
         <CardDescription>{t.agents.rulesHint(RULES_MAX)}</CardDescription>
         <CardAction className="flex flex-wrap justify-end gap-2">
+          <AgentFileImport projectId={projectId} config={config} questionnaires={questionnaires} />
           <RuleProposals projectId={projectId} config={config} questionnaires={questionnaires} />
           <Button
             ref={addRef}
