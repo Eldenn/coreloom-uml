@@ -1,5 +1,4 @@
 import app from '@adonisjs/core/services/app'
-import testUtils from '@adonisjs/core/services/test_utils'
 import type { LanguageModel, LlmCredential, ProviderSettings } from '@coreloom-uml/llm'
 import { APICallError, answeringModel, failingModel } from '@coreloom-uml/llm/testing'
 import { test } from '@japa/runner'
@@ -8,6 +7,7 @@ import { LLM_REQUESTS_PER_MINUTE } from '#app/llm/constants/llm'
 import LanguageModels from '#app/llm/services/language-models'
 import User from '#app/users/models/user'
 import llmConfig from '#config/llm'
+import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
 
 const json = { accept: 'application/json' }
@@ -127,7 +127,7 @@ const THREE_PROPOSALS = JSON.stringify({
 })
 
 test.group('LLM - providers', (group) => {
-  group.each.setup(() => testUtils.db().withGlobalTransaction())
+  group.each.setup(() => withDefaultFlags())
 
   test('lists every kind with its needs, model suggestions and the allowed origins', async ({
     client,
@@ -162,7 +162,7 @@ test.group('LLM - providers', (group) => {
 })
 
 test.group('LLM - connection test', (group) => {
-  group.each.setup(() => testUtils.db().withGlobalTransaction())
+  group.each.setup(() => withDefaultFlags())
   group.each.teardown(() => app.container.restore(LanguageModels))
 
   test('answers ok with the latency, and passes the key to the provider client only', async ({
@@ -315,7 +315,7 @@ test.group('LLM - connection test', (group) => {
 })
 
 test.group('LLM - rule proposals', (group) => {
-  group.each.setup(() => testUtils.db().withGlobalTransaction())
+  group.each.setup(() => withDefaultFlags())
   group.each.teardown(() => app.container.restore(LanguageModels))
 
   test('keeps the one valid proposal; accepting it adds an llm rule to the next generation', async ({

@@ -9,6 +9,8 @@ const STATUS_TIMEOUT_MS = 15_000
 const SUBMIT_TIMEOUT_MS = 30_000
 /** The sign-in page `claude auth login` prints (checked against 2.1.319). */
 const LOGIN_URL = /https:\/\/\S+\/oauth\/authorize\?\S+/
+/** The error `execFile` gives when the output passes `maxBuffer` (it kills the child too). */
+const OUTPUT_TOO_LARGE = 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER'
 
 /**
  * A `claude auth login` waiting for the code the user copies from Claude's page. The code goes to
@@ -82,7 +84,10 @@ export default class ClaudeCodeCli {
           resolve({
             exitCode: failure ? (typeof failure.code === 'number' ? failure.code : null) : 0,
             stdout: String(stdout),
-            timedOut: failure?.killed === true || failure?.name === 'AbortError',
+            // Killed for too much output is not a timeout: it reads as an unknown failure.
+            timedOut:
+              (failure?.killed === true && failure.code !== OUTPUT_TOO_LARGE) ||
+              failure?.name === 'AbortError',
             missing: failure?.code === 'ENOENT',
           })
         },
@@ -122,12 +127,18 @@ export default class ClaudeCodeCli {
       child.once('error', () => resolve(null))
     })
     const url = new Promise<string>((resolve, reject) => {
+      // The URL can arrive split over several chunks: look only at complete lines, then at the
+      // whole output once the binary has exited.
       child.stdout?.on('data', (chunk: Buffer) => {
         output += chunk.toString()
-        const found = output.match(LOGIN_URL)
+        const found = output.slice(0, output.lastIndexOf('\n') + 1).match(LOGIN_URL)
         if (found) resolve(found[0])
       })
-      exited.then(() => reject(new Error('claude auth login printed no sign-in URL')))
+      exited.then(() => {
+        const found = output.match(LOGIN_URL)
+        if (found) resolve(found[0])
+        else reject(new Error('claude auth login printed no sign-in URL'))
+      })
     })
     url.catch(() => {})
     return {

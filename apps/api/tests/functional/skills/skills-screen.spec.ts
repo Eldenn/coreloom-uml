@@ -1,5 +1,4 @@
 import app from '@adonisjs/core/services/app'
-import testUtils from '@adonisjs/core/services/test_utils'
 import { SkillOrigin, TARGETS } from '@coreloom-uml/catalog'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
@@ -15,6 +14,7 @@ import type {
   SkillsStatsOutput,
 } from '#app/skills/validators/skills-output'
 import User from '#app/users/models/user'
+import { withEmptySkillsCatalog } from '#tests/helpers/skills'
 
 const json = { accept: 'application/json' }
 const LAST_WEEK = DateTime.fromISO('2026-11-02T06:00:00.000Z')
@@ -137,7 +137,7 @@ async function seedCatalog() {
 }
 
 test.group('Skills screen - catalog', (group) => {
-  group.each.setup(() => testUtils.db().withGlobalTransaction())
+  group.each.setup(() => withEmptySkillsCatalog())
 
   test('needs a session or an API token', async ({ client }) => {
     const response = await client.get('/skills').headers(json)
@@ -364,7 +364,7 @@ async function readBlocks(reader: ReadableStreamDefaultReader<Uint8Array>, count
 }
 
 test.group('Skills screen - live updates', (group) => {
-  group.each.setup(() => testUtils.db().withGlobalTransaction())
+  group.each.setup(() => withEmptySkillsCatalog())
   group.each.teardown(() => app.container.restore(SkillsEvents))
 
   test('streams catalog changes to open screens', async ({ client, assert }) => {

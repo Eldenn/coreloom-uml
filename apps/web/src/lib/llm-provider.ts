@@ -9,6 +9,9 @@ import * as React from 'react'
 import { client, TuyauError } from '@/lib/client'
 import {
   callBody,
+  LLM_API_KEY_MAX_LENGTH,
+  LLM_BASE_URL_MAX_LENGTH,
+  LLM_MODEL_MAX_LENGTH,
   parseStoredProvider,
   type ProviderKind,
   type StoredProvider,
@@ -16,6 +19,7 @@ import {
 import { queryClient } from '@/lib/query'
 
 export type { ProviderKind, StoredProvider }
+export { LLM_API_KEY_MAX_LENGTH, LLM_BASE_URL_MAX_LENGTH, LLM_MODEL_MAX_LENGTH }
 
 type ProvidersBody = Awaited<ReturnType<typeof client.api.llm.providers>>
 
@@ -27,11 +31,6 @@ export type LlmFailureReason = Extract<
 export type RuleProposal = Awaited<
   ReturnType<typeof client.api.projects.agentConfig.proposals.store>
 >['proposals'][number]
-
-/** Longest values the API accepts (`apps/api/app/llm/constants/llm.ts`). */
-export const LLM_MODEL_MAX_LENGTH = 200
-export const LLM_BASE_URL_MAX_LENGTH = 2000
-export const LLM_API_KEY_MAX_LENGTH = 1000
 
 const STORAGE_KEY = 'llm-provider'
 /** Same-tab writes; other tabs hear the `storage` event. */

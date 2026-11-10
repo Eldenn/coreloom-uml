@@ -1,4 +1,3 @@
-import testUtils from '@adonisjs/core/services/test_utils'
 import { SKILLS } from '@coreloom-uml/catalog'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
@@ -11,6 +10,7 @@ import {
   suggestableSkills,
   syncManualSkills,
 } from '#app/skills/services/skills-catalog'
+import { withEmptySkillsCatalog } from '#tests/helpers/skills'
 import { fakeFetch, routes } from '#tests/unit/skills/skills-search-fixtures'
 
 const network = () =>
@@ -18,7 +18,7 @@ const network = () =>
 const MONDAY = DateTime.fromISO('2026-11-09T06:00:00.000Z')
 
 test.group('Skills catalog', (group) => {
-  group.each.setup(() => testUtils.db().withGlobalTransaction())
+  group.each.setup(() => withEmptySkillsCatalog())
 
   test('copies the hand-picked skills once, whatever the number of runs', async ({ assert }) => {
     await syncManualSkills()

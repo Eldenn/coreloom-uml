@@ -9,6 +9,7 @@ import AgentConfigGeneration from '#app/agent-configs/models/agent-config-genera
 import AgentConfigRule from '#app/agent-configs/models/agent-config-rule'
 import type { CreatedApiTokenOutput } from '#app/api-tokens/validators/api-tokens-output'
 import User from '#app/users/models/user'
+import { withEmptySkillsCatalog } from '#tests/helpers/skills'
 
 const json = { accept: 'application/json' }
 const Q = 'frontend-react'
@@ -500,7 +501,8 @@ test.group('Agent configs - rules', (group) => {
 })
 
 test.group('Agent configs - generations', (group) => {
-  group.each.setup(() => testUtils.db().withGlobalTransaction())
+  // Suggestions read the found skills too: start from an empty catalog.
+  group.each.setup(() => withEmptySkillsCatalog())
 
   test('renders AGENTS.md with the project context and the CLAUDE.md pointer, without a provider', async ({
     client,

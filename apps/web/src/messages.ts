@@ -455,7 +455,8 @@ export const en = {
       'claude-code': 'Claude subscription',
     },
     model: 'Model',
-    modelHint: 'Pick a suggestion or type any model name.',
+    modelHint:
+      'Pick a suggestion or type any model name. The provider and model are kept as soon as you choose them; a new key or server URL waits for Save.',
     modelPlaceholder: 'Choose or type a model',
     modelSearch: 'Search or type a model',
     modelRequired: 'Choose a model.',
@@ -997,7 +998,8 @@ export const fr: Messages = {
       'claude-code': 'Abonnement Claude',
     },
     model: 'Modèle',
-    modelHint: 'Choisissez une suggestion ou tapez le nom d’un modèle.',
+    modelHint:
+      'Choisissez une suggestion ou tapez le nom d’un modèle. Fournisseur et modèle sont gardés dès que vous les choisissez ; une nouvelle clé ou URL de serveur attend « Enregistrer ».',
     modelPlaceholder: 'Choisir ou taper un modèle',
     modelSearch: 'Chercher ou taper un modèle',
     modelRequired: 'Choisissez un modèle.',

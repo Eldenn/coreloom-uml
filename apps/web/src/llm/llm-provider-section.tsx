@@ -1,6 +1,7 @@
 // Settings, "LLM provider": the user's own provider for proposed rules (bring your own key, or a
 // connected ChatGPT or Claude subscription). The settings stay in this browser
-// (`useStoredProvider`); "Test" sends the form's values to `POST /llm/test` without saving them,
+// (`useStoredProvider`): the kind and the model as soon as they change (`autoSaved`), the key and
+// the base URL only on "Save"; "Test" sends the form's values to `POST /llm/test` without saving them,
 // and "Forget the key" removes the provider and its key. A subscription is connected on the
 // server (`SubscriptionConnection`), and its kinds show only while their flag is on.
 import { useSelector } from '@tanstack/react-form'
@@ -33,14 +34,14 @@ import {
 } from '@/lib/llm-provider'
 import { useLocale, useT } from '@/lib/locale'
 import { useProviderFailureText } from '@/llm/provider-failure'
+import {
+  autoSaved,
+  isSubscription,
+  type ProviderFields,
+  savedKey,
+  toProvider,
+} from '@/llm/provider-fields'
 import { SubscriptionConnection } from '@/llm/subscription-connection'
-
-interface ProviderFields {
-  kind: ProviderKind
-  model: string
-  baseUrl: string
-  apiKey: string
-}
 
 /** The flag behind each subscription kind; the API already leaves out a kind whose flag is off. */
 function useVisibleKind() {
@@ -95,32 +96,6 @@ function initialFields(stored: StoredProvider | null, providers: ProviderInfo[])
 function modelNames(info: ProviderInfo | undefined, model: string): string[] {
   const suggestions = info?.models ?? []
   return model && !suggestions.includes(model) ? [...suggestions, model] : suggestions
-}
-
-/** The saved key for this kind, if any: kept when the key field is left empty. */
-function savedKey(stored: StoredProvider | null, kind: ProviderKind): string | null {
-  return stored?.kind === kind && stored.apiKey ? stored.apiKey : null
-}
-
-function isSubscription(info: ProviderInfo | undefined): boolean {
-  return info?.auth === 'subscription'
-}
-
-/** The form's values as a provider to save or test. */
-function toProvider(
-  fields: ProviderFields,
-  providers: ProviderInfo[],
-  stored: StoredProvider | null,
-): StoredProvider {
-  const info = providers.find((p) => p.kind === fields.kind)
-  // A subscription keeps no key and no base URL in this browser.
-  if (isSubscription(info)) return { kind: fields.kind, model: fields.model.trim() }
-  return {
-    kind: fields.kind,
-    model: fields.model.trim(),
-    apiKey: fields.apiKey.trim() || (savedKey(stored, fields.kind) ?? ''),
-    ...(info?.takesBaseUrl ? { baseUrl: fields.baseUrl.trim() } : {}),
-  }
 }
 
 function useProviderSchema(providers: ProviderInfo[], stored: StoredProvider | null) {
@@ -202,26 +177,23 @@ function ProviderForm({
   const subscription = isSubscription(info)
   // A key kind is always "connected"; a subscription once the user connected it.
   const untestable = info?.connected === false
+  const autoSave = () => {
+    const next = autoSaved(form.state.values, providers, stored)
+    if (next) storeProvider(next)
+  }
 
   const footer = (
-    <span className="flex flex-wrap gap-2">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={test.pending || untestable}
-        title={untestable ? t.llm.subscription.connectFirst : undefined}
-        aria-busy={test.pending || undefined}
+    <span className="flex flex-wrap items-center gap-2">
+      <TestButton
+        pending={test.pending}
+        untestable={untestable}
         onClick={() => {
           void (async () => {
             await form.validate('submit')
             if (form.state.isValid) await test.run(toProvider(form.state.values, providers, stored))
           })()
         }}
-      >
-        {test.pending ? <Spinner className="text-current" /> : <PlugZapIcon />}
-        {test.pending ? t.llm.testing : t.llm.test}
-      </Button>
+      />
       {stored && (
         <Button
           type="button"
@@ -256,6 +228,7 @@ function ProviderForm({
             form.setFieldValue('model', next?.models.at(0) ?? '')
             if (!next?.takesBaseUrl) form.setFieldValue('baseUrl', '')
             test.clear()
+            autoSave()
           },
         }}
       >
@@ -266,7 +239,7 @@ function ProviderForm({
           />
         )}
       </form.AppField>
-      <form.AppField name="model">
+      <form.AppField name="model" listeners={{ onChange: autoSave }}>
         {(field) => (
           <field.ComboboxField
             label={t.llm.model}
@@ -308,12 +281,46 @@ function ProviderForm({
           </form.AppField>
         </>
       )}
-      {test.outcome && (
-        <Alert variant={test.outcome.ok ? 'success' : 'destructive'} role="status">
-          <AlertDescription>{test.outcome.text}</AlertDescription>
-        </Alert>
-      )}
+      {/* Mounted empty, so the outcome is announced when it appears. */}
+      <div role="status">
+        {test.outcome && (
+          <Alert variant={test.outcome.ok ? 'success' : 'destructive'} role="none">
+            <AlertDescription>{test.outcome.text}</AlertDescription>
+          </Alert>
+        )}
+      </div>
     </SettingsSection>
+  )
+}
+
+/** "Test", with why it is disabled shown next to it (not only in a tooltip). */
+function TestButton({
+  pending,
+  untestable,
+  onClick,
+}: {
+  pending: boolean
+  untestable: boolean
+  onClick: () => void
+}) {
+  const t = useT()
+  const hintId = React.useId()
+  return (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={pending || untestable}
+        aria-describedby={untestable ? hintId : undefined}
+        aria-busy={pending || undefined}
+        onClick={onClick}
+      >
+        {pending ? <Spinner className="text-current" /> : <PlugZapIcon />}
+        {pending ? t.llm.testing : t.llm.test}
+      </Button>
+      {untestable && <span id={hintId}>{t.llm.subscription.connectFirst}</span>}
+    </>
   )
 }
 

@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
-import { LlmFailureReason } from '@coreloom-uml/llm'
+import { LlmCallError, LlmFailureReason } from '@coreloom-uml/llm'
 import { llmFailure } from '#app/llm/services/language-models'
 import {
   ProviderKind,
@@ -33,9 +33,10 @@ export default class ClaudeCodeConnectionController {
     try {
       const output: ClaudeLoginOutput = { url: await startClaudeLogin(user) }
       return response.ok(output)
-    } catch {
-      logger.warn({ userId: user.id }, 'claude sign-in did not start')
-      return response.badGateway(llmFailure(LlmFailureReason.Unreachable))
+    } catch (error) {
+      const reason = error instanceof LlmCallError ? error.reason : LlmFailureReason.Unreachable
+      logger.warn({ userId: user.id, reason }, 'claude sign-in did not start')
+      return response.badGateway(llmFailure(reason))
     }
   }
 
