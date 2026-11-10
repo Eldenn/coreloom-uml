@@ -18,9 +18,15 @@ function keepLayout(
   if (after.kind === 'sequence') return { diagram: after, placed: 0 }
   const ids = umlElementIds(after)
   const old = !relayout && before && before.kind !== 'sequence' ? before.layout : undefined
-  const kept: UmlLayout = {}
-  for (const id of ids) if (old?.[id]) kept[id] = old[id]
-  const count = Object.keys(kept).length
+  // `hasOwn` and `fromEntries`: ids come from the model and may be `toString` or `__proto__`.
+  const entries = old
+    ? ids.flatMap((id) => {
+        const point = Object.hasOwn(old, id) ? old[id] : undefined
+        return point ? [[id, point] as const] : []
+      })
+    : []
+  const kept: UmlLayout = Object.fromEntries(entries)
+  const count = entries.length
   const base = withoutLayout(after)
   return {
     diagram: count ? ({ ...base, layout: kept } as UmlSpec) : base,

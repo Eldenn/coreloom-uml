@@ -37,6 +37,23 @@ describe('keepLayout', () => {
     expect('layout' in result.diagram).toBe(false)
     expect(result.placed).toBe(2)
   })
+
+  it('places an id named like an Object.prototype property', () => {
+    const diagram: UmlSpec = { kind: 'class', classes: [{ id: 'toString' }], relations: [] }
+    const result = keepLayout({ ...diagram, layout: {} }, diagram, false)
+    expect('layout' in result.diagram).toBe(false)
+    expect(result.placed).toBe(1)
+  })
+
+  it('keeps the position of an id named __proto__', () => {
+    const layout = JSON.parse('{"__proto__": {"x": 5, "y": 6}}')
+    const diagram: UmlSpec = { kind: 'class', classes: [{ id: '__proto__' }], relations: [] }
+    const result = keepLayout({ ...diagram, layout }, diagram, false)
+    expect(JSON.stringify(result.diagram)).toBe(
+      JSON.stringify({ ...diagram, layout: JSON.parse('{"__proto__": {"x": 5, "y": 6}}') }),
+    )
+    expect(result.placed).toBe(0)
+  })
 })
 
 describe('withoutLayout', () => {
