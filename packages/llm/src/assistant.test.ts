@@ -107,6 +107,48 @@ describe('askAssistant', () => {
     ])
   })
 
+  it('keeps the first answer, its invalid change failed, when the repair call fails', async () => {
+    let call = 0
+    const model = new MockLanguageModelV4({
+      doGenerate: async () => {
+        if (call++ > 0) throw new Error('connection reset')
+        return {
+          content: [{ type: 'text', text: answer([{ diagramId: 12, diagram: '{}' }], 'First.') }],
+          finishReason: { unified: 'stop', raw: 'stop' },
+          usage: {
+            inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
+            outputTokens: { total: 10, text: 10, reasoning: undefined },
+          },
+          warnings: [],
+        }
+      },
+    })
+    const result = await askAssistant(model, source())
+    expect(model.doGenerateCalls).toHaveLength(2)
+    expect(result.reply).toBe('First.')
+    expect(result.changes[0]).toMatchObject({ op: 'update', diagramId: 12 })
+    expect(result.changes[0]).toHaveProperty('failed')
+  })
+
+  it('keeps a valid change of the first answer that the repair broke', async () => {
+    const create = { op: 'create', kind: 'class', title: 'Refunds' }
+    const model = sequenceModel([
+      answer([
+        { ...create, diagram: JSON.stringify(UPDATED) },
+        { diagramId: 12, diagram: '{}' },
+      ]),
+      answer([
+        { ...create, diagram: '{}' },
+        { diagramId: 12, diagram: JSON.stringify(UPDATED) },
+      ]),
+    ])
+    const result = await askAssistant(model, source())
+    expect(result.changes).toEqual([
+      { op: 'create', kind: 'class', title: 'Refunds', after: UPDATED, relayout: false },
+      { op: 'update', diagramId: 12, after: UPDATED, relayout: false },
+    ])
+  })
+
   it('reads a diagram that is not JSON as a problem', async () => {
     const model = answeringModel(answer([{ diagramId: 12, diagram: 'class Payment' }]))
     const result = await askAssistant(model, source())

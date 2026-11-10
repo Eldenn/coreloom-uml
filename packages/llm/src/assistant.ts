@@ -278,8 +278,9 @@ async function call(
 /**
  * Answers the user's message about the architecture's views, with proposed view changes checked
  * against the diagram schema. When a change fails, the model gets one more call with the problems;
- * what still fails comes back as `failed`. Nothing is stored. Throws `AssistantContextFull` when
- * the conversation and the current view do not fit, `LlmCallError` when a call fails.
+ * what still fails comes back as `failed`, and the first answer stands if that call fails.
+ * Nothing is stored. Throws `AssistantContextFull` when the conversation and the current view do
+ * not fit, `LlmCallError` when the first call fails.
  */
 export async function askAssistant(
   model: LanguageModel,
@@ -291,19 +292,41 @@ export async function askAssistant(
   const timeoutMs = options.timeoutMs ?? ASSISTANT_TIMEOUT_MS
   const prompt = assistantPrompt(source, kept)
 
-  let output = await call(model, source.locale, prompt, timeoutMs)
-  let changes = checkChanges(output.changes, kept)
-  if (changes.some((change) => 'failed' in change)) {
-    const retry = [
-      prompt,
-      `<previous_answer>\n${JSON.stringify(output)}\n</previous_answer>\n`,
-      problemsBlock(changes),
-      'Some changes of your previous answer are invalid. Answer again in full, fixing these problems.\n',
-    ].join('')
+  const first = await call(model, source.locale, prompt, timeoutMs)
+  const firstChanges = checkChanges(first.changes, kept)
+  const answered = { reply: first.reply.trim(), changes: firstChanges, skipped: budget.skipped }
+  if (!firstChanges.some((change) => 'failed' in change)) return answered
+
+  const retry = [
+    prompt,
+    `<previous_answer>\n${JSON.stringify(first)}\n</previous_answer>\n`,
+    problemsBlock(firstChanges),
+    'Some changes of your previous answer are invalid. Answer again in full, fixing these problems.\n',
+  ].join('')
+  let output: typeof first
+  try {
     output = await call(model, source.locale, retry, timeoutMs)
-    changes = checkChanges(output.changes, kept)
+  } catch (error) {
+    // The repair is a bonus: the first answer stands, its invalid changes marked failed.
+    if (error instanceof LlmCallError) return answered
+    throw error
   }
+  // A change the first answer got right is never lost to a repair that broke it.
+  const valid = new Map(
+    firstChanges.filter((change) => !('failed' in change)).map((c) => [changeKey(c), c]),
+  )
+  const changes = checkChanges(output.changes, kept).map((change) => {
+    const before = 'failed' in change ? valid.get(changeKey(change)) : undefined
+    return before?.op === change.op ? before : change
+  })
   return { reply: output.reply.trim(), changes, skipped: budget.skipped }
+}
+
+/** The view a change is about: its id, or the title of the view it creates. */
+function changeKey(change: ProposedChange): string {
+  return change.op === 'create'
+    ? `create ${change.title ?? ''}`
+    : `view ${String(change.diagramId)}`
 }
 
 const SUMMARY_INSTRUCTIONS = [
