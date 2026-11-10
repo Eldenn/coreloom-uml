@@ -64,7 +64,8 @@ export function useDiagramAutosave(architecture: ArchitectureDetail) {
   const queue = React.useRef<Promise<unknown>>(Promise.resolve())
   const enqueue = React.useCallback(<T>(task: () => Promise<T>) => {
     const run = queue.current.then(task)
-    queue.current = run
+    // A task that fails must not stop the saves queued after it.
+    queue.current = run.catch(() => undefined)
     return run
   }, [])
   // Mirrors `conflictId` for calls made from an older render (an awaited assistant change).
@@ -189,6 +190,8 @@ export function useDiagramAutosave(architecture: ArchitectureDetail) {
     overwrite: () => void flush(true),
     discard,
     flushDiagram,
+    /** Runs `task` with every save held back until it settles. */
+    exclusive: enqueue,
     /** After an assistant change: the editor reads the server's copy of that view again. */
     reset: discard,
   }

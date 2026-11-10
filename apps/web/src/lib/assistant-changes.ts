@@ -26,12 +26,15 @@ export type ChangeAction = 'accept' | 'reject' | 'undo'
 export interface AutosaveControl {
   flushDiagram(diagramId: number): Promise<boolean>
   reset(diagramId: number): void
+  /** Runs `task` with every save held back until it settles. */
+  exclusive<T>(task: () => Promise<T>): Promise<T>
 }
 
 /**
  * Runs a change action without losing or overwriting the editor's text: an accept or an undo
  * first saves what the user typed in that view (and stops, returning `null`, if that save fails),
- * then makes the editor read the server's copy again.
+ * then makes the editor read the server's copy again. Saves wait until that reset: text typed in
+ * the view while the action runs is dropped, never sent against the version the action wrote.
  */
 export async function applyChange<T>(
   autosave: AutosaveControl,
@@ -42,7 +45,9 @@ export async function applyChange<T>(
   const diagramId = action === 'reject' ? null : change.diagramId
   if (diagramId === null) return run()
   if (!(await autosave.flushDiagram(diagramId))) return null
-  const result = await run()
-  autosave.reset(diagramId)
-  return result
+  return autosave.exclusive(async () => {
+    const result = await run()
+    autosave.reset(diagramId)
+    return result
+  })
 }

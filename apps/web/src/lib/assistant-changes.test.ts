@@ -36,6 +36,14 @@ function fakeAutosave(flushResult: boolean) {
     reset: (id: number) => {
       calls.push(`reset ${id}`)
     },
+    exclusive: async <T>(task: () => Promise<T>) => {
+      calls.push('hold')
+      try {
+        return await task()
+      } finally {
+        calls.push('release')
+      }
+    },
   }
 }
 
@@ -47,7 +55,28 @@ describe('applyChange', () => {
       return Promise.resolve('done')
     })
     expect(result).toBe('done')
-    expect(autosave.calls).toEqual(['flush 7', 'action', 'reset 7'])
+    expect(autosave.calls).toEqual(['flush 7', 'hold', 'action', 'reset 7', 'release'])
+  })
+
+  it('holds saves back from the action until the reset', async () => {
+    const autosave = fakeAutosave(true)
+    let saveRanDuringAction = false
+    await applyChange(autosave, 'accept', { diagramId: 7 }, () => {
+      // What the debounce timer would see while the accept is in flight.
+      saveRanDuringAction = !autosave.calls.includes('hold') || autosave.calls.includes('release')
+      return Promise.resolve('done')
+    })
+    expect(saveRanDuringAction).toBe(false)
+    expect(autosave.calls.indexOf('reset 7')).toBeLessThan(autosave.calls.indexOf('release'))
+  })
+
+  it('does not reset and passes the error on when the action fails', async () => {
+    const autosave = fakeAutosave(true)
+    const stale = new Error('409 stale change')
+    await expect(
+      applyChange(autosave, 'accept', { diagramId: 7 }, () => Promise.reject(stale)),
+    ).rejects.toBe(stale)
+    expect(autosave.calls).toEqual(['flush 7', 'hold', 'release'])
   })
 
   it('does not call the action when the flush fails', async () => {
