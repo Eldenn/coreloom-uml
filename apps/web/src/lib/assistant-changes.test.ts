@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { applyChange, budgetLevel, type FlushResult } from './assistant-changes'
+import { applyChange, budgetLevel, type FlushResult, viewTooLarge } from './assistant-changes'
 
 const budget = (history: number) => ({
   system: 100,
@@ -22,6 +22,24 @@ describe('budgetLevel', () => {
 
   it('is full only past the maximum', () => {
     expect(budgetLevel(budget(301))).toBe('full')
+  })
+})
+
+describe('viewTooLarge', () => {
+  it('is false while the budget is not full', () => {
+    expect(viewTooLarge(budget(300), 0)).toBe(false)
+  })
+
+  it('is false when a summary of the history would free room', () => {
+    expect(viewTooLarge(budget(301), 4)).toBe(false)
+  })
+
+  it('is true when full with no message to summarize', () => {
+    expect(viewTooLarge(budget(301), 0)).toBe(true)
+  })
+
+  it('is true when the open view alone does not fit', () => {
+    expect(viewTooLarge({ ...budget(10), diagrams: 900 }, 4)).toBe(true)
   })
 })
 

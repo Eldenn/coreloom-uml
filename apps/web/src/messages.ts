@@ -464,10 +464,13 @@ export const en = {
     you: 'You',
     summary: 'Summary of the previous conversation',
     deleteSummary: 'Delete the summary',
-    deleteSummaryHint: 'The full history is sent again instead.',
+    deleteSummaryHint:
+      'This conversation then goes on without any history: the previous one stays as it was.',
     long: 'This conversation is getting long.',
     full: 'This conversation is too long for the model: continue in a new one.',
     continue: 'Continue in a new conversation',
+    viewTooLarge:
+      'The open view is too large to send to the model, even without any history. Open a smaller view, or split this one.',
     acceptAll: 'Accept all',
     accept: 'Accept',
     reject: 'Reject',
@@ -1102,10 +1105,13 @@ export const fr: Messages = {
     you: 'Vous',
     summary: 'Résumé de la conversation précédente',
     deleteSummary: 'Supprimer le résumé',
-    deleteSummaryHint: 'L’historique complet est alors renvoyé.',
+    deleteSummaryHint:
+      'Cette conversation continue alors sans aucun historique : la précédente reste telle quelle.',
     long: 'Cette conversation devient longue.',
     full: 'Cette conversation est trop longue pour le modèle : continuez-la dans une nouvelle.',
     continue: 'Continuer dans une nouvelle conversation',
+    viewTooLarge:
+      'La vue ouverte est trop grande pour être envoyée au modèle, même sans historique. Ouvrez une vue plus petite, ou découpez celle-ci.',
     acceptAll: 'Tout accepter',
     accept: 'Accepter',
     reject: 'Refuser',

@@ -1,7 +1,13 @@
 // Query and mutation hooks for the workspace assistant of one architecture (the pattern of
 // src/lib/query.ts). Model calls (a message, continuing a conversation) send the user's provider in
 // the body, like src/lib/llm-provider.ts, and wait as long as the API bounds them.
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 
 import { architectureKeys } from '@/lib/architectures'
 import type { ChangeAction } from '@/lib/assistant-changes'
@@ -11,7 +17,7 @@ import { callBody } from '@/lib/llm-provider-body'
 import { useLocale } from '@/lib/locale'
 
 export type { AutosaveControl, BudgetLevel, ChangeAction } from '@/lib/assistant-changes'
-export { applyChange, budgetLevel } from '@/lib/assistant-changes'
+export { applyChange, budgetLevel, viewTooLarge } from '@/lib/assistant-changes'
 
 const api = client.api.architectures.assistant
 
@@ -29,8 +35,12 @@ export const assistantKeys = {
   list: (architectureId: number) => ['assistant', architectureId, 'list'] as const,
   conversation: (architectureId: number, conversationId: number) =>
     ['assistant', architectureId, 'conversation', conversationId] as const,
-  context: (architectureId: number, conversationId: number, selection: ViewSelection) =>
-    ['assistant', architectureId, 'context', conversationId, selection] as const,
+  context: (
+    architectureId: number,
+    conversationId: number,
+    selection: ViewSelection,
+    versions: number[],
+  ) => ['assistant', architectureId, 'context', conversationId, selection, versions] as const,
 }
 
 /** The views a message reads: the current one first, then `diagramIds` (all of them when absent). */
@@ -121,15 +131,20 @@ export function useAskAssistant(architectureId: number, conversationId: number) 
   })
 }
 
-/** What the next message would cost with these views, in estimated tokens; no model call. */
+/**
+ * What the next message would cost with these views, in estimated tokens; no model call. Read
+ * again when a view is saved (`versions`: the views' versions, in any stable order).
+ */
 export function useContextBudget(
   architectureId: number,
   conversationId: number | null,
   selection: ViewSelection,
+  versions: number[],
 ) {
   const { locale } = useLocale()
   return useQuery({
-    queryKey: assistantKeys.context(architectureId, conversationId ?? 0, selection),
+    queryKey: assistantKeys.context(architectureId, conversationId ?? 0, selection, versions),
+    placeholderData: keepPreviousData,
     queryFn: async () =>
       (
         await api.context({

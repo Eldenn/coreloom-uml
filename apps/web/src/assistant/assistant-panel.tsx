@@ -45,6 +45,7 @@ import {
   useDeleteSummary,
   useRenameConversation,
   type ViewSelection,
+  viewTooLarge,
 } from '@/lib/assistant'
 import type { ContextBudget } from '@/lib/assistant-changes'
 import { getErrorMessage, TuyauError } from '@/lib/client'
@@ -60,6 +61,14 @@ function isContextFull(error: unknown) {
     error.status === 422 &&
     (error.response as { error?: { code?: string } } | undefined)?.error?.code === 'context_full'
   )
+}
+
+/** Whether the next message can't be sent, and whether continuing in a new conversation helps. */
+function fullness(budget: ContextBudget | undefined, messageCount: number, askError: unknown) {
+  return {
+    full: (budget !== undefined && budgetLevel(budget) === 'full') || isContextFull(askError),
+    tooLarge: budget !== undefined && viewTooLarge(budget, messageCount),
+  }
 }
 
 /** As the API's `ASSISTANT_TITLE_MAX_LENGTH`. */
@@ -375,7 +384,12 @@ function Conversation({
   /** The views the owner picked; `null` until one is unchecked, meaning all of them. */
   const [picked, setPicked] = React.useState<number[] | null>(null)
   const selection: ViewSelection = { currentDiagramId, ...(picked ? { diagramIds: picked } : {}) }
-  const context = useContextBudget(architectureId, conversationId, selection)
+  const context = useContextBudget(
+    architectureId,
+    conversationId,
+    selection,
+    architecture.diagrams.map((d) => d.version),
+  )
   const ask = useAskAssistant(architectureId, conversationId)
   const proceed = useContinueConversation(architectureId)
   const deleteSummary = useDeleteSummary(architectureId, conversationId)
@@ -384,7 +398,7 @@ function Conversation({
 
   const messages = detail.data?.messages ?? []
   const budget = context.data ?? detail.data?.budget
-  const full = (budget !== undefined && budgetLevel(budget) === 'full') || isContextFull(ask.error)
+  const { full, tooLarge } = fullness(budget, messages.length, ask.error)
 
   const send = (text: string) => {
     if (!provider) return
@@ -425,6 +439,7 @@ function Conversation({
           provider={provider}
           budget={budget}
           full={full}
+          tooLarge={tooLarge}
           askError={ask.isError && !isContextFull(ask.error) ? ask.error : null}
           continueError={proceed.error}
           continuing={proceed.isPending}
@@ -442,7 +457,11 @@ function Conversation({
         />
         <PromptInput
           value={draft}
-          onValueChange={setDraft}
+          onValueChange={(value) => {
+            setDraft(value)
+            // A refused message is forgotten once edited, so the shortened one can be sent.
+            if (ask.isError) ask.reset()
+          }}
           placeholder={t.placeholder}
           status={ask.isPending ? 'submitted' : 'ready'}
           disabled={!provider || full || proceed.isPending}
@@ -511,6 +530,7 @@ function Notices({
   provider,
   budget,
   full,
+  tooLarge,
   askError,
   continueError,
   continuing,
@@ -519,6 +539,8 @@ function Notices({
   provider: StoredProvider | null
   budget: ContextBudget | undefined
   full: boolean
+  /** Full with nothing to summarize: continuing would not help. */
+  tooLarge: boolean
   askError: unknown
   continueError: unknown
   continuing: boolean
@@ -540,20 +562,26 @@ function Notices({
           <AlertDescription>{failureText(providerCallFailure(continueError))}</AlertDescription>
         </Alert>
       )}
-      {long && (
-        <Alert variant={full ? 'destructive' : 'warning'}>
-          <AlertDescription className="flex flex-col items-start gap-2">
-            {full ? t.full : t.long}
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!provider || continuing}
-              onClick={onContinue}
-            >
-              {t.continue}
-            </Button>
-          </AlertDescription>
+      {tooLarge ? (
+        <Alert variant="destructive">
+          <AlertDescription>{t.viewTooLarge}</AlertDescription>
         </Alert>
+      ) : (
+        long && (
+          <Alert variant={full ? 'destructive' : 'warning'}>
+            <AlertDescription className="flex flex-col items-start gap-2">
+              {full ? t.full : t.long}
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!provider || continuing}
+                onClick={onContinue}
+              >
+                {t.continue}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )
       )}
     </>
   )

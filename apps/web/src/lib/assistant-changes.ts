@@ -20,6 +20,15 @@ export function budgetLevel(budget: ContextBudget): BudgetLevel {
   return used >= ASSISTANT_WARN_RATIO * budget.max ? 'warn' : 'ok'
 }
 
+/**
+ * Full with nothing a summary could shorten: no message yet, or the open view alone (with the
+ * instructions) over the maximum. Continuing in a new conversation would be just as full.
+ */
+export function viewTooLarge(budget: ContextBudget, messageCount: number): boolean {
+  if (budgetLevel(budget) !== 'full') return false
+  return messageCount === 0 || budget.system + budget.diagrams >= budget.max
+}
+
 export type ChangeAction = 'accept' | 'reject' | 'undo'
 
 /**
