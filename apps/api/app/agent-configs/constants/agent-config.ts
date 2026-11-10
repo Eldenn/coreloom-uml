@@ -30,3 +30,5 @@ export type AgentProposalSource = (typeof AgentProposalSource)[keyof typeof Agen
 export const AGENT_PROPOSAL_SOURCES = Object.values(AgentProposalSource)
 /** Diagrams one proposal call can read. */
 export const AGENT_PROPOSAL_DIAGRAMS_MAX = 20
+/** Longest conventions file an import reads. */
+export const AGENT_IMPORT_MAX_LENGTH = 50_000

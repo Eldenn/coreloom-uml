@@ -174,6 +174,12 @@ const routes = {
     tokens: [{"old":"/projects/:id/agent-config/proposals","type":0,"val":"projects","end":""},{"old":"/projects/:id/agent-config/proposals","type":1,"val":"id","end":""},{"old":"/projects/:id/agent-config/proposals","type":0,"val":"agent-config","end":""},{"old":"/projects/:id/agent-config/proposals","type":0,"val":"proposals","end":""}],
     types: placeholder as Registry['projects.agent_config.proposals.store']['types'],
   },
+  'projects.agent_config.imports.store': {
+    methods: ["POST"],
+    pattern: '/projects/:id/agent-config/imports',
+    tokens: [{"old":"/projects/:id/agent-config/imports","type":0,"val":"projects","end":""},{"old":"/projects/:id/agent-config/imports","type":1,"val":"id","end":""},{"old":"/projects/:id/agent-config/imports","type":0,"val":"agent-config","end":""},{"old":"/projects/:id/agent-config/imports","type":0,"val":"imports","end":""}],
+    types: placeholder as Registry['projects.agent_config.imports.store']['types'],
+  },
   'llm.providers': {
     methods: ["GET","HEAD"],
     pattern: '/llm/providers',

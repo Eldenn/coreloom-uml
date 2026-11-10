@@ -11,6 +11,8 @@ import {
 import type { LlmFailureOutput } from '#app/llm/validators/llm-output'
 import { ProviderKind } from '#app/llm-connections/constants/llm-connections'
 import ClaudeCodeCli from '#app/llm-connections/services/claude-code-cli'
+import { resolveCredential } from '#app/llm-connections/services/llm-credential'
+import type User from '#app/users/models/user'
 import llmConfig from '#config/llm'
 
 /** A `claude-code` model name: one token that cannot read as a flag of the binary. */
@@ -40,6 +42,26 @@ export function providerProblem(provider: ProviderSettings, apiKey: string): str
     return 'A claude-code model is a single name, such as sonnet'
   }
   return baseUrlProblem(provider, llmConfig.allowedOrigins)
+}
+
+/**
+ * The model a request calls with the user's provider: `problem` (422) when the settings cannot be
+ * called, `notFound` (404) for a subscription kind behind an off flag, `reason` (502) for a
+ * subscription that is not connected or whose grant died.
+ */
+export async function userLanguageModel(
+  provider: ProviderSettings,
+  apiKey: string | null | undefined,
+  user: Pick<User, 'id' | 'email'>,
+): Promise<
+  { model: LanguageModel } | { problem: string } | { notFound: true } | { reason: LlmFailureReason }
+> {
+  const key = apiKey ?? ''
+  const problem = providerProblem(provider, key)
+  if (problem) return { problem }
+  const resolved = await resolveCredential(provider, key, user)
+  if (!('credential' in resolved)) return resolved
+  return { model: (await app.container.make(LanguageModels)).create(provider, resolved.credential) }
 }
 
 /** The 502 body of a failed provider call. */

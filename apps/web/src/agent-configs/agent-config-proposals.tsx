@@ -295,7 +295,7 @@ function ProposalsWaiting({ model, source }: { model: string; source: Source }) 
   )
 }
 
-function ProposalsFailed({ error }: { error: unknown }) {
+export function ProposalsFailed({ error }: { error: unknown }) {
   const failureText = useProviderFailureText()
   return (
     <Alert variant="destructive" role="alert">
@@ -304,7 +304,7 @@ function ProposalsFailed({ error }: { error: unknown }) {
   )
 }
 
-function ProposalsReview({
+export function ProposalsReview({
   projectId,
   config,
   questionnaires,

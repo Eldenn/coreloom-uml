@@ -91,6 +91,15 @@ export type AgentDiagramOutput = {
   architecture: string
 }
 
+/** `POST /projects/:id/agent-config/imports`: nothing is stored. */
+export type AgentImportOutput = {
+  /** Each fits its question and differs from the current answer. */
+  answers: { questionnaireId: string; questionId: string; value: AnswerValue; evidence: string }[]
+  rules: { section: string; text: string }[]
+  /** The end of the file was cut to fit what the model can read. */
+  truncated: boolean
+}
+
 /** `GET /projects/:id/agent-config`: the configuration and everything it is rendered from. */
 export type AgentConfigDetailOutput = AgentConfigOutput & {
   /** The sections an accepted rule may go to, in render order. */
