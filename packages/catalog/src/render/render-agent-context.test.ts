@@ -117,6 +117,18 @@ describe('renderAgentContext', () => {
     expect(headings).toEqual(['Project', 'Working style'])
   })
 
+  it('renders architecture rules right after Project', () => {
+    const text = agentsMd({
+      ...INPUT,
+      answers: [answer('comments', 5)],
+      rules: [{ section: 'Architecture', text: '`billing` never imports from `auth`.' }],
+      notes: null,
+    })
+    const headings = [...text.matchAll(/^## (.+)$/gm)].map((match) => match[1])
+    expect(headings).toEqual(['Project', 'Architecture', 'Working style'])
+    expect(text).toContain('## Architecture\n\n- \\`billing\\` never imports from \\`auth\\`.')
+  })
+
   it('renders the notes under their attribution, without raw HTML', () => {
     const text = agentsMd(INPUT)
     expect(text).toContain(

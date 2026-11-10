@@ -5,6 +5,8 @@
  */
 export const Section = {
   Project: 'Project',
+  /** Rules drawn from the project's diagrams: layers, dependencies, names. */
+  Architecture: 'Architecture',
   WorkingStyle: 'Working style',
   Testing: 'Testing',
   Workflow: 'Workflow',
@@ -16,6 +18,7 @@ export type SharedSection = (typeof Section)[keyof typeof Section]
 
 /** Sections any questionnaire may feed, besides its own. */
 export const SHARED_SECTIONS: readonly string[] = [
+  Section.Architecture,
   Section.WorkingStyle,
   Section.Testing,
   Section.Workflow,
@@ -27,7 +30,7 @@ export const RESERVED_SECTIONS: readonly string[] = [Section.Project, Section.Pr
 
 /**
  * The sections of a configuration made of these questionnaires, in render order: `Project`,
- * `Working style`, the questionnaires' own sections (in questionnaire order, without duplicates),
+ * `Architecture`, `Working style`, the questionnaires' own sections (in questionnaire order, without duplicates),
  * `Testing`, `Workflow`, `Tooling`, then `Project notes`.
  */
 export function sectionOrder(questionnaires: readonly { sections: readonly string[] }[]): string[] {
@@ -39,6 +42,7 @@ export function sectionOrder(questionnaires: readonly { sections: readonly strin
   }
   return [
     Section.Project,
+    Section.Architecture,
     Section.WorkingStyle,
     ...own,
     Section.Testing,

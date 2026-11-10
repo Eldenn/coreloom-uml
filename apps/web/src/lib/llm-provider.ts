@@ -100,10 +100,20 @@ export function useTestProvider() {
 /** `POST …/agent-config/proposals`: proposed rules, nothing stored. */
 export function useProposeRules(projectId: number) {
   return useMutation({
-    mutationFn: (provider: StoredProvider) =>
+    mutationFn: ({
+      provider,
+      diagramIds,
+    }: {
+      provider: StoredProvider
+      /** Reads these diagrams instead of the answers' notes. */
+      diagramIds?: number[]
+    }) =>
       client.api.projects.agentConfig.proposals.store({
         params: { id: projectId },
-        body: callBody(provider),
+        body: {
+          ...callBody(provider),
+          ...(diagramIds ? { from: 'diagrams' as const, diagramIds } : {}),
+        },
       }),
   })
 }

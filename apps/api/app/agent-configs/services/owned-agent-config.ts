@@ -3,6 +3,7 @@ import AgentConfig from '#app/agent-configs/models/agent-config'
 import AgentConfigGeneration from '#app/agent-configs/models/agent-config-generation'
 import { serializeAgentConfigDetail } from '#app/agent-configs/serializers/agent-config-serializer'
 import { computeImpact, currentInputs } from '#app/agent-configs/services/agent-context'
+import { listProjectDiagrams } from '#app/agent-configs/services/project-diagrams'
 import type Project from '#app/projects/models/project'
 import { assertOwner } from '#app/shared/authorization/assert-owner'
 import type User from '#app/users/models/user'
@@ -54,7 +55,7 @@ export async function describeAgentConfig(config: AgentConfig, project: Project)
   const inputs = await currentInputs(config, project)
   const latest = await latestGeneration(config)
   return {
-    config: serializeAgentConfigDetail(config, latest),
+    config: serializeAgentConfigDetail(config, latest, await listProjectDiagrams(project)),
     impact: computeImpact(config, inputs, latest),
   }
 }

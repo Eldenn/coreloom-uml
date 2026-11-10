@@ -215,10 +215,13 @@ function c4ToPlantUml(d: C4Diagram): string {
   ])
 }
 
-/** The diagram as PlantUML text, between `@startuml` and `@enduml`. */
-function toPlantUml(diagram: UmlSpec): string {
+/**
+ * The diagram as PlantUML text, between `@startuml` and `@enduml`. `layout: false` leaves out the
+ * comment line that keeps the positions (for a reader that only needs the model).
+ */
+function toPlantUml(diagram: UmlSpec, options: { layout?: boolean } = {}): string {
   const text = plantText(diagram)
-  const line = layoutLine(diagram, "'")
+  const line = options.layout === false ? null : layoutLine(diagram, "'")
   if (!line) return text
   // Inside the diagram: PlantUML reads nothing after @enduml.
   const end = text.lastIndexOf('@enduml')

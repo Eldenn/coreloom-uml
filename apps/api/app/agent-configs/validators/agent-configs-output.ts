@@ -9,6 +9,7 @@ import type { AgentRuleSource, Target } from '#app/agent-configs/constants/agent
 import type { AgentConfigQuestionnaire } from '#app/agent-configs/models/agent-config'
 import type { AgentGenerationSkills } from '#app/agent-configs/models/agent-config-generation'
 import type { AgentConfigImpact } from '#app/agent-configs/services/agent-context'
+import type { DiagramKind } from '#app/diagrams/constants/diagram'
 import type { Paginated } from '#app/shared/pagination/paginate'
 
 /** A catalog questionnaire, as listed by `GET /questionnaires`. */
@@ -81,6 +82,15 @@ export type AgentGenerationOutput = AgentGenerationSummaryOutput & {
 /** A configured questionnaire answered against an older version than the catalog's. */
 export type OutdatedQuestionnaireOutput = { id: string; version: string; currentVersion: string }
 
+/** A diagram of the project with content, which rule proposals can read. */
+export type AgentDiagramOutput = {
+  id: number
+  title: string
+  kind: DiagramKind
+  /** The title of the architecture it belongs to. */
+  architecture: string
+}
+
 /** `GET /projects/:id/agent-config`: the configuration and everything it is rendered from. */
 export type AgentConfigDetailOutput = AgentConfigOutput & {
   /** The sections an accepted rule may go to, in render order. */
@@ -90,6 +100,8 @@ export type AgentConfigDetailOutput = AgentConfigOutput & {
   rules: AgentRuleOutput[]
   latestGeneration: AgentGenerationSummaryOutput | null
   outdatedQuestionnaires: OutdatedQuestionnaireOutput[]
+  /** The project's diagrams with content, architecture by architecture. */
+  diagrams: AgentDiagramOutput[]
 }
 
 /** What regenerating now would change; `null` before the first generation. */

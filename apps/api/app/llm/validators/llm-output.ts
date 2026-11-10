@@ -32,6 +32,8 @@ export type LlmFailureOutput = { error: { message: string }; reason: LlmFailureR
 /** `POST /projects/:id/agent-config/proposals`: nothing is stored. */
 export type AgentProposalsOutput = {
   proposals: RuleProposal[]
-  /** Some notes were cut to fit the input budget. */
+  /** Some notes were cut, or some diagrams left out, to fit the input budget. */
   truncated: boolean
+  /** Diagrams left out whole to fit the budget (`from: 'diagrams'` only). */
+  skipped: number[]
 }

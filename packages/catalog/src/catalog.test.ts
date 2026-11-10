@@ -202,6 +202,7 @@ describe('composeQuestionnaires', () => {
       ok: true,
       sections: [
         'Project',
+        'Architecture',
         'Working style',
         'TypeScript',
         'React',
@@ -221,7 +222,7 @@ describe('composeQuestionnaires', () => {
 
   it('merges sections in questionnaire order without duplicates', () => {
     const disjoint = { ...backend, questions: [] } as unknown as Questionnaire
-    expect(sectionOrder([frontendReact, disjoint]).slice(2, 5)).toEqual([
+    expect(sectionOrder([frontendReact, disjoint]).slice(3, 6)).toEqual([
       'TypeScript',
       'React',
       'Node',

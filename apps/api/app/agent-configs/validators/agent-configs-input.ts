@@ -5,10 +5,13 @@ import {
   AGENT_ANSWER_DETAILS_MAX_LENGTH,
   AGENT_ANSWERS_PER_REQUEST_MAX,
   AGENT_NOTES_MAX_LENGTH,
+  AGENT_PROPOSAL_DIAGRAMS_MAX,
+  AGENT_PROPOSAL_SOURCES,
   AGENT_RULE_SOURCES,
   AGENT_RULE_TEXT_MAX_LENGTH,
   TARGETS,
 } from '#app/agent-configs/constants/agent-config'
+import { llmCallFields } from '#app/llm/validators/llm-input'
 
 /** Longest questionnaire, question or section name accepted on the wire. */
 const CATALOG_ID_MAX_LENGTH = 64
@@ -90,6 +93,24 @@ export const updateAgentRuleInput = vine.create(
     text: ruleText().optional(),
     /** The rule's new place among the configuration's rules, from 0 (clamped to the end). */
     position: vine.number().withoutDecimals().min(0).optional(),
+  }),
+)
+
+/**
+ * `POST /projects/:id/agent-config/proposals`: the user's provider, and what the model reads —
+ * the answers' notes (default), or the project's diagrams (all of them when `diagramIds` is
+ * omitted, in the given order otherwise).
+ */
+export const agentProposalsInput = vine.create(
+  vine.object({
+    ...llmCallFields(),
+    from: vine.enum(AGENT_PROPOSAL_SOURCES).optional(),
+    diagramIds: vine
+      .array(vine.number().withoutDecimals().min(1))
+      .minLength(1)
+      .maxLength(AGENT_PROPOSAL_DIAGRAMS_MAX)
+      .distinct()
+      .optional(),
   }),
 )
 

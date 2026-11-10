@@ -3,6 +3,7 @@ import {
   detectDiagramTextFormat,
   formatDiagramText,
   parseDiagramText,
+  toPlantUml,
   type UmlSpec,
   validateDiagram,
 } from './index.ts'
@@ -57,6 +58,13 @@ describe('text formats', () => {
       ]),
       layout: { Order: { x: 120, y: 40 } },
     })
+  })
+
+  it('writes PlantUML without the layout line when asked', () => {
+    const text = toPlantUml(ORDERS, { layout: false })
+    expect(text).not.toContain('120')
+    expect(text).toBe(toPlantUml({ ...ORDERS, layout: undefined }))
+    expect(parseDiagramText(text, 'plantuml').diagram).toMatchObject({ kind: 'class' })
   })
 
   it('reads Mermaid written by hand', () => {
