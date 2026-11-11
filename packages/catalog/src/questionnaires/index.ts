@@ -1,9 +1,17 @@
 import type { Localized, Questionnaire } from '../schemas.ts'
 import { sectionOrder } from '../sections.ts'
+import { backendNode } from './backend-node.ts'
 import { frontendReact } from './frontend-react.ts'
+import { gitWorkflow } from './git-workflow.ts'
+import { security } from './security.ts'
 
 /** Every questionnaire of the catalog, at its current version. */
-export const QUESTIONNAIRES: readonly Questionnaire[] = [frontendReact]
+export const QUESTIONNAIRES: readonly Questionnaire[] = [
+  frontendReact,
+  backendNode,
+  gitWorkflow,
+  security,
+]
 
 /** Labels of the ends of every agreement scale. */
 export const SCALE_LABELS: { min: Localized; max: Localized } = {

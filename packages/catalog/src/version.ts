@@ -4,4 +4,4 @@
  * `package.json` (a test checks it): bump both together whenever a questionnaire, a fragment,
  * a template or the renderer changes its output.
  */
-export const CATALOG_VERSION = '0.5.0'
+export const CATALOG_VERSION = '0.6.0'

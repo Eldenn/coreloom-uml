@@ -55,6 +55,34 @@ describe('the real catalog', () => {
     ])
   })
 
+  it('adds questionnaires of five to ten questions that combine with every other one', () => {
+    const added = QUESTIONNAIRES.filter((questionnaire) => questionnaire.id !== 'frontend-react')
+    expect(added.map((questionnaire) => questionnaire.id)).toEqual([
+      'backend-node',
+      'git-workflow',
+      'security',
+    ])
+    for (const questionnaire of added) {
+      expect(questionnaire.questions.length).toBeGreaterThanOrEqual(5)
+      expect(questionnaire.questions.length).toBeLessThanOrEqual(10)
+    }
+    expect(composeQuestionnaires(QUESTIONNAIRES)).toMatchObject({ ok: true })
+    expect(sectionOrder(QUESTIONNAIRES).slice(3, -4)).toEqual([
+      'TypeScript',
+      'React',
+      'API',
+      'Errors and logging',
+      'Database',
+      'Git',
+      'Security',
+    ])
+  })
+
+  it('never reuses a question id across questionnaires', () => {
+    const ids = QUESTIONNAIRES.flatMap((q) => q.questions.map((question) => question.id))
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
   it('keeps every fragment in English, on one line, without markers', () => {
     for (const question of QUESTIONNAIRES.flatMap((questionnaire) => questionnaire.questions)) {
       for (const fragment of question.fragments) {
