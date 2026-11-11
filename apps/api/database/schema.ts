@@ -75,16 +75,18 @@ export class AgentConfigRuleSchema extends BaseModel {
 }
 
 export class AgentConfigSchema extends BaseModel {
-  static $columns = ['createdAt', 'id', 'notes', 'projectId', 'questionnaires', 'revision', 'targets', 'updatedAt', 'userId'] as const
+  static $columns = ['createdAt', 'id', 'name', 'notes', 'projectId', 'questionnaires', 'revision', 'targets', 'updatedAt', 'userId'] as const
   $columns = AgentConfigSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column({ isPrimary: true })
   declare id: number
   @column()
+  declare name: string
+  @column()
   declare notes: string | null
   @column()
-  declare projectId: number
+  declare projectId: number | null
   @column()
   declare questionnaires: any
   @column()

@@ -1,4 +1,4 @@
-// A configured project: where its files stand (impact), the answers (editable in place), the
+// A configuration: where its files stand (impact), the answers (editable in place), the
 // accepted rules, the project notes and the coding tools, with "Generate" as the main action.
 import { FileTextIcon, PencilIcon, SparklesIcon, Trash2Icon, WandSparklesIcon } from 'lucide-react'
 import * as React from 'react'
@@ -32,35 +32,37 @@ import {
   TARGETS,
   useDeleteAgentConfig,
   useGenerate,
-  useSaveAgentConfig,
   useSaveAnswers,
+  useUpdateAgentConfig,
 } from '@/lib/agent-configs'
 import { getErrorMessage } from '@/lib/client'
 import { useT } from '@/lib/locale'
 
 export function AgentConfigSummary({
-  projectId,
+  configId,
   config,
   impact,
   questionnaires,
   onEditAnswers,
   onShowGeneration,
+  onDeleted,
 }: {
-  projectId: number
+  configId: number
   config: AgentConfig
   impact: AgentImpact
   questionnaires: Questionnaire[]
   onEditAnswers: () => void
   onShowGeneration: (id: number) => void
+  onDeleted: () => void
 }) {
   const t = useT()
   const [ruleDraft, setRuleDraft] = React.useState<RuleDraft | null>(null)
-  const save = useSaveAgentConfig(projectId)
+  const save = useUpdateAgentConfig(configId)
 
   return (
     <div className="flex flex-col gap-6">
       <GenerateBar
-        projectId={projectId}
+        configId={configId}
         config={config}
         impact={impact}
         onShowGeneration={onShowGeneration}
@@ -77,10 +79,7 @@ export function AgentConfigSummary({
               onClick={() => {
                 // Saving the same questionnaires takes them at their current version.
                 save.mutate(
-                  {
-                    questionnaires: config.questionnaires.map((q) => q.id),
-                    targets: config.targets,
-                  },
+                  { questionnaires: config.questionnaires.map((q) => q.id) },
                   {
                     onSuccess: onEditAnswers,
                     onError: (error) => toast.error(getErrorMessage(error, t.agents.failed)),
@@ -94,7 +93,7 @@ export function AgentConfigSummary({
         </Alert>
       )}
       <AnswersCard
-        projectId={projectId}
+        configId={configId}
         config={config}
         questionnaires={questionnaires}
         onEditAnswers={onEditAnswers}
@@ -108,17 +107,17 @@ export function AgentConfigSummary({
         }}
       />
       <AgentConfigRules
-        projectId={projectId}
+        configId={configId}
         config={config}
         questionnaires={questionnaires}
         draft={ruleDraft}
         onDraftChange={setRuleDraft}
       />
       <div className="grid items-start gap-6 lg:grid-cols-2">
-        <NotesCard projectId={projectId} config={config} />
-        <TargetsCard projectId={projectId} config={config} />
+        <NotesCard configId={configId} config={config} />
+        <TargetsCard configId={configId} config={config} />
       </div>
-      <DeleteConfig projectId={projectId} />
+      <DeleteConfig configId={configId} onDeleted={onDeleted} />
     </div>
   )
 }
@@ -146,18 +145,18 @@ function useImpactText() {
 }
 
 function GenerateBar({
-  projectId,
+  configId,
   config,
   impact,
   onShowGeneration,
 }: {
-  projectId: number
+  configId: number
   config: AgentConfig
   impact: AgentImpact
   onShowGeneration: (id: number) => void
 }) {
   const t = useT()
-  const generate = useGenerate(projectId)
+  const generate = useGenerate(configId)
   const impactText = useImpactText()
   const latest = config.latestGeneration
   const stale = impact?.stale ?? false
@@ -212,13 +211,13 @@ function GenerateBar({
 }
 
 function AnswersCard({
-  projectId,
+  configId,
   config,
   questionnaires,
   onEditAnswers,
   onMakeRule,
 }: {
-  projectId: number
+  configId: number
   config: AgentConfig
   questionnaires: Questionnaire[]
   onEditAnswers: () => void
@@ -249,7 +248,7 @@ function AnswersCard({
                 return (
                   <AnswerRow
                     key={key}
-                    projectId={projectId}
+                    configId={configId}
                     questionnaire={questionnaire}
                     question={question}
                     answer={answers.get(key)}
@@ -271,13 +270,13 @@ function AnswersCard({
 }
 
 function AnswerRow({
-  projectId,
+  configId,
   questionnaire,
   question,
   answer,
   onMakeRule,
 }: {
-  projectId: number
+  configId: number
   questionnaire: Questionnaire
   question: Question
   answer: AgentConfig['answers'][number] | undefined
@@ -286,7 +285,7 @@ function AnswerRow({
   const t = useT()
   const localized = useLocalized()
   const format = useFormatAnswer()
-  const save = useSaveAnswers(projectId)
+  const save = useSaveAnswers(configId)
   const [editing, setEditing] = React.useState(false)
   const editRef = React.useRef<HTMLButtonElement>(null)
   const label = localized(question.label)
@@ -381,9 +380,9 @@ function AnswerRow({
   )
 }
 
-function NotesCard({ projectId, config }: { projectId: number; config: AgentConfig }) {
+function NotesCard({ configId, config }: { configId: number; config: AgentConfig }) {
   const t = useT()
-  const save = useSaveAgentConfig(projectId)
+  const save = useUpdateAgentConfig(configId)
   const form = useAppForm({
     defaultValues: { notes: config.notes ?? '' },
     validators: {
@@ -393,11 +392,7 @@ function NotesCard({ projectId, config }: { projectId: number; config: AgentConf
     },
     onSubmit: async ({ value }) => {
       try {
-        await save.mutateAsync({
-          questionnaires: config.questionnaires.map((q) => q.id),
-          targets: config.targets,
-          notes: value.notes.trim() ? value.notes : null,
-        })
+        await save.mutateAsync({ notes: value.notes.trim() ? value.notes : null })
         toast.success(t.agents.notesSaved)
       } catch (error) {
         toast.error(getErrorMessage(error, t.agents.failed))
@@ -440,9 +435,9 @@ function NotesCard({ projectId, config }: { projectId: number; config: AgentConf
   )
 }
 
-function TargetsCard({ projectId, config }: { projectId: number; config: AgentConfig }) {
+function TargetsCard({ configId, config }: { configId: number; config: AgentConfig }) {
   const t = useT()
-  const save = useSaveAgentConfig(projectId)
+  const save = useUpdateAgentConfig(configId)
   const options = useTargetOptions()
   const form = useAppForm({
     defaultValues: { targets: config.targets },
@@ -451,10 +446,7 @@ function TargetsCard({ projectId, config }: { projectId: number; config: AgentCo
     },
     onSubmit: async ({ value }) => {
       try {
-        await save.mutateAsync({
-          questionnaires: config.questionnaires.map((q) => q.id),
-          targets: value.targets,
-        })
+        await save.mutateAsync({ targets: value.targets })
         toast.success(t.agents.targetsSaved)
       } catch (error) {
         toast.error(getErrorMessage(error, t.agents.failed))
@@ -496,9 +488,9 @@ function TargetsCard({ projectId, config }: { projectId: number; config: AgentCo
   )
 }
 
-function DeleteConfig({ projectId }: { projectId: number }) {
+function DeleteConfig({ configId, onDeleted }: { configId: number; onDeleted: () => void }) {
   const t = useT()
-  const remove = useDeleteAgentConfig(projectId)
+  const remove = useDeleteAgentConfig(configId)
   const [open, setOpen] = React.useState(false)
   return (
     <div className="flex justify-end">
@@ -524,6 +516,7 @@ function DeleteConfig({ projectId }: { projectId: number }) {
                 try {
                   await remove.mutateAsync()
                   toast.success(t.agents.deleted)
+                  onDeleted()
                 } catch (error) {
                   toast.error(getErrorMessage(error, t.agents.failed))
                 }

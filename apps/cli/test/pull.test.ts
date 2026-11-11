@@ -37,7 +37,7 @@ function run(options: Partial<PullOptions> = {}, io = recordingIo().io) {
     env: { CORELOOM_UML_API_KEY: API_KEY, XDG_CONFIG_HOME: join(dir.path, '.config') },
     fetch,
     apiUrl: api.url,
-    project: '7',
+    config: '3',
     ...options,
   })
 }
@@ -56,7 +56,7 @@ describe('pull', () => {
     const manifest = await readManifest(dir.path)
     expect(manifest).toEqual({
       apiUrl: api.url,
-      projectId: 7,
+      configId: 3,
       generationId: 1,
       revision: 1,
       files: [
@@ -73,17 +73,31 @@ describe('pull', () => {
     expect(recorder.output()).not.toContain('loose-tests')
   })
 
-  it('reads the project and the API URL from the manifest on the next pull', async () => {
+  it('reads the configuration and the API URL from the manifest on the next pull', async () => {
     api.current = first
     await run()
     api.current = generation(2, [file(AGENTS, '# Conventions\n\n- Two'), first.files[1] as never])
 
-    expect(await run({ project: undefined, apiUrl: undefined })).toBe(ExitCode.Ok)
+    expect(await run({ config: undefined, apiUrl: undefined })).toBe(ExitCode.Ok)
     expect(await read(AGENTS)).toContain('- Two')
+    expect(api.requests.at(-1)?.url).toBe('/agent-configs/3/generations/latest')
   })
 
-  it('needs a project the first time', async () => {
-    await expect(run({ project: undefined })).rejects.toThrow(/--project/)
+  it('still pulls by project, and keeps a manifest written that way', async () => {
+    api.current = first
+    expect(await run({ config: undefined, project: '7' })).toBe(ExitCode.Ok)
+    expect(await readManifest(dir.path)).toMatchObject({ projectId: 7 })
+    api.current = generation(2, [file(AGENTS, '# Conventions\n\n- Two'), first.files[1] as never])
+
+    expect(await run({ config: undefined })).toBe(ExitCode.Ok)
+    expect(await read(AGENTS)).toContain('- Two')
+    expect(api.requests.at(-1)?.url).toBe('/projects/7/agent-config/generations/latest')
+    expect(await readManifest(dir.path)).not.toHaveProperty('configId')
+  })
+
+  it('needs a configuration the first time, and only one way to name it', async () => {
+    await expect(run({ config: undefined })).rejects.toThrow(/--config/)
+    await expect(run({ project: '7' })).rejects.toThrow(/not both/)
   })
 
   it('keeps the content and the frontmatter of a file without markers and adds the block at its end', async () => {
@@ -217,13 +231,14 @@ describe('pull', () => {
     await expect(run({ yes: true })).rejects.toThrow(/Unbalanced/)
   })
 
-  it('explains a refused key, a missing project and a redirect', async () => {
+  it('explains a refused key, a missing configuration and a redirect', async () => {
     api.current = first
     await expect(
       run({ env: { CORELOOM_UML_API_KEY: 'clu_wrong', XDG_CONFIG_HOME: dir.path } }),
     ).rejects.toThrow(/refused/)
-    await expect(run({ project: '8' })).rejects.toThrow(/Project not found \(project 8\)/)
-    await expect(run({ project: 'abc' })).rejects.toThrow(/Invalid project id/)
+    await expect(run({ config: '8' })).rejects.toThrow(/Not found \(configuration 8\)/)
+    await expect(run({ config: 'abc' })).rejects.toThrow(/Invalid configuration id/)
+    await expect(run({ config: undefined, project: 'abc' })).rejects.toThrow(/Invalid project id/)
 
     api.status = 302
     await expect(run()).rejects.toThrow(/redirect/)

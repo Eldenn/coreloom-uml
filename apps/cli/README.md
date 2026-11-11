@@ -1,6 +1,6 @@
 # @coreloom-uml/cli
 
-Writes a [Coreloom UML](https://github.com/Eldenn/coreloom-uml) project's agent conventions into a
+Writes [Coreloom UML](https://github.com/Eldenn/coreloom-uml) agent conventions into a
 repository: the `AGENTS.md` that coding assistants read, plus a short pointer file for each tool
 that does not read `AGENTS.md` natively. The conventions are written and generated in the
 Coreloom UML app; this CLI only pulls the latest generation.
@@ -30,17 +30,18 @@ Requires Node.js 22 or newer.
 3. At the root of your repository:
 
    ```sh
-   npx @coreloom-uml/cli pull --api-url https://coreloom.example.com/api --project 12
+   npx @coreloom-uml/cli pull --api-url https://coreloom.example.com/api --config 12
    ```
 
-   The project id is in the project page URL. Both values are remembered in `.coreloom-uml.json`,
-   so later pulls are just `npx @coreloom-uml/cli pull`.
+   The id is in the URL of the agent conventions page (`/agent-configs/12`). Both values are
+   remembered in `.coreloom-uml.json`, so later pulls are just `npx @coreloom-uml/cli pull`.
+   Conventions that sit in a project can also be named by the project's id, with `--project`.
 
 ## Commands
 
-### `pull [--api-url <url>] [--project <id>] [--dry-run] [--yes] [--force]`
+### `pull [--api-url <url>] [--config <id> | --project <id>] [--dry-run] [--yes] [--force]`
 
-Fetches the project's latest generation and, for each file:
+Fetches the conventions' latest generation and, for each file:
 
 | The file…                                   | What happens                                              |
 | ------------------------------------------- | --------------------------------------------------------- |
@@ -79,9 +80,10 @@ readable by you only. `CORELOOM_UML_API_KEY` takes precedence over it.
 | -------- | ---------------------------------------------------------------------------- |
 | API URL  | `--api-url`, `CORELOOM_UML_API_URL`, `.coreloom-uml.json`. No default.       |
 | API key  | `CORELOOM_UML_API_KEY`, then the config file. Never an argument.             |
-| Project  | `--project`, then `.coreloom-uml.json`.                                      |
+| Source   | `--config` or `--project`, then `.coreloom-uml.json`.                        |
 
-`.coreloom-uml.json` holds the API URL, the project id, the pulled generation and the hash of
+`.coreloom-uml.json` holds the API URL, the conventions' id (or, for a manifest written by an
+older version, the project's), the pulled generation and the hash of
 each block written. It holds no secret: commit it so that `status` works for everyone.
 
 ## Exit codes
@@ -89,5 +91,5 @@ each block written. It holds no secret: commit it so that `status` works for eve
 | Code | Meaning                                                                       |
 | ---- | ----------------------------------------------------------------------------- |
 | 0    | Success                                                                       |
-| 1    | Error: network, refused key, unknown project, refused path, broken markers…   |
+| 1    | Error: network, refused key, unknown id, refused path, broken markers…        |
 | 2    | A block edited by hand was left as it was                                     |

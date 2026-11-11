@@ -1,5 +1,5 @@
 // The questionnaire, one question per screen. Answers are kept as a draft in this browser
-// (`agent-config-draft:<projectId>`) until they are saved, at the end or with "Save and leave".
+// (`agent-config-draft:config:<configId>`) until they are saved, at the end or with "Save and leave".
 import { ArrowLeftIcon, ArrowRightIcon } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
@@ -44,11 +44,11 @@ const draftSchema = z.object({
   index: z.number().int().min(0),
 })
 
-const draftKey = (projectId: number) => `agent-config-draft:${projectId}`
+const draftKey = (configId: number) => `agent-config-draft:config:${configId}`
 
-function readDraft(projectId: number): Draft | null {
+function readDraft(configId: number): Draft | null {
   try {
-    const raw = localStorage.getItem(draftKey(projectId))
+    const raw = localStorage.getItem(draftKey(configId))
     if (!raw) return null
     const draft = draftSchema.safeParse(JSON.parse(raw))
     return draft.success ? draft.data : null
@@ -57,10 +57,10 @@ function readDraft(projectId: number): Draft | null {
   }
 }
 
-function writeDraft(projectId: number, draft: Draft | null) {
+function writeDraft(configId: number, draft: Draft | null) {
   try {
-    if (draft) localStorage.setItem(draftKey(projectId), JSON.stringify(draft))
-    else localStorage.removeItem(draftKey(projectId))
+    if (draft) localStorage.setItem(draftKey(configId), JSON.stringify(draft))
+    else localStorage.removeItem(draftKey(configId))
   } catch {
     // Storage can be blocked: the draft then lasts as long as the page.
   }
@@ -98,19 +98,19 @@ function changes(steps: Step[], config: AgentConfig, draft: Draft): AnswerChange
 }
 
 export function AgentConfigQuestions({
-  projectId,
+  configId,
   config,
   questionnaires,
   onDone,
 }: {
-  projectId: number
+  configId: number
   config: AgentConfig
   questionnaires: Questionnaire[]
   onDone: () => void
 }) {
   const t = useT()
   const localized = useLocalized()
-  const save = useSaveAnswers(projectId)
+  const save = useSaveAnswers(configId)
   const steps = React.useMemo<Step[]>(
     () =>
       questionnaires.flatMap((questionnaire) =>
@@ -124,7 +124,7 @@ export function AgentConfigQuestions({
   )
   const sections = React.useMemo(() => [...new Set(steps.map((s) => s.question.section))], [steps])
 
-  const [restored] = React.useState(() => readDraft(projectId))
+  const [restored] = React.useState(() => readDraft(configId))
   const [draft, setDraft] = React.useState<Draft>(
     () => restored ?? { answers: savedAnswers(config), index: 0 },
   )
@@ -136,14 +136,14 @@ export function AgentConfigQuestions({
   const step = steps.at(index)
   const update = (next: Draft) => {
     setDraft(next)
-    writeDraft(projectId, next)
+    writeDraft(configId, next)
   }
 
   const finish = async (final: Draft) => {
     try {
       const body = changes(steps, config, final)
       if (body.length > 0) await save.mutateAsync(body)
-      writeDraft(projectId, null)
+      writeDraft(configId, null)
       toast.success(t.agents.answersSaved)
       onDone()
     } catch (error) {

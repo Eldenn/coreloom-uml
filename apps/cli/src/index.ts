@@ -29,13 +29,20 @@ const apiUrlArg = {
 const pullCommand = defineCommand({
   meta: {
     name: 'pull',
-    description: "Write the project's latest generation into this repository, in managed blocks",
+    description:
+      "Write the configuration's latest generation into this repository, in managed blocks",
   },
   args: {
     'api-url': apiUrlArg,
+    config: {
+      type: 'string',
+      description:
+        'Agent conventions id, from their page URL (required the first time, then read from the manifest)',
+      valueHint: 'id',
+    },
     project: {
       type: 'string',
-      description: 'Project id (required the first time, then read from the manifest)',
+      description: 'Id of the project the conventions sit in, instead of --config',
       valueHint: 'id',
     },
     'dry-run': { type: 'boolean', description: 'Show the plan and the diffs, write nothing' },
@@ -48,6 +55,7 @@ const pullCommand = defineCommand({
         cwd: process.cwd(),
         io: terminalIo(),
         ...(args['api-url'] ? { apiUrl: args['api-url'] } : {}),
+        ...(args.config ? { config: args.config } : {}),
         ...(args.project ? { project: args.project } : {}),
         dryRun: args['dry-run'] === true,
         yes: args.yes === true,
@@ -86,7 +94,7 @@ const main = defineCommand({
   meta: {
     name: 'coreloom-uml',
     version: __CLI_VERSION__,
-    description: "Write a Coreloom UML project's agent conventions into a repository",
+    description: 'Write Coreloom UML agent conventions into a repository',
   },
   subCommands: { pull: pullCommand, status: statusCommand, config: configCommand },
 })

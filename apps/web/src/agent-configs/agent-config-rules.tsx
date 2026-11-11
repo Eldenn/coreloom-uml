@@ -54,13 +54,13 @@ function movedRule(before: string[], after: string[]): { id: string; position: n
 }
 
 export function AgentConfigRules({
-  projectId,
+  configId,
   config,
   questionnaires,
   draft,
   onDraftChange,
 }: {
-  projectId: number
+  configId: number
   config: AgentConfig
   /** Names the answer a proposed rule comes from. */
   questionnaires: Questionnaire[]
@@ -69,8 +69,8 @@ export function AgentConfigRules({
   onDraftChange: (draft: RuleDraft | null) => void
 }) {
   const t = useT()
-  const update = useUpdateRule(projectId)
-  const remove = useDeleteRule(projectId)
+  const update = useUpdateRule(configId)
+  const remove = useDeleteRule(configId)
   const addRef = React.useRef<HTMLButtonElement>(null)
   // Shown while a move is saved, so the list does not jump back first.
   const [moving, setMoving] = React.useState<string[] | null>(null)
@@ -127,8 +127,8 @@ export function AgentConfigRules({
         <CardTitle id="agent-rules-title">{t.agents.rulesTitle}</CardTitle>
         <CardDescription>{t.agents.rulesHint(RULES_MAX)}</CardDescription>
         <CardAction className="flex flex-wrap justify-end gap-2">
-          <AgentFileImport projectId={projectId} config={config} questionnaires={questionnaires} />
-          <RuleProposals projectId={projectId} config={config} questionnaires={questionnaires} />
+          <AgentFileImport configId={configId} config={config} questionnaires={questionnaires} />
+          <RuleProposals configId={configId} config={config} questionnaires={questionnaires} />
           <Button
             ref={addRef}
             variant="outline"
@@ -187,7 +187,7 @@ export function AgentConfigRules({
         )}
       </CardContent>
       <RuleDialog
-        projectId={projectId}
+        configId={configId}
         sections={config.ruleSections}
         draft={draft}
         onClose={() => {
@@ -199,12 +199,12 @@ export function AgentConfigRules({
 }
 
 function RuleDialog({
-  projectId,
+  configId,
   sections,
   draft,
   onClose,
 }: {
-  projectId: number
+  configId: number
   sections: string[]
   draft: RuleDraft | null
   onClose: () => void
@@ -225,7 +225,7 @@ function RuleDialog({
           <DialogDescription>{t.agents.ruleTextHint}</DialogDescription>
         </DialogHeader>
         {draft && (
-          <RuleForm projectId={projectId} sections={sections} draft={draft} onDone={onClose} />
+          <RuleForm configId={configId} sections={sections} draft={draft} onDone={onClose} />
         )}
       </DialogContent>
     </Dialog>
@@ -233,19 +233,19 @@ function RuleDialog({
 }
 
 function RuleForm({
-  projectId,
+  configId,
   sections,
   draft,
   onDone,
 }: {
-  projectId: number
+  configId: number
   sections: string[]
   draft: RuleDraft
   onDone: () => void
 }) {
   const t = useT()
-  const create = useCreateRule(projectId)
-  const update = useUpdateRule(projectId)
+  const create = useCreateRule(configId)
+  const update = useUpdateRule(configId)
   const rule = 'rule' in draft ? draft.rule : null
   const form = useAppForm({
     defaultValues: {

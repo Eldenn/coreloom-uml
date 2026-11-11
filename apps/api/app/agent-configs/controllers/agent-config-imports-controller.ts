@@ -9,16 +9,15 @@ import {
 } from '#app/agent-configs/services/agent-context'
 import {
   AGENT_CONFIG_NOT_FOUND,
-  findProjectAgentConfig,
+  findOwnedAgentConfig,
 } from '#app/agent-configs/services/owned-agent-config'
 import { agentImportInput } from '#app/agent-configs/validators/agent-configs-input'
 import type { AgentImportOutput } from '#app/agent-configs/validators/agent-configs-output'
 import { llmFailure, userLanguageModel } from '#app/llm/services/language-models'
 import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
-import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
 
 /**
- * `POST /projects/:id/agent-config/imports`: the user's own model reads an existing conventions
+ * `POST /agent-configs/:id/imports`: the user's own model reads an existing conventions
  * file (AGENTS.md, CLAUDE.md…) and proposes answers to the configured questionnaires and rules
  * for the rest. Nothing is stored: the owner applies the answers they keep with `PUT …/answers`
  * and accepts rules with `POST …/rules`. The file is never logged, only counts. Session only.
@@ -26,9 +25,7 @@ import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owne
 export default class AgentConfigImportsController {
   async store({ params, request, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
-    const project = await findOwnedProject(params.id, user)
-    if (!project) return response.notFound(PROJECT_NOT_FOUND)
-    const config = await findProjectAgentConfig(project, user)
+    const config = await findOwnedAgentConfig(params.id, user)
     if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
 
     const { provider, apiKey, content } = await request.validateUsing(agentImportInput)
@@ -43,7 +40,7 @@ export default class AgentConfigImportsController {
       return response.badGateway(llmFailure(built.reason))
     }
 
-    const inputs = await currentInputs(config, project)
+    const inputs = await currentInputs(config)
     const questionnaires = resolveQuestionnaires(inputs.questionnaires)
     let answers = inputs.answers
     for (const questionnaire of questionnaires) answers = migrateAnswers(questionnaire, answers)

@@ -7,7 +7,18 @@ import { CliError } from './errors.ts'
  */
 export type GenerationSkill = { name?: unknown; url?: unknown }
 
-/** `GET /projects/:id/agent-config/generations/latest`, reduced to what the CLI reads. */
+/**
+ * Which configuration to pull: by its own id, or by the project it sits in (what manifests
+ * written before configurations could stand outside a project hold).
+ */
+export type Source = { configId: number } | { projectId: number }
+
+/** "configuration 3" or "project 7", for messages. */
+export function describeSource(source: Source): string {
+  return 'configId' in source ? `configuration ${source.configId}` : `project ${source.projectId}`
+}
+
+/** `GET /agent-configs/:id/generations/latest`, reduced to what the CLI reads. */
 export type Generation = {
   id: number
   revision: number
@@ -22,8 +33,10 @@ export type FetchLike = typeof fetch
 /** Longest wait for the API before giving up. */
 const REQUEST_TIMEOUT_MS = 30_000
 
-function latestGenerationUrl(apiUrl: string, projectId: number): string {
-  return `${apiUrl}/projects/${projectId}/agent-config/generations/latest`
+function latestGenerationUrl(apiUrl: string, source: Source): string {
+  return 'configId' in source
+    ? `${apiUrl}/agent-configs/${source.configId}/generations/latest`
+    : `${apiUrl}/projects/${source.projectId}/agent-config/generations/latest`
 }
 
 /** The message of an `{ error: { message } }` body, if the API sent one. */
@@ -48,19 +61,19 @@ function isGeneration(value: unknown): value is Generation {
 }
 
 /**
- * Fetches the project's latest generation with the API key (`read` ability is enough). Redirects
+ * Fetches the configuration's latest generation with the API key (`read` ability is enough). Redirects
  * are not followed, so the key is never sent to another host.
  */
 export async function fetchLatestGeneration(options: {
   apiUrl: string
   apiKey: string
-  projectId: number
+  source: Source
   fetch?: FetchLike
 }): Promise<Generation> {
   const doFetch = options.fetch ?? fetch
   let response: Response
   try {
-    response = await doFetch(latestGenerationUrl(options.apiUrl, options.projectId), {
+    response = await doFetch(latestGenerationUrl(options.apiUrl, options.source), {
       headers: { Authorization: `Bearer ${options.apiKey}`, Accept: 'application/json' },
       redirect: 'manual',
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -97,7 +110,7 @@ export async function fetchLatestGeneration(options: {
       throw new CliError('The API key lacks the read ability.')
     case 404:
       throw new CliError(
-        `${errorMessage(body) ?? 'Not found'} (project ${options.projectId}). Check the project id, ` +
+        `${errorMessage(body) ?? 'Not found'} (${describeSource(options.source)}). Check the id, ` +
           'and generate the conventions in the app first.',
       )
     case 429:

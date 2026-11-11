@@ -89,10 +89,10 @@ router
 | Projects: the top-level container of an account's design work
 |--------------------------------------------------------------------------
 |
-| A project holds artifacts; architectures (below) are the first kind, listed
-| with `GET /architectures?projectId=` (an architecture may also stand outside any
-| project, listed by plain `GET /architectures`), and its agent conventions the second
-| (`/projects/:id/agent-config`). Same guards as the architectures.
+| A project holds artifacts: architectures (below), listed with
+| `GET /architectures?projectId=`, and agent conventions, listed with
+| `GET /agent-configs?projectId=` (at most one per project). Both may also stand outside any
+| project. Same guards as the architectures.
 */
 const projectsController = () => import('#app/projects/controllers/projects-controller')
 const agentConfigController = () => import('#app/agent-configs/controllers/agent-config-controller')
@@ -108,46 +108,59 @@ router
     router.patch('/:id', [projectsController, 'update']).as('projects.update')
     router.delete('/:id', [projectsController, 'destroy']).as('projects.destroy')
 
-    // Agent conventions: the project's configuration (one per project) and its generations.
+    // What CLIs that address a configuration by its project pull; newer ones use
+    // `/agent-configs/:id/generations/latest`.
     router
-      .get('/:id/agent-config', [agentConfigController, 'show'])
-      .as('projects.agent_config.show')
+      .get('/:id/agent-config/generations/latest', [agentGenerationsController, 'latestOfProject'])
+      .as('projects.agent_config.generations.latest')
+  })
+  .prefix('/projects')
+  .where('id', router.matchers.number())
+  .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
+
+/*
+|--------------------------------------------------------------------------
+| Agent conventions: what AGENTS.md and its pointer files are rendered from
+|--------------------------------------------------------------------------
+|
+| A configuration sits in one of the owner's projects or outside any; its
+| generations are what the CLI pulls (`/:id/generations/latest`).
+*/
+router
+  .group(() => {
+    router.get('/', [agentConfigController, 'index']).as('agent_configs.index')
+    router.post('/', [agentConfigController, 'store']).as('agent_configs.store')
+    router.get('/:id', [agentConfigController, 'show']).as('agent_configs.show')
+    router.patch('/:id', [agentConfigController, 'update']).as('agent_configs.update')
+    router.delete('/:id', [agentConfigController, 'destroy']).as('agent_configs.destroy')
     router
-      .put('/:id/agent-config', [agentConfigController, 'update'])
-      .as('projects.agent_config.update')
-    router
-      .delete('/:id/agent-config', [agentConfigController, 'destroy'])
-      .as('projects.agent_config.destroy')
-    router
-      .put('/:id/agent-config/answers', [
+      .put('/:id/answers', [
         () => import('#app/agent-configs/controllers/agent-config-answers-controller'),
         'update',
       ])
-      .as('projects.agent_config.answers.update')
+      .as('agent_configs.answers.update')
+    router.post('/:id/rules', [agentRulesController, 'store']).as('agent_configs.rules.store')
     router
-      .post('/:id/agent-config/rules', [agentRulesController, 'store'])
-      .as('projects.agent_config.rules.store')
+      .patch('/:id/rules/:ruleId', [agentRulesController, 'update'])
+      .as('agent_configs.rules.update')
     router
-      .patch('/:id/agent-config/rules/:ruleId', [agentRulesController, 'update'])
-      .as('projects.agent_config.rules.update')
+      .delete('/:id/rules/:ruleId', [agentRulesController, 'destroy'])
+      .as('agent_configs.rules.destroy')
     router
-      .delete('/:id/agent-config/rules/:ruleId', [agentRulesController, 'destroy'])
-      .as('projects.agent_config.rules.destroy')
+      .post('/:id/generations', [agentGenerationsController, 'store'])
+      .as('agent_configs.generations.store')
     router
-      .post('/:id/agent-config/generations', [agentGenerationsController, 'store'])
-      .as('projects.agent_config.generations.store')
-    router
-      .get('/:id/agent-config/generations', [agentGenerationsController, 'index'])
-      .as('projects.agent_config.generations.index')
+      .get('/:id/generations', [agentGenerationsController, 'index'])
+      .as('agent_configs.generations.index')
     // What the CLI pulls. Declared before `/:generationId` so `latest` isn't read as an id.
     router
-      .get('/:id/agent-config/generations/latest', [agentGenerationsController, 'latest'])
-      .as('projects.agent_config.generations.latest')
+      .get('/:id/generations/latest', [agentGenerationsController, 'latest'])
+      .as('agent_configs.generations.latest')
     router
-      .get('/:id/agent-config/generations/:generationId', [agentGenerationsController, 'show'])
-      .as('projects.agent_config.generations.show')
+      .get('/:id/generations/:generationId', [agentGenerationsController, 'show'])
+      .as('agent_configs.generations.show')
   })
-  .prefix('/projects')
+  .prefix('/agent-configs')
   .where('id', router.matchers.number())
   .where('ruleId', router.matchers.number())
   .where('generationId', router.matchers.number())
@@ -162,19 +175,19 @@ router
 | Session only (an API token is refused), 10 calls a minute per user.
 */
 router
-  .post('/projects/:id/agent-config/proposals', [
+  .post('/agent-configs/:id/proposals', [
     () => import('#app/agent-configs/controllers/agent-config-proposals-controller'),
     'store',
   ])
-  .as('projects.agent_config.proposals.store')
+  .as('agent_configs.proposals.store')
   .where('id', router.matchers.number())
   .use([middleware.auth(), llmThrottle])
 router
-  .post('/projects/:id/agent-config/imports', [
+  .post('/agent-configs/:id/imports', [
     () => import('#app/agent-configs/controllers/agent-config-imports-controller'),
     'store',
   ])
-  .as('projects.agent_config.imports.store')
+  .as('agent_configs.imports.store')
   .where('id', router.matchers.number())
   .use([middleware.auth(), llmThrottle])
 router

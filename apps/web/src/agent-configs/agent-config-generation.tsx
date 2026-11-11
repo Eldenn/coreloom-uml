@@ -78,24 +78,24 @@ function download(file: AgentFile) {
 }
 
 export function AgentConfigGeneration({
-  projectId,
+  configId,
   generationId,
   onBack,
   onSelect,
 }: {
-  projectId: number
+  configId: number
   generationId: number
   onBack: () => void
   onSelect: (id: number) => void
 }) {
   const t = useT()
-  const generation = useGeneration(projectId, generationId)
-  const generations = useGenerations(projectId)
+  const generation = useGeneration(configId, generationId)
+  const generations = useGenerations(configId)
   const list = generations.data?.data ?? []
   // Newest first: the previous generation is the next one in the list.
   const index = list.findIndex((g) => g.id === generationId)
   const previousId = index < 0 ? null : (list.at(index + 1)?.id ?? null)
-  const previous = useGeneration(projectId, previousId)
+  const previous = useGeneration(configId, previousId)
 
   const back = (
     <Button variant="ghost" className="w-fit" onClick={onBack}>
@@ -175,7 +175,7 @@ export function AgentConfigGeneration({
         </Card>
       )}
       <SkillsCard skills={current.skills} />
-      <InstallCard projectId={projectId} />
+      <InstallCard configId={configId} />
     </div>
   )
 }
@@ -365,9 +365,9 @@ function SkillList({ title, skills }: { title: string; skills: AgentSkill[] }) {
   )
 }
 
-function InstallCard({ projectId }: { projectId: number }) {
+function InstallCard({ configId }: { configId: number }) {
   const t = useT()
-  const command = `npx @coreloom-uml/cli pull --api-url ${apiBaseUrl} --project ${projectId}`
+  const command = `npx @coreloom-uml/cli pull --api-url ${apiBaseUrl} --config ${configId}`
   return (
     <Card>
       <CardHeader>

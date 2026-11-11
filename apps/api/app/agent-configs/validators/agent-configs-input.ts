@@ -4,6 +4,7 @@ import type { FieldContext } from '@vinejs/vine/types'
 import {
   AGENT_ANSWER_DETAILS_MAX_LENGTH,
   AGENT_ANSWERS_PER_REQUEST_MAX,
+  AGENT_CONFIG_NAME_MAX_LENGTH,
   AGENT_IMPORT_MAX_LENGTH,
   AGENT_NOTES_MAX_LENGTH,
   AGENT_PROPOSAL_DIAGRAMS_MAX,
@@ -34,23 +35,56 @@ const withoutMarkers = vine.createRule(
 
 const catalogId = () => vine.string().trim().minLength(1).maxLength(CATALOG_ID_MAX_LENGTH)
 
-/** `PUT /projects/:id/agent-config`: creates the configuration or replaces these fields. */
-export const upsertAgentConfigInput = vine.create(
+const nameInput = () =>
+  vine.string().trim().minLength(1).maxLength(AGENT_CONFIG_NAME_MAX_LENGTH).use(withoutMarkers())
+const projectIdInput = () => vine.number().withoutDecimals().min(1)
+const questionnairesInput = () =>
+  vine.array(catalogId()).minLength(1).maxLength(QUESTIONNAIRES_MAX).distinct()
+const targetsInput = () =>
+  vine.array(vine.enum(TARGETS)).minLength(1).maxLength(TARGETS.length).distinct()
+const notesInput = () =>
+  vine.string().maxLength(AGENT_NOTES_MAX_LENGTH).use(withoutMarkers()).nullable()
+
+/**
+ * `POST /agent-configs`: in `projectId` (one of the caller's projects, which holds no
+ * configuration yet), or outside any project when it is omitted or null.
+ */
+export const createAgentConfigInput = vine.create(
   vine.object({
-    questionnaires: vine.array(catalogId()).minLength(1).maxLength(QUESTIONNAIRES_MAX).distinct(),
-    targets: vine.array(vine.enum(TARGETS)).minLength(1).maxLength(TARGETS.length).distinct(),
-    /** Omitted: left as is (none on creation). */
-    notes: vine
-      .string()
-      .maxLength(AGENT_NOTES_MAX_LENGTH)
-      .use(withoutMarkers())
-      .nullable()
-      .optional(),
+    name: nameInput(),
+    projectId: projectIdInput().nullable().optional(),
+    questionnaires: questionnairesInput(),
+    targets: targetsInput(),
+    notes: notesInput().optional(),
   }),
 )
 
 /**
- * `PUT /projects/:id/agent-config/answers`: a partial update. `value: null` removes the answer;
+ * `PATCH /agent-configs/:id`: omitted fields are left as is; `projectId` moves it, null takes it
+ * out of its project.
+ */
+export const updateAgentConfigInput = vine.create(
+  vine.object({
+    name: nameInput().optional(),
+    projectId: projectIdInput().nullable().optional(),
+    questionnaires: questionnairesInput().optional(),
+    targets: targetsInput().optional(),
+    notes: notesInput().optional(),
+  }),
+)
+
+/** `GET /agent-configs` query params. */
+export const listAgentConfigsInput = vine.create(
+  vine.object({
+    page: vine.number().withoutDecimals().min(1).optional(),
+    perPage: vine.number().withoutDecimals().min(1).optional(),
+    projectId: projectIdInput().optional(),
+    search: vine.string().trim().maxLength(AGENT_CONFIG_NAME_MAX_LENGTH).optional(),
+  }),
+)
+
+/**
+ * `PUT /agent-configs/:id/answers`: a partial update. `value: null` removes the answer;
  * the value itself is checked against its question by the controller (`answerProblem`).
  */
 export const updateAgentAnswersInput = vine.create(
@@ -78,7 +112,7 @@ export const updateAgentAnswersInput = vine.create(
 const ruleText = () =>
   vine.string().trim().minLength(1).maxLength(AGENT_RULE_TEXT_MAX_LENGTH).use(withoutMarkers())
 
-/** `POST /projects/:id/agent-config/rules` */
+/** `POST /agent-configs/:id/rules` */
 export const createAgentRuleInput = vine.create(
   vine.object({
     section: catalogId(),
@@ -87,7 +121,7 @@ export const createAgentRuleInput = vine.create(
   }),
 )
 
-/** `PATCH /projects/:id/agent-config/rules/:ruleId`: omitted fields are left as is. */
+/** `PATCH /agent-configs/:id/rules/:ruleId`: omitted fields are left as is. */
 export const updateAgentRuleInput = vine.create(
   vine.object({
     section: catalogId().optional(),
@@ -98,8 +132,8 @@ export const updateAgentRuleInput = vine.create(
 )
 
 /**
- * `POST /projects/:id/agent-config/proposals`: the user's provider, and what the model reads —
- * the answers' notes (default), or the project's diagrams (all of them when `diagramIds` is
+ * `POST /agent-configs/:id/proposals`: the user's provider, and what the model reads —
+ * the answers' notes (default), or its diagrams (all of them when `diagramIds` is
  * omitted, in the given order otherwise).
  */
 export const agentProposalsInput = vine.create(
@@ -116,7 +150,7 @@ export const agentProposalsInput = vine.create(
 )
 
 /**
- * `POST /projects/:id/agent-config/imports`: the user's provider and the file to read. The file
+ * `POST /agent-configs/:id/imports`: the user's provider and the file to read. The file
  * may hold a managed block (its markers included): it is left out before the model reads it.
  */
 export const agentImportInput = vine.create(
@@ -126,7 +160,7 @@ export const agentImportInput = vine.create(
   }),
 )
 
-/** `GET /projects/:id/agent-config/generations` query params. */
+/** `GET /agent-configs/:id/generations` query params. */
 export const listAgentGenerationsInput = vine.create(
   vine.object({
     page: vine.number().withoutDecimals().min(1).optional(),

@@ -39,11 +39,11 @@ interface Result {
 
 /** "Import a file" and its panel; nothing at all while no provider is set in this browser. */
 export function AgentFileImport({
-  projectId,
+  configId,
   config,
   questionnaires,
 }: {
-  projectId: number
+  configId: number
   config: AgentConfig
   questionnaires: Questionnaire[]
 }) {
@@ -53,7 +53,7 @@ export function AgentFileImport({
   const [content, setContent] = React.useState('')
   const [result, setResult] = React.useState<Result | null>(null)
   const [checked, setChecked] = React.useState<Set<string>>(() => new Set())
-  const read = useImportAgentFile(projectId)
+  const read = useImportAgentFile(configId)
 
   if (!provider) return null
 
@@ -134,7 +134,7 @@ export function AgentFileImport({
                   </Alert>
                 )}
                 <ImportedAnswers
-                  projectId={projectId}
+                  configId={configId}
                   config={config}
                   questionnaires={questionnaires}
                   answers={result.answers}
@@ -156,7 +156,7 @@ export function AgentFileImport({
                     {t.llm.importRules}
                   </h3>
                   <ProposalsReview
-                    projectId={projectId}
+                    configId={configId}
                     config={config}
                     questionnaires={questionnaires}
                     proposals={result.rules}
@@ -194,7 +194,7 @@ export function AgentFileImport({
 
 /** The proposed answers, each with the words it comes from; the checked ones are applied at once. */
 function ImportedAnswers({
-  projectId,
+  configId,
   config,
   questionnaires,
   answers,
@@ -202,7 +202,7 @@ function ImportedAnswers({
   onCheckedChange,
   onApplied,
 }: {
-  projectId: number
+  configId: number
   config: AgentConfig
   questionnaires: Questionnaire[]
   answers: ImportedAnswer[]
@@ -213,7 +213,7 @@ function ImportedAnswers({
   const t = useT()
   const localized = useLocalized()
   const format = useFormatAnswer()
-  const save = useSaveAnswers(projectId)
+  const save = useSaveAnswers(configId)
   const picked = answers.filter((answer) => checked.has(answerKey(answer)))
 
   const rows = answers.flatMap((answer) => {

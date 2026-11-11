@@ -4,6 +4,7 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/r
 
 import { architectureKeys } from '@/lib/architectures'
 import { client } from '@/lib/client'
+import { useT } from '@/lib/locale'
 
 export type Project = Awaited<ReturnType<typeof client.api.projects.show>>['project']
 
@@ -70,4 +71,19 @@ export function useDeleteProject() {
       ])
     },
   })
+}
+
+/** The select's value for "no project" (a select option can't have an empty value). */
+export const NO_PROJECT = 'none'
+
+export const toProjectId = (value: string) => (value === NO_PROJECT ? null : Number(value))
+
+/** "No project" first, then the user's projects. */
+export function useProjectOptions() {
+  const t = useT()
+  const projects = useProjects()
+  return [
+    { value: NO_PROJECT, label: t.architectures.noProject },
+    ...(projects.data?.data ?? []).map((p) => ({ value: String(p.id), label: p.name })),
+  ]
 }

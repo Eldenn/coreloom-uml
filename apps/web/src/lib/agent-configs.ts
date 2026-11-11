@@ -1,14 +1,24 @@
-// Query and mutation hooks for a project's agent conventions (the pattern of src/lib/query.ts).
+// Query and mutation hooks for agent conventions, in a project or on their own (the pattern of
+// src/lib/query.ts).
 // The questionnaires come from the API (`GET /questionnaires`), never from the catalog package,
 // so the screen always shows the server's version of them.
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  queryOptions,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 
-import { client, TuyauError } from '@/lib/client'
+import { client } from '@/lib/client'
 import { projectKeys } from '@/lib/projects'
 
-type ConfigBody = Awaited<ReturnType<typeof client.api.projects.agentConfig.show>>
+type ConfigBody = Awaited<ReturnType<typeof client.api.agentConfigs.show>>
 
 export type AgentConfig = ConfigBody['config']
+export type AgentConfigSummary = Awaited<
+  ReturnType<typeof client.api.agentConfigs.index>
+>['data'][number]
 export type AgentImpact = ConfigBody['impact']
 export type AgentAnswer = AgentConfig['answers'][number]
 export type AgentRule = AgentConfig['rules'][number]
@@ -22,7 +32,7 @@ export type Question = Questionnaire['questions'][number]
 export type Localized = Question['label']
 export type AnswerValue = AgentAnswer['value']
 export type AgentGeneration = Awaited<
-  ReturnType<typeof client.api.projects.agentConfig.generations.show>
+  ReturnType<typeof client.api.agentConfigs.generations.show>
 >['generation']
 export type AgentFile = AgentGeneration['files'][number]
 export type AgentSkill = AgentGeneration['skills']['compatible'][number]
@@ -42,17 +52,21 @@ export const TARGETS = [
 export const ANSWER_TEXT_MAX_LENGTH = 500
 export const ANSWER_DETAILS_MAX_LENGTH = 2000
 export const NOTES_MAX_LENGTH = 10_000
+export const NAME_MAX_LENGTH = 120
 export const RULE_TEXT_MAX_LENGTH = 300
 export const RULES_MAX = 50
 
 export const agentConfigKeys = {
   all: ['agent-configs'] as const,
+  lists: ['agent-configs', 'list'] as const,
+  list: (projectId: number | undefined, search: string) =>
+    ['agent-configs', 'list', projectId, search] as const,
   questionnaires: ['questionnaires'] as const,
   questionnaire: (id: string) => ['questionnaires', id] as const,
-  detail: (projectId: number) => ['agent-configs', projectId] as const,
-  generations: (projectId: number) => ['agent-configs', projectId, 'generations'] as const,
-  generation: (projectId: number, id: number) =>
-    ['agent-configs', projectId, 'generations', id] as const,
+  detail: (id: number) => ['agent-configs', 'detail', id] as const,
+  generations: (id: number) => ['agent-configs', 'detail', id, 'generations'] as const,
+  generation: (id: number, generationId: number) =>
+    ['agent-configs', 'detail', id, 'generations', generationId] as const,
 }
 
 export function useQuestionnaires() {
@@ -83,66 +97,103 @@ export function useConfigQuestionnaires(ids: readonly string[]) {
   })
 }
 
-/** The project's configuration; `null` when it has none yet (the API answers 404). */
-export function useAgentConfig(projectId: number) {
+/** The configurations of one project (at most one), or all of them without `projectId`. */
+export function useAgentConfigs({
+  projectId,
+  search = '',
+}: {
+  projectId?: number
+  search?: string
+}) {
   return useQuery({
-    queryKey: agentConfigKeys.detail(projectId),
-    queryFn: async (): Promise<ConfigBody | null> => {
-      try {
-        return await client.api.projects.agentConfig.show({ params: { id: projectId } })
-      } catch (error) {
-        if (error instanceof TuyauError && error.status === 404) return null
-        throw error
-      }
-    },
+    queryKey: agentConfigKeys.list(projectId, search),
+    queryFn: () =>
+      client.api.agentConfigs.index({
+        query: {
+          perPage: 100,
+          ...(projectId ? { projectId } : {}),
+          ...(search ? { search } : {}),
+        },
+      }),
   })
 }
 
+/** One configuration with its answers and rules; its page's loader reads it for the breadcrumbs. */
+export const agentConfigQueryOptions = (id: number) =>
+  queryOptions({
+    queryKey: agentConfigKeys.detail(id),
+    queryFn: () => client.api.agentConfigs.show({ params: { id } }),
+  })
+
+export function useAgentConfig(id: number) {
+  return useQuery(agentConfigQueryOptions(id))
+}
+
+function useInvalidateSets() {
+  const queryClient = useQueryClient()
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: agentConfigKeys.lists }),
+      queryClient.invalidateQueries({ queryKey: projectKeys.all }),
+    ])
+}
+
 /** Writes that answer with the whole configuration replace the cached one. */
-function useSetConfig(projectId: number) {
+function useSetConfig(id: number) {
   const queryClient = useQueryClient()
   return (body: ConfigBody) => {
-    queryClient.setQueryData(agentConfigKeys.detail(projectId), body)
+    queryClient.setQueryData(agentConfigKeys.detail(id), body)
   }
 }
 
 /** Writes that answer with the impact only refetch the configuration. */
-function useRefreshConfig(projectId: number) {
+function useRefreshConfig(id: number) {
   const queryClient = useQueryClient()
-  return () => queryClient.invalidateQueries({ queryKey: agentConfigKeys.detail(projectId) })
+  return () => queryClient.invalidateQueries({ queryKey: agentConfigKeys.detail(id) })
 }
 
 interface ConfigFields {
+  name: string
+  /** `null` outside any project. */
+  projectId: number | null
   questionnaires: string[]
   targets: Target[]
   notes?: string | null
 }
 
-/** Creates the configuration, or replaces its questionnaires, targets and notes. */
-export function useSaveAgentConfig(projectId: number) {
+/** 409 when the project already holds a configuration. */
+export function useCreateAgentConfig() {
   const queryClient = useQueryClient()
-  const setConfig = useSetConfig(projectId)
+  const invalidate = useInvalidateSets()
   return useMutation({
-    mutationFn: (body: ConfigFields) =>
-      client.api.projects.agentConfig.update({ params: { id: projectId }, body }),
+    mutationFn: (body: ConfigFields) => client.api.agentConfigs.store({ body }),
     onSuccess: (body) => {
-      setConfig(body)
-      // The project's card counts its configuration.
-      return queryClient.invalidateQueries({ queryKey: projectKeys.all })
+      queryClient.setQueryData(agentConfigKeys.detail(body.config.id), body)
+      return invalidate()
     },
   })
 }
 
-/** Its answers, rules and generations go with it. */
-export function useDeleteAgentConfig(projectId: number) {
-  const queryClient = useQueryClient()
+/** Renames it, moves it (`projectId`, `null` out of its project) or changes its source. */
+export function useUpdateAgentConfig(id: number) {
+  const setConfig = useSetConfig(id)
+  const invalidate = useInvalidateSets()
   return useMutation({
-    mutationFn: () => client.api.projects.agentConfig.destroy({ params: { id: projectId } }),
-    onSuccess: async () => {
-      queryClient.setQueryData(agentConfigKeys.detail(projectId), null)
-      queryClient.removeQueries({ queryKey: agentConfigKeys.generations(projectId) })
-      await queryClient.invalidateQueries({ queryKey: projectKeys.all })
+    mutationFn: (body: Partial<ConfigFields>) =>
+      client.api.agentConfigs.update({ params: { id }, body }),
+    onSuccess: (body) => {
+      setConfig(body)
+      return invalidate()
     },
+  })
+}
+
+/** Its answers, rules and generations go with it. The page showing it moves on by itself. */
+export function useDeleteAgentConfig(id: number) {
+  const invalidate = useInvalidateSets()
+  return useMutation({
+    mutationFn: () => client.api.agentConfigs.destroy({ params: { id } }),
+    onSuccess: invalidate,
   })
 }
 
@@ -154,29 +205,29 @@ export interface AnswerChange {
   details?: string | null
 }
 
-export function useSaveAnswers(projectId: number) {
-  const setConfig = useSetConfig(projectId)
+export function useSaveAnswers(configId: number) {
+  const setConfig = useSetConfig(configId)
   return useMutation({
     mutationFn: (answers: AnswerChange[]) =>
-      client.api.projects.agentConfig.answers.update({
-        params: { id: projectId },
+      client.api.agentConfigs.answers.update({
+        params: { id: configId },
         body: { answers },
       }),
     onSuccess: setConfig,
   })
 }
 
-export function useCreateRule(projectId: number) {
-  const refresh = useRefreshConfig(projectId)
+export function useCreateRule(configId: number) {
+  const refresh = useRefreshConfig(configId)
   return useMutation({
     mutationFn: (body: { section: string; text: string; source?: AgentRule['source'] }) =>
-      client.api.projects.agentConfig.rules.store({ params: { id: projectId }, body }),
+      client.api.agentConfigs.rules.store({ params: { id: configId }, body }),
     onSuccess: refresh,
   })
 }
 
-export function useUpdateRule(projectId: number) {
-  const refresh = useRefreshConfig(projectId)
+export function useUpdateRule(configId: number) {
+  const refresh = useRefreshConfig(configId)
   return useMutation({
     mutationFn: ({
       ruleId,
@@ -186,56 +237,55 @@ export function useUpdateRule(projectId: number) {
       section?: string
       text?: string
       position?: number
-    }) => client.api.projects.agentConfig.rules.update({ params: { id: projectId, ruleId }, body }),
+    }) => client.api.agentConfigs.rules.update({ params: { id: configId, ruleId }, body }),
     onSuccess: refresh,
   })
 }
 
-export function useDeleteRule(projectId: number) {
-  const refresh = useRefreshConfig(projectId)
+export function useDeleteRule(configId: number) {
+  const refresh = useRefreshConfig(configId)
   return useMutation({
     mutationFn: (ruleId: number) =>
-      client.api.projects.agentConfig.rules.destroy({ params: { id: projectId, ruleId } }),
+      client.api.agentConfigs.rules.destroy({ params: { id: configId, ruleId } }),
     onSuccess: refresh,
   })
 }
 
-export function useGenerate(projectId: number) {
+export function useGenerate(configId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async () =>
-      (await client.api.projects.agentConfig.generations.store({ params: { id: projectId } }))
-        .generation,
+      (await client.api.agentConfigs.generations.store({ params: { id: configId } })).generation,
     onSuccess: async (generation) => {
-      queryClient.setQueryData(agentConfigKeys.generation(projectId, generation.id), generation)
+      queryClient.setQueryData(agentConfigKeys.generation(configId, generation.id), generation)
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: agentConfigKeys.detail(projectId), exact: true }),
-        queryClient.invalidateQueries({ queryKey: agentConfigKeys.generations(projectId) }),
+        queryClient.invalidateQueries({ queryKey: agentConfigKeys.detail(configId), exact: true }),
+        queryClient.invalidateQueries({ queryKey: agentConfigKeys.generations(configId) }),
       ])
     },
   })
 }
 
 /** Newest first, without the files. */
-export function useGenerations(projectId: number) {
+export function useGenerations(configId: number) {
   return useQuery({
-    queryKey: [...agentConfigKeys.generations(projectId), 'list'],
+    queryKey: [...agentConfigKeys.generations(configId), 'list'],
     queryFn: () =>
-      client.api.projects.agentConfig.generations.index({
-        params: { id: projectId },
+      client.api.agentConfigs.generations.index({
+        params: { id: configId },
         query: { perPage: 50 },
       }),
   })
 }
 
 /** A generation never changes once made. */
-export function useGeneration(projectId: number, id: number | null) {
+export function useGeneration(configId: number, id: number | null) {
   return useQuery({
-    queryKey: agentConfigKeys.generation(projectId, id ?? 0),
+    queryKey: agentConfigKeys.generation(configId, id ?? 0),
     queryFn: async () =>
       (
-        await client.api.projects.agentConfig.generations.show({
-          params: { id: projectId, generationId: id ?? 0 },
+        await client.api.agentConfigs.generations.show({
+          params: { id: configId, generationId: id ?? 0 },
         })
       ).generation,
     enabled: id !== null,

@@ -62,19 +62,22 @@ async function createProject(client: Client, user: User) {
   return response.body().project as { id: number }
 }
 
-/** A project with a frontend-react configuration and two answers, one with French notes. */
+/**
+ * A project with a frontend-react configuration (`configId`) and two answers, one with French
+ * notes.
+ */
 async function configuredProject(client: Client, user: User) {
   const project = await createProject(client, user)
+  const created = await client
+    .post('/agent-configs')
+    .headers(json)
+    .loginAs(user)
+    .json({ name: 'Storefront', projectId: project.id, questionnaires: [Q], targets: ['generic'] })
+  created.assertStatus(201)
+  const configId = created.body().config.id as number
   ;(
     await client
-      .put(`/projects/${project.id}/agent-config`)
-      .headers(json)
-      .loginAs(user)
-      .json({ questionnaires: [Q], targets: ['generic'] })
-  ).assertStatus(201)
-  ;(
-    await client
-      .put(`/projects/${project.id}/agent-config/answers`)
+      .put(`/agent-configs/${configId}/answers`)
       .headers(json)
       .loginAs(user)
       .json({
@@ -89,15 +92,11 @@ async function configuredProject(client: Client, user: User) {
         ],
       })
   ).assertStatus(200)
-  return project
+  return { ...project, configId }
 }
 
-function propose(client: Client, user: User, projectId: number, body: Record<string, unknown>) {
-  return client
-    .post(`/projects/${projectId}/agent-config/proposals`)
-    .headers(json)
-    .loginAs(user)
-    .json(body)
+function propose(client: Client, user: User, configId: number, body: Record<string, unknown>) {
+  return client.post(`/agent-configs/${configId}/proposals`).headers(json).loginAs(user).json(body)
 }
 
 async function createToken(client: Client, user: User) {
@@ -346,7 +345,10 @@ test.group('LLM - rule proposals', (group) => {
     const project = await configuredProject(client, user)
     useModel(answeringModel(THREE_PROPOSALS))
 
-    const response = await propose(client, user, project.id, { provider: hosted, apiKey: KEY })
+    const response = await propose(client, user, project.configId, {
+      provider: hosted,
+      apiKey: KEY,
+    })
     response.assertStatus(200)
     assert.deepEqual(response.body(), {
       proposals: [
@@ -362,14 +364,14 @@ test.group('LLM - rule proposals', (group) => {
 
     // Nothing stored by the proposal itself.
     const config = await client
-      .get(`/projects/${project.id}/agent-config`)
+      .get(`/agent-configs/${project.configId}`)
       .headers(json)
       .loginAs(user)
     assert.lengthOf(config.body().config.rules, 0)
 
     const [proposal] = response.body().proposals
     const accepted = await client
-      .post(`/projects/${project.id}/agent-config/rules`)
+      .post(`/agent-configs/${project.configId}/rules`)
       .headers(json)
       .loginAs(user)
       .json({ section: proposal.section, text: proposal.text, source: 'llm' })
@@ -377,7 +379,7 @@ test.group('LLM - rule proposals', (group) => {
     assert.equal(accepted.body().rule.source, 'llm')
 
     const generation = await client
-      .post(`/projects/${project.id}/agent-config/generations`)
+      .post(`/agent-configs/${project.configId}/generations`)
       .headers(json)
       .loginAs(user)
     generation.assertStatus(201)
@@ -394,7 +396,9 @@ test.group('LLM - rule proposals', (group) => {
     const model = answeringModel(JSON.stringify({ proposals: [] }))
     useModel(model)
 
-    ;(await propose(client, user, project.id, { provider: hosted, apiKey: KEY })).assertStatus(200)
+    ;(
+      await propose(client, user, project.configId, { provider: hosted, apiKey: KEY })
+    ).assertStatus(200)
 
     assert.lengthOf(model.doGenerateCalls, 1)
     const prompt = JSON.stringify(model.doGenerateCalls[0])
@@ -415,7 +419,7 @@ test.group('LLM - rule proposals', (group) => {
     ] as const) {
       useModel(failingModel(providerError(status)))
       const logs = captureLogs()
-      const response = await propose(client, user, project.id, {
+      const response = await propose(client, user, project.configId, {
         provider: hosted,
         apiKey: KEY,
       })
@@ -438,18 +442,17 @@ test.group('LLM - rule proposals', (group) => {
     const stranger = await makeUser()
     useModel(answeringModel(THREE_PROPOSALS))
 
-    const response = await propose(client, stranger, project.id, {
+    const response = await propose(client, stranger, project.configId, {
       provider: hosted,
       apiKey: KEY,
     })
     response.assertStatus(404)
   })
 
-  test('answers 404 when the project has no configuration', async ({ client }) => {
+  test('answers 404 for an unknown configuration', async ({ client }) => {
     const user = await makeUser()
-    const project = await createProject(client, user)
     useModel(answeringModel(THREE_PROPOSALS))
-    const response = await propose(client, user, project.id, { provider: hosted, apiKey: KEY })
+    const response = await propose(client, user, 999_999, { provider: hosted, apiKey: KEY })
     response.assertStatus(404)
   })
 
@@ -460,7 +463,7 @@ test.group('LLM - rule proposals', (group) => {
     useModel(answeringModel(THREE_PROPOSALS))
 
     const response = await client
-      .post(`/projects/${project.id}/agent-config/proposals`)
+      .post(`/agent-configs/${project.configId}/proposals`)
       .headers({ ...json, authorization: `Bearer ${secret}` })
       .json({ provider: hosted, apiKey: KEY })
     response.assertStatus(401)
@@ -470,7 +473,7 @@ test.group('LLM - rule proposals', (group) => {
     const user = await makeUser()
     const project = await configuredProject(client, user)
     const built = useModel(answeringModel(THREE_PROPOSALS))
-    const response = await propose(client, user, project.id, {
+    const response = await propose(client, user, project.configId, {
       provider: { kind: 'openai-compatible', model: 'x', baseUrl: 'http://10.0.0.1:8080' },
     })
     response.assertStatus(422)
@@ -502,7 +505,7 @@ test.group('LLM - rule proposals from diagrams', (group) => {
     )
     useModel(model)
 
-    const response = await propose(client, user, project.id, {
+    const response = await propose(client, user, project.configId, {
       provider: hosted,
       apiKey: KEY,
       from: 'diagrams',
@@ -520,7 +523,7 @@ test.group('LLM - rule proposals from diagrams', (group) => {
       skipped: [],
     })
     const config = await client
-      .get(`/projects/${project.id}/agent-config`)
+      .get(`/agent-configs/${project.configId}`)
       .headers(json)
       .loginAs(user)
     assert.deepEqual(config.body().config.diagrams, [
@@ -540,7 +543,7 @@ test.group('LLM - rule proposals from diagrams', (group) => {
     const model = answeringModel(JSON.stringify({ proposals: [] }))
     useModel(model)
 
-    const response = await propose(client, user, project.id, {
+    const response = await propose(client, user, project.configId, {
       provider: hosted,
       apiKey: KEY,
       from: 'diagrams',
@@ -557,7 +560,7 @@ test.group('LLM - rule proposals from diagrams', (group) => {
     const elsewhere = await projectDiagram(client, user, other.id)
     useModel(answeringModel(JSON.stringify({ proposals: [] })))
 
-    const response = await propose(client, user, project.id, {
+    const response = await propose(client, user, project.configId, {
       provider: hosted,
       apiKey: KEY,
       from: 'diagrams',
@@ -567,9 +570,9 @@ test.group('LLM - rule proposals from diagrams', (group) => {
   })
 })
 
-function importFile(client: Client, user: User, projectId: number, content: string) {
+function importFile(client: Client, user: User, configId: number, content: string) {
   return client
-    .post(`/projects/${projectId}/agent-config/imports`)
+    .post(`/agent-configs/${configId}/imports`)
     .headers(json)
     .loginAs(user)
     .json({ provider: hosted, apiKey: KEY, content })
@@ -600,7 +603,7 @@ test.group('LLM - conventions file import', (group) => {
     const model = answeringModel(IMPORTED)
     useModel(model)
 
-    const response = await importFile(client, user, project.id, '# Rules\n\nTailwind only.')
+    const response = await importFile(client, user, project.configId, '# Rules\n\nTailwind only.')
     response.assertStatus(200)
     assert.deepEqual(response.body(), {
       answers: [
@@ -619,7 +622,7 @@ test.group('LLM - conventions file import', (group) => {
     assert.notInclude(prompt, KEY)
 
     const config = await client
-      .get(`/projects/${project.id}/agent-config`)
+      .get(`/agent-configs/${project.configId}`)
       .headers(json)
       .loginAs(user)
     assert.lengthOf(config.body().config.answers, 2)
@@ -638,7 +641,7 @@ test.group('LLM - conventions file import', (group) => {
       'Generated line.',
       '<!-- coreloom-uml:end -->',
     ].join('\n')
-    ;(await importFile(client, user, project.id, content)).assertStatus(200)
+    ;(await importFile(client, user, project.configId, content)).assertStatus(200)
     const prompt = JSON.stringify(model.doGenerateCalls[0])
     assert.include(prompt, 'Hand-written line.')
     assert.notInclude(prompt, 'Generated line.')
@@ -648,7 +651,7 @@ test.group('LLM - conventions file import', (group) => {
     const user = await makeUser()
     const project = await configuredProject(client, user)
     useModel(answeringModel(IMPORTED))
-    ;(await importFile(client, user, project.id, 'x'.repeat(50_001))).assertStatus(422)
+    ;(await importFile(client, user, project.configId, 'x'.repeat(50_001))).assertStatus(422)
   })
 
   test('a provider failure answers 502 with its reason, and the file is not logged', async ({
@@ -659,7 +662,12 @@ test.group('LLM - conventions file import', (group) => {
     const project = await configuredProject(client, user)
     useModel(failingModel(providerError(401)))
     const logs = captureLogs()
-    const response = await importFile(client, user, project.id, 'Secret project codename Zephyr.')
+    const response = await importFile(
+      client,
+      user,
+      project.configId,
+      'Secret project codename Zephyr.',
+    )
     logs.restore()
 
     response.assertStatus(502)
@@ -673,6 +681,6 @@ test.group('LLM - conventions file import', (group) => {
     const project = await configuredProject(client, owner)
     const stranger = await makeUser()
     useModel(answeringModel(IMPORTED))
-    ;(await importFile(client, stranger, project.id, 'Anything.')).assertStatus(404)
+    ;(await importFile(client, stranger, project.configId, 'Anything.')).assertStatus(404)
   })
 })

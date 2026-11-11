@@ -96,15 +96,19 @@ test.group('LLM calls with a subscription', (group) => {
     const project = (
       await client.post('/projects').headers(json).loginAs(user).json({ name: 'Shop' })
     ).body().project
-    ;(
-      await client
-        .put(`/projects/${project.id}/agent-config`)
-        .headers(json)
-        .loginAs(user)
-        .json({ questionnaires: ['frontend-react'], targets: ['generic'] })
-    ).assertStatus(201)
+    const created = await client
+      .post('/agent-configs')
+      .headers(json)
+      .loginAs(user)
+      .json({
+        name: 'Shop',
+        projectId: project.id,
+        questionnaires: ['frontend-react'],
+        targets: ['generic'],
+      })
+    created.assertStatus(201)
     const response = await client
-      .post(`/projects/${project.id}/agent-config/proposals`)
+      .post(`/agent-configs/${created.body().config.id}/proposals`)
       .headers(json)
       .loginAs(user)
       .json({ provider: codex })

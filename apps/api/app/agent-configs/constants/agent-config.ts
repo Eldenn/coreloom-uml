@@ -8,6 +8,9 @@ export const AgentRuleSource = {
 export type AgentRuleSource = (typeof AgentRuleSource)[keyof typeof AgentRuleSource]
 export const AGENT_RULE_SOURCES = Object.values(AgentRuleSource)
 
+/** Longest configuration name (the `agent_configs.name` column). */
+export const AGENT_CONFIG_NAME_MAX_LENGTH = 120
+
 /** Accepted rules one configuration can hold. */
 export const AGENT_RULES_MAX = 50
 /** Longest accepted rule (the `agent_config_rules.text` column). */

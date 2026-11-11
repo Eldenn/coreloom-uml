@@ -5,6 +5,7 @@ import { PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
+import { AgentConfigSetup } from '@/agent-configs/agent-config-setup'
 import { AgentConfigTab, type AgentConfigView } from '@/agent-configs/agent-config-tab'
 import { ArchitectureList, CreateArchitectureDialog } from '@/architectures/architecture-list'
 import { PageHeader } from '@/components/app-shell'
@@ -14,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useAgentConfig } from '@/lib/agent-configs'
+import { useAgentConfig, useAgentConfigs } from '@/lib/agent-configs'
 import { useArchitectures } from '@/lib/architectures'
 import { projectCrumbs } from '@/lib/crumbs'
 import { useT } from '@/lib/locale'
@@ -148,8 +149,8 @@ function ProjectView({ project }: { project: Project }) {
           />
         </TabsContent>
         <TabsContent value="agents">
-          <AgentConfigTab
-            projectId={project.id}
+          <ProjectAgentConfig
+            project={project}
             view={{ step, generation }}
             onViewChange={setAgentView}
           />
@@ -173,10 +174,64 @@ function ProjectView({ project }: { project: Project }) {
   )
 }
 
+/** The project's configuration (at most one), or the setup that creates one in it. */
+function ProjectAgentConfig({
+  project,
+  view,
+  onViewChange,
+}: {
+  project: Project
+  view: AgentConfigView
+  onViewChange: (view: AgentConfigView) => void
+}) {
+  const t = useT()
+  const configs = useAgentConfigs({ projectId: project.id })
+  if (configs.isPending) return <Skeleton className="h-64 w-full" />
+  if (configs.isError)
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>{t.agents.loadFailed}</AlertTitle>
+        <AlertDescription>
+          <Button variant="outline" size="sm" onClick={() => void configs.refetch()}>
+            {t.agents.retry}
+          </Button>
+        </AlertDescription>
+      </Alert>
+    )
+  const config = configs.data.data.at(0)
+  if (!config)
+    return (
+      <AgentConfigSetup
+        projectId={project.id}
+        defaultName={project.name}
+        onCreated={() => {
+          onViewChange({ step: 'questions' })
+        }}
+      />
+    )
+  return (
+    <AgentConfigTab
+      configId={config.id}
+      view={view}
+      onViewChange={onViewChange}
+      onDeleted={() => {
+        onViewChange({})
+      }}
+    />
+  )
+}
+
 /** "Needs regenerating" next to the tab's name, in words, when the latest files are stale. */
 function AgentConfigBadge({ project }: { project: Project }) {
+  const configs = useAgentConfigs({ projectId: project.id })
+  const config = configs.data?.data.at(0)
+  if (project.agentConfigCount === 0 || !config) return null
+  return <StaleBadge configId={config.id} />
+}
+
+function StaleBadge({ configId }: { configId: number }) {
   const t = useT()
-  const config = useAgentConfig(project.id)
-  if (project.agentConfigCount === 0 || !config.data?.impact?.stale) return null
+  const config = useAgentConfig(configId)
+  if (!config.data?.impact?.stale) return null
   return <Badge variant="warning">{t.agents.stale}</Badge>
 }
