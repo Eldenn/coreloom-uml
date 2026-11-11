@@ -68,6 +68,35 @@ Coreloom UML: links only, never a command to run.
 For each file of the last pull: `unchanged`, `block edited`, `block missing` or `file missing`.
 With an API key at hand, also says whether a newer generation exists. Never writes.
 
+### `check [--api-url <url>] [--json]`
+
+For CI: the same comparison as `status`, answered by the exit code. It exits with 0 only when
+every managed block is the one the last pull wrote **and** that pull is the latest generation.
+It needs the committed `.coreloom-uml.json` and an API key (`read` is enough), never asks
+anything and never writes.
+
+| Code | Meaning                                                                      |
+| ---- | ---------------------------------------------------------------------------- |
+| 0    | Every block matches the latest generation                                    |
+| 1    | Could not check: no manifest, no key, network, refused key…                  |
+| 2    | A block was edited by hand                                                   |
+| 3    | A newer generation exists: run `pull` and commit                             |
+| 4    | A block, or its file, is missing                                             |
+
+When several apply, the first of 2, 4, 3 is returned (edited, then missing, then stale). `--json` prints one object instead of text: `ok`, `exitCode`, `generationId`,
+`latestGenerationId` and `files` (`path`, `state`).
+
+As a GitHub Actions step, with the key stored as a repository secret (pin the version you use):
+
+```yaml
+- name: Check the agent conventions
+  run: npx @coreloom-uml/cli@0.1.0 check
+  env:
+    CORELOOM_UML_API_KEY: ${{ secrets.CORELOOM_UML_API_KEY }}
+```
+
+The app shows the same steps, followed by your own checks, in the generation's recommendations.
+
 ### `config set-key`
 
 Reads an API key (hidden in a terminal, or from standard input) and stores it in
@@ -92,4 +121,6 @@ each block written. It holds no secret: commit it so that `status` works for eve
 | ---- | ----------------------------------------------------------------------------- |
 | 0    | Success                                                                       |
 | 1    | Error: network, refused key, unknown id, refused path, broken markers…        |
-| 2    | A block edited by hand was left as it was                                     |
+| 2    | A block edited by hand was left as it was (`pull`) or found (`check`)         |
+| 3    | `check`: a newer generation exists                                            |
+| 4    | `check`: a managed block, or its file, is missing                             |

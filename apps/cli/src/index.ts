@@ -77,6 +77,27 @@ const statusCommand = defineCommand({
     ),
 })
 
+const checkCommand = defineCommand({
+  meta: {
+    name: 'check',
+    description: 'For CI: exit with 0 only when every managed block matches the latest generation',
+  },
+  args: {
+    'api-url': apiUrlArg,
+    json: { type: 'boolean', description: 'Print one JSON object instead of text' },
+  },
+  run: ({ args }) =>
+    run(() =>
+      status({
+        cwd: process.cwd(),
+        io: terminalIo(),
+        ...(args['api-url'] ? { apiUrl: args['api-url'] } : {}),
+        check: true,
+        json: args.json === true,
+      }),
+    ),
+})
+
 const configCommand = defineCommand({
   meta: { name: 'config', description: 'Manage the CLI configuration' },
   subCommands: {
@@ -96,7 +117,12 @@ const main = defineCommand({
     version: __CLI_VERSION__,
     description: 'Write Coreloom UML agent conventions into a repository',
   },
-  subCommands: { pull: pullCommand, status: statusCommand, config: configCommand },
+  subCommands: {
+    pull: pullCommand,
+    status: statusCommand,
+    check: checkCommand,
+    config: configCommand,
+  },
 })
 
 runMain(main)

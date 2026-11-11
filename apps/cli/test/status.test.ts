@@ -63,3 +63,57 @@ it('works without a key, and without a manifest says to pull first', async () =>
   expect(await status({ cwd: dir.path, io: recorder.io, env })).toBe(ExitCode.Ok)
   expect(recorder.output()).toContain('No API key')
 })
+
+it('check: exits with a code of its own for up to date, stale, missing and edited', async () => {
+  const env = { CORELOOM_UML_API_KEY: API_KEY, XDG_CONFIG_HOME: dir.path }
+  const check = (json = false) => {
+    const recorder = recordingIo()
+    return status({ cwd: dir.path, io: recorder.io, env, check: true, json }).then((code) => ({
+      code,
+      output: recorder.output(),
+    }))
+  }
+  api.current = generation(1, [file('AGENTS.md', 'a'), file('B.md', 'b')])
+  await pull({ cwd: dir.path, io: recordingIo().io, env, apiUrl: api.url, config: '3' })
+  expect((await check()).code).toBe(ExitCode.Ok)
+
+  api.current = generation(2, [file('AGENTS.md', 'a2')])
+  expect((await check()).code).toBe(ExitCode.Stale)
+
+  await rm(join(dir.path, 'B.md'))
+  expect((await check()).code).toBe(ExitCode.BlockMissing)
+
+  const agents = await readFile(join(dir.path, 'AGENTS.md'), 'utf8')
+  await writeFile(join(dir.path, 'AGENTS.md'), agents.replace('\na\n', '\nedited\n'))
+  const result = await check(true)
+  expect(result.code).toBe(ExitCode.EditedBlockKept)
+  expect(JSON.parse(result.output)).toEqual({
+    ok: false,
+    exitCode: 2,
+    generationId: 1,
+    latestGenerationId: 2,
+    files: [
+      { path: 'AGENTS.md', state: 'block edited' },
+      { path: 'B.md', state: 'file missing' },
+    ],
+  })
+})
+
+it('check: fails without a key or when the API cannot answer', async () => {
+  const env = { CORELOOM_UML_API_KEY: API_KEY, XDG_CONFIG_HOME: dir.path }
+  api.current = generation(1, [file('AGENTS.md', 'a')])
+  await pull({ cwd: dir.path, io: recordingIo().io, env, apiUrl: api.url, config: '3' })
+
+  await expect(
+    status({
+      cwd: dir.path,
+      io: recordingIo().io,
+      env: { XDG_CONFIG_HOME: dir.path },
+      check: true,
+    }),
+  ).rejects.toThrow(/No API key/)
+  api.status = 401
+  await expect(status({ cwd: dir.path, io: recordingIo().io, env, check: true })).rejects.toThrow(
+    /refused/,
+  )
+})
