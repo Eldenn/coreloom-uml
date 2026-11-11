@@ -8,11 +8,21 @@ export type Recommendation = {
   body: string
 }
 
-/** What a target's recommendations may depend on. */
-export type RecommendationContext = {
-  /** The answer to the `tooling.checks` slot, if any: the commands run before handing back. */
-  checks: string | null
+/** What a target's settings and recommendations are derived from: answers, read by slot. */
+export type TargetContext = {
+  /** `tooling.checks`, split into the commands that are safe to allow and to run in a hook. */
+  checks: string[]
+  /** Every package manager but the `tooling.package-manager` answer; empty without one. */
+  otherPackageManagers: string[]
+  /** `workflow.autonomy`: 1 (decides alone) to 5 (asks first), `null` without an answer. */
+  autonomy: number | null
 }
+
+/**
+ * A tool's settings file. `content` is either a JSON object, of which the CLI owns only the
+ * entries listed (it merges them into the file), or a managed block in `HASH_MARKERS` (TOML).
+ */
+export type TargetSettings = { path: string; content: string }
 
 /**
  * How Coreloom UML renders files for one coding tool. `verifiedOn` is the date its
@@ -28,7 +38,9 @@ export type TargetTemplate = {
   readsAgentsMd: boolean
   /** The pointer file for a tool that does not read AGENTS.md: its path and its block body. */
   pointer?: { path: string; body: string }
-  recommendations: (context: RecommendationContext) => Omit<Recommendation, 'target'>[]
+  /** What the tool enforces by itself, whatever the model does; `null` when nothing applies. */
+  settings?: (context: TargetContext) => TargetSettings | null
+  recommendations: (context: TargetContext) => Omit<Recommendation, 'target'>[]
 }
 
 /**

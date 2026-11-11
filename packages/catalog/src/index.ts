@@ -27,10 +27,13 @@ export {
   SCALE_LABELS,
 } from './questionnaires/index.ts'
 export {
+  type BlockMarkers,
   findManagedBlock,
+  HASH_MARKERS,
   hashManagedBlock,
   MANAGED_BLOCK_BEGIN,
   MANAGED_BLOCK_END,
+  MARKDOWN_MARKERS,
   type ManagedBlockLocation,
   wrapManagedBlock,
 } from './render/managed-block.ts'
@@ -95,7 +98,8 @@ export { isSlot, SLOTS, type Slot } from './slots.ts'
 export { TARGET_TEMPLATES } from './targets/index.ts'
 export {
   type Recommendation,
-  type RecommendationContext,
+  type TargetContext,
+  type TargetSettings,
   type TargetTemplate,
   TEXT_POINTER,
 } from './targets/types.ts'

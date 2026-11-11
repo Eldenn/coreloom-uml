@@ -3,14 +3,17 @@ import { hashManagedBlock } from '@coreloom-uml/catalog'
 import { describeSource, type FetchLike, fetchLatestGeneration } from './api.ts'
 import { CliError, ExitCode } from './errors.ts'
 import type { Io } from './io.ts'
-import { MANIFEST_FILE, readManifest } from './manifest.ts'
+import { containsJson, parseJsonObject } from './json-settings.ts'
+import { MANIFEST_FILE, type ManifestFile, readManifest } from './manifest.ts'
 import { resolveSafePath } from './paths.ts'
-import { locateBlock } from './plan.ts'
+import { isJson, locateBlock } from './plan.ts'
 import { API_KEY_ENV, resolveApiKey, resolveApiUrl } from './settings.ts'
 
 export const FileState = {
   Unchanged: 'unchanged',
   BlockEdited: 'block edited',
+  /** A JSON settings file no longer holds every entry the last pull merged into it. */
+  KeysEdited: 'keys edited',
   BlockMissing: 'block missing',
   FileMissing: 'file missing',
 } as const
@@ -29,13 +32,21 @@ export type StatusOptions = {
   json?: boolean
 }
 
-async function fileState(root: string, path: string, blockHash: string): Promise<FileState> {
+async function fileState(root: string, file: ManifestFile): Promise<FileState> {
+  const { path, blockHash } = file
   let text: string
   try {
     text = await readFile(await resolveSafePath(root, path), 'utf8')
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return FileState.FileMissing
     throw error
+  }
+  if (isJson(path)) {
+    const local = parseJsonObject(text)
+    const written = parseJsonObject(file.content ?? '')
+    return local && written && containsJson(local, written)
+      ? FileState.Unchanged
+      : FileState.KeysEdited
   }
   const location = locateBlock(path, text)
   if (!location) return FileState.BlockMissing
@@ -67,7 +78,7 @@ export async function status(options: StatusOptions): Promise<ExitCode> {
   )
   const files: { path: string; state: FileState }[] = []
   for (const file of manifest.files) {
-    const state = await fileState(cwd, file.path, file.blockHash)
+    const state = await fileState(cwd, file)
     files.push({ path: file.path, state })
     log(`  ${state.padEnd(14)}${file.path}`)
   }
@@ -102,8 +113,9 @@ export async function status(options: StatusOptions): Promise<ExitCode> {
 
   const states = new Set(files.map((file) => file.state))
   let exitCode: ExitCode = ExitCode.Ok
-  if (states.has(FileState.BlockEdited)) exitCode = ExitCode.EditedBlockKept
-  else if (states.has(FileState.BlockMissing) || states.has(FileState.FileMissing)) {
+  if (states.has(FileState.BlockEdited) || states.has(FileState.KeysEdited)) {
+    exitCode = ExitCode.EditedBlockKept
+  } else if (states.has(FileState.BlockMissing) || states.has(FileState.FileMissing)) {
     exitCode = ExitCode.BlockMissing
   } else if (latestId !== manifest.generationId) exitCode = ExitCode.Stale
   if (json) {

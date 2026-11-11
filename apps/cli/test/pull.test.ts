@@ -1,10 +1,19 @@
 import { mkdir, readFile, stat, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { HASH_MARKERS, wrapManagedBlock } from '@coreloom-uml/catalog'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { CliError, ExitCode } from '../src/errors.ts'
 import { MANIFEST_FILE, readManifest } from '../src/manifest.ts'
 import { type PullOptions, pull } from '../src/pull.ts'
-import { API_KEY, FixtureApi, file, generation, recordingIo, tempDir } from './fixtures.ts'
+import {
+  API_KEY,
+  FixtureApi,
+  file,
+  generation,
+  recordingIo,
+  settingsFile,
+  tempDir,
+} from './fixtures.ts'
 
 const AGENTS = 'AGENTS.md'
 const POINTER = 'docs/POINTER.md'
@@ -251,5 +260,148 @@ describe('pull', () => {
 
   it('needs an API URL', async () => {
     await expect(run({ apiUrl: undefined })).rejects.toThrow(/--api-url/)
+  })
+})
+
+describe('pull, settings files', () => {
+  const SETTINGS = '.claude/settings.json'
+  const TOML = '.codex/config.toml'
+  const json = (value: unknown) => settingsFile(SETTINGS, JSON.stringify(value, null, 2))
+  const toml = (body: string) => settingsFile(TOML, wrapManagedBlock(body, HASH_MARKERS))
+  const hook = (command: string) => ({ hooks: [{ type: 'command', command }] })
+  const readJson = async () => JSON.parse(await read(SETTINGS))
+
+  const one = generation(1, [
+    json({
+      permissions: { allow: ['Bash(pnpm lint)'], deny: ['Read(./.env)'] },
+      hooks: { Stop: [hook('pnpm lint')] },
+    }),
+  ])
+  const two = generation(2, [
+    json({
+      permissions: { allow: ['Bash(pnpm test)'], deny: ['Read(./.env)'] },
+      hooks: { Stop: [hook('pnpm test')] },
+    }),
+  ])
+
+  it('asks before writing settings, then creates the file and records what it wrote', async () => {
+    api.current = one
+    await expect(run()).rejects.toThrow(/--yes/)
+    expect(await exists(SETTINGS)).toBe(false)
+
+    const recorder = recordingIo({ interactive: true, answers: [true] })
+    expect(await run({}, recorder.io)).toBe(ExitCode.Ok)
+    expect(recorder.questions).toEqual([expect.stringContaining('write these settings?')])
+    expect(recorder.output()).toContain('+       "Bash(pnpm lint)"')
+    expect(await read(SETTINGS)).toBe(one.files[0]?.content)
+    expect((await readManifest(dir.path))?.files).toEqual([
+      {
+        path: SETTINGS,
+        blockHash: one.files[0]?.blockHash,
+        content: one.files[0]?.content.trimEnd(),
+      },
+    ])
+  })
+
+  it('merges into the owner’s settings, and replaces only the entries it wrote', async () => {
+    await mkdir(join(dir.path, '.claude'))
+    const own = {
+      model: 'mine',
+      permissions: { allow: ['Bash(ls)'], ask: ['Bash(git push *)'] },
+      hooks: { Stop: [hook('say done')], PreToolUse: [] },
+    }
+    await writeFile(join(dir.path, SETTINGS), JSON.stringify(own))
+    api.current = one
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await readJson()).toEqual({
+      model: 'mine',
+      permissions: {
+        allow: ['Bash(ls)', 'Bash(pnpm lint)'],
+        ask: ['Bash(git push *)'],
+        deny: ['Read(./.env)'],
+      },
+      hooks: { Stop: [hook('say done'), hook('pnpm lint')], PreToolUse: [] },
+    })
+
+    api.current = two
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await readJson()).toEqual({
+      model: 'mine',
+      permissions: {
+        allow: ['Bash(ls)', 'Bash(pnpm test)'],
+        ask: ['Bash(git push *)'],
+        deny: ['Read(./.env)'],
+      },
+      hooks: { Stop: [hook('say done'), hook('pnpm test')], PreToolUse: [] },
+    })
+
+    // Pulling the same generation again changes nothing, and asks nothing.
+    const before = await read(SETTINGS)
+    expect(await run()).toBe(ExitCode.Ok)
+    expect(await read(SETTINGS)).toBe(before)
+  })
+
+  it('stops with code 2 when an entry it wrote was removed by hand, and restores it with --force', async () => {
+    api.current = one
+    await run({ yes: true })
+    const edited = JSON.stringify({ permissions: { allow: ['Bash(pnpm lint)'], deny: [] } })
+    await writeFile(join(dir.path, SETTINGS), edited)
+    api.current = two
+
+    expect(await run({ yes: true })).toBe(ExitCode.EditedBlockKept)
+    expect(await read(SETTINGS)).toBe(edited)
+
+    expect(await run({ yes: true, force: true })).toBe(ExitCode.Ok)
+    expect(await read(SETTINGS)).toBe(two.files[0]?.content)
+  })
+
+  it('takes its entries out when the file leaves the generation, and deletes a file left empty', async () => {
+    api.current = one
+    await run({ yes: true })
+    const mine = { ...(await readJson()), model: 'mine' }
+    await writeFile(join(dir.path, SETTINGS), JSON.stringify(mine))
+    api.current = generation(2, [file(AGENTS, 'a')])
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await readJson()).toEqual({ model: 'mine' })
+
+    api.current = one
+    await writeFile(join(dir.path, SETTINGS), '')
+    await run({ yes: true })
+    api.current = generation(2, [file(AGENTS, 'a')])
+    await run({ yes: true })
+    expect(await exists(SETTINGS)).toBe(false)
+  })
+
+  it('refuses settings it cannot read as JSON, and a path through a symbolic link', async () => {
+    api.current = one
+    await mkdir(join(dir.path, '.claude'))
+    await writeFile(join(dir.path, SETTINGS), '{ // mine\n}')
+    await expect(run({ yes: true })).rejects.toThrow(/not a JSON object/)
+    expect(await read(SETTINGS)).toBe('{ // mine\n}')
+
+    await mkdir(join(dir.path, 'real'))
+    await symlink(join(dir.path, 'real'), join(dir.path, '.codex'))
+    api.current = generation(1, [toml('sandbox_mode = "read-only"')])
+    await expect(run({ yes: true })).rejects.toThrow(/symbolic link/)
+  })
+
+  it('puts the TOML block before the owner’s tables and replaces it on the next pull', async () => {
+    await mkdir(join(dir.path, '.codex'))
+    const own = 'model = "mine"\n\n[profiles.fast]\nsandbox_mode = "danger-full-access"\n'
+    await writeFile(join(dir.path, TOML), own)
+    api.current = generation(1, [toml('sandbox_mode = "read-only"')])
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await read(TOML)).toBe(`${api.current.files[0]?.content}\n${own}`)
+
+    api.current = generation(2, [toml('sandbox_mode = "workspace-write"')])
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await read(TOML)).toBe(`${api.current.files[0]?.content}\n${own}`)
+  })
+
+  it('refuses a TOML file that already sets a managed key', async () => {
+    await mkdir(join(dir.path, '.codex'))
+    await writeFile(join(dir.path, TOML), 'sandbox_mode = "danger-full-access"\n')
+    api.current = generation(1, [toml('sandbox_mode = "read-only"')])
+    await expect(run({ yes: true })).rejects.toThrow(/already sets sandbox_mode/)
   })
 })

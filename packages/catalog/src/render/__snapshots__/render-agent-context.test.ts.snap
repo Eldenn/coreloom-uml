@@ -68,6 +68,64 @@ Deploys go through **staging** first.
 "
 `;
 
+exports[`renderAgentContext > renders the settings each tool enforces from the tooling and autonomy answers 1`] = `
+"{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm lint)",
+      "Bash(pnpm test)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Bash(git push *--force*)",
+      "Bash(git push -f *)",
+      "Bash(git push * -f)",
+      "Bash(git push * -f *)",
+      "Bash(rm -rf *)",
+      "Bash(rm -fr *)",
+      "Bash(npm *)",
+      "Bash(yarn *)",
+      "Bash(bun *)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \\"$CLAUDE_PROJECT_DIR\\" && (pnpm lint && pnpm test) >&2 || exit 2"
+          }
+        ]
+      }
+    ]
+  }
+}
+"
+`;
+
+exports[`renderAgentContext > renders the settings each tool enforces from the tooling and autonomy answers 2`] = `
+"# coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+# coreloom-uml:end
+"
+`;
+
+exports[`renderAgentContext > renders the settings each tool enforces from the tooling and autonomy answers 3`] = `
+"{
+  "tools": {
+    "allowed": [
+      "run_shell_command(pnpm lint)",
+      "run_shell_command(pnpm test)"
+    ]
+  }
+}
+"
+`;
+
 exports[`renderAgentContext > renders the whole AGENTS.md block 1`] = `
 "<!-- coreloom-uml:begin · managed block, edits inside it are replaced on the next pull -->
 ## Project
