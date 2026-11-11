@@ -671,9 +671,11 @@ test.group('Agent configs - generations', (group) => {
       [
         ['AGENTS.md', 'generic'],
         ['CLAUDE.md', 'pointer'],
+        ['.claude/settings.json', 'settings'],
       ],
     )
-    const [agents, claude] = generation.files
+    const [agents, claude, settings] = generation.files
+    assert.include(JSON.parse(settings.content).permissions.allow, 'Bash(pnpm lint)')
     assert.include(agents.content, '**Storefront**: The online shop')
     assert.include(agents.content, '**Checkout**')
     assert.include(agents.content, '**Catalog search**')
@@ -709,7 +711,7 @@ test.group('Agent configs - generations', (group) => {
       .loginAs(user)
     list.assertStatus(200)
     assert.deepEqual(list.body().meta, { page: 1, perPage: 1, total: 2, lastPage: 2 })
-    assert.deepEqual(list.body().data[0].paths, ['AGENTS.md', 'CLAUDE.md'])
+    assert.deepEqual(list.body().data[0].paths, ['AGENTS.md', 'CLAUDE.md', '.claude/settings.json'])
     assert.notProperty(list.body().data[0], 'files')
 
     const detail = await client.get(`/agent-configs/${config.id}`).headers(json).loginAs(user)
@@ -869,7 +871,9 @@ test.group('Agent configs - generations', (group) => {
     assert.deepEqual(retargeted.body().impact.files, [
       { path: 'AGENTS.md', sections: ['TypeScript'], change: 'modified' },
       { path: 'GEMINI.md', sections: [], change: 'added' },
+      { path: '.gemini/settings.json', sections: [], change: 'added' },
       { path: 'CLAUDE.md', sections: [], change: 'removed' },
+      { path: '.claude/settings.json', sections: [], change: 'removed' },
     ])
   })
 

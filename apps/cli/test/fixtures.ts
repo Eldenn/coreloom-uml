@@ -19,6 +19,16 @@ export function file(path: string, body: string) {
   }
 }
 
+/** A settings file: a JSON object, or a TOML block already in its `#` markers. */
+export function settingsFile(path: string, content: string) {
+  return {
+    path,
+    kind: 'settings' as const,
+    content: `${content}\n`,
+    blockHash: hashManagedBlock(content),
+  }
+}
+
 export function generation(id: number, files: Generation['files']): Generation {
   return {
     id,

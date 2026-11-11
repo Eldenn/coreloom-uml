@@ -4,7 +4,15 @@ import { afterEach, beforeEach, expect, it } from 'vitest'
 import { ExitCode } from '../src/errors.ts'
 import { pull } from '../src/pull.ts'
 import { status } from '../src/status.ts'
-import { API_KEY, FixtureApi, file, generation, recordingIo, tempDir } from './fixtures.ts'
+import {
+  API_KEY,
+  FixtureApi,
+  file,
+  generation,
+  recordingIo,
+  settingsFile,
+  tempDir,
+} from './fixtures.ts'
 
 let api: FixtureApi
 let dir: Awaited<ReturnType<typeof tempDir>>
@@ -27,8 +35,12 @@ it('reports each file and whether a newer generation exists', async () => {
     file('B.md', 'b'),
     file('C.md', 'c'),
     file('D.md', 'd'),
+    settingsFile('e.json', '{"deny":["x"]}'),
+    settingsFile('f.json', '{"deny":["x"]}'),
   ])
-  await pull({ cwd: dir.path, io: recordingIo().io, env, apiUrl: api.url, config: '3' })
+  await pull({ cwd: dir.path, io: recordingIo().io, env, apiUrl: api.url, config: '3', yes: true })
+  await writeFile(join(dir.path, 'e.json'), '{"deny":["x","mine"],"other":1}')
+  await writeFile(join(dir.path, 'f.json'), '{"deny":[]}')
   const b = await readFile(join(dir.path, 'B.md'), 'utf8')
   await writeFile(join(dir.path, 'B.md'), b.replace('\nb\n', '\nedited\n'))
   await writeFile(join(dir.path, 'C.md'), '# No block\n')
@@ -42,6 +54,8 @@ it('reports each file and whether a newer generation exists', async () => {
   expect(output).toMatch(/block edited\s+B\.md/)
   expect(output).toMatch(/block missing\s+C\.md/)
   expect(output).toMatch(/file missing\s+D\.md/)
+  expect(output).toMatch(/unchanged\s+e\.json/)
+  expect(output).toMatch(/keys edited\s+f\.json/)
   expect(output).toContain('A newer generation exists (#2')
 })
 

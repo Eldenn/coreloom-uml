@@ -11,7 +11,14 @@ import { lineDiff } from './diff.ts'
 import { CliError, ExitCode } from './errors.ts'
 import type { Io } from './io.ts'
 import { type Manifest, type ManifestFile, readManifest, writeManifest } from './manifest.ts'
-import { ChangeAction, type FileChange, needsConfirmation, planPull } from './plan.ts'
+import {
+  ChangeAction,
+  type FileChange,
+  isJson,
+  isSettings,
+  needsConfirmation,
+  planPull,
+} from './plan.ts'
 import { API_KEY_ENV, resolveApiKey, resolveApiUrl } from './settings.ts'
 
 export type PullOptions = {
@@ -66,19 +73,21 @@ export async function requireApiKey(env: NodeJS.ProcessEnv): Promise<string> {
 
 function describe(change: FileChange): string {
   const edited = change.edited ? ' (edited by hand)' : ''
+  // In a JSON settings file the CLI owns entries, not a block.
+  const what = isJson(change.path) ? 'keys ' : 'block'
   switch (change.action) {
     case ChangeAction.Create:
       return `create        ${change.path}`
     case ChangeAction.Append:
-      return `add block to  ${change.path} (the rest of the file is kept)`
+      return `add ${what} to  ${change.path} (the rest of the file is kept)`
     case ChangeAction.Update:
-      return `update block  ${change.path}${edited}`
+      return `update ${what}  ${change.path}${edited}`
     case ChangeAction.Unchanged:
       return `up to date    ${change.path}`
     case ChangeAction.Remove:
       return change.after === null
         ? `delete        ${change.path}${edited}`
-        : `remove block  ${change.path}${edited}`
+        : `remove ${what}  ${change.path}${edited}`
   }
 }
 
@@ -166,17 +175,19 @@ export async function pull(options: PullOptions): Promise<ExitCode> {
   if (pending.length > 0 && !options.yes && !io.interactive) {
     throw new CliError(
       'Some changes need a confirmation and there is no terminal to ask in: run again with --yes ' +
-        '(and --force to overwrite blocks edited by hand), or with --dry-run to review them.',
+        '(and --force to overwrite what was edited by hand), or with --dry-run to review them.',
     )
   }
 
   const skipped = new Set<FileChange>()
   if (!options.yes) {
     for (const change of pending) {
-      if (change.edited) showDiff(io, change)
+      if (change.edited || isSettings(change.path)) showDiff(io, change)
       const question = change.edited
-        ? `${change.path}: overwrite the block edited by hand?`
-        : `${change.path} exists without a managed block: add one at its end?`
+        ? `${change.path}: overwrite what was edited by hand?`
+        : isSettings(change.path)
+          ? `${change.path}: write these settings? They decide what the assistant may run.`
+          : `${change.path} exists without a managed block: add one at its end?`
       if (!(await io.confirm(question))) skipped.add(change)
     }
   }
@@ -192,7 +203,11 @@ export async function pull(options: PullOptions): Promise<ExitCode> {
       const kept = previous.get(change.path)
       if (kept) files.push(kept)
     } else if (change.blockHash) {
-      files.push({ path: change.path, blockHash: change.blockHash })
+      files.push({
+        path: change.path,
+        blockHash: change.blockHash,
+        ...(change.content !== undefined && { content: change.content }),
+      })
     }
   }
   const next: Manifest = {

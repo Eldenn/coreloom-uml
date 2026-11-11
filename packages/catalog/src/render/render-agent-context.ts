@@ -1,13 +1,14 @@
-import { fragmentTexts } from '../answers.ts'
+import { answerProblem, fragmentTexts } from '../answers.ts'
 import type { AnswerValue, Questionnaire } from '../schemas.ts'
 import { Section, sectionOrder } from '../sections.ts'
-import { splitCommands } from '../targets/claude-code.ts'
+import type { Slot } from '../slots.ts'
+import { PACKAGE_MANAGERS, splitCommands } from '../targets/commands.ts'
 import { TARGET_TEMPLATES } from '../targets/index.ts'
-import type { Recommendation } from '../targets/types.ts'
+import type { Recommendation, TargetContext } from '../targets/types.ts'
 import { AGENTS_FILE, AgentFileKind, TARGETS, Target } from '../targets.ts'
 import { CLI_CHECK_VERSION } from '../version.ts'
 import { hashManagedBlock, wrapManagedBlock } from './managed-block.ts'
-import { blockMarkdown, inlineMarkdown, oneLine } from './markdown.ts'
+import { blockMarkdown, inlineMarkdown, stripMarkers } from './markdown.ts'
 
 export type AgentContextProject = {
   name: string
@@ -33,9 +34,12 @@ export type AgentContextInput = {
 export type AgentContextFile = {
   path: string
   kind: AgentFileKind
-  /** The managed block, followed by one line break. */
+  /**
+   * The managed block, followed by one line break. For a JSON settings file, the JSON object
+   * whose entries are merged into the file instead.
+   */
   content: string
-  /** `sha256:<hex>` of the block, markers included. */
+  /** `sha256:<hex>` of the content without its trailing line break. */
   blockHash: string
 }
 
@@ -94,11 +98,23 @@ export function renderAgentContext(input: AgentContextInput): AgentContextOutput
     }
   }
 
-  const checks = checksAnswer(input)
+  const context = targetContext(input)
+  for (const target of targets) {
+    const settings = TARGET_TEMPLATES[target].settings?.(context)
+    if (settings) {
+      files.push({
+        path: settings.path,
+        kind: AgentFileKind.Settings,
+        content: `${settings.content}\n`,
+        blockHash: hashManagedBlock(settings.content),
+      })
+    }
+  }
+
   const recommendations = targets.flatMap((target) =>
-    TARGET_TEMPLATES[target].recommendations({ checks }).map((item) => ({ target, ...item })),
+    TARGET_TEMPLATES[target].recommendations(context).map((item) => ({ target, ...item })),
   )
-  recommendations.push(ciRecommendation(checks))
+  recommendations.push(ciRecommendation(context.checks))
 
   return { files, recommendations, fragments }
 }
@@ -160,30 +176,44 @@ function describe(description: string | null): string {
   return text ? `: ${text}` : '.'
 }
 
-function checksAnswer(input: AgentContextInput): string | null {
+/** The answer feeding a slot, if it fits its question. */
+function slotAnswer(input: AgentContextInput, slot: Slot): AnswerValue | undefined {
   for (const questionnaire of input.questionnaires) {
-    const question = questionnaire.questions.find((item) => item.slot === 'tooling.checks')
+    const question = questionnaire.questions.find((item) => item.slot === slot)
     if (!question) continue
     const answer = input.answers.find(
       (item) => item.questionnaireId === questionnaire.id && item.questionId === question.id,
     )
-    if (typeof answer?.value === 'string' && answer.value.trim()) return oneLine(answer.value)
+    if (answer && answerProblem(question, answer.value) === null) return answer.value
   }
-  return null
+  return undefined
+}
+
+function targetContext(input: AgentContextInput): TargetContext {
+  const checks = slotAnswer(input, 'tooling.checks')
+  const packageManager = slotAnswer(input, 'tooling.package-manager')
+  const autonomy = slotAnswer(input, 'workflow.autonomy')
+  return {
+    checks: typeof checks === 'string' ? splitCommands(stripMarkers(checks)) : [],
+    otherPackageManagers: PACKAGE_MANAGERS.some((manager) => manager === packageManager)
+      ? PACKAGE_MANAGERS.filter((manager) => manager !== packageManager)
+      : [],
+    autonomy: typeof autonomy === 'number' ? autonomy : null,
+  }
 }
 
 /**
  * The CI steps that keep the pulled conventions up to date, then run the checks. Advice only:
  * the workflow file belongs to the repository, so it is never written.
  */
-function ciRecommendation(checks: string | null): Recommendation {
+function ciRecommendation(checks: readonly string[]): Recommendation {
   const steps = [
     '- name: Check the agent conventions',
     `  run: npx @coreloom-uml/cli@${CLI_CHECK_VERSION} check`,
     '  env:',
     // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub Actions expression syntax.
     '    CORELOOM_UML_API_KEY: ${{ secrets.CORELOOM_UML_API_KEY }}',
-    ...(checks ? splitCommands(checks) : []).map((command) => `- run: ${command}`),
+    ...checks.map((command) => `- run: ${command}`),
   ]
   return {
     target: Target.Generic,

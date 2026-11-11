@@ -15,6 +15,20 @@ Only a **managed block** is written, between these markers:
 
 Everything outside the block is yours and is never touched.
 
+The generation can also hold **settings files**, which make a tool enforce part of the
+conventions (commands it may run without asking, what it must never read or run, checks run
+before it hands back): `.claude/settings.json`, `.gemini/settings.json` and `.codex/config.toml`.
+
+- In a TOML file, the block uses `#` markers and is put at the top of the file, before any table.
+  A file that already sets one of the block's keys is refused: remove that line first.
+- A JSON file cannot hold markers, so the CLI owns **entries** instead: its entries are merged
+  into your file (objects key by key, lists as sets), and `.coreloom-uml.json` records them. The
+  next pull takes out the entries it wrote and adds the new ones; everything else in the file is
+  kept. The file is rewritten as plain JSON: comments are not supported.
+
+Because a settings file decides what the assistant may run on your machine, every change to one
+is shown and confirmed first (or accepted with `--yes`).
+
 Requires Node.js 22 or newer.
 
 ## Quick start
@@ -50,6 +64,8 @@ Fetches the conventions' latest generation and, for each file:
 | holds the block the last pull wrote         | the block is replaced                                     |
 | holds a block edited by hand                | the diff is shown and a confirmation asked                |
 | left the generation (a target was removed)  | its block is removed, and the file deleted if left empty |
+| is a settings file with new content         | the diff is shown and a confirmation asked                |
+| is a JSON file missing an entry it was given | it counts as edited by hand: same as a block edited by hand |
 
 - `--dry-run` shows the plan and the diffs, and writes nothing.
 - `--yes` answers yes to every question, except for a block edited by hand: the CLI then writes
@@ -65,7 +81,8 @@ Coreloom UML: links only, never a command to run.
 
 ### `status [--api-url <url>]`
 
-For each file of the last pull: `unchanged`, `block edited`, `block missing` or `file missing`.
+For each file of the last pull: `unchanged`, `block edited`, `keys edited` (a JSON settings file
+that lost an entry the last pull wrote), `block missing` or `file missing`.
 With an API key at hand, also says whether a newer generation exists. Never writes.
 
 ### `check [--api-url <url>] [--json]`
@@ -112,8 +129,8 @@ readable by you only. `CORELOOM_UML_API_KEY` takes precedence over it.
 | Source   | `--config` or `--project`, then `.coreloom-uml.json`.                        |
 
 `.coreloom-uml.json` holds the API URL, the conventions' id (or, for a manifest written by an
-older version, the project's), the pulled generation and the hash of
-each block written. It holds no secret: commit it so that `status` works for everyone.
+older version, the project's), the pulled generation, the hash of
+each block written and the entries merged into each JSON settings file. It holds no secret: commit it so that `status` works for everyone.
 
 ## Exit codes
 

@@ -18,10 +18,14 @@ export type Target = (typeof Target)[keyof typeof Target]
 
 export const TARGETS = Object.values(Target) as readonly Target[]
 
-/** What a rendered file is: the shared conventions, or a pointer to them. */
+/**
+ * What a rendered file is: the shared conventions, a pointer to them, or a tool's own settings
+ * file (JSON or TOML) holding what the tool enforces.
+ */
 export const AgentFileKind = {
   Generic: 'generic',
   Pointer: 'pointer',
+  Settings: 'settings',
 } as const
 
 export type AgentFileKind = (typeof AgentFileKind)[keyof typeof AgentFileKind]

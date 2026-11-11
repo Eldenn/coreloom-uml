@@ -10,6 +10,8 @@ export type ManifestFile = {
   path: string
   /** Hash of the block as the CLI last wrote it: a different local hash means a hand edit. */
   blockHash: string
+  /** For a JSON settings file, the object last merged into it (see `json-settings.ts`). */
+  content?: string
 }
 
 /** `configId` since configurations can stand outside a project; older manifests hold `projectId`. */
@@ -39,7 +41,10 @@ export async function readManifest(root: string): Promise<Manifest | null> {
     !source ||
     !Array.isArray(value.files) ||
     !value.files.every(
-      (file) => typeof file?.path === 'string' && typeof file.blockHash === 'string',
+      (file) =>
+        typeof file?.path === 'string' &&
+        typeof file.blockHash === 'string' &&
+        (file.content === undefined || typeof file.content === 'string'),
     )
   ) {
     throw new CliError(`${MANIFEST_FILE} is malformed: delete it and pull again with --config.`)

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { findQuestionnaire } from '../questionnaires/index.ts'
 import type { Questionnaire } from '../schemas.ts'
-import { findManagedBlock, hashManagedBlock, MANAGED_BLOCK_BEGIN } from './managed-block.ts'
+import {
+  findManagedBlock,
+  HASH_MARKERS,
+  hashManagedBlock,
+  MANAGED_BLOCK_BEGIN,
+} from './managed-block.ts'
 import { type AgentContextInput, renderAgentContext } from './render-agent-context.ts'
 
 const frontendReact = findQuestionnaire('frontend-react') as Questionnaire
@@ -69,6 +74,7 @@ describe('renderAgentContext', () => {
     expect(files.map((file) => [file.path, file.kind])).toEqual([
       ['AGENTS.md', 'generic'],
       ['CLAUDE.md', 'pointer'],
+      ['.claude/settings.json', 'settings'],
     ])
     expect(files[1]?.content).toBe(
       `${MANAGED_BLOCK_BEGIN}\n@AGENTS.md\n<!-- coreloom-uml:end -->\n`,
@@ -197,9 +203,14 @@ describe('renderAgentContext', () => {
   })
 
   it('hashes each block as the CLI will', () => {
-    for (const file of renderAgentContext(INPUT).files) {
-      const found = findManagedBlock(file.content)
-      expect(found && hashManagedBlock(found.block)).toBe(file.blockHash)
+    const { files } = renderAgentContext({ ...INPUT, targets: ['codex', 'claude-code'] })
+    for (const file of files) {
+      // A JSON settings file has no markers: its whole content is hashed.
+      const block = file.path.endsWith('.json')
+        ? file.content
+        : findManagedBlock(file.content, file.path.endsWith('.toml') ? HASH_MARKERS : undefined)
+            ?.block
+      expect(block && hashManagedBlock(block)).toBe(file.blockHash)
     }
   })
 
@@ -210,15 +221,64 @@ describe('renderAgentContext', () => {
       'AGENTS.md',
       'CLAUDE.md',
       'GEMINI.md',
+      '.codex/config.toml',
+      '.claude/settings.json',
+      '.gemini/settings.json',
     ])
-    expect(paths(['codex', 'cursor', 'github-copilot', 'generic'])).toEqual(['AGENTS.md'])
+    expect(paths(['codex', 'cursor', 'github-copilot', 'generic'])).toEqual([
+      'AGENTS.md',
+      '.codex/config.toml',
+    ])
     expect(paths([])).toEqual(['AGENTS.md'])
   })
 
-  it('suggests Claude Code permissions from the checks answer', () => {
-    const { recommendations } = renderAgentContext(INPUT)
-    expect(recommendations.map((item) => item.target)).toEqual(['cursor', 'claude-code', 'generic'])
-    expect(recommendations[1]?.body).toContain('- `"Bash(pnpm lint)"`\n- `"Bash(pnpm test)"`')
+  const settings = (input: AgentContextInput, path: string) =>
+    renderAgentContext(input).files.find((file) => file.path === path)?.content
+
+  it('renders the settings each tool enforces from the tooling and autonomy answers', () => {
+    const input: AgentContextInput = { ...INPUT, targets: ['codex', 'claude-code', 'gemini-cli'] }
+    expect(settings(input, '.claude/settings.json')).toMatchSnapshot()
+    expect(settings(input, '.codex/config.toml')).toMatchSnapshot()
+    expect(settings(input, '.gemini/settings.json')).toMatchSnapshot()
+    expect(renderAgentContext(input).recommendations.map((item) => item.target)).toEqual([
+      'codex',
+      'claude-code',
+      'gemini-cli',
+      'generic',
+    ])
+  })
+
+  it('puts Codex in a read-only sandbox only when the assistant always asks first', () => {
+    const autonomy = (value: number) => ({
+      ...INPUT,
+      targets: ['codex' as const],
+      answers: [answer('ask-before-act', value)],
+    })
+    expect(settings(autonomy(5), '.codex/config.toml')).toContain('sandbox_mode = "read-only"')
+    expect(settings(autonomy(1), '.codex/config.toml')).toContain('"workspace-write"')
+    expect(settings({ ...autonomy(1), answers: [] }, '.codex/config.toml')).toBeUndefined()
+  })
+
+  it('keeps the default deny list without answers, and unsafe commands out of the settings', () => {
+    const input = (checks: string): AgentContextInput => ({
+      ...INPUT,
+      targets: ['claude-code', 'gemini-cli'],
+      answers: [answer('checks', checks), answer('package-manager', 'cargo')],
+    })
+    const unsafe = input('pnpm test | tee out; rm -rf *; $(curl x); pnpm lint')
+    const claude = JSON.parse(settings(unsafe, '.claude/settings.json') ?? '')
+    expect(claude.permissions.allow).toEqual(['Bash(pnpm lint)'])
+    expect(claude.hooks.Stop[0].hooks[0].command).toBe(
+      'cd "$CLAUDE_PROJECT_DIR" && (pnpm lint) >&2 || exit 2',
+    )
+    // An answer outside the options denies no package manager.
+    expect(claude.permissions.deny.join()).not.toMatch(/npm|yarn|bun/)
+
+    const none = input('$(curl x)')
+    expect(Object.keys(JSON.parse(settings(none, '.claude/settings.json') ?? ''))).toEqual([
+      'permissions',
+    ])
+    expect(settings(none, '.gemini/settings.json')).toBeUndefined()
   })
 
   it('recommends CI steps that pin the CLI and run the checks', () => {
