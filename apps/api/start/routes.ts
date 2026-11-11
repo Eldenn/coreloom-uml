@@ -347,6 +347,81 @@ router
 
 /*
 |--------------------------------------------------------------------------
+| Workspace assistant: conversations about an architecture (behind `diagram-assistant`)
+|--------------------------------------------------------------------------
+| Session only, unlike the architectures group: an API token never reaches the assistant.
+*/
+const assistantConversationsController = () =>
+  import('#app/assistant/controllers/assistant-conversations-controller')
+const assistantMessagesController = () =>
+  import('#app/assistant/controllers/assistant-messages-controller')
+const assistantChangesController = () =>
+  import('#app/assistant/controllers/assistant-changes-controller')
+router
+  .group(() => {
+    router
+      .get('/conversations', [assistantConversationsController, 'index'])
+      .as('architectures.assistant.conversations.index')
+    router
+      .post('/conversations', [assistantConversationsController, 'store'])
+      .as('architectures.assistant.conversations.store')
+    router
+      .get('/conversations/:conversationId', [assistantConversationsController, 'show'])
+      .as('architectures.assistant.conversations.show')
+    router
+      .patch('/conversations/:conversationId', [assistantConversationsController, 'update'])
+      .as('architectures.assistant.conversations.update')
+    router
+      .delete('/conversations/:conversationId', [assistantConversationsController, 'destroy'])
+      .as('architectures.assistant.conversations.destroy')
+    router
+      .post('/conversations/:conversationId/continue', [
+        assistantConversationsController,
+        'continue',
+      ])
+      .as('architectures.assistant.conversations.continue')
+      .use(llmThrottle)
+    router
+      .post('/conversations/:conversationId/messages', [assistantMessagesController, 'store'])
+      .as('architectures.assistant.messages.store')
+      .use(llmThrottle)
+    router
+      .post('/conversations/:conversationId/context', [assistantMessagesController, 'context'])
+      .as('architectures.assistant.context')
+    router
+      .delete('/conversations/:conversationId/messages/:messageId', [
+        assistantMessagesController,
+        'destroy',
+      ])
+      .as('architectures.assistant.messages.destroy')
+    router
+      .post('/conversations/:conversationId/messages/:messageId/changes/:index/accept', [
+        assistantChangesController,
+        'accept',
+      ])
+      .as('architectures.assistant.changes.accept')
+    router
+      .post('/conversations/:conversationId/messages/:messageId/changes/:index/reject', [
+        assistantChangesController,
+        'reject',
+      ])
+      .as('architectures.assistant.changes.reject')
+    router
+      .post('/conversations/:conversationId/messages/:messageId/changes/:index/undo', [
+        assistantChangesController,
+        'undo',
+      ])
+      .as('architectures.assistant.changes.undo')
+  })
+  .prefix('/architectures/:id/assistant')
+  .where('id', router.matchers.number())
+  .where('conversationId', router.matchers.number())
+  .where('messageId', router.matchers.number())
+  .where('index', router.matchers.number())
+  .use(middleware.auth())
+
+/*
+|--------------------------------------------------------------------------
 | UML: check a diagram (text or JSON) the way a save would, without storing it
 |--------------------------------------------------------------------------
 */

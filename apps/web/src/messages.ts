@@ -440,6 +440,74 @@ export const en = {
         'A third-party resource: read it before adding it to your tools. Coreloom links to it and never installs it.',
     },
   },
+  assistant: {
+    open: 'Assistant',
+    title: 'Assistant',
+    close: 'Close the assistant',
+    noProvider:
+      'The assistant answers with your own model. Choose a provider in the settings first.',
+    openSettings: 'Open the settings',
+    conversation: 'Conversation',
+    conversationTitle: 'Conversation title',
+    newConversation: 'New conversation',
+    untitled: 'Untitled conversation',
+    noConversation: 'No conversation yet. Start one to ask about this architecture’s views.',
+    deleteConversation: 'Delete this conversation',
+    deleteConversationConfirm: 'Delete this conversation?',
+    delete: 'Delete',
+    views: 'Views read',
+    viewsHint: 'The open view is always read.',
+    viewsSearch: 'Search views',
+    skipped: (titles: string) => `Left out, too long to fit: ${titles}.`,
+    empty: 'Ask for a change, a new view or an explanation of this architecture.',
+    placeholder: 'Ask about this architecture',
+    you: 'You',
+    summary: 'Summary of the previous conversation',
+    deleteSummary: 'Delete the summary',
+    deleteSummaryHint:
+      'This conversation then goes on without any history: the previous one stays as it was.',
+    long: 'This conversation is getting long.',
+    full: 'This conversation is too long for the model: continue in a new one.',
+    continue: 'Continue in a new conversation',
+    viewTooLarge:
+      'The open view is too large to send to the model, even without any history. Open a smaller view, or split this one.',
+    acceptAll: 'Accept all',
+    accept: 'Accept',
+    reject: 'Reject',
+    undo: 'Undo',
+    saveFirst: 'Your edits to this view could not be saved: the change was not applied.',
+    fixEditsFirst:
+      'Your edits to this view don’t read as a diagram yet: fix or undo them first. The change was not applied.',
+    actionFailed: 'That didn’t work. Try again.',
+    conflicts: {
+      not_pending: 'This change was already answered.',
+      not_accepted: 'Only an accepted change can be undone.',
+      edited_since:
+        'This view was changed after the change was applied: it can no longer be undone.',
+      last_view: 'An architecture keeps at least one view: this one can’t be deleted.',
+      stale: 'The view changed after this proposal: the change is out of date.',
+    },
+    invalidChange: 'This view no longer reads as a valid diagram.',
+    loadMore: 'Load more',
+    shownOf: (shown: number, total: number) =>
+      `${String(shown)} of ${String(total)} conversations shown.`,
+    ops: { create: 'New view', update: 'Change', delete: 'Deletion' },
+    statuses: {
+      pending: 'Pending',
+      accepted: 'Accepted',
+      rejected: 'Rejected',
+      stale: 'Out of date',
+      undone: 'Undone',
+      failed: 'Failed',
+    },
+    staleHint: 'The view changed after this proposal. Ask again to get a new one.',
+    failedHint: 'The proposed view could not be read:',
+    placed: (n: number) =>
+      n === 1 ? '1 element placed automatically.' : `${String(n)} elements placed automatically.`,
+    relayout: 'Layout reset.',
+    before: 'Before',
+    after: 'After',
+  },
   llm: {
     providerTitle: 'LLM provider',
     providerHint:
@@ -1011,6 +1079,79 @@ export const fr: Messages = {
       thirdParty:
         'Une ressource tierce : lisez-la avant de l’ajouter à vos outils. Coreloom la référence sans jamais l’installer.',
     },
+  },
+  assistant: {
+    open: 'Assistant',
+    title: 'Assistant',
+    close: 'Fermer l’assistant',
+    noProvider:
+      'L’assistant répond avec votre propre modèle. Choisissez d’abord un fournisseur dans les paramètres.',
+    openSettings: 'Ouvrir les paramètres',
+    conversation: 'Conversation',
+    conversationTitle: 'Titre de la conversation',
+    newConversation: 'Nouvelle conversation',
+    untitled: 'Conversation sans titre',
+    noConversation:
+      'Aucune conversation pour l’instant. Commencez-en une pour poser vos questions sur les vues de cette architecture.',
+    deleteConversation: 'Supprimer cette conversation',
+    deleteConversationConfirm: 'Supprimer cette conversation ?',
+    delete: 'Supprimer',
+    views: 'Vues lues',
+    viewsHint: 'La vue ouverte est toujours lue.',
+    viewsSearch: 'Rechercher une vue',
+    skipped: (titles: string) => `Laissées de côté, trop longues : ${titles}.`,
+    empty: 'Demandez une modification, une nouvelle vue ou une explication de cette architecture.',
+    placeholder: 'Posez une question sur cette architecture',
+    you: 'Vous',
+    summary: 'Résumé de la conversation précédente',
+    deleteSummary: 'Supprimer le résumé',
+    deleteSummaryHint:
+      'Cette conversation continue alors sans aucun historique : la précédente reste telle quelle.',
+    long: 'Cette conversation devient longue.',
+    full: 'Cette conversation est trop longue pour le modèle : continuez-la dans une nouvelle.',
+    continue: 'Continuer dans une nouvelle conversation',
+    viewTooLarge:
+      'La vue ouverte est trop grande pour être envoyée au modèle, même sans historique. Ouvrez une vue plus petite, ou découpez celle-ci.',
+    acceptAll: 'Tout accepter',
+    accept: 'Accepter',
+    reject: 'Refuser',
+    undo: 'Annuler',
+    saveFirst:
+      'Vos modifications de cette vue n’ont pas pu être enregistrées : le changement n’a pas été appliqué.',
+    fixEditsFirst:
+      'Vos modifications de cette vue ne se lisent pas encore comme un diagramme : corrigez-les ou annulez-les d’abord. Le changement n’a pas été appliqué.',
+    actionFailed: 'Cela n’a pas fonctionné. Réessayez.',
+    conflicts: {
+      not_pending: 'Ce changement a déjà reçu une réponse.',
+      not_accepted: 'Seul un changement accepté peut être annulé.',
+      edited_since:
+        'Cette vue a été modifiée après l’application du changement : il ne peut plus être annulé.',
+      last_view: 'Une architecture garde au moins une vue : celle-ci ne peut pas être supprimée.',
+      stale: 'La vue a changé depuis cette proposition : le changement est périmé.',
+    },
+    invalidChange: 'Cette vue ne se lit plus comme un diagramme valide.',
+    loadMore: 'Afficher plus',
+    shownOf: (shown: number, total: number) =>
+      `${String(shown)} conversations affichées sur ${String(total)}.`,
+    ops: { create: 'Nouvelle vue', update: 'Modification', delete: 'Suppression' },
+    statuses: {
+      pending: 'En attente',
+      accepted: 'Accepté',
+      rejected: 'Refusé',
+      stale: 'Périmé',
+      undone: 'Annulé',
+      failed: 'Échec',
+    },
+    staleHint:
+      'La vue a changé depuis cette proposition. Redemandez-la pour en obtenir une nouvelle.',
+    failedHint: 'La vue proposée n’a pas pu être lue :',
+    placed: (n: number) =>
+      n === 1
+        ? '1 élément placé automatiquement.'
+        : `${String(n)} éléments placés automatiquement.`,
+    relayout: 'Mise en page réinitialisée.',
+    before: 'Avant',
+    after: 'Après',
   },
   llm: {
     providerTitle: 'Fournisseur LLM',

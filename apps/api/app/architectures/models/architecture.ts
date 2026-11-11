@@ -2,6 +2,7 @@ import { BaseModel, belongsTo, column, hasMany } from '@adonisjs/lucid/orm'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import type { DateTime } from 'luxon'
 import type { ArchitectureVisibility } from '#app/architectures/constants/visibility'
+import AssistantConversation from '#app/assistant/models/assistant-conversation'
 import Diagram from '#app/diagrams/models/diagram'
 import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
@@ -54,4 +55,7 @@ export default class Architecture extends BaseModel {
 
   @hasMany(() => Diagram)
   declare diagrams: HasMany<typeof Diagram>
+
+  @hasMany(() => AssistantConversation)
+  declare assistantConversations: HasMany<typeof AssistantConversation>
 }

@@ -3,10 +3,11 @@
 import type { UmlDiagramKind } from '@coreloom-uml/uml'
 import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { Share2Icon } from 'lucide-react'
+import { Share2Icon, SparklesIcon } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
+import { AssistantLayout } from '@/assistant/assistant-panel'
 import { DiagramWorkspace } from '@/components/diagram-workspace'
 import { ShareDialog } from '@/components/share-dialog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -30,6 +31,7 @@ import {
 } from '@/lib/architectures'
 import { getErrorMessage } from '@/lib/client'
 import { architectureCrumbs } from '@/lib/crumbs'
+import { useFeature } from '@/lib/feature-flags'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { useT } from '@/lib/locale'
 import { type Project, projectQueryOptions } from '@/lib/projects'
@@ -97,6 +99,9 @@ function ArchitecturePage() {
   return <Workspace architecture={architecture} />
 }
 
+/** The window minus AppShell's header and gutters: the editor reaches the bottom. */
+const WORKSPACE_HEIGHT = 'calc(100svh - 7.5rem)'
+
 /** The kind given to an imported view whose text can't be read yet. */
 const IMPORT_FALLBACK_KIND: DiagramKind = 'class'
 
@@ -117,6 +122,7 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
   const remove = useDeleteDiagram(architecture.id)
   const reorder = useReorderDiagrams(architecture.id)
   const [sharing, setSharing] = React.useState(false)
+  const [assisting, setAssisting] = React.useState(false)
   // Imported files waiting for the views before them to be added.
   const imports = React.useRef<Promise<void>>(Promise.resolve())
   const queryClient = useQueryClient()
@@ -154,107 +160,151 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
           </AlertDescription>
         </Alert>
       )}
-      <DiagramWorkspace
-        title={architecture.title}
-        onTitleChange={(title) => {
-          updateArchitecture.mutate(
-            { title },
-            // The breadcrumbs read the title through the route loader.
-            { onSuccess: () => void router.invalidate(), onError: failed },
-          )
-        }}
-        diagrams={diagrams.map((d) => ({
-          id: String(d.id),
-          title: d.title,
-          ...autosave.draftOf(d),
-        }))}
-        activeId={active ? String(active.id) : ''}
-        onActiveChange={(viewId) => {
-          select(Number(viewId))
-        }}
-        onDiagramChange={(viewId, value, result, format) => {
-          const diagram = byId(viewId)
-          if (diagram) autosave.onDiagramChange(diagram, value, result, format)
-        }}
-        onAdd={(kind) => {
-          if (!isKind(kind)) return
-          add.mutate(
-            { title: kinds[kind], kind },
-            {
-              onSuccess: ({ diagram }) => {
-                select(diagram.id)
+      <AssistantLayout
+        open={assisting}
+        onOpenChange={setAssisting}
+        architecture={architecture}
+        currentDiagramId={active?.id ?? null}
+        autosave={autosave}
+        height={WORKSPACE_HEIGHT}
+      >
+        <DiagramWorkspace
+          title={architecture.title}
+          onTitleChange={(title) => {
+            updateArchitecture.mutate(
+              { title },
+              // The breadcrumbs read the title through the route loader.
+              { onSuccess: () => void router.invalidate(), onError: failed },
+            )
+          }}
+          diagrams={diagrams.map((d) => ({
+            id: String(d.id),
+            title: d.title,
+            ...autosave.draftOf(d),
+          }))}
+          activeId={active ? String(active.id) : ''}
+          onActiveChange={(viewId) => {
+            select(Number(viewId))
+          }}
+          onDiagramChange={(viewId, value, result, format) => {
+            const diagram = byId(viewId)
+            if (diagram) autosave.onDiagramChange(diagram, value, result, format)
+          }}
+          onAdd={(kind) => {
+            if (!isKind(kind)) return
+            add.mutate(
+              { title: kinds[kind], kind },
+              {
+                onSuccess: ({ diagram }) => {
+                  select(diagram.id)
+                },
+                onError: failed,
+              },
+            )
+          }}
+          onImport={({ title, value, result, format }) => {
+            // A file that can't be read yet still opens, as a draft, in the kind the editor falls
+            // back to; it is saved once its text reads.
+            const kind = result.diagram?.kind ?? IMPORT_FALLBACK_KIND
+            if (!isKind(kind)) {
+              toast.error(t.editor.importUnsupported)
+              return
+            }
+            // Several dropped files arrive in one event: they are added one after the other, in
+            // order, each with its own text (mutate's callbacks would only run for the last one).
+            imports.current = imports.current.then(() =>
+              add.mutateAsync({ title, kind }).then(
+                ({ diagram }) => {
+                  select(diagram.id)
+                  autosave.onDiagramChange(diagram, value, result, format)
+                },
+                (error: unknown) => {
+                  failed(error)
+                },
+              ),
+            )
+          }}
+          onRename={(viewId, title) => {
+            save.mutate({ diagramId: Number(viewId), title }, { onError: failed })
+          }}
+          onReorder={(ids) => {
+            queryClient.setQueryData<ArchitectureDetail>(
+              architectureKeys.detail(architecture.id),
+              (old) =>
+                old && {
+                  ...old,
+                  diagrams: ids.flatMap((viewId) =>
+                    old.diagrams.filter((d) => String(d.id) === viewId),
+                  ),
+                },
+            )
+            reorder.mutate(ids.map(Number), { onError: failed })
+          }}
+          onDelete={(viewId) => {
+            remove.mutate(Number(viewId), {
+              onSuccess: () => {
+                toast.success(t.editor.diagramDeleted)
+                const next = diagrams.find((d) => String(d.id) !== viewId)
+                if (next && String(active?.id) === viewId) select(next.id)
               },
               onError: failed,
-            },
-          )
-        }}
-        onImport={({ title, value, result, format }) => {
-          // A file that can't be read yet still opens, as a draft, in the kind the editor falls
-          // back to; it is saved once its text reads.
-          const kind = result.diagram?.kind ?? IMPORT_FALLBACK_KIND
-          if (!isKind(kind)) {
-            toast.error(t.editor.importUnsupported)
-            return
+            })
+          }}
+          height={WORKSPACE_HEIGHT}
+          saveState={autosave.state}
+          savedAt={autosave.savedAt}
+          onRetrySave={autosave.retry}
+          actions={
+            <WorkspaceActions
+              assisting={assisting}
+              onAssistingChange={setAssisting}
+              onSharingChange={setSharing}
+            />
           }
-          // Several dropped files arrive in one event: they are added one after the other, in
-          // order, each with its own text (mutate's callbacks would only run for the last one).
-          imports.current = imports.current.then(() =>
-            add.mutateAsync({ title, kind }).then(
-              ({ diagram }) => {
-                select(diagram.id)
-                autosave.onDiagramChange(diagram, value, result, format)
-              },
-              (error: unknown) => {
-                failed(error)
-              },
-            ),
-          )
-        }}
-        onRename={(viewId, title) => {
-          save.mutate({ diagramId: Number(viewId), title }, { onError: failed })
-        }}
-        onReorder={(ids) => {
-          queryClient.setQueryData<ArchitectureDetail>(
-            architectureKeys.detail(architecture.id),
-            (old) =>
-              old && {
-                ...old,
-                diagrams: ids.flatMap((viewId) =>
-                  old.diagrams.filter((d) => String(d.id) === viewId),
-                ),
-              },
-          )
-          reorder.mutate(ids.map(Number), { onError: failed })
-        }}
-        onDelete={(viewId) => {
-          remove.mutate(Number(viewId), {
-            onSuccess: () => {
-              toast.success(t.editor.diagramDeleted)
-              const next = diagrams.find((d) => String(d.id) !== viewId)
-              if (next && String(active?.id) === viewId) select(next.id)
-            },
-            onError: failed,
-          })
-        }}
-        // The window minus AppShell's header and gutters: the editor reaches the bottom.
-        height="calc(100svh - 7.5rem)"
-        saveState={autosave.state}
-        savedAt={autosave.savedAt}
-        onRetrySave={autosave.retry}
-        actions={
-          <Button
-            size="sm"
-            onClick={() => {
-              setSharing(true)
-            }}
-          >
-            <Share2Icon />
-            {t.editor.share}
-          </Button>
-        }
-      />
+        />
+      </AssistantLayout>
       <ShareArchitecture architecture={architecture} open={sharing} onOpenChange={setSharing} />
     </div>
+  )
+}
+
+/** The workspace toolbar: the assistant's toggle (behind its flag) and Share. */
+function WorkspaceActions({
+  assisting,
+  onAssistingChange,
+  onSharingChange,
+}: {
+  assisting: boolean
+  onAssistingChange: (open: boolean) => void
+  onSharingChange: (open: boolean) => void
+}) {
+  const t = useT()
+  const assistant = useFeature('diagram-assistant')
+  return (
+    <>
+      {assistant && (
+        <Button
+          size="sm"
+          variant="outline"
+          aria-pressed={assisting}
+          onClick={() => {
+            onAssistingChange(!assisting)
+          }}
+        >
+          <SparklesIcon />
+          {t.assistant.open}
+        </Button>
+      )}
+      <Button
+        size="sm"
+        onClick={() => {
+          onSharingChange(true)
+        }}
+      >
+        <Share2Icon />
+        {t.editor.share}
+      </Button>
+    </>
   )
 }
 

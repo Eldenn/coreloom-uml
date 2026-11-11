@@ -124,6 +124,40 @@ export class ArchitectureSchema extends BaseModel {
   declare visibility: string
 }
 
+export class AssistantConversationSchema extends BaseModel {
+  static $columns = ['architectureId', 'createdAt', 'id', 'title', 'updatedAt', 'userId'] as const
+  $columns = AssistantConversationSchema.$columns
+  @column()
+  declare architectureId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare title: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
+}
+
+export class AssistantMessageSchema extends BaseModel {
+  static $columns = ['changes', 'content', 'conversationId', 'createdAt', 'id', 'role'] as const
+  $columns = AssistantMessageSchema.$columns
+  @column()
+  declare changes: any | null
+  @column()
+  declare content: string
+  @column()
+  declare conversationId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare role: string
+}
+
 export class AuthAccessTokenSchema extends BaseModel {
   static $columns = ['abilities', 'createdAt', 'expiresAt', 'hash', 'hint', 'id', 'lastUsedAt', 'name', 'tokenableId', 'type', 'updatedAt'] as const
   $columns = AuthAccessTokenSchema.$columns
