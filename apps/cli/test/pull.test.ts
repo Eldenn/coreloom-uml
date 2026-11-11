@@ -420,6 +420,37 @@ describe('pull, settings files', () => {
     expect(await exists(CONFIG)).toBe(false)
   })
 
+  it('writes Codex rules in `#` markers at the end of the file, and asks first', async () => {
+    const RULES = '.codex/rules/coreloom-uml.rules'
+    const rules = (decision: string) =>
+      settingsFile(
+        RULES,
+        wrapManagedBlock(
+          `prefix_rule(pattern = ["rm", "-rf"], decision = "${decision}")`,
+          HASH_MARKERS,
+        ),
+      )
+    api.current = generation(1, [rules('forbidden')])
+    await expect(run()).rejects.toThrow(/--yes/)
+    expect(await exists(RULES)).toBe(false)
+
+    const recorder = recordingIo({ interactive: true, answers: [true] })
+    expect(await run({}, recorder.io)).toBe(ExitCode.Ok)
+    expect(recorder.questions).toEqual([expect.stringContaining('write these settings?')])
+    expect(await read(RULES)).toBe(api.current.files[0]?.content)
+
+    const mine = 'prefix_rule(pattern = ["gh"], decision = "prompt")\n'
+    await writeFile(join(dir.path, RULES), `${mine}\n${await read(RULES)}`)
+    api.current = generation(2, [rules('prompt')])
+    await expect(run()).rejects.toThrow(/--yes/)
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await read(RULES)).toBe(`${mine}\n${api.current.files[0]?.content}`)
+
+    api.current = generation(3, [file(AGENTS, 'a')])
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await read(RULES)).toBe(mine)
+  })
+
   it('refuses a TOML file that already sets a managed key', async () => {
     await mkdir(join(dir.path, '.codex'))
     await writeFile(join(dir.path, TOML), 'sandbox_mode = "danger-full-access"\n')

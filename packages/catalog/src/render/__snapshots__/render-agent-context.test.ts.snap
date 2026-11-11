@@ -1,5 +1,28 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`renderAgentContext > forbids the default commands in Codex rules whatever the answers 1`] = `
+"# coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
+# A rule matches the first words of a command: it stops the usual form, it is not a security boundary.
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "-f"]],
+    decision = "forbidden",
+    justification = "Never force-push: add a commit instead of rewriting what was pushed.",
+    match = ["git push --force", "git push -f origin main"],
+    not_match = ["git push origin main", "git push origin main --force"],
+)
+
+prefix_rule(
+    pattern = ["rm", ["-rf", "-fr"]],
+    decision = "forbidden",
+    justification = "Never delete recursively with force: remove the files you mean by name.",
+    match = ["rm -rf build", "rm -fr build"],
+    not_match = ["rm build.log"],
+)
+# coreloom-uml:end
+"
+`;
+
 exports[`renderAgentContext > renders dependency-cruiser rules from the package diagrams 1`] = `
 "// coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
 // Dependency rules drawn from the package diagrams in Coreloom UML: a package may only
@@ -209,6 +232,64 @@ sandbox_mode = "workspace-write"
 `;
 
 exports[`renderAgentContext > renders the settings each tool enforces from the tooling and autonomy answers 3`] = `
+"# coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
+# A rule matches the first words of a command: it stops the usual form, it is not a security boundary.
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "-f"]],
+    decision = "forbidden",
+    justification = "Never force-push: add a commit instead of rewriting what was pushed.",
+    match = ["git push --force", "git push -f origin main"],
+    not_match = ["git push origin main", "git push origin main --force"],
+)
+
+prefix_rule(
+    pattern = ["rm", ["-rf", "-fr"]],
+    decision = "forbidden",
+    justification = "Never delete recursively with force: remove the files you mean by name.",
+    match = ["rm -rf build", "rm -fr build"],
+    not_match = ["rm build.log"],
+)
+
+prefix_rule(
+    pattern = ["npm"],
+    decision = "forbidden",
+    justification = "This project uses pnpm, not npm.",
+    match = ["npm install"],
+)
+
+prefix_rule(
+    pattern = ["yarn"],
+    decision = "forbidden",
+    justification = "This project uses pnpm, not yarn.",
+    match = ["yarn install"],
+)
+
+prefix_rule(
+    pattern = ["bun"],
+    decision = "forbidden",
+    justification = "This project uses pnpm, not bun.",
+    match = ["bun install"],
+)
+
+prefix_rule(
+    pattern = ["pnpm", "lint"],
+    decision = "allow",
+    justification = "A check to run before handing work back.",
+    match = ["pnpm lint"],
+)
+
+prefix_rule(
+    pattern = ["pnpm", "test"],
+    decision = "allow",
+    justification = "A check to run before handing work back.",
+    match = ["pnpm test"],
+)
+# coreloom-uml:end
+"
+`;
+
+exports[`renderAgentContext > renders the settings each tool enforces from the tooling and autonomy answers 4`] = `
 "{
   "tools": {
     "allowed": [
