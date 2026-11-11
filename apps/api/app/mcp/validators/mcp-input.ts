@@ -20,5 +20,10 @@ export const getDiagramInput = {
 }
 
 export const getAgentConventionsInput = {
-  projectId: id().describe('A project id from list_projects.'),
+  configId: id()
+    .optional()
+    .describe('An agent conventions id from list_agent_conventions. Pass this or projectId.'),
+  projectId: id()
+    .optional()
+    .describe('A project id from list_projects, for the conventions of that project.'),
 }

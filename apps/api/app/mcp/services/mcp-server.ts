@@ -2,7 +2,10 @@ import { AGENTS_FILE } from '@coreloom-uml/catalog'
 import { formatDiagramText, validateDiagram } from '@coreloom-uml/uml'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import AgentConfig from '#app/agent-configs/models/agent-config'
-import { latestGeneration } from '#app/agent-configs/services/owned-agent-config'
+import {
+  findOwnedAgentConfig,
+  latestGeneration,
+} from '#app/agent-configs/services/owned-agent-config'
 import Architecture from '#app/architectures/models/architecture'
 import Diagram from '#app/diagrams/models/diagram'
 import { MCP_LIST_MAX, MCP_SERVER_NAME, MCP_SERVER_VERSION, McpTool } from '#app/mcp/constants/mcp'
@@ -111,20 +114,52 @@ export function buildMcpServer(user: User): McpServer {
   )
 
   server.registerTool(
+    McpTool.ListAgentConventions,
+    {
+      description:
+        'Lists your agent conventions, in a project or outside any. Read one with get_agent_conventions.',
+      annotations: READ_ONLY,
+    },
+    async () => {
+      const configs = await AgentConfig.query()
+        .where('userId', user.id)
+        .orderBy('updatedAt', 'desc')
+        .orderBy('id', 'desc')
+        .limit(MCP_LIST_MAX)
+      return json(
+        configs.map((config) => ({
+          id: config.id,
+          name: config.name,
+          projectId: config.projectId,
+        })),
+      )
+    },
+  )
+
+  server.registerTool(
     McpTool.GetAgentConventions,
     {
-      description: `Returns the latest ${AGENTS_FILE} generated from a project's agent conventions.`,
+      description: `Returns the latest ${AGENTS_FILE} generated from agent conventions, chosen by their id or by their project.`,
       inputSchema: getAgentConventionsInput,
       annotations: READ_ONLY,
     },
-    async ({ projectId }) => {
-      const project = await findOwnedProject(projectId, user)
-      if (!project) return failure('Project not found')
-      const config = await AgentConfig.findBy('projectId', project.id)
-      if (!config || !assertOwner(config, user)) return failure('Agent configuration not found')
+    async ({ configId, projectId }) => {
+      if ((configId === undefined) === (projectId === undefined)) {
+        return failure('Pass either configId or projectId.')
+      }
+      let config: AgentConfig | null
+      if (configId !== undefined) {
+        config = await findOwnedAgentConfig(configId, user)
+      } else {
+        const project = await findOwnedProject(projectId as number, user)
+        if (!project) return failure('Project not found')
+        config = await AgentConfig.findBy('projectId', project.id)
+        if (config && !assertOwner(config, user)) config = null
+      }
+      if (!config) return failure('Agent configuration not found')
       const generation = await latestGeneration(config)
       const file = generation?.files.find((item) => item.path === AGENTS_FILE)
-      if (!file) return failure('Nothing was generated yet for this project.')
+      if (!file) return failure('Nothing was generated yet for these conventions.')
       return text(file.content)
     },
   )
