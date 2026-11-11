@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { findQuestionnaire } from '../questionnaires/index.ts'
 import type { Questionnaire } from '../schemas.ts'
+import { TARGETS } from '../targets.ts'
 import {
   findManagedBlock,
   HASH_MARKERS,
@@ -352,7 +353,10 @@ describe('renderAgentContext', () => {
     expect(settings(input, '.gemini/settings.json')).toMatchSnapshot()
     expect(renderAgentContext(input).recommendations.map((item) => item.target)).toEqual([
       'codex',
+      'codex',
       'claude-code',
+      'claude-code',
+      'gemini-cli',
       'gemini-cli',
       'generic',
     ])
@@ -406,6 +410,27 @@ describe('renderAgentContext', () => {
         '```',
       ].join('\n'),
     )
+  })
+
+  it('says how to register the MCP server in each tool, without ever holding a key', () => {
+    const { recommendations, files } = renderAgentContext({ ...INPUT, targets: [...TARGETS] })
+    const mcp = recommendations.filter((item) => item.title === 'Live access through MCP')
+    expect(mcp.map((item) => item.target)).toEqual([
+      'codex',
+      'cursor',
+      'github-copilot',
+      'claude-code',
+      'gemini-cli',
+    ])
+    expect(mcp[3]?.body).toContain(
+      'claude mcp add --transport http coreloom-uml https://<your-coreloom-uml-api>/mcp --header "Authorization: Bearer $CORELOOM_UML_API_KEY"',
+    )
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: Cursor's own variable syntax.
+    expect(mcp[1]?.body).toContain('"Authorization": "Bearer ${env:CORELOOM_UML_API_KEY}"')
+    for (const item of mcp) expect(item.body).not.toContain('clu_')
+    expect(mcp[4]?.body).toContain('gemini mcp add --scope user ')
+    // A recommendation only: no MCP settings file is rendered.
+    expect(files.some((file) => file.path.includes('mcp'))).toBe(false)
   })
 
   it('reports each fragment with its question and section', () => {

@@ -128,6 +128,7 @@ export interface ApiDefinition {
       }
     }
   }
+  mcp: typeof routes['mcp']
   uml: {
     validate: typeof routes['uml.validate']
   }

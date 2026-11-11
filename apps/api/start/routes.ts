@@ -360,6 +360,22 @@ router
 
 /*
 |--------------------------------------------------------------------------
+| MCP server: what coding agents read projects, diagrams and conventions through (behind `mcp-server`)
+|--------------------------------------------------------------------------
+| API tokens only (`read` is enough, checked by the controller: every MCP call is a POST).
+| GET and DELETE are routed too, so they get the 405 the protocol asks for.
+*/
+router
+  .route(
+    '/mcp',
+    ['GET', 'POST', 'DELETE'],
+    [() => import('#app/mcp/controllers/mcp-controller'), 'handle'],
+  )
+  .as('mcp')
+  .use([middleware.auth({ guards: ['api'] }), apiTokenThrottle])
+
+/*
+|--------------------------------------------------------------------------
 | Workspace assistant: conversations about an architecture (behind `diagram-assistant`)
 |--------------------------------------------------------------------------
 | Session only, unlike the architectures group: an API token never reaches the assistant.

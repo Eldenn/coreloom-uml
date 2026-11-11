@@ -378,6 +378,12 @@ const routes = {
     tokens: [{"old":"/architectures/:id/sharing/regenerate-code","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/sharing/regenerate-code","type":1,"val":"id","end":""},{"old":"/architectures/:id/sharing/regenerate-code","type":0,"val":"sharing","end":""},{"old":"/architectures/:id/sharing/regenerate-code","type":0,"val":"regenerate-code","end":""}],
     types: placeholder as Registry['architectures.sharing.regenerate_code']['types'],
   },
+  'mcp': {
+    methods: ["GET","POST","DELETE"],
+    pattern: '/mcp',
+    tokens: [{"old":"/mcp","type":0,"val":"mcp","end":""}],
+    types: placeholder as Registry['mcp']['types'],
+  },
   'architectures.assistant.conversations.index': {
     methods: ["GET","HEAD"],
     pattern: '/architectures/:id/assistant/conversations',
