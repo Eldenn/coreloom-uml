@@ -133,9 +133,9 @@ export const en = {
     introTitle: 'Agent conventions',
     intro:
       'Describe how you work, and Coreloom turns it into an AGENTS.md for your coding assistants. Nothing is sent to a model: the file is built from your answers.',
-    questionnaireLabel: 'Questionnaire',
-    questionnaireHint: 'What the questions are about. You can change it later.',
-    questionnaireRequired: 'Pick a questionnaire.',
+    questionnaireLabel: 'Questionnaires',
+    questionnaireHint: 'What the questions are about: pick one or several.',
+    questionnaireRequired: 'Pick at least one questionnaire.',
     questionCount: (count: number) => (count === 1 ? '1 question' : `${count} questions`),
     targetsLabel: 'Coding tools',
     targetsHint:
@@ -786,9 +786,9 @@ export const fr: Messages = {
     introTitle: 'Conventions d’agents',
     intro:
       'Décrivez comment vous travaillez, Coreloom en fait un AGENTS.md pour vos assistants de code. Rien n’est envoyé à un modèle : le fichier est construit à partir de vos réponses.',
-    questionnaireLabel: 'Questionnaire',
-    questionnaireHint: 'Le thème des questions. Vous pourrez le changer ensuite.',
-    questionnaireRequired: 'Choisissez un questionnaire.',
+    questionnaireLabel: 'Questionnaires',
+    questionnaireHint: 'Les thèmes des questions : choisissez-en un ou plusieurs.',
+    questionnaireRequired: 'Choisissez au moins un questionnaire.',
     questionCount: (count: number) => (count <= 1 ? `${count} question` : `${count} questions`),
     targetsLabel: 'Outils de code',
     targetsHint:

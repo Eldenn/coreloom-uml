@@ -1,5 +1,5 @@
 // New agent conventions: a name, a project (fixed on a project's page, or picked, "No project" by
-// default), the questionnaire and the coding tools, then "Start", which creates the configuration.
+// default), the questionnaires and the coding tools, then "Start", which creates the configuration.
 import { BotIcon } from 'lucide-react'
 import { z } from 'zod'
 
@@ -76,21 +76,21 @@ function SetupForm({
   const localized = useLocalized()
   const create = useCreateAgentConfig()
   const projectOptions = useProjectOptions()
-  const first = questionnaires[0]?.id ?? ''
+  const first = questionnaires[0]?.id
   const targetOptions = useTargetOptions()
 
   const form = useAppForm({
     defaultValues: {
       name: defaultName,
       projectId: String(projectId ?? NO_PROJECT),
-      questionnaire: first,
+      questionnaires: first ? [first] : [],
       targets: [] as Target[],
     },
     validators: {
       onSubmit: z.object({
         name: z.string().trim().min(1, t.agents.nameRequired).max(NAME_MAX_LENGTH),
         projectId: z.string(),
-        questionnaire: z.string().min(1, t.agents.questionnaireRequired),
+        questionnaires: z.array(z.string()).min(1, t.agents.questionnaireRequired),
         targets: z.array(z.enum(TARGETS)).min(1, t.agents.targetsRequired),
       }),
     },
@@ -99,7 +99,7 @@ function SetupForm({
         const { config } = await create.mutateAsync({
           name: value.name.trim(),
           projectId: toProjectId(value.projectId),
-          questionnaires: [value.questionnaire],
+          questionnaires: value.questionnaires,
           targets: value.targets,
         })
         onCreated(config.id)
@@ -129,9 +129,9 @@ function SetupForm({
             )}
           </form.AppField>
         )}
-        <form.AppField name="questionnaire">
+        <form.AppField name="questionnaires">
           {(field) => (
-            <field.RadioCardField
+            <field.CheckboxCardField
               label={t.agents.questionnaireLabel}
               description={t.agents.questionnaireHint}
               orientation="horizontal"

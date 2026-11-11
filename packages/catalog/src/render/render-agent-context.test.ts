@@ -79,6 +79,46 @@ describe('renderAgentContext', () => {
     expect(agentsMd(INPUT)).toMatchSnapshot()
   })
 
+  it('renders the back-end, Git and security questionnaires together', () => {
+    const ids = ['backend-node', 'git-workflow', 'security']
+    const questionnaires = ids.map((id) => findQuestionnaire(id) as Questionnaire)
+    const to = (
+      questionnaireId: string,
+      questionId: string,
+      value: number | string | string[],
+    ) => ({
+      questionnaireId,
+      questionId,
+      value,
+    })
+    const answers = [
+      to('backend-node', 'api-style', 'rest'),
+      to('backend-node', 'api-compatibility', 5),
+      to('backend-node', 'input-validation', 'zod'),
+      to('backend-node', 'error-handling', 'central-handler'),
+      to('backend-node', 'log-style', 'structured'),
+      to('backend-node', 'log-sensitive-data', 4),
+      to('backend-node', 'db-access', 'query-builder'),
+      to('backend-node', 'db-migrations', 'ask'),
+      to('backend-node', 'db-layering', 3),
+      to('git-workflow', 'branching', 'worktree'),
+      to('git-workflow', 'commit-messages', 'Subject under 50 characters, ticket id first'),
+      to('git-workflow', 'commit-permission', 'commit'),
+      to('git-workflow', 'pull-request-size', '400'),
+      to('git-workflow', 'never-commit', ['secrets', 'unrelated']),
+      to('git-workflow', 'history', 2),
+      to('git-workflow', 'attribution', 5),
+      to('security', 'secrets', 5),
+      to('security', 'new-dependencies', 'ask'),
+      to('security', 'version-pins', 'exact'),
+      to('security', 'input-trust', 1),
+      to('security', 'destructive-commands', 'ask'),
+      to('security', 'network-access', 'registry'),
+      to('security', 'sensitive-code', 4),
+    ]
+    expect(agentsMd({ ...INPUT, questionnaires, answers, rules: [] })).toMatchSnapshot()
+  })
+
   it('orders sections and lists the architectures in Project', () => {
     const text = agentsMd(INPUT)
     const headings = [...text.matchAll(/^## (.+)$/gm)].map((match) => match[1])

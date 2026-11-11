@@ -282,7 +282,7 @@ On the web, the « Agent conventions » page (`/agent-configs`, in the sidebar a
 configuration with the project that holds it, if any, and creates one with or without a project;
 each has its own page (`/agent-configs/:id`), where it can be renamed or moved to another project
 or out of any. A project page's « Agent conventions » tab shows that project's configuration, or
-creates one in it. Both (`apps/web/src/agent-configs/`) walk through it: choose a questionnaire and the target tools, answer section by section (the draft is
+creates one in it. Both (`apps/web/src/agent-configs/`) walk through it: choose one or several questionnaires and the target tools, answer section by section (the draft is
 kept in the browser until saved), accept rules one by one, generate, then read the files, their
 changes since the previous generation and the recommendations, and copy the CLI command that
 installs them. When `impact.stale` is true the tab shows a « To regenerate » badge and lists what a

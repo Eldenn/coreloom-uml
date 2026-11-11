@@ -155,6 +155,35 @@ test.group('Agent configs - questionnaires', (group) => {
     missing.assertStatus(404)
   })
 
+  test('lists the back-end, Git and security questionnaires, which combine with the first', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+
+    const list = await client.get('/questionnaires').headers(json).loginAs(user)
+    list.assertStatus(200)
+    const ids = (list.body().questionnaires as { id: string }[]).map((item) => item.id)
+    assert.deepEqual(ids, [Q, 'backend-node', 'git-workflow', 'security'])
+
+    const created = await createConfig(client, user, null, { questionnaires: ids })
+    assert.deepEqual(created.config.ruleSections, [
+      'Project',
+      'Architecture',
+      'Working style',
+      'TypeScript',
+      'React',
+      'API',
+      'Errors and logging',
+      'Database',
+      'Git',
+      'Security',
+      'Testing',
+      'Workflow',
+      'Tooling',
+    ])
+  })
+
   test('requires a session or an API token', async ({ client }) => {
     const response = await client.get('/questionnaires').headers(json)
     response.assertStatus(401)
