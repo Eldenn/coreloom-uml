@@ -1,7 +1,9 @@
-import type { UmlSpec } from '@coreloom-uml/uml'
+import { type UmlSpec, validateDiagram } from '@coreloom-uml/uml'
 import { APICallError } from 'ai'
 import { describe, expect, it } from 'vitest'
 import {
+  ASSISTANT_FORMAT,
+  ASSISTANT_INSTRUCTIONS,
   AssistantContextFull,
   type AssistantSource,
   type AssistantView,
@@ -182,18 +184,22 @@ describe('askAssistant', () => {
       id: 13,
       kind: 'class',
       title: 'Big',
-      content: { kind: 'class', classes: [{ id: 'x'.repeat(8000) }], relations: [] },
+      content: { kind: 'class', classes: [{ id: 'x'.repeat(20_000) }], relations: [] },
       current: false,
     }
     const model = answeringModel(answer([]))
     const result = await askAssistant(model, source({ views: [big, CURRENT] }), {
-      maxInputTokens: 1500,
+      maxInputTokens: 3000,
     })
     expect(result.skipped).toEqual([13])
     const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt)
     expect(prompt).toContain('id=\\"12\\"')
-    expect(prompt).not.toContain('id=\\"13\\"')
-    expect(assistantBudget(source({ views: [big, CURRENT] }), 1500).skipped).toEqual([13])
+    // Left out, but named so the model knows the view exists.
+    expect(prompt).not.toContain('xxxx')
+    expect(prompt).toContain(
+      '<views_not_sent>\\n<view id=\\"13\\" kind=\\"class\\" title=\\"Big\\" />',
+    )
+    expect(assistantBudget(source({ views: [big, CURRENT] }), 3000).skipped).toEqual([13])
   })
 
   it('throws AssistantContextFull when the history alone exceeds the budget', async () => {
@@ -257,5 +263,26 @@ describe('changeLine', () => {
     expect(changeLine({ op: 'create', title: 'Refunds', status: 'rejected' })).toBe(
       'proposed: create view "Refunds" (rejected)',
     )
+  })
+
+  it('keeps the problems of a failed change only', () => {
+    const problems = [{ code: 'schema' as const, text: 'classes must be a list' }]
+    expect(
+      changeLine({ op: 'update', diagramId: 12, title: 'Payment', status: 'failed', problems }),
+    ).toBe('proposed: update view #12 "Payment" (failed): classes must be a list')
+    expect(
+      changeLine({ op: 'update', diagramId: 12, title: 'Payment', status: 'stale', problems }),
+    ).toBe('proposed: update view #12 "Payment" (stale)')
+  })
+})
+
+describe('ASSISTANT_FORMAT', () => {
+  it('gives a valid example of every kind, all in the instructions', () => {
+    for (const [kind, { example }] of Object.entries(ASSISTANT_FORMAT)) {
+      const { diagram, problems } = validateDiagram(example)
+      expect(problems, kind).toEqual([])
+      expect(diagram?.kind).toBe(kind)
+      expect(ASSISTANT_INSTRUCTIONS).toContain(JSON.stringify(example))
+    }
   })
 })
