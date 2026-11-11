@@ -28,7 +28,7 @@ it('reports each file and whether a newer generation exists', async () => {
     file('C.md', 'c'),
     file('D.md', 'd'),
   ])
-  await pull({ cwd: dir.path, io: recordingIo().io, env, apiUrl: api.url, project: '7' })
+  await pull({ cwd: dir.path, io: recordingIo().io, env, apiUrl: api.url, config: '3' })
   const b = await readFile(join(dir.path, 'B.md'), 'utf8')
   await writeFile(join(dir.path, 'B.md'), b.replace('\nb\n', '\nedited\n'))
   await writeFile(join(dir.path, 'C.md'), '# No block\n')
@@ -48,7 +48,7 @@ it('reports each file and whether a newer generation exists', async () => {
 it('works without a key, and without a manifest says to pull first', async () => {
   const env = { XDG_CONFIG_HOME: dir.path }
   await expect(status({ cwd: dir.path, io: recordingIo().io, env })).rejects.toThrow(
-    /pull --project/,
+    /pull --config/,
   )
 
   api.current = generation(1, [file('AGENTS.md', 'a')])
@@ -57,7 +57,7 @@ it('works without a key, and without a manifest says to pull first', async () =>
     io: recordingIo().io,
     env: { ...env, CORELOOM_UML_API_KEY: API_KEY },
     apiUrl: api.url,
-    project: '7',
+    config: '3',
   })
   const recorder = recordingIo()
   expect(await status({ cwd: dir.path, io: recorder.io, env })).toBe(ExitCode.Ok)

@@ -199,9 +199,45 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/projects/controllers/projects-controller').default['destroy']>>>
     }
   }
-  'projects.agent_config.show': {
+  'projects.agent_config.generations.latest': {
     methods: ["GET","HEAD"]
-    pattern: '/projects/:id/agent-config'
+    pattern: '/projects/:id/agent-config/generations/latest'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-generations-controller').default['latestOfProject']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-generations-controller').default['latestOfProject']>>>
+    }
+  }
+  'agent_configs.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/agent-configs'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').listAgentConfigsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'agent_configs.store': {
+    methods: ["POST"]
+    pattern: '/agent-configs'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').createAgentConfigInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').createAgentConfigInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'agent_configs.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/agent-configs/:id'
     types: {
       body: {}
       paramsTuple: [ParamValue]
@@ -211,21 +247,21 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-controller').default['show']>>>
     }
   }
-  'projects.agent_config.update': {
-    methods: ["PUT"]
-    pattern: '/projects/:id/agent-config'
+  'agent_configs.update': {
+    methods: ["PATCH"]
+    pattern: '/agent-configs/:id'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').upsertAgentConfigInput)>>
+      body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').updateAgentConfigInput)>>
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
-      query: ExtractQuery<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').upsertAgentConfigInput)>>
+      query: ExtractQuery<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').updateAgentConfigInput)>>
       response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-controller').default['update']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
-  'projects.agent_config.destroy': {
+  'agent_configs.destroy': {
     methods: ["DELETE"]
-    pattern: '/projects/:id/agent-config'
+    pattern: '/agent-configs/:id'
     types: {
       body: {}
       paramsTuple: [ParamValue]
@@ -235,9 +271,9 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-controller').default['destroy']>>>
     }
   }
-  'projects.agent_config.answers.update': {
+  'agent_configs.answers.update': {
     methods: ["PUT"]
-    pattern: '/projects/:id/agent-config/answers'
+    pattern: '/agent-configs/:id/answers'
     types: {
       body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').updateAgentAnswersInput)>>
       paramsTuple: [ParamValue]
@@ -247,9 +283,9 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-answers-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
-  'projects.agent_config.rules.store': {
+  'agent_configs.rules.store': {
     methods: ["POST"]
-    pattern: '/projects/:id/agent-config/rules'
+    pattern: '/agent-configs/:id/rules'
     types: {
       body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').createAgentRuleInput)>>
       paramsTuple: [ParamValue]
@@ -259,9 +295,9 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-rules-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
-  'projects.agent_config.rules.update': {
+  'agent_configs.rules.update': {
     methods: ["PATCH"]
-    pattern: '/projects/:id/agent-config/rules/:ruleId'
+    pattern: '/agent-configs/:id/rules/:ruleId'
     types: {
       body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').updateAgentRuleInput)>>
       paramsTuple: [ParamValue, ParamValue]
@@ -271,9 +307,9 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-rules-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
-  'projects.agent_config.rules.destroy': {
+  'agent_configs.rules.destroy': {
     methods: ["DELETE"]
-    pattern: '/projects/:id/agent-config/rules/:ruleId'
+    pattern: '/agent-configs/:id/rules/:ruleId'
     types: {
       body: {}
       paramsTuple: [ParamValue, ParamValue]
@@ -283,9 +319,9 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-rules-controller').default['destroy']>>>
     }
   }
-  'projects.agent_config.generations.store': {
+  'agent_configs.generations.store': {
     methods: ["POST"]
-    pattern: '/projects/:id/agent-config/generations'
+    pattern: '/agent-configs/:id/generations'
     types: {
       body: {}
       paramsTuple: [ParamValue]
@@ -295,9 +331,9 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-generations-controller').default['store']>>>
     }
   }
-  'projects.agent_config.generations.index': {
+  'agent_configs.generations.index': {
     methods: ["GET","HEAD"]
-    pattern: '/projects/:id/agent-config/generations'
+    pattern: '/agent-configs/:id/generations'
     types: {
       body: {}
       paramsTuple: [ParamValue]
@@ -307,9 +343,9 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-generations-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
-  'projects.agent_config.generations.latest': {
+  'agent_configs.generations.latest': {
     methods: ["GET","HEAD"]
-    pattern: '/projects/:id/agent-config/generations/latest'
+    pattern: '/agent-configs/:id/generations/latest'
     types: {
       body: {}
       paramsTuple: [ParamValue]
@@ -319,9 +355,9 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-generations-controller').default['latest']>>>
     }
   }
-  'projects.agent_config.generations.show': {
+  'agent_configs.generations.show': {
     methods: ["GET","HEAD"]
-    pattern: '/projects/:id/agent-config/generations/:generationId'
+    pattern: '/agent-configs/:id/generations/:generationId'
     types: {
       body: {}
       paramsTuple: [ParamValue, ParamValue]
@@ -331,9 +367,9 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-generations-controller').default['show']>>>
     }
   }
-  'projects.agent_config.proposals.store': {
+  'agent_configs.proposals.store': {
     methods: ["POST"]
-    pattern: '/projects/:id/agent-config/proposals'
+    pattern: '/agent-configs/:id/proposals'
     types: {
       body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').agentProposalsInput)>>
       paramsTuple: [ParamValue]
@@ -343,9 +379,9 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-proposals-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
-  'projects.agent_config.imports.store': {
+  'agent_configs.imports.store': {
     methods: ["POST"]
-    pattern: '/projects/:id/agent-config/imports'
+    pattern: '/agent-configs/:id/imports'
     types: {
       body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').agentImportInput)>>
       paramsTuple: [ParamValue]

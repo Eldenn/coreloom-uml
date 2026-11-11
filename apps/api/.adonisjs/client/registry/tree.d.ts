@@ -24,29 +24,36 @@ export interface ApiDefinition {
     update: typeof routes['projects.update']
     destroy: typeof routes['projects.destroy']
     agentConfig: {
-      show: typeof routes['projects.agent_config.show']
-      update: typeof routes['projects.agent_config.update']
-      destroy: typeof routes['projects.agent_config.destroy']
-      answers: {
-        update: typeof routes['projects.agent_config.answers.update']
-      }
-      rules: {
-        store: typeof routes['projects.agent_config.rules.store']
-        update: typeof routes['projects.agent_config.rules.update']
-        destroy: typeof routes['projects.agent_config.rules.destroy']
-      }
       generations: {
-        store: typeof routes['projects.agent_config.generations.store']
-        index: typeof routes['projects.agent_config.generations.index']
         latest: typeof routes['projects.agent_config.generations.latest']
-        show: typeof routes['projects.agent_config.generations.show']
       }
-      proposals: {
-        store: typeof routes['projects.agent_config.proposals.store']
-      }
-      imports: {
-        store: typeof routes['projects.agent_config.imports.store']
-      }
+    }
+  }
+  agentConfigs: {
+    index: typeof routes['agent_configs.index']
+    store: typeof routes['agent_configs.store']
+    show: typeof routes['agent_configs.show']
+    update: typeof routes['agent_configs.update']
+    destroy: typeof routes['agent_configs.destroy']
+    answers: {
+      update: typeof routes['agent_configs.answers.update']
+    }
+    rules: {
+      store: typeof routes['agent_configs.rules.store']
+      update: typeof routes['agent_configs.rules.update']
+      destroy: typeof routes['agent_configs.rules.destroy']
+    }
+    generations: {
+      store: typeof routes['agent_configs.generations.store']
+      index: typeof routes['agent_configs.generations.index']
+      latest: typeof routes['agent_configs.generations.latest']
+      show: typeof routes['agent_configs.generations.show']
+    }
+    proposals: {
+      store: typeof routes['agent_configs.proposals.store']
+    }
+    imports: {
+      store: typeof routes['agent_configs.imports.store']
     }
   }
   llm: {

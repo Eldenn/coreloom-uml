@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { hashManagedBlock } from '@coreloom-uml/catalog'
-import { type FetchLike, fetchLatestGeneration } from './api.ts'
+import { describeSource, type FetchLike, fetchLatestGeneration } from './api.ts'
 import { CliError, ExitCode } from './errors.ts'
 import type { Io } from './io.ts'
 import { MANIFEST_FILE, readManifest } from './manifest.ts'
@@ -49,11 +49,11 @@ export async function status(options: StatusOptions): Promise<ExitCode> {
   const env = options.env ?? process.env
   const manifest = await readManifest(cwd)
   if (!manifest) {
-    throw new CliError(`No ${MANIFEST_FILE} here: run "coreloom-uml pull --project <id>" first.`)
+    throw new CliError(`No ${MANIFEST_FILE} here: run "coreloom-uml pull --config <id>" first.`)
   }
 
   io.log(
-    `Project ${manifest.projectId}, generation #${manifest.generationId} (revision ${manifest.revision}):`,
+    `Generation #${manifest.generationId} (revision ${manifest.revision}) of ${describeSource(manifest)}:`,
   )
   for (const file of manifest.files) {
     io.log(`  ${(await fileState(cwd, file.path, file.blockHash)).padEnd(14)}${file.path}`)
@@ -69,7 +69,7 @@ export async function status(options: StatusOptions): Promise<ExitCode> {
     const latest = await fetchLatestGeneration({
       apiUrl,
       apiKey,
-      projectId: manifest.projectId,
+      source: manifest,
       ...(options.fetch ? { fetch: options.fetch } : {}),
     })
     io.log(

@@ -1,6 +1,12 @@
 import { mkdir, unlink, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
-import { type FetchLike, fetchLatestGeneration, type Generation } from './api.ts'
+import {
+  describeSource,
+  type FetchLike,
+  fetchLatestGeneration,
+  type Generation,
+  type Source,
+} from './api.ts'
 import { lineDiff } from './diff.ts'
 import { CliError, ExitCode } from './errors.ts'
 import type { Io } from './io.ts'
@@ -12,6 +18,9 @@ export type PullOptions = {
   cwd: string
   io: Io
   apiUrl?: string
+  /** The configuration's id (in its page URL). */
+  config?: string
+  /** The id of the project the configuration sits in, instead of `config`. */
   project?: string
   dryRun?: boolean
   yes?: boolean
@@ -20,12 +29,28 @@ export type PullOptions = {
   fetch?: FetchLike
 }
 
-export function parseProjectId(raw: string): number {
+export function parseId(raw: string, what: string): number {
   const id = Number(raw)
   if (!/^\d+$/.test(raw) || !Number.isSafeInteger(id) || id < 1) {
-    throw new CliError(`Invalid project id: ${raw} (a positive whole number is expected).`)
+    throw new CliError(`Invalid ${what} id: ${raw} (a positive whole number is expected).`)
   }
   return id
+}
+
+/** `--config`, else `--project`, else what the manifest holds. */
+function resolveSource(options: PullOptions, manifest: Manifest | null): Source {
+  if (options.config && options.project) {
+    throw new CliError('Pass --config or --project, not both.')
+  }
+  if (options.config) return { configId: parseId(options.config, 'configuration') }
+  if (options.project) return { projectId: parseId(options.project, 'project') }
+  if (manifest)
+    return 'configId' in manifest
+      ? { configId: manifest.configId }
+      : { projectId: manifest.projectId }
+  throw new CliError(
+    'No configuration yet: pass --config <id> (the id is in the agent conventions page URL).',
+  )
 }
 
 export async function requireApiKey(env: NodeJS.ProcessEnv): Promise<string> {
@@ -94,7 +119,7 @@ function printOutcome(io: Io, generation: Generation) {
 }
 
 /**
- * `pull`: writes the project's latest generation into the repository at `cwd`, one managed block
+ * `pull`: writes the configuration's latest generation into the repository at `cwd`, one managed block
  * per file. Returns the exit code.
  */
 export async function pull(options: PullOptions): Promise<ExitCode> {
@@ -102,23 +127,21 @@ export async function pull(options: PullOptions): Promise<ExitCode> {
   const env = options.env ?? process.env
   const manifest = await readManifest(cwd)
 
-  const rawProject = options.project ?? (manifest ? String(manifest.projectId) : undefined)
-  if (!rawProject) {
-    throw new CliError('No project yet: pass --project <id> (the id is in the project page URL).')
-  }
-  const projectId = parseProjectId(rawProject)
+  const source = resolveSource(options, manifest)
   const apiUrl = resolveApiUrl(options.apiUrl, manifest?.apiUrl, env)
   const apiKey = await requireApiKey(env)
 
   const generation = await fetchLatestGeneration({
     apiUrl,
     apiKey,
-    projectId,
+    source,
     ...(options.fetch ? { fetch: options.fetch } : {}),
   })
   const changes = await planPull(cwd, generation, manifest)
 
-  io.log(`Generation #${generation.id} (revision ${generation.revision}) of project ${projectId}:`)
+  io.log(
+    `Generation #${generation.id} (revision ${generation.revision}) of ${describeSource(source)}:`,
+  )
   for (const change of changes) io.log(`  ${describe(change)}`)
 
   if (options.dryRun) {
@@ -174,7 +197,7 @@ export async function pull(options: PullOptions): Promise<ExitCode> {
   }
   const next: Manifest = {
     apiUrl,
-    projectId,
+    ...source,
     generationId: generation.id,
     revision: generation.revision,
     files,

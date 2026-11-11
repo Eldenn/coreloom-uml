@@ -36,7 +36,10 @@ export function generation(id: number, files: Generation['files']): Generation {
   }
 }
 
-/** A fake API serving `GET /projects/:id/agent-config/generations/latest` for project 7. */
+/**
+ * A fake API serving the latest generation of configuration 3, which sits in project 7: by its id
+ * (`/agent-configs/3/…`) or by its project (`/projects/7/agent-config/…`).
+ */
 export class FixtureApi {
   current: Generation | null = null
   /** Answer every request with this status instead (401, 403, 302…). */
@@ -62,8 +65,12 @@ export class FixtureApi {
       if (request.headers.authorization !== `Bearer ${API_KEY}`) {
         return json(401, { error: { message: 'Unauthorized' } })
       }
-      if (request.url !== '/projects/7/agent-config/generations/latest') {
-        return json(404, { error: { message: 'Project not found' } })
+      const known = [
+        '/agent-configs/3/generations/latest',
+        '/projects/7/agent-config/generations/latest',
+      ]
+      if (!known.includes(request.url ?? '')) {
+        return json(404, { error: { message: 'Not found' } })
       }
       if (!this.current) return json(404, { error: { message: 'Generation not found' } })
       return json(200, { generation: this.current })

@@ -1,5 +1,5 @@
-// A project without agent conventions: what they are, the questionnaire and the coding tools,
-// then "Start", which creates the configuration and opens the questions.
+// New agent conventions: a name, a project (fixed on a project's page, or picked, "No project" by
+// default), the questionnaire and the coding tools, then "Start", which creates the configuration.
 import { BotIcon } from 'lucide-react'
 import { z } from 'zod'
 
@@ -11,22 +11,26 @@ import { useAppForm } from '@/components/ui/form'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
 import {
+  NAME_MAX_LENGTH,
   type QuestionnaireSummary,
   type Target,
   TARGETS,
+  useCreateAgentConfig,
   useQuestionnaires,
-  useSaveAgentConfig,
 } from '@/lib/agent-configs'
 import { getErrorMessage } from '@/lib/client'
 import { useT } from '@/lib/locale'
+import { NO_PROJECT, toProjectId, useProjectOptions } from '@/lib/projects'
 
-export function AgentConfigSetup({
-  projectId,
-  onCreated,
-}: {
-  projectId: number
-  onCreated: () => void
-}) {
+interface SetupProps {
+  /** Fixed on a project's page; picked in the form otherwise. */
+  projectId?: number
+  defaultName: string
+  onCreated: (id: number) => void
+}
+
+/** A project without agent conventions: what they are, then the form. */
+export function AgentConfigSetup(props: SetupProps) {
   const t = useT()
   return (
     <Card>
@@ -38,19 +42,17 @@ export function AgentConfigSetup({
         <CardDescription>{t.agents.intro}</CardDescription>
       </CardHeader>
       <CardContent>
-        <SetupContent projectId={projectId} onCreated={onCreated} />
+        <AgentConfigSetupContent {...props} />
       </CardContent>
     </Card>
   )
 }
 
-function SetupContent({ projectId, onCreated }: { projectId: number; onCreated: () => void }) {
+/** The form once the questionnaires are loaded. */
+export function AgentConfigSetupContent(props: SetupProps) {
   const t = useT()
   const questionnaires = useQuestionnaires()
-  if (questionnaires.data)
-    return (
-      <SetupForm projectId={projectId} questionnaires={questionnaires.data} onCreated={onCreated} />
-    )
+  if (questionnaires.data) return <SetupForm {...props} questionnaires={questionnaires.data} />
   if (!questionnaires.isError) return <Skeleton className="h-48 w-full" />
   return (
     <Alert variant="destructive">
@@ -66,31 +68,41 @@ function SetupContent({ projectId, onCreated }: { projectId: number; onCreated: 
 
 function SetupForm({
   projectId,
+  defaultName,
   questionnaires,
   onCreated,
-}: {
-  projectId: number
-  questionnaires: QuestionnaireSummary[]
-  onCreated: () => void
-}) {
+}: SetupProps & { questionnaires: QuestionnaireSummary[] }) {
   const t = useT()
   const localized = useLocalized()
-  const save = useSaveAgentConfig(projectId)
+  const create = useCreateAgentConfig()
+  const projectOptions = useProjectOptions()
   const first = questionnaires[0]?.id ?? ''
   const targetOptions = useTargetOptions()
 
   const form = useAppForm({
-    defaultValues: { questionnaire: first, targets: [] as Target[] },
+    defaultValues: {
+      name: defaultName,
+      projectId: String(projectId ?? NO_PROJECT),
+      questionnaire: first,
+      targets: [] as Target[],
+    },
     validators: {
       onSubmit: z.object({
+        name: z.string().trim().min(1, t.agents.nameRequired).max(NAME_MAX_LENGTH),
+        projectId: z.string(),
         questionnaire: z.string().min(1, t.agents.questionnaireRequired),
         targets: z.array(z.enum(TARGETS)).min(1, t.agents.targetsRequired),
       }),
     },
     onSubmit: async ({ value }) => {
       try {
-        await save.mutateAsync({ questionnaires: [value.questionnaire], targets: value.targets })
-        onCreated()
+        const { config } = await create.mutateAsync({
+          name: value.name.trim(),
+          projectId: toProjectId(value.projectId),
+          questionnaires: [value.questionnaire],
+          targets: value.targets,
+        })
+        onCreated(config.id)
       } catch (error) {
         toast.error(getErrorMessage(error, t.agents.failed))
       }
@@ -107,6 +119,16 @@ function SetupForm({
       }}
     >
       <form.AppForm>
+        <form.AppField name="name">
+          {(field) => <field.TextField label={t.agents.nameLabel} autoComplete="off" />}
+        </form.AppField>
+        {projectId === undefined && (
+          <form.AppField name="projectId">
+            {(field) => (
+              <field.SelectField label={t.architectures.moveTarget} options={projectOptions} />
+            )}
+          </form.AppField>
+        )}
         <form.AppField name="questionnaire">
           {(field) => (
             <field.RadioCardField

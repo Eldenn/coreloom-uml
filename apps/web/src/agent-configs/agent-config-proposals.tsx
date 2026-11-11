@@ -44,11 +44,11 @@ type Source = 'answers' | 'diagrams'
 
 /** "Propose rules" and its panel; nothing at all while no provider is set in this browser. */
 export function RuleProposals({
-  projectId,
+  configId,
   config,
   questionnaires,
 }: {
-  projectId: number
+  configId: number
   config: AgentConfig
   questionnaires: Questionnaire[]
 }) {
@@ -64,7 +64,7 @@ export function RuleProposals({
     skipped: number[]
     received: number
   } | null>(null)
-  const propose = useProposeRules(projectId)
+  const propose = useProposeRules(configId)
   const diagrams = config.diagrams
   const picked = diagrams
     .filter((diagram) => checked === null || checked.includes(diagram.id))
@@ -150,7 +150,7 @@ export function RuleProposals({
             {propose.isError && <ProposalsFailed error={propose.error} />}
             {propose.isSuccess && result && (
               <ProposalsReview
-                projectId={projectId}
+                configId={configId}
                 config={config}
                 questionnaires={questionnaires}
                 proposals={result.proposals}
@@ -305,7 +305,7 @@ export function ProposalsFailed({ error }: { error: unknown }) {
 }
 
 export function ProposalsReview({
-  projectId,
+  configId,
   config,
   questionnaires,
   proposals,
@@ -314,7 +314,7 @@ export function ProposalsReview({
   empty,
   onHandled,
 }: {
-  projectId: number
+  configId: number
   config: AgentConfig
   questionnaires: Questionnaire[]
   proposals: Proposal[]
@@ -326,7 +326,7 @@ export function ProposalsReview({
 }) {
   const t = useT()
   const localized = useLocalized()
-  const create = useCreateRule(projectId)
+  const create = useCreateRule(configId)
   const full = config.rules.length >= RULES_MAX
 
   /**

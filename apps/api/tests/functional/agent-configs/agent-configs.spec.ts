@@ -36,16 +36,36 @@ async function createProject(client: Client, user: User, body: Record<string, un
 async function createConfig(
   client: Client,
   user: User,
-  projectId: number,
+  projectId: number | null,
   body: Record<string, unknown> = {},
 ) {
   const response = await client
-    .put(`/projects/${projectId}/agent-config`)
+    .post('/agent-configs')
     .headers(json)
     .loginAs(user)
-    .json({ questionnaires: [Q], targets: ['claude-code', 'cursor'], ...body })
+    .json({
+      name: 'Storefront conventions',
+      projectId,
+      questionnaires: [Q],
+      targets: ['claude-code', 'cursor'],
+      ...body,
+    })
   response.assertStatus(201)
   return response.body()
+}
+
+async function createArchitecture(
+  client: Client,
+  user: User,
+  body: { title: string; projectId?: number },
+) {
+  const response = await client
+    .post('/architectures')
+    .headers(json)
+    .loginAs(user)
+    .json({ diagram: { kind: 'class' }, ...body })
+  response.assertStatus(201)
+  return response.body().architecture as { id: number; projectId: number | null }
 }
 
 function answer(questionId: string, value: unknown, details?: string | null) {
@@ -67,17 +87,17 @@ const ALL_ANSWERS = [
   answer('checks', 'pnpm lint && pnpm test'),
 ]
 
-function putAnswers(client: Client, user: User, projectId: number, answers: unknown[]) {
+function putAnswers(client: Client, user: User, configId: number, answers: unknown[]) {
   return client
-    .put(`/projects/${projectId}/agent-config/answers`)
+    .put(`/agent-configs/${configId}/answers`)
     .headers(json)
     .loginAs(user)
     .json({ answers })
 }
 
-async function generate(client: Client, user: User, projectId: number) {
+async function generate(client: Client, user: User, configId: number) {
   const response = await client
-    .post(`/projects/${projectId}/agent-config/generations`)
+    .post(`/agent-configs/${configId}/generations`)
     .headers(json)
     .loginAs(user)
   response.assertStatus(201)
@@ -144,19 +164,17 @@ test.group('Agent configs - questionnaires', (group) => {
 test.group('Agent configs - configuration', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
 
-  test('creates the configuration, then updates it in place', async ({ client, assert }) => {
+  test('creates the configuration in a project, then updates it in place', async ({
+    client,
+    assert,
+  }) => {
     const user = await makeUser()
     const project = await createProject(client, user)
-
-    const missing = await client
-      .get(`/projects/${project.id}/agent-config`)
-      .headers(json)
-      .loginAs(user)
-    missing.assertStatus(404)
 
     const created = await createConfig(client, user, project.id, { notes: 'Ship on Fridays.' })
     assert.containsSubset(created.config, {
       projectId: project.id,
+      name: 'Storefront conventions',
       questionnaires: [{ id: Q, version: '1.0.0' }],
       targets: ['claude-code', 'cursor'],
       notes: 'Ship on Fridays.',
@@ -177,58 +195,156 @@ test.group('Agent configs - configuration', (group) => {
       'Tooling',
     ])
     assert.isNull(created.impact)
+    const config = created.config as { id: number }
 
     const updated = await client
-      .put(`/projects/${project.id}/agent-config`)
+      .patch(`/agent-configs/${config.id}`)
       .headers(json)
       .loginAs(user)
-      .json({ questionnaires: [Q], targets: ['generic'] })
+      .json({ targets: ['generic'] })
     updated.assertStatus(200)
     assert.containsSubset(updated.body().config, {
-      id: created.config.id,
+      id: config.id,
+      questionnaires: [{ id: Q, version: '1.0.0' }],
       targets: ['generic'],
       notes: 'Ship on Fridays.',
       revision: 2,
     })
 
-    const unchanged = await client
-      .put(`/projects/${project.id}/agent-config`)
+    const renamed = await client
+      .patch(`/agent-configs/${config.id}`)
       .headers(json)
       .loginAs(user)
-      .json({ questionnaires: [Q], targets: ['generic'], notes: 'Ship on Fridays.' })
-    unchanged.assertStatus(200)
-    assert.equal(unchanged.body().config.revision, 2)
+      .json({ name: 'Shop rules', targets: ['generic'], notes: 'Ship on Fridays.' })
+    renamed.assertStatus(200)
+    assert.containsSubset(renamed.body().config, { name: 'Shop rules', revision: 2 })
 
-    const shown = await client
-      .get(`/projects/${project.id}/agent-config`)
-      .headers(json)
-      .loginAs(user)
+    const shown = await client.get(`/agent-configs/${config.id}`).headers(json).loginAs(user)
     shown.assertStatus(200)
-    assert.equal(shown.body().config.id, created.config.id)
+    assert.equal(shown.body().config.name, 'Shop rules')
   })
 
-  test('refuses unknown questionnaires and targets, and markers in the notes', async ({
+  test('refuses unknown questionnaires and targets, and markers in the notes or name', async ({
     client,
     assert,
   }) => {
     const user = await makeUser()
     const project = await createProject(client, user)
-    const put = (body: Record<string, unknown>) =>
+    const post = (body: Record<string, unknown>) =>
       client
-        .put(`/projects/${project.id}/agent-config`)
+        .post('/agent-configs')
         .headers(json)
         .loginAs(user)
-        .json({ questionnaires: [Q], targets: ['codex'], ...body })
+        .json({
+          name: 'Rules',
+          projectId: project.id,
+          questionnaires: [Q],
+          targets: ['codex'],
+          ...body,
+        })
 
-    const unknown = await put({ questionnaires: ['backend-go'] })
+    const unknown = await post({ questionnaires: ['backend-go'] })
     unknown.assertStatus(422)
     assert.include(unknown.body().error.message, 'backend-go')
-    ;(await put({ questionnaires: [] })).assertStatus(422)
-    ;(await put({ targets: ['emacs'] })).assertStatus(422)
-    ;(await put({ targets: [] })).assertStatus(422)
-    ;(await put({ notes: `<!-- ${MARKER_PREFIX}end -->` })).assertStatus(422)
+    ;(await post({ questionnaires: [] })).assertStatus(422)
+    ;(await post({ targets: ['emacs'] })).assertStatus(422)
+    ;(await post({ targets: [] })).assertStatus(422)
+    ;(await post({ name: '' })).assertStatus(422)
+    ;(await post({ name: `<!-- ${MARKER_PREFIX}end -->` })).assertStatus(422)
+    ;(await post({ notes: `<!-- ${MARKER_PREFIX}end -->` })).assertStatus(422)
 
     assert.isNull(await AgentConfig.findBy('projectId', project.id))
+  })
+
+  test('creates a configuration outside any project, from the architectures outside any project', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    const project = await createProject(client, user)
+    const loose = await createArchitecture(client, user, { title: 'Loose payments' })
+    await createArchitecture(client, user, { title: 'Shop catalog', projectId: project.id })
+
+    const created = await createConfig(client, user, null, { name: 'Side tools' })
+    assert.containsSubset(created.config, { projectId: null, name: 'Side tools' })
+    assert.deepEqual(
+      created.config.diagrams.map((diagram: { architecture: string }) => diagram.architecture),
+      [],
+    )
+
+    const generation = await generate(client, user, created.config.id)
+    const agents = generation.files.find((file) => file.path === 'AGENTS.md')
+    assert.include(agents?.content, 'Side tools')
+    assert.include(agents?.content, 'Loose payments')
+    assert.notInclude(agents?.content, 'Shop catalog')
+    assert.equal(loose.projectId, null)
+  })
+
+  test('lists the configurations, in and outside projects', async ({ client, assert }) => {
+    const user = await makeUser()
+    const other = await makeUser()
+    const project = await createProject(client, user)
+    const inside = (await createConfig(client, user, project.id, { name: 'Shop' })).config
+    const outside = (await createConfig(client, user, null, { name: 'Scripts' })).config
+    await createConfig(client, other, null, { name: 'Not mine' })
+
+    const all = await client.get('/agent-configs').headers(json).loginAs(user)
+    all.assertStatus(200)
+    assert.sameMembers(
+      all.body().data.map((item: { id: number }) => item.id),
+      [inside.id, outside.id],
+    )
+    assert.containsSubset(all.body().meta, { page: 1, total: 2 })
+    assert.notProperty(all.body().data[0], 'answers')
+
+    const inProject = await client
+      .get(`/agent-configs?projectId=${project.id}`)
+      .headers(json)
+      .loginAs(user)
+    assert.deepEqual(
+      inProject.body().data.map((item: { id: number }) => item.id),
+      [inside.id],
+    )
+    const searched = await client.get('/agent-configs?search=scr').headers(json).loginAs(user)
+    assert.deepEqual(
+      searched.body().data.map((item: { id: number }) => item.id),
+      [outside.id],
+    )
+  })
+
+  test('moves a configuration into a project and out of it, one per project', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    const project = await createProject(client, user)
+    const other = await createProject(client, user, { name: 'Other' })
+    const stranger = await createProject(client, await makeUser(), { name: 'Theirs' })
+    const taken = (await createConfig(client, user, project.id)).config
+    const { config } = await createConfig(client, user, null)
+    const patch = (body: Record<string, unknown>) =>
+      client.patch(`/agent-configs/${config.id}`).headers(json).loginAs(user).json(body)
+
+    const conflict = await patch({ projectId: project.id })
+    conflict.assertStatus(409)
+    ;(await patch({ projectId: stranger.id })).assertStatus(404)
+
+    const moved = await patch({ projectId: other.id })
+    moved.assertStatus(200)
+    assert.equal(moved.body().config.projectId, other.id)
+    assert.equal(moved.body().config.revision, 1)
+
+    const out = await patch({ projectId: null })
+    out.assertStatus(200)
+    assert.isNull(out.body().config.projectId)
+
+    const second = await client
+      .post('/agent-configs')
+      .headers(json)
+      .loginAs(user)
+      .json({ name: 'Again', projectId: project.id, questionnaires: [Q], targets: ['codex'] })
+    second.assertStatus(409)
+    assert.equal((await AgentConfig.findOrFail(taken.id)).projectId, project.id)
   })
 
   test('deletes the configuration with its answers, rules and generations', async ({
@@ -238,18 +354,15 @@ test.group('Agent configs - configuration', (group) => {
     const user = await makeUser()
     const project = await createProject(client, user)
     const { config } = await createConfig(client, user, project.id)
-    await putAnswers(client, user, project.id, [answer('ts-any', 5)])
+    await putAnswers(client, user, config.id, [answer('ts-any', 5)])
     await client
-      .post(`/projects/${project.id}/agent-config/rules`)
+      .post(`/agent-configs/${config.id}/rules`)
       .headers(json)
       .loginAs(user)
       .json({ section: 'React', text: 'Prefer server components.' })
-    await generate(client, user, project.id)
+    await generate(client, user, config.id)
 
-    const deleted = await client
-      .delete(`/projects/${project.id}/agent-config`)
-      .headers(json)
-      .loginAs(user)
+    const deleted = await client.delete(`/agent-configs/${config.id}`).headers(json).loginAs(user)
     deleted.assertStatus(204)
 
     assert.isNull(await AgentConfig.find(config.id))
@@ -286,19 +399,19 @@ test.group('Agent configs - configuration', (group) => {
     const owner = await makeUser()
     const intruder = await makeUser()
     const project = await createProject(client, owner)
-    await createConfig(client, owner, project.id)
-    const generation = await generate(client, owner, project.id)
+    const { config } = await createConfig(client, owner, project.id)
+    const generation = await generate(client, owner, config.id)
     const rule = await client
-      .post(`/projects/${project.id}/agent-config/rules`)
+      .post(`/agent-configs/${config.id}/rules`)
       .headers(json)
       .loginAs(owner)
       .json({ section: 'React', text: 'Prefer hooks.' })
     const ruleId = rule.body().rule.id
-    const base = `/projects/${project.id}/agent-config`
+    const base = `/agent-configs/${config.id}`
 
     for (const request of [
       client.get(base),
-      client.put(base).json({ questionnaires: [Q], targets: ['codex'] }),
+      client.patch(base).json({ targets: ['codex'] }),
       client.delete(base),
       client.put(`${base}/answers`).json({ answers: [answer('ts-any', 1)] }),
       client.post(`${base}/rules`).json({ section: 'React', text: 'Mine now.' }),
@@ -324,9 +437,9 @@ test.group('Agent configs - answers', (group) => {
   }) => {
     const user = await makeUser()
     const project = await createProject(client, user)
-    await createConfig(client, user, project.id)
+    const { config } = await createConfig(client, user, project.id)
 
-    const first = await putAnswers(client, user, project.id, [
+    const first = await putAnswers(client, user, config.id, [
       answer('ts-any', 4, 'Sauf dans les tests.'),
       answer('tests-level', ['unit']),
     ])
@@ -334,7 +447,7 @@ test.group('Agent configs - answers', (group) => {
     assert.equal(first.body().config.revision, 2)
     assert.lengthOf(first.body().config.answers, 2)
 
-    const second = await putAnswers(client, user, project.id, [
+    const second = await putAnswers(client, user, config.id, [
       answer('ts-any', 5),
       answer('tests-level', null),
     ])
@@ -353,7 +466,7 @@ test.group('Agent configs - answers', (group) => {
       [['ts-any', 5, 'Sauf dans les tests.']],
     )
 
-    const same = await putAnswers(client, user, project.id, [answer('ts-any', 5)])
+    const same = await putAnswers(client, user, config.id, [answer('ts-any', 5)])
     assert.equal(same.body().config.revision, 3)
   })
 
@@ -365,7 +478,7 @@ test.group('Agent configs - answers', (group) => {
     const project = await createProject(client, user)
     const { config } = await createConfig(client, user, project.id)
 
-    const refused = await putAnswers(client, user, project.id, [
+    const refused = await putAnswers(client, user, config.id, [
       answer('ts-any', 5),
       answer('components-size', 6),
       answer('ts-strict', 'mostly'),
@@ -390,7 +503,7 @@ test.group('Agent configs - answers', (group) => {
     )
     assert.lengthOf(await AgentConfigAnswer.query().where('agentConfigId', config.id), 0)
 
-    const details = await putAnswers(client, user, project.id, [
+    const details = await putAnswers(client, user, config.id, [
       answer('ts-any', 5, `${MARKER_PREFIX}end`),
     ])
     details.assertStatus(422)
@@ -399,9 +512,9 @@ test.group('Agent configs - answers', (group) => {
   test('accepts free text on an option that allows it', async ({ client }) => {
     const user = await makeUser()
     const project = await createProject(client, user)
-    await createConfig(client, user, project.id)
+    const { config } = await createConfig(client, user, project.id)
 
-    const response = await putAnswers(client, user, project.id, [
+    const response = await putAnswers(client, user, config.id, [
       answer('state-management', 'Jotai atoms'),
     ])
     response.assertStatus(200)
@@ -417,8 +530,8 @@ test.group('Agent configs - rules', (group) => {
   }) => {
     const user = await makeUser()
     const project = await createProject(client, user)
-    await createConfig(client, user, project.id)
-    const base = `/projects/${project.id}/agent-config/rules`
+    const { config } = await createConfig(client, user, project.id)
+    const base = `/agent-configs/${config.id}/rules`
     const add = async (text: string, section = 'React') => {
       const response = await client
         .post(base)
@@ -451,10 +564,7 @@ test.group('Agent configs - rules', (group) => {
     const deleted = await client.delete(`${base}/${a.id}`).headers(json).loginAs(user)
     deleted.assertStatus(204)
 
-    const shown = await client
-      .get(`/projects/${project.id}/agent-config`)
-      .headers(json)
-      .loginAs(user)
+    const shown = await client.get(`/agent-configs/${config.id}`).headers(json).loginAs(user)
     assert.deepEqual(
       shown
         .body()
@@ -477,7 +587,7 @@ test.group('Agent configs - rules', (group) => {
     const user = await makeUser()
     const project = await createProject(client, user)
     const { config } = await createConfig(client, user, project.id)
-    const base = `/projects/${project.id}/agent-config/rules`
+    const base = `/agent-configs/${config.id}/rules`
     const post = (body: Record<string, unknown>) =>
       client.post(base).headers(json).loginAs(user).json(body)
 
@@ -519,12 +629,12 @@ test.group('Agent configs - generations', (group) => {
         .json({ projectId: project.id, title })
       response.assertStatus(201)
     }
-    await createConfig(client, user, project.id)
-    const answered = await putAnswers(client, user, project.id, ALL_ANSWERS)
+    const { config } = await createConfig(client, user, project.id)
+    const answered = await putAnswers(client, user, config.id, ALL_ANSWERS)
     answered.assertStatus(200)
     assert.lengthOf(answered.body().config.answers, 11)
 
-    const generation = await generate(client, user, project.id)
+    const generation = await generate(client, user, config.id)
     assert.equal(generation.catalogVersion, CATALOG_VERSION)
     assert.equal(generation.revision, 2)
     assert.deepEqual(
@@ -545,27 +655,27 @@ test.group('Agent configs - generations', (group) => {
     assert.isTrue(generation.recommendations.some((item) => item.target === 'claude-code'))
 
     // Same state, same bytes: no id or date in what is rendered.
-    const again = await generate(client, user, project.id)
+    const again = await generate(client, user, config.id)
     assert.deepEqual(again.files, generation.files)
     assert.notInclude(agents.content, String(project.id))
     assert.notMatch(agents.content, /\d{4}-\d{2}-\d{2}/)
 
     const latest = await client
-      .get(`/projects/${project.id}/agent-config/generations/latest`)
+      .get(`/agent-configs/${config.id}/generations/latest`)
       .headers(json)
       .loginAs(user)
     latest.assertStatus(200)
     assert.equal(latest.body().generation.id, again.id)
 
     const shown = await client
-      .get(`/projects/${project.id}/agent-config/generations/${generation.id}`)
+      .get(`/agent-configs/${config.id}/generations/${generation.id}`)
       .headers(json)
       .loginAs(user)
     shown.assertStatus(200)
     assert.deepEqual(shown.body().generation.files, generation.files)
 
     const list = await client
-      .get(`/projects/${project.id}/agent-config/generations?perPage=1`)
+      .get(`/agent-configs/${config.id}/generations?perPage=1`)
       .headers(json)
       .loginAs(user)
     list.assertStatus(200)
@@ -573,10 +683,7 @@ test.group('Agent configs - generations', (group) => {
     assert.deepEqual(list.body().data[0].paths, ['AGENTS.md', 'CLAUDE.md'])
     assert.notProperty(list.body().data[0], 'files')
 
-    const detail = await client
-      .get(`/projects/${project.id}/agent-config`)
-      .headers(json)
-      .loginAs(user)
+    const detail = await client.get(`/agent-configs/${config.id}`).headers(json).loginAs(user)
     assert.equal(detail.body().config.latestGeneration.id, again.id)
     assert.deepEqual(detail.body().impact, { stale: false, changedQuestions: [], files: [] })
   })
@@ -587,13 +694,13 @@ test.group('Agent configs - generations', (group) => {
   }) => {
     const user = await makeUser()
     const project = await createProject(client, user)
-    await createConfig(client, user, project.id)
+    const { config } = await createConfig(client, user, project.id)
 
-    const empty = await generate(client, user, project.id)
+    const empty = await generate(client, user, config.id)
     assert.deepEqual(empty.skills, { compatible: [], conflicting: [] })
 
-    await putAnswers(client, user, project.id, ALL_ANSWERS)
-    const fitting = await generate(client, user, project.id)
+    await putAnswers(client, user, config.id, ALL_ANSWERS)
+    const fitting = await generate(client, user, config.id)
     assert.deepEqual(
       fitting.skills.compatible.map((skill) => [skill.id, skill.score]),
       [
@@ -608,11 +715,11 @@ test.group('Agent configs - generations', (group) => {
     for (const skill of fitting.skills.compatible)
       assert.match(skill.url, /^https:\/\/github\.com\//)
 
-    await putAnswers(client, user, project.id, [
+    await putAnswers(client, user, config.id, [
       answer('ask-before-act', 1),
       answer('components-size', 1),
     ])
-    const conflicting = await generate(client, user, project.id)
+    const conflicting = await generate(client, user, config.id)
     assert.deepEqual(
       conflicting.skills.conflicting.map((skill) => skill.id),
       ['brainstorming', 'writing-plans', 'react-composition-patterns'],
@@ -631,7 +738,7 @@ test.group('Agent configs - generations', (group) => {
 
     // A generation is frozen: the earlier one still shows what was suggested then.
     const shown = await client
-      .get(`/projects/${project.id}/agent-config/generations/${fitting.id}`)
+      .get(`/agent-configs/${config.id}/generations/${fitting.id}`)
       .headers(json)
       .loginAs(user)
     assert.deepEqual(shown.body().generation.skills, fitting.skills)
@@ -655,9 +762,9 @@ test.group('Agent configs - generations', (group) => {
       .loginAs(user)
       .json({ title: 'Context', kind: 'c4' })
     diagram.assertStatus(201)
-    await createConfig(client, user, project.id)
+    const { config } = await createConfig(client, user, project.id)
 
-    const generation = await generate(client, user, project.id)
+    const generation = await generate(client, user, config.id)
     assert.deepEqual(
       generation.skills.compatible.map((skill) => skill.id),
       ['c4-architecture', 'mermaid-diagrams'],
@@ -667,10 +774,10 @@ test.group('Agent configs - generations', (group) => {
   test('answers 404 for the latest generation before the first one', async ({ client }) => {
     const user = await makeUser()
     const project = await createProject(client, user)
-    await createConfig(client, user, project.id)
+    const { config } = await createConfig(client, user, project.id)
 
     const latest = await client
-      .get(`/projects/${project.id}/agent-config/generations/latest`)
+      .get(`/agent-configs/${config.id}/generations/latest`)
       .headers(json)
       .loginAs(user)
     latest.assertStatus(404)
@@ -682,16 +789,16 @@ test.group('Agent configs - generations', (group) => {
   }) => {
     const user = await makeUser()
     const project = await createProject(client, user)
-    await createConfig(client, user, project.id)
-    await putAnswers(client, user, project.id, [
+    const { config } = await createConfig(client, user, project.id)
+    await putAnswers(client, user, config.id, [
       answer('ts-any', 5, 'Jamais de any, même dans les tests.'),
     ])
 
-    const before = await generate(client, user, project.id)
+    const before = await generate(client, user, config.id)
     for (const file of before.files) assert.notInclude(file.content, 'Jamais')
 
     const rule = await client
-      .post(`/projects/${project.id}/agent-config/rules`)
+      .post(`/agent-configs/${config.id}/rules`)
       .headers(json)
       .loginAs(user)
       .json({ section: 'TypeScript', text: 'Never use any, not even in tests.', source: 'llm' })
@@ -702,7 +809,7 @@ test.group('Agent configs - generations', (group) => {
       files: [{ path: 'AGENTS.md', sections: ['TypeScript'], change: 'modified' }],
     })
 
-    const after = await generate(client, user, project.id)
+    const after = await generate(client, user, config.id)
     assert.include(after.files[0].content, '- Never use any, not even in tests.')
   })
 
@@ -712,11 +819,11 @@ test.group('Agent configs - generations', (group) => {
   }) => {
     const user = await makeUser()
     const project = await createProject(client, user)
-    await createConfig(client, user, project.id)
-    await putAnswers(client, user, project.id, ALL_ANSWERS)
-    await generate(client, user, project.id)
+    const { config } = await createConfig(client, user, project.id)
+    await putAnswers(client, user, config.id, ALL_ANSWERS)
+    await generate(client, user, config.id)
 
-    const changed = await putAnswers(client, user, project.id, [answer('ts-any', 1)])
+    const changed = await putAnswers(client, user, config.id, [answer('ts-any', 1)])
     changed.assertStatus(200)
     assert.deepEqual(changed.body().impact, {
       stale: true,
@@ -725,7 +832,7 @@ test.group('Agent configs - generations', (group) => {
     })
 
     const retargeted = await client
-      .put(`/projects/${project.id}/agent-config`)
+      .patch(`/agent-configs/${config.id}`)
       .headers(json)
       .loginAs(user)
       .json({ questionnaires: [Q], targets: ['cursor', 'gemini-cli'] })
@@ -743,8 +850,8 @@ test.group('Agent configs - generations', (group) => {
   }) => {
     const user = await makeUser()
     const project = await createProject(client, user)
-    await createConfig(client, user, project.id)
-    await generate(client, user, project.id)
+    const { config } = await createConfig(client, user, project.id)
+    await generate(client, user, config.id)
 
     const renamed = await client
       .patch(`/projects/${project.id}`)
@@ -753,10 +860,7 @@ test.group('Agent configs - generations', (group) => {
       .json({ name: 'Storefront v2' })
     renamed.assertStatus(200)
 
-    const detail = await client
-      .get(`/projects/${project.id}/agent-config`)
-      .headers(json)
-      .loginAs(user)
+    const detail = await client.get(`/agent-configs/${config.id}`).headers(json).loginAs(user)
     assert.deepEqual(detail.body().impact, {
       stale: true,
       changedQuestions: [],
@@ -771,7 +875,7 @@ test.group('Agent configs - generations', (group) => {
     const user = await makeUser()
     const project = await createProject(client, user)
     const { config } = await createConfig(client, user, project.id)
-    const first = await generate(client, user, project.id)
+    const first = await generate(client, user, config.id)
     const template = await AgentConfigGeneration.findOrFail(first.id)
     await AgentConfigGeneration.createMany(
       Array.from({ length: AGENT_GENERATIONS_KEPT - 1 }, () => ({
@@ -785,7 +889,7 @@ test.group('Agent configs - generations', (group) => {
       })),
     )
 
-    const newest = await generate(client, user, project.id)
+    const newest = await generate(client, user, config.id)
 
     const ids = (await AgentConfigGeneration.query().where('agentConfigId', config.id)).map(
       (item) => item.id,
@@ -806,15 +910,12 @@ test.group('Agent configs - questionnaire versions', (group) => {
     const user = await makeUser()
     const project = await createProject(client, user)
     const { config } = await createConfig(client, user, project.id)
-    await putAnswers(client, user, project.id, [answer('ts-any', 5)])
+    await putAnswers(client, user, config.id, [answer('ts-any', 5)])
     await AgentConfig.query()
       .where('id', config.id)
       .update({ questionnaires: JSON.stringify([{ id: Q, version: '0.9.0' }]) })
 
-    const detail = await client
-      .get(`/projects/${project.id}/agent-config`)
-      .headers(json)
-      .loginAs(user)
+    const detail = await client.get(`/agent-configs/${config.id}`).headers(json).loginAs(user)
     detail.assertStatus(200)
     assert.deepEqual(detail.body().config.outdatedQuestionnaires, [
       { id: Q, version: '0.9.0', currentVersion: '1.0.0' },
@@ -822,7 +923,7 @@ test.group('Agent configs - questionnaire versions', (group) => {
     assert.lengthOf(detail.body().config.answers, 1)
 
     const upgraded = await client
-      .put(`/projects/${project.id}/agent-config`)
+      .patch(`/agent-configs/${config.id}`)
       .headers(json)
       .loginAs(user)
       .json({ questionnaires: [Q], targets: ['claude-code', 'cursor'] })
@@ -842,24 +943,24 @@ test.group('Agent configs - API tokens', (group) => {
   }) => {
     const user = await makeUser()
     const project = await createProject(client, user)
-    await createConfig(client, user, project.id)
-    const generation = await generate(client, user, project.id)
+    const { config } = await createConfig(client, user, project.id)
+    const generation = await generate(client, user, config.id)
     const secret = await createToken(client, user, ['read'])
 
     const latest = await client
-      .get(`/projects/${project.id}/agent-config/generations/latest`)
+      .get(`/agent-configs/${config.id}/generations/latest`)
       .headers(bearer(secret))
     latest.assertStatus(200)
     assert.equal(latest.body().generation.id, generation.id)
 
     const write = await client
-      .put(`/projects/${project.id}/agent-config/answers`)
+      .put(`/agent-configs/${config.id}/answers`)
       .headers(bearer(secret))
       .json({ answers: [answer('ts-any', 1)] })
     write.assertStatus(403)
 
     const regenerate = await client
-      .post(`/projects/${project.id}/agent-config/generations`)
+      .post(`/agent-configs/${config.id}/generations`)
       .headers(bearer(secret))
     regenerate.assertStatus(403)
   })
@@ -870,18 +971,44 @@ test.group('Agent configs - API tokens', (group) => {
     const secret = await createToken(client, user, ['read', 'write'])
 
     const created = await client
-      .put(`/projects/${project.id}/agent-config`)
+      .post('/agent-configs')
       .headers(bearer(secret))
-      .json({ questionnaires: [Q], targets: ['codex'] })
+      .json({ name: 'CLI', projectId: project.id, questionnaires: [Q], targets: ['codex'] })
     created.assertStatus(201)
+    const config = created.body().config as { id: number }
     const answered = await client
-      .put(`/projects/${project.id}/agent-config/answers`)
+      .put(`/agent-configs/${config.id}/answers`)
       .headers(bearer(secret))
       .json({ answers: [answer('ts-any', 1)] })
     answered.assertStatus(200)
     const generated = await client
-      .post(`/projects/${project.id}/agent-config/generations`)
+      .post(`/agent-configs/${config.id}/generations`)
       .headers(bearer(secret))
     generated.assertStatus(201)
+  })
+
+  test('older CLIs still pull the latest generation by project', async ({ client, assert }) => {
+    const user = await makeUser()
+    const project = await createProject(client, user)
+    const bare = await createProject(client, user, { name: 'Bare' })
+    const { config } = await createConfig(client, user, project.id)
+    const generation = await generate(client, user, config.id)
+    const secret = await createToken(client, user, ['read'])
+
+    const latest = await client
+      .get(`/projects/${project.id}/agent-config/generations/latest`)
+      .headers(bearer(secret))
+    latest.assertStatus(200)
+    assert.equal(latest.body().generation.id, generation.id)
+
+    const none = await client
+      .get(`/projects/${bare.id}/agent-config/generations/latest`)
+      .headers(bearer(secret))
+    none.assertStatus(404)
+    const intruder = await client
+      .get(`/projects/${project.id}/agent-config/generations/latest`)
+      .headers(json)
+      .loginAs(await makeUser())
+    intruder.assertStatus(404)
   })
 })

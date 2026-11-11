@@ -42,22 +42,7 @@ import {
 import { getErrorMessage } from '@/lib/client'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { useT } from '@/lib/locale'
-import { type Project, useProjects } from '@/lib/projects'
-
-/** The select's value for "no project" (a select option can't have an empty value). */
-const NO_PROJECT = 'none'
-
-const toProjectId = (value: string) => (value === NO_PROJECT ? null : Number(value))
-
-/** "No project" first, then the user's projects. */
-function useProjectOptions() {
-  const t = useT()
-  const projects = useProjects()
-  return [
-    { value: NO_PROJECT, label: t.architectures.noProject },
-    ...(projects.data?.data ?? []).map((p) => ({ value: String(p.id), label: p.name })),
-  ]
-}
+import { NO_PROJECT, type Project, toProjectId, useProjectOptions } from '@/lib/projects'
 
 export function ArchitectureList({
   query,
@@ -122,7 +107,7 @@ export function ArchitectureList({
   )
 }
 
-function ProjectLabel({
+export function ProjectLabel({
   projects,
   projectId,
 }: {

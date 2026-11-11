@@ -10,6 +10,7 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import {
+  BotIcon,
   FlagIcon,
   FolderIcon,
   LanguagesIcon,
@@ -91,6 +92,73 @@ function useCrumbs() {
   })
 }
 
+/** The ⌘K menu: every page, then the actions that open a "New …" dialog. */
+function useCommands(isAdmin: boolean) {
+  const t = useT()
+  const navigate = useNavigate()
+  return [
+    {
+      heading: t.shell.goTo,
+      items: [
+        {
+          label: t.nav.projects,
+          icon: FolderIcon,
+          onSelect: () => void navigate({ to: '/projects' }),
+        },
+        {
+          label: t.nav.architectures,
+          icon: NetworkIcon,
+          onSelect: () => void navigate({ to: '/architectures' }),
+        },
+        {
+          label: t.nav.agentConfigs,
+          icon: BotIcon,
+          onSelect: () => void navigate({ to: '/agent-configs' }),
+        },
+        {
+          label: t.nav.skills,
+          icon: SparklesIcon,
+          onSelect: () => void navigate({ to: '/skills' }),
+        },
+        ...(isAdmin
+          ? [
+              {
+                label: t.nav.featureFlags,
+                icon: FlagIcon,
+                onSelect: () => void navigate({ to: '/feature-flags' }),
+              },
+            ]
+          : []),
+        {
+          label: t.nav.settings,
+          icon: SettingsIcon,
+          onSelect: () => void navigate({ to: '/settings' }),
+        },
+      ],
+    },
+    {
+      heading: t.shell.actions,
+      items: [
+        {
+          label: t.projects.new,
+          icon: PlusIcon,
+          onSelect: () => void navigate({ to: '/projects', search: { new: true } }),
+        },
+        {
+          label: t.architectures.new,
+          icon: PlusIcon,
+          onSelect: () => void navigate({ to: '/architectures', search: { new: true } }),
+        },
+        {
+          label: t.agents.new,
+          icon: PlusIcon,
+          onSelect: () => void navigate({ to: '/agent-configs', search: { new: true } }),
+        },
+      ],
+    },
+  ]
+}
+
 function AuthedLayout() {
   const t = useT()
   const { user, isLoading, logout } = useAuth()
@@ -99,6 +167,7 @@ function AuthedLayout() {
   const location = useLocation()
   const signingOut = React.useRef(false)
   const crumbs = useCrumbs()
+  const commands = useCommands(user?.isAdmin ?? false)
 
   const fullWidth = useRouterState({
     select: (state) => state.matches.some((match) => match.staticData.fullWidth),
@@ -163,6 +232,12 @@ function AuthedLayout() {
               isActive: isActive('/architectures'),
             },
             {
+              title: t.nav.agentConfigs,
+              url: '/agent-configs',
+              icon: BotIcon,
+              isActive: isActive('/agent-configs'),
+            },
+            {
               title: t.nav.skills,
               url: '/skills',
               icon: SparklesIcon,
@@ -188,57 +263,7 @@ function AuthedLayout() {
         },
       ]}
       breadcrumbs={[{ label: t.brand, href: '/projects' }, ...crumbs]}
-      commands={[
-        {
-          heading: t.shell.goTo,
-          items: [
-            {
-              label: t.nav.projects,
-              icon: FolderIcon,
-              onSelect: () => void navigate({ to: '/projects' }),
-            },
-            {
-              label: t.nav.architectures,
-              icon: NetworkIcon,
-              onSelect: () => void navigate({ to: '/architectures' }),
-            },
-            {
-              label: t.nav.skills,
-              icon: SparklesIcon,
-              onSelect: () => void navigate({ to: '/skills' }),
-            },
-            ...(user.isAdmin
-              ? [
-                  {
-                    label: t.nav.featureFlags,
-                    icon: FlagIcon,
-                    onSelect: () => void navigate({ to: '/feature-flags' }),
-                  },
-                ]
-              : []),
-            {
-              label: t.nav.settings,
-              icon: SettingsIcon,
-              onSelect: () => void navigate({ to: '/settings' }),
-            },
-          ],
-        },
-        {
-          heading: t.shell.actions,
-          items: [
-            {
-              label: t.projects.new,
-              icon: PlusIcon,
-              onSelect: () => void navigate({ to: '/projects', search: { new: true } }),
-            },
-            {
-              label: t.architectures.new,
-              icon: PlusIcon,
-              onSelect: () => void navigate({ to: '/architectures', search: { new: true } }),
-            },
-          ],
-        },
-      ]}
+      commands={commands}
       headerActions={<LanguageMenu />}
       fullWidth={fullWidth}
     >

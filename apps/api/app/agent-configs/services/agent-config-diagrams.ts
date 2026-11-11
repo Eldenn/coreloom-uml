@@ -1,13 +1,28 @@
+import type { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import type { ArchitectureDiagram } from '@coreloom-uml/llm'
 import { toPlantUml } from '@coreloom-uml/uml'
+import type AgentConfig from '#app/agent-configs/models/agent-config'
 import type { AgentDiagramOutput } from '#app/agent-configs/validators/agent-configs-output'
+import Architecture from '#app/architectures/models/architecture'
 import Diagram from '#app/diagrams/models/diagram'
-import type Project from '#app/projects/models/project'
 
-/** The project's diagrams that have content, architecture by architecture, in display order. */
-function projectDiagramsQuery(project: Project) {
+/**
+ * The architectures a configuration reads from: its project's, or, outside any project, the
+ * owner's architectures that stand outside any project too.
+ */
+export function whereConfigArchitecture(
+  query: ModelQueryBuilderContract<typeof Architecture>,
+  config: AgentConfig,
+) {
+  return config.projectId === null
+    ? query.where('userId', config.userId).whereNull('projectId')
+    : query.where('projectId', config.projectId)
+}
+
+/** Its diagrams that have content, architecture by architecture, in display order. */
+function configDiagramsQuery(config: AgentConfig) {
   return Diagram.query()
-    .whereHas('architecture', (architecture) => architecture.where('projectId', project.id))
+    .whereIn('architectureId', whereConfigArchitecture(Architecture.query().select('id'), config))
     .whereNotNull('content')
     .preload('architecture')
     .orderBy('architectureId', 'asc')
@@ -16,8 +31,8 @@ function projectDiagramsQuery(project: Project) {
 }
 
 /** What the model can read from, without the content: for the owner to pick from. */
-export async function listProjectDiagrams(project: Project): Promise<AgentDiagramOutput[]> {
-  const diagrams = await projectDiagramsQuery(project).select(
+export async function listConfigDiagrams(config: AgentConfig): Promise<AgentDiagramOutput[]> {
+  const diagrams = await configDiagramsQuery(config).select(
     'id',
     'architecture_id',
     'title',
@@ -33,14 +48,14 @@ export async function listProjectDiagrams(project: Project): Promise<AgentDiagra
 }
 
 /**
- * The project's diagrams as PlantUML without their layout: the listed ones in the listed order
- * (`notFound` when one is not a diagram with content of this project), or all of them.
+ * Its diagrams as PlantUML without their layout: the listed ones in the listed order
+ * (`notFound` when one is not one of its diagrams with content), or all of them.
  */
-export async function readProjectDiagrams(
-  project: Project,
+export async function readConfigDiagrams(
+  config: AgentConfig,
   ids: number[] | undefined,
 ): Promise<ArchitectureDiagram[] | 'notFound'> {
-  const query = projectDiagramsQuery(project)
+  const query = configDiagramsQuery(config)
   if (ids) query.whereIn('id', ids)
   const found = await query
   if (ids && found.length !== ids.length) return 'notFound'

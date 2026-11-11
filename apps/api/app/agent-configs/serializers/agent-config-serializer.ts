@@ -43,6 +43,7 @@ export function serializeAgentConfig(config: AgentConfig): AgentConfigOutput {
   return {
     id: config.id,
     projectId: config.projectId,
+    name: config.name,
     questionnaires: config.questionnaires,
     targets: config.targets,
     notes: config.notes,

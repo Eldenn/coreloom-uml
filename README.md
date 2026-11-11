@@ -91,7 +91,7 @@ stripped down); the whole front end is built with [coreloom-ui](https://github.c
 | Unit & integration tests | Japa (`apps/api`). `apps/web` screen tests (Playwright + axe, as in coreloom-ui) are not written yet — see [Not yet included](#not-yet-included). |
 | UI | coreloom-ui (Tailwind CSS v4, Radix, shadcn), installed into `apps/web/src/components` |
 | Diagrams | coreloom-ui's `DiagramEditor` / `UmlDiagram`; the UML model and its Mermaid, PlantUML and JSON conversion in `packages/uml`, shared by the web app and the API |
-| Agent conventions | `packages/catalog`: the questionnaires, slot registry and per-tool templates from which `renderAgentContext` deterministically renders a project's `AGENTS.md` (plus pointer files for tools that do not read it natively); `apps/cli` (`@coreloom-uml/cli`, published on npm) writes them into a repository |
+| Agent conventions | `packages/catalog`: the questionnaires, slot registry and per-tool templates from which `renderAgentContext` deterministically renders an `AGENTS.md` (plus pointer files for tools that do not read it natively); `apps/cli` (`@coreloom-uml/cli`, published on npm) writes them into a repository |
 | LLM (bring your own key) | `packages/llm`: the Vercel AI SDK (`ai` 7, `@ai-sdk/*`) behind rule proposals and the connection test; Anthropic, OpenAI, Mistral, Ollama and OpenAI-compatible servers (allowlisted) |
 
 ## Repository Layout
@@ -102,7 +102,7 @@ coreloom-uml/
 │   ├── api/                  # AdonisJS v7 backend — same app/ domain layout as coreloom
 │   │                         #   app/architectures/ is the reference domain — copy it for new user-owned resources
 │   ├── web/                  # React 19 + Vite SPA built with coreloom-ui (sign-in, architectures, editor, settings)
-│   └── cli/                  # `@coreloom-uml/cli` (npm): pulls a project's agent conventions into a repository
+│   └── cli/                  # `@coreloom-uml/cli` (npm): pulls agent conventions into a repository
 ├── packages/
 │   ├── config/               # Shared TypeScript config — copied from coreloom, unmodified
 │   ├── auth-policy/          # Password policy — copied from coreloom (consumed from source, no build step)
@@ -228,7 +228,7 @@ hashed in `auth_access_tokens`; the secret is shown once, at creation.
 - Each key is named, has a `read` and/or `write` ability, and expires after
   1 to 365 days or never. `GET` needs `read`, every other method `write`
   (403 otherwise).
-- Only the `/projects` (agent conventions included), `/architectures` and `/questionnaires`
+- Only the `/projects`, `/agent-configs`, `/architectures` and `/questionnaires`
   routes accept a key (`middleware.auth({ guards: ['web', 'api'] })` + `middleware.tokenAbility()`).
 - A key cannot `force` a diagram save: on a version conflict it gets the 409
   and must reload the latest version.
@@ -246,21 +246,29 @@ default account configured, nobody can change the flags and they keep their stor
 
 ### Agent conventions
 
-A project can hold one agent configuration (`app/agent-configs/`, tables `agent_configs`,
-`agent_config_answers`, `agent_config_rules`, `agent_config_generations`): the catalog
+An agent configuration (`app/agent-configs/`, tables `agent_configs`, `agent_config_answers`,
+`agent_config_rules`, `agent_config_generations`) sits in one of the owner's projects (at most one
+per project) or outside any, like an architecture. It has a name and holds the catalog
 questionnaires it uses, the answers, the accepted rules, the owner's notes and the target tools.
 Those are the source of truth; files only exist in its generations, rendered by
 `renderAgentContext` from `packages/catalog`.
 
 - `GET /questionnaires` and `GET /questionnaires/:questionnaireId` serve the catalog (questions
   without their fragments), so the web app always shows the server's version.
-- `GET|PUT|DELETE /projects/:id/agent-config` reads, creates (201) or updates (200) and deletes
-  it; `PUT …/answers` sets or removes answers (checked against their question, 422 otherwise);
+- `GET /agent-configs` lists them (`?projectId=`, `?search=` on the name, paginated);
+  `POST /agent-configs` creates one (`projectId` omitted or `null`: outside any project; 409 when
+  the project already holds one); `GET|PATCH|DELETE /agent-configs/:id` reads, updates (omitted
+  fields are left as is, `projectId` moves it, `null` takes it out of its project) and deletes it;
+  `PUT …/answers` sets or removes answers (checked against their question, 422 otherwise);
   `POST|PATCH|DELETE …/rules[/:ruleId]` manage accepted rules (50 at most, in the configuration's
   sections).
 - `POST …/generations` renders the current state into an immutable generation (files with their
   managed block and `blockHash`, recommendations; the newest 50 are kept). `GET …/generations`
-  lists them, `GET …/generations/latest` is what the CLI pulls.
+  lists them, `GET …/generations/latest` is what the CLI pulls. CLIs that name a configuration
+  by its project still pull `GET /projects/:id/agent-config/generations/latest`.
+- The `Project` section of the files and the diagrams rule proposals can read come from the
+  project's architectures; outside a project, from the owner's architectures outside any project,
+  with the configuration's name as the project's.
 - Every read and write of the configuration returns `impact`: the latest generation's inputs and
   the current state are both rendered with the current catalog and compared, giving `stale`, the
   changed questions and, per file, the changed sections (`null` before the first generation).
@@ -270,8 +278,11 @@ Those are the source of truth; files only exist in its generations, rendered by
   the questionnaire's migrations.
 - No input may contain the `coreloom-uml:` marker prefix (422).
 
-On the web, the project page's « Agent conventions » tab (`apps/web/src/agent-configs/`) walks
-through it: choose a questionnaire and the target tools, answer section by section (the draft is
+On the web, the « Agent conventions » page (`/agent-configs`, in the sidebar and ⌘K) lists every
+configuration with the project that holds it, if any, and creates one with or without a project;
+each has its own page (`/agent-configs/:id`), where it can be renamed or moved to another project
+or out of any. A project page's « Agent conventions » tab shows that project's configuration, or
+creates one in it. Both (`apps/web/src/agent-configs/`) walk through it: choose a questionnaire and the target tools, answer section by section (the draft is
 kept in the browser until saved), accept rules one by one, generate, then read the files, their
 changes since the previous generation and the recommendations, and copy the CLI command that
 installs them. When `impact.stale` is true the tab shows a « To regenerate » badge and lists what a
@@ -279,7 +290,7 @@ new generation would change.
 
 The CLI (`apps/cli`, published as `@coreloom-uml/cli`, see its
 [README](apps/cli/README.md)) writes the latest generation into a repository:
-`npx @coreloom-uml/cli pull --api-url <url> --project <id>`, authenticated by an API key (`read`
+`npx @coreloom-uml/cli pull --api-url <url> --config <id>`, authenticated by an API key (`read`
 is enough) from `CORELOOM_UML_API_KEY` or `coreloom-uml config set-key`. It only rewrites the
 managed block between the `coreloom-uml:begin` / `coreloom-uml:end` markers, records what it wrote
 in `.coreloom-uml.json` (no secret), and stops (exit code 2) rather than overwrite a block edited by
@@ -355,7 +366,7 @@ minute per user (`llmThrottle`).
 - `POST /llm/test` makes one tiny call ("Reply with OK.", 5 output tokens, 15 s) and answers
   `{ ok: true, latencyMs }` or `{ ok: false, reason }`, with `reason` one of `unauthorized`,
   `model_not_found`, `unreachable`, `timeout`, `rate_limited`, `subscription_expired`, `unknown`.
-- `POST /projects/:id/agent-config/proposals` sends the answers, their "more details", the
+- `POST /agent-configs/:id/proposals` sends the answers, their "more details", the
   free-text answers, the sections and the rules already rendered or accepted to the model (one
   call, temperature 0.2, 2,000 output tokens, 60 s; input past ~8,000 tokens is cut, longest
   notes first, and `truncated` says so). It answers `{ proposals: [{ section, text, basedOn }],

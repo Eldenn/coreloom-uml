@@ -20,3 +20,10 @@ export function architectureCrumbs(t: Messages, project: Project | null | undefi
     ? projectCrumbs(t, project)
     : [{ label: t.nav.architectures, href: '/architectures' }]
 }
+
+/** The trail of agent conventions: their project's, or Agent conventions when they have none. */
+export function agentConfigCrumbs(t: Messages, project: Project | null | undefined): Crumb[] {
+  return project
+    ? projectCrumbs(t, project)
+    : [{ label: t.nav.agentConfigs, href: '/agent-configs' }]
+}

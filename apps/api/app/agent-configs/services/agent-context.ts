@@ -20,8 +20,9 @@ import type { Target } from '#app/agent-configs/constants/agent-config'
 import type AgentConfig from '#app/agent-configs/models/agent-config'
 import type { AgentConfigQuestionnaire } from '#app/agent-configs/models/agent-config'
 import type AgentConfigGeneration from '#app/agent-configs/models/agent-config-generation'
+import { whereConfigArchitecture } from '#app/agent-configs/services/agent-config-diagrams'
 import Architecture from '#app/architectures/models/architecture'
-import type Project from '#app/projects/models/project'
+import Project from '#app/projects/models/project'
 
 /**
  * Everything a configuration's files are rendered from, as stored on each generation: replaying
@@ -73,18 +74,19 @@ export function outdatedQuestionnaires(config: AgentConfig) {
 }
 
 /**
- * The project as the `Project` section shows it: its name and description, then its
- * architectures with the kind and title of their diagrams (never their content).
+ * What the `Project` section shows: the project's name and description (the configuration's
+ * name outside any project), then the architectures it reads from with the kind and title of
+ * their diagrams (never their content).
  */
-export async function projectContext(project: Project): Promise<AgentContextProject> {
-  const architectures = await Architecture.query()
-    .where('projectId', project.id)
+export async function projectContext(config: AgentConfig): Promise<AgentContextProject> {
+  const project = config.projectId === null ? null : await Project.findOrFail(config.projectId)
+  const architectures = await whereConfigArchitecture(Architecture.query(), config)
     .orderBy('createdAt', 'asc')
     .orderBy('id', 'asc')
     .preload('diagrams', (query) => query.orderBy('position', 'asc').orderBy('id', 'asc'))
   return {
-    name: project.name,
-    description: project.description,
+    name: project?.name ?? config.name,
+    description: project?.description ?? null,
     architectures: architectures.map((architecture) => ({
       title: architecture.title,
       description: architecture.description,
@@ -97,15 +99,12 @@ export async function projectContext(project: Project): Promise<AgentContextProj
 }
 
 /** The configuration's current state, ready to render or to store on a generation. */
-export async function currentInputs(
-  config: AgentConfig,
-  project: Project,
-): Promise<AgentConfigInputs> {
+export async function currentInputs(config: AgentConfig): Promise<AgentConfigInputs> {
   await config.load('answers', (query) => query.orderBy('id', 'asc'))
   await config.load('rules', (query) => query.orderBy('position', 'asc').orderBy('id', 'asc'))
   const configured = new Set(config.questionnaires.map((item) => item.id))
   return {
-    project: await projectContext(project),
+    project: await projectContext(config),
     questionnaires: config.questionnaires.map(({ id, version }) => ({ id, version })),
     answers: config.answers
       .filter((answer) => configured.has(answer.questionnaireId))

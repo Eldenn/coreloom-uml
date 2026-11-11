@@ -1,8 +1,7 @@
-// The project page's "Agent conventions" tab: setup when the project has none, then the
+// One configuration, on its own page or in its project's "Agent conventions" tab: the
 // questionnaire (`?step=questions`), a generation (`?generation=<id>`) or the summary.
 import { AgentConfigGeneration } from '@/agent-configs/agent-config-generation'
 import { AgentConfigQuestions } from '@/agent-configs/agent-config-questions'
-import { AgentConfigSetup } from '@/agent-configs/agent-config-setup'
 import { AgentConfigSummary } from '@/agent-configs/agent-config-summary'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -30,33 +29,26 @@ function LoadFailed({ onRetry }: { onRetry: () => void }) {
 }
 
 export function AgentConfigTab({
-  projectId,
+  configId,
   view,
   onViewChange,
+  onDeleted,
 }: {
-  projectId: number
+  configId: number
   view: AgentConfigView
   onViewChange: (view: AgentConfigView) => void
+  onDeleted: () => void
 }) {
-  const config = useAgentConfig(projectId)
+  const config = useAgentConfig(configId)
   const ids = config.data?.config.questionnaires.map((q) => q.id) ?? []
   const questionnaires = useConfigQuestionnaires(ids)
 
   if (config.isPending) return <Skeleton className="h-64 w-full" />
   if (config.isError) return <LoadFailed onRetry={() => void config.refetch()} />
-  if (!config.data)
-    return (
-      <AgentConfigSetup
-        projectId={projectId}
-        onCreated={() => {
-          onViewChange({ step: 'questions' })
-        }}
-      />
-    )
   if (view.generation !== undefined)
     return (
       <AgentConfigGeneration
-        projectId={projectId}
+        configId={configId}
         generationId={view.generation}
         onBack={() => {
           onViewChange({})
@@ -71,7 +63,7 @@ export function AgentConfigTab({
   if (view.step === 'questions')
     return (
       <AgentConfigQuestions
-        projectId={projectId}
+        configId={configId}
         config={config.data.config}
         questionnaires={questionnaires.data}
         onDone={() => {
@@ -81,7 +73,7 @@ export function AgentConfigTab({
     )
   return (
     <AgentConfigSummary
-      projectId={projectId}
+      configId={configId}
       config={config.data.config}
       impact={config.data.impact}
       questionnaires={questionnaires.data}
@@ -91,6 +83,7 @@ export function AgentConfigTab({
       onShowGeneration={(generation) => {
         onViewChange({ generation })
       }}
+      onDeleted={onDeleted}
     />
   )
 }

@@ -14,9 +14,9 @@ export type AgentConfigQuestionnaire = { id: string; version: string }
 const json = { prepare: (value: unknown) => JSON.stringify(value) }
 
 /**
- * Agent conventions: the project artifact AGENTS.md and its pointer files are rendered from,
- * one per project. Answers, accepted rules, notes and targets are the source of truth; the
- * files only exist in its generations.
+ * Agent conventions: what AGENTS.md and its pointer files are rendered from, in one of the
+ * owner's projects (at most one per project) or outside any. Answers, accepted rules, notes and
+ * targets are the source of truth; the files only exist in its generations.
  */
 export default class AgentConfig extends BaseModel {
   @column({ isPrimary: true })
@@ -25,9 +25,12 @@ export default class AgentConfig extends BaseModel {
   @column()
   declare userId: number
 
-  /** Always one of the owner's projects; a project has at most one configuration. */
+  /** One of the owner's projects, or null outside any; a project has at most one configuration. */
   @column()
-  declare projectId: number
+  declare projectId: number | null
+
+  @column()
+  declare name: string
 
   @column(json)
   declare questionnaires: AgentConfigQuestionnaire[]

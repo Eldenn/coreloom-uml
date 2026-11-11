@@ -12,13 +12,12 @@ import {
   AGENT_RULE_NOT_FOUND,
   agentConfigImpact,
   bumpRevision,
-  findProjectAgentConfig,
+  findOwnedAgentConfig,
 } from '#app/agent-configs/services/owned-agent-config'
 import {
   createAgentRuleInput,
   updateAgentRuleInput,
 } from '#app/agent-configs/validators/agent-configs-input'
-import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
 
 const TOO_MANY_RULES = {
   error: { message: `A configuration holds at most ${AGENT_RULES_MAX} rules.` },
@@ -48,17 +47,15 @@ async function renumber(rules: AgentConfigRule[], trx: TransactionClientContract
   }
 }
 
-/** Accepted rules of a project's configuration: written by hand or accepted from a proposal. */
+/** Accepted rules of a configuration: written by hand or accepted from a proposal. */
 export default class AgentConfigRulesController {
   async store({ params, request, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
-    const project = await findOwnedProject(params.id, user)
-    if (!project) return response.notFound(PROJECT_NOT_FOUND)
 
     const { section, text, source } = await request.validateUsing(createAgentRuleInput)
 
     const result = await db.transaction(async (trx) => {
-      const config = await findProjectAgentConfig(project, user, trx)
+      const config = await findOwnedAgentConfig(params.id, user, trx)
       if (!config) return { notFound: true as const }
       const refused = unknownSection(config, section)
       if (refused) return { refused }
@@ -83,20 +80,18 @@ export default class AgentConfigRulesController {
     if ('refused' in result) return response.unprocessableEntity(result.refused)
     return response.created({
       rule: serializeAgentRule(result.rule),
-      impact: await agentConfigImpact(result.config, project),
+      impact: await agentConfigImpact(result.config),
     })
   }
 
   /** Moving a rule (`position`) shifts the others; the order is kept gap-free. */
   async update({ params, request, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
-    const project = await findOwnedProject(params.id, user)
-    if (!project) return response.notFound(PROJECT_NOT_FOUND)
 
     const { section, text, position } = await request.validateUsing(updateAgentRuleInput)
 
     const result = await db.transaction(async (trx) => {
-      const config = await findProjectAgentConfig(project, user, trx)
+      const config = await findOwnedAgentConfig(params.id, user, trx)
       if (!config) return { notFound: AGENT_CONFIG_NOT_FOUND }
       const rules = await rulesOf(config, trx)
       const rule = rules.find((item) => item.id === Number(params.ruleId))
@@ -135,17 +130,15 @@ export default class AgentConfigRulesController {
     if ('refused' in result) return response.unprocessableEntity(result.refused)
     return response.ok({
       rule: serializeAgentRule(result.rule),
-      impact: await agentConfigImpact(result.config, project),
+      impact: await agentConfigImpact(result.config),
     })
   }
 
   async destroy({ params, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
-    const project = await findOwnedProject(params.id, user)
-    if (!project) return response.notFound(PROJECT_NOT_FOUND)
 
     const notFound = await db.transaction(async (trx) => {
-      const config = await findProjectAgentConfig(project, user, trx)
+      const config = await findOwnedAgentConfig(params.id, user, trx)
       if (!config) return AGENT_CONFIG_NOT_FOUND
       const rules = await rulesOf(config, trx)
       const rule = rules.find((item) => item.id === Number(params.ruleId))

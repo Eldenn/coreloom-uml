@@ -7,6 +7,7 @@ export const en = {
   nav: {
     projects: 'Projects',
     architectures: 'Architectures',
+    agentConfigs: 'Agent conventions',
     skills: 'Skills',
     featureFlags: 'Feature flags',
     settings: 'Settings',
@@ -109,6 +110,21 @@ export const en = {
   agents: {
     tab: 'Agent conventions',
     tabArchitectures: 'Architectures',
+    new: 'New agent conventions',
+    allDescription: 'All your agent conventions, in a project or on their own.',
+    allEmptyDescription:
+      'Create some to turn how you work into an AGENTS.md. A project is optional, and holds at most one.',
+    emptyTitle: 'No agent conventions yet',
+    search: 'Search agent conventions',
+    createTitle: 'New agent conventions',
+    nameLabel: 'Name',
+    nameRequired: 'Give them a name.',
+    rename: 'Rename',
+    renameTitle: 'Rename the agent conventions',
+    renamed: 'Name saved.',
+    moveDescription:
+      'Move them to another project, or out of their project. A project holds at most one set of agent conventions.',
+    moved: 'Agent conventions moved.',
     badge: 'Agent conventions',
     stale: 'Needs regenerating',
     loadFailed: 'The agent conventions could not be loaded.',
@@ -116,7 +132,7 @@ export const en = {
     failed: 'That didn’t work. Try again.',
     introTitle: 'Agent conventions',
     intro:
-      'Describe how you work, and Coreloom turns it into an AGENTS.md for your coding assistants, with the context of this project. Nothing is sent to a model: the file is built from your answers.',
+      'Describe how you work, and Coreloom turns it into an AGENTS.md for your coding assistants. Nothing is sent to a model: the file is built from your answers.',
     questionnaireLabel: 'Questionnaire',
     questionnaireHint: 'What the questions are about. You can change it later.',
     questionnaireRequired: 'Pick a questionnaire.',
@@ -639,6 +655,7 @@ export const fr: Messages = {
   nav: {
     projects: 'Projets',
     architectures: 'Architectures',
+    agentConfigs: 'Conventions d’agents',
     skills: 'Skills',
     featureFlags: 'Feature flags',
     settings: 'Réglages',
@@ -746,6 +763,21 @@ export const fr: Messages = {
   agents: {
     tab: 'Conventions d’agents',
     tabArchitectures: 'Architectures',
+    new: 'Nouvelles conventions d’agents',
+    allDescription: 'Toutes vos conventions d’agents, dans un projet ou à part.',
+    allEmptyDescription:
+      'Créez-en pour transformer votre façon de travailler en AGENTS.md. Un projet est facultatif, et n’en contient qu’une.',
+    emptyTitle: 'Pas encore de conventions d’agents',
+    search: 'Rechercher des conventions d’agents',
+    createTitle: 'Nouvelles conventions d’agents',
+    nameLabel: 'Nom',
+    nameRequired: 'Donnez-leur un nom.',
+    rename: 'Renommer',
+    renameTitle: 'Renommer les conventions d’agents',
+    renamed: 'Nom enregistré.',
+    moveDescription:
+      'Déplacez-les vers un autre projet, ou sortez-les de leur projet. Un projet contient au plus un jeu de conventions d’agents.',
+    moved: 'Conventions d’agents déplacées.',
     badge: 'Conventions d’agents',
     stale: 'À régénérer',
     loadFailed: 'Les conventions d’agents n’ont pas pu être chargées.',
@@ -753,7 +785,7 @@ export const fr: Messages = {
     failed: 'Cela n’a pas fonctionné. Réessayez.',
     introTitle: 'Conventions d’agents',
     intro:
-      'Décrivez comment vous travaillez, Coreloom en fait un AGENTS.md pour vos assistants de code, avec le cadre de ce projet. Rien n’est envoyé à un modèle : le fichier est construit à partir de vos réponses.',
+      'Décrivez comment vous travaillez, Coreloom en fait un AGENTS.md pour vos assistants de code. Rien n’est envoyé à un modèle : le fichier est construit à partir de vos réponses.',
     questionnaireLabel: 'Questionnaire',
     questionnaireHint: 'Le thème des questions. Vous pourrez le changer ensuite.',
     questionnaireRequired: 'Choisissez un questionnaire.',

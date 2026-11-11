@@ -54,7 +54,9 @@ export type AgentRuleOutput = {
 /** A configuration's own fields. */
 export type AgentConfigOutput = {
   id: number
-  projectId: number
+  /** null outside any project. */
+  projectId: number | null
+  name: string
   questionnaires: AgentConfigQuestionnaire[]
   targets: Target[]
   notes: string | null
@@ -82,7 +84,7 @@ export type AgentGenerationOutput = AgentGenerationSummaryOutput & {
 /** A configured questionnaire answered against an older version than the catalog's. */
 export type OutdatedQuestionnaireOutput = { id: string; version: string; currentVersion: string }
 
-/** A diagram of the project with content, which rule proposals can read. */
+/** A diagram with content of the architectures it reads from, which rule proposals can read. */
 export type AgentDiagramOutput = {
   id: number
   title: string
@@ -91,7 +93,7 @@ export type AgentDiagramOutput = {
   architecture: string
 }
 
-/** `POST /projects/:id/agent-config/imports`: nothing is stored. */
+/** `POST /agent-configs/:id/imports`: nothing is stored. */
 export type AgentImportOutput = {
   /** Each fits its question and differs from the current answer. */
   answers: { questionnaireId: string; questionId: string; value: AnswerValue; evidence: string }[]
@@ -100,7 +102,7 @@ export type AgentImportOutput = {
   truncated: boolean
 }
 
-/** `GET /projects/:id/agent-config`: the configuration and everything it is rendered from. */
+/** `GET /agent-configs/:id`: the configuration and everything it is rendered from. */
 export type AgentConfigDetailOutput = AgentConfigOutput & {
   /** The sections an accepted rule may go to, in render order. */
   ruleSections: string[]
@@ -109,12 +111,15 @@ export type AgentConfigDetailOutput = AgentConfigOutput & {
   rules: AgentRuleOutput[]
   latestGeneration: AgentGenerationSummaryOutput | null
   outdatedQuestionnaires: OutdatedQuestionnaireOutput[]
-  /** The project's diagrams with content, architecture by architecture. */
+  /** Its diagrams with content, architecture by architecture. */
   diagrams: AgentDiagramOutput[]
 }
 
 /** What regenerating now would change; `null` before the first generation. */
 export type AgentConfigImpactOutput = AgentConfigImpact | null
 
-/** Shape returned by `GET /projects/:id/agent-config/generations`. */
+/** Shape returned by `GET /agent-configs`. */
+export type AgentConfigsListOutput = Paginated<AgentConfigOutput>
+
+/** Shape returned by `GET /agent-configs/:id/generations`. */
 export type AgentGenerationsListOutput = Paginated<AgentGenerationSummaryOutput>

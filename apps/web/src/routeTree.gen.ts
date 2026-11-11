@@ -20,6 +20,8 @@ import { Route as AuthedFeatureFlagsRouteImport } from './routes/_authed.feature
 import { Route as AuthedSettingsRouteImport } from './routes/_authed.settings'
 import { Route as AuthedSkillsRouteImport } from './routes/_authed.skills'
 import { Route as STokenRouteImport } from './routes/s.$token'
+import { Route as AuthedAgentConfigsIndexRouteImport } from './routes/_authed.agent-configs.index'
+import { Route as AuthedAgentConfigsIdRouteImport } from './routes/_authed.agent-configs.$id'
 import { Route as AuthedArchitecturesIndexRouteImport } from './routes/_authed.architectures.index'
 import { Route as AuthedArchitecturesIdRouteImport } from './routes/_authed.architectures.$id'
 import { Route as AuthedProjectsIndexRouteImport } from './routes/_authed.projects.index'
@@ -79,6 +81,16 @@ const STokenRoute = STokenRouteImport.update({
   path: '/s/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedAgentConfigsIndexRoute = AuthedAgentConfigsIndexRouteImport.update({
+  id: '/agent-configs/',
+  path: '/agent-configs/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedAgentConfigsIdRoute = AuthedAgentConfigsIdRouteImport.update({
+  id: '/agent-configs/$id',
+  path: '/agent-configs/$id',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedArchitecturesIndexRoute =
   AuthedArchitecturesIndexRouteImport.update({
     id: '/architectures/',
@@ -112,8 +124,10 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthedSettingsRoute
   '/skills': typeof AuthedSkillsRoute
   '/s/$token': typeof STokenRoute
+  '/agent-configs/$id': typeof AuthedAgentConfigsIdRoute
   '/architectures/$id': typeof AuthedArchitecturesIdRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRoute
+  '/agent-configs/': typeof AuthedAgentConfigsIndexRoute
   '/architectures/': typeof AuthedArchitecturesIndexRoute
   '/projects/': typeof AuthedProjectsIndexRoute
 }
@@ -128,8 +142,10 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthedSettingsRoute
   '/skills': typeof AuthedSkillsRoute
   '/s/$token': typeof STokenRoute
+  '/agent-configs/$id': typeof AuthedAgentConfigsIdRoute
   '/architectures/$id': typeof AuthedArchitecturesIdRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRoute
+  '/agent-configs': typeof AuthedAgentConfigsIndexRoute
   '/architectures': typeof AuthedArchitecturesIndexRoute
   '/projects': typeof AuthedProjectsIndexRoute
 }
@@ -146,8 +162,10 @@ export interface FileRoutesById {
   '/_authed/settings': typeof AuthedSettingsRoute
   '/_authed/skills': typeof AuthedSkillsRoute
   '/s/$token': typeof STokenRoute
+  '/_authed/agent-configs/$id': typeof AuthedAgentConfigsIdRoute
   '/_authed/architectures/$id': typeof AuthedArchitecturesIdRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRoute
+  '/_authed/agent-configs/': typeof AuthedAgentConfigsIndexRoute
   '/_authed/architectures/': typeof AuthedArchitecturesIndexRoute
   '/_authed/projects/': typeof AuthedProjectsIndexRoute
 }
@@ -164,8 +182,10 @@ export interface FileRouteTypes {
     | '/settings'
     | '/skills'
     | '/s/$token'
+    | '/agent-configs/$id'
     | '/architectures/$id'
     | '/projects/$projectId'
+    | '/agent-configs/'
     | '/architectures/'
     | '/projects/'
   fileRoutesByTo: FileRoutesByTo
@@ -180,8 +200,10 @@ export interface FileRouteTypes {
     | '/settings'
     | '/skills'
     | '/s/$token'
+    | '/agent-configs/$id'
     | '/architectures/$id'
     | '/projects/$projectId'
+    | '/agent-configs'
     | '/architectures'
     | '/projects'
   id:
@@ -197,8 +219,10 @@ export interface FileRouteTypes {
     | '/_authed/settings'
     | '/_authed/skills'
     | '/s/$token'
+    | '/_authed/agent-configs/$id'
     | '/_authed/architectures/$id'
     | '/_authed/projects/$projectId'
+    | '/_authed/agent-configs/'
     | '/_authed/architectures/'
     | '/_authed/projects/'
   fileRoutesById: FileRoutesById
@@ -293,6 +317,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof STokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/agent-configs/': {
+      id: '/_authed/agent-configs/'
+      path: '/agent-configs'
+      fullPath: '/agent-configs/'
+      preLoaderRoute: typeof AuthedAgentConfigsIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/agent-configs/$id': {
+      id: '/_authed/agent-configs/$id'
+      path: '/agent-configs/$id'
+      fullPath: '/agent-configs/$id'
+      preLoaderRoute: typeof AuthedAgentConfigsIdRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/architectures/': {
       id: '/_authed/architectures/'
       path: '/architectures'
@@ -328,8 +366,10 @@ interface AuthedRouteChildren {
   AuthedFeatureFlagsRoute: typeof AuthedFeatureFlagsRoute
   AuthedSettingsRoute: typeof AuthedSettingsRoute
   AuthedSkillsRoute: typeof AuthedSkillsRoute
+  AuthedAgentConfigsIdRoute: typeof AuthedAgentConfigsIdRoute
   AuthedArchitecturesIdRoute: typeof AuthedArchitecturesIdRoute
   AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRoute
+  AuthedAgentConfigsIndexRoute: typeof AuthedAgentConfigsIndexRoute
   AuthedArchitecturesIndexRoute: typeof AuthedArchitecturesIndexRoute
   AuthedProjectsIndexRoute: typeof AuthedProjectsIndexRoute
 }
@@ -338,8 +378,10 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedFeatureFlagsRoute: AuthedFeatureFlagsRoute,
   AuthedSettingsRoute: AuthedSettingsRoute,
   AuthedSkillsRoute: AuthedSkillsRoute,
+  AuthedAgentConfigsIdRoute: AuthedAgentConfigsIdRoute,
   AuthedArchitecturesIdRoute: AuthedArchitecturesIdRoute,
   AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRoute,
+  AuthedAgentConfigsIndexRoute: AuthedAgentConfigsIndexRoute,
   AuthedArchitecturesIndexRoute: AuthedArchitecturesIndexRoute,
   AuthedProjectsIndexRoute: AuthedProjectsIndexRoute,
 }

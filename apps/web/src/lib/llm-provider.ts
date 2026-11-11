@@ -29,7 +29,7 @@ export type LlmFailureReason = Extract<
   { ok: false }
 >['reason']
 export type RuleProposal = Awaited<
-  ReturnType<typeof client.api.projects.agentConfig.proposals.store>
+  ReturnType<typeof client.api.agentConfigs.proposals.store>
 >['proposals'][number]
 
 const STORAGE_KEY = 'llm-provider'
@@ -104,8 +104,8 @@ export function useTestProvider() {
   })
 }
 
-/** `POST …/agent-config/proposals`: proposed rules, nothing stored. */
-export function useProposeRules(projectId: number) {
+/** `POST /agent-configs/:id/proposals`: proposed rules, nothing stored. */
+export function useProposeRules(configId: number) {
   return useMutation({
     mutationFn: ({
       provider,
@@ -115,8 +115,8 @@ export function useProposeRules(projectId: number) {
       /** Reads these diagrams instead of the answers' notes. */
       diagramIds?: number[]
     }) =>
-      client.api.projects.agentConfig.proposals.store({
-        params: { id: projectId },
+      client.api.agentConfigs.proposals.store({
+        params: { id: configId },
         body: {
           ...callBody(provider),
           ...(diagramIds ? { from: 'diagrams' as const, diagramIds } : {}),
@@ -127,15 +127,15 @@ export function useProposeRules(projectId: number) {
 }
 
 export type ImportedAnswer = Awaited<
-  ReturnType<typeof client.api.projects.agentConfig.imports.store>
+  ReturnType<typeof client.api.agentConfigs.imports.store>
 >['answers'][number]
 
-/** `POST …/agent-config/imports`: answers and rules read from a conventions file, nothing stored. */
-export function useImportAgentFile(projectId: number) {
+/** `POST /agent-configs/:id/imports`: answers and rules read from a conventions file, nothing stored. */
+export function useImportAgentFile(configId: number) {
   return useMutation({
     mutationFn: ({ provider, content }: { provider: StoredProvider; content: string }) =>
-      client.api.projects.agentConfig.imports.store({
-        params: { id: projectId },
+      client.api.agentConfigs.imports.store({
+        params: { id: configId },
         body: { ...callBody(provider), content },
         ...MODEL_CALL,
       }),

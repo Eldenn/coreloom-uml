@@ -7,14 +7,13 @@ import {
   AGENT_CONFIG_NOT_FOUND,
   bumpRevision,
   describeAgentConfig,
-  findProjectAgentConfig,
+  findOwnedAgentConfig,
 } from '#app/agent-configs/services/owned-agent-config'
 import { updateAgentAnswersInput } from '#app/agent-configs/validators/agent-configs-input'
-import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
 
 type AnswerProblem = { questionnaireId: string; questionId: string; message: string }
 
-/** The answers of a project's configuration. */
+/** The answers of a configuration. */
 export default class AgentConfigAnswersController {
   /**
    * A partial update: each listed answer is set (or removed with `value: null`), the others are
@@ -22,9 +21,7 @@ export default class AgentConfigAnswersController {
    */
   async update({ params, request, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
-    const project = await findOwnedProject(params.id, user)
-    if (!project) return response.notFound(PROJECT_NOT_FOUND)
-    const config = await findProjectAgentConfig(project, user)
+    const config = await findOwnedAgentConfig(params.id, user)
     if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
 
     const { answers } = await request.validateUsing(updateAgentAnswersInput)
@@ -93,7 +90,7 @@ export default class AgentConfigAnswersController {
       if (changed) await bumpRevision(config, trx)
     })
 
-    return response.ok(await describeAgentConfig(config, project))
+    return response.ok(await describeAgentConfig(config))
   }
 }
 

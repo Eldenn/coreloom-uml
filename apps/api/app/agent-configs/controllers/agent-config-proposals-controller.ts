@@ -9,6 +9,7 @@ import {
 } from '@coreloom-uml/llm'
 import { AgentProposalSource } from '#app/agent-configs/constants/agent-config'
 import type AgentConfig from '#app/agent-configs/models/agent-config'
+import { readConfigDiagrams } from '#app/agent-configs/services/agent-config-diagrams'
 import {
   currentInputs,
   render,
@@ -16,19 +17,16 @@ import {
 } from '#app/agent-configs/services/agent-context'
 import {
   AGENT_CONFIG_NOT_FOUND,
-  findProjectAgentConfig,
+  findOwnedAgentConfig,
 } from '#app/agent-configs/services/owned-agent-config'
-import { readProjectDiagrams } from '#app/agent-configs/services/project-diagrams'
 import { agentProposalsInput } from '#app/agent-configs/validators/agent-configs-input'
 import { DIAGRAM_NOT_FOUND } from '#app/diagrams/services/owned-diagram'
 import { llmFailure, userLanguageModel } from '#app/llm/services/language-models'
 import type { AgentProposalsOutput } from '#app/llm/validators/llm-output'
 import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
-import type Project from '#app/projects/models/project'
-import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
 
 /**
- * `POST /projects/:id/agent-config/proposals`: the user's own model turns the notes under the
+ * `POST /agent-configs/:id/proposals`: the user's own model turns the notes under the
  * answers (`from: 'answers'`, the default) or the project's diagrams (`from: 'diagrams'`, sent as
  * PlantUML without their layout) into proposed rules. Nothing is stored: the owner accepts a proposal (possibly edited)
  * with `POST …/rules` and `source: 'llm'`. Session only.
@@ -41,14 +39,12 @@ import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owne
 export default class AgentConfigProposalsController {
   async store({ params, request, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
-    const project = await findOwnedProject(params.id, user)
-    if (!project) return response.notFound(PROJECT_NOT_FOUND)
-    const config = await findProjectAgentConfig(project, user)
+    const config = await findOwnedAgentConfig(params.id, user)
     if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
 
     const { provider, apiKey, from, diagramIds } = await request.validateUsing(agentProposalsInput)
     const diagrams =
-      from === AgentProposalSource.Diagrams ? await readProjectDiagrams(project, diagramIds) : null
+      from === AgentProposalSource.Diagrams ? await readConfigDiagrams(config, diagramIds) : null
     if (diagrams === 'notFound') return response.notFound(DIAGRAM_NOT_FOUND)
 
     const built = await userLanguageModel(provider, apiKey, user)
@@ -70,8 +66,8 @@ export default class AgentConfigProposalsController {
     const started = performance.now()
     try {
       const result: AgentProposalsOutput = diagrams
-        ? await proposeArchitectureRules(model, await architectureSource(config, project, diagrams))
-        : { ...(await proposeRules(model, await answersSource(config, project))), skipped: [] }
+        ? await proposeArchitectureRules(model, await architectureSource(config, diagrams))
+        : { ...(await proposeRules(model, await answersSource(config))), skipped: [] }
       logger.info(
         {
           ...log,
@@ -95,8 +91,8 @@ export default class AgentConfigProposalsController {
 }
 
 /** The configuration's answers with their notes, migrated to the current questionnaires. */
-async function answersSource(config: AgentConfig, project: Project) {
-  const inputs = await currentInputs(config, project)
+async function answersSource(config: AgentConfig) {
+  const inputs = await currentInputs(config)
   const questionnaires = resolveQuestionnaires(inputs.questionnaires)
   let answers = inputs.answers
   for (const questionnaire of questionnaires) answers = migrateAnswers(questionnaire, answers)
@@ -118,12 +114,8 @@ async function answersSource(config: AgentConfig, project: Project) {
 }
 
 /** What is already in the file, and the sections a rule may go to. */
-async function architectureSource(
-  config: AgentConfig,
-  project: Project,
-  diagrams: ArchitectureDiagram[],
-) {
-  const inputs = await currentInputs(config, project)
+async function architectureSource(config: AgentConfig, diagrams: ArchitectureDiagram[]) {
+  const inputs = await currentInputs(config)
   return {
     diagrams,
     sections: ruleSections(resolveQuestionnaires(inputs.questionnaires)),
