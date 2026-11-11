@@ -3,8 +3,10 @@ import logger from '@adonisjs/core/services/logger'
 import { migrateAnswers, ruleSections } from '@coreloom-uml/catalog'
 import {
   type ArchitectureDiagram,
+  type LanguageModel,
   LlmCallError,
   proposeArchitectureRules,
+  proposeFeedbackRules,
   proposeRules,
 } from '@coreloom-uml/llm'
 import { AgentProposalSource } from '#app/agent-configs/constants/agent-config'
@@ -27,8 +29,9 @@ import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-conne
 
 /**
  * `POST /agent-configs/:id/proposals`: the user's own model turns the notes under the
- * answers (`from: 'answers'`, the default) or the project's diagrams (`from: 'diagrams'`, sent as
- * PlantUML without their layout) into proposed rules. Nothing is stored: the owner accepts a proposal (possibly edited)
+ * answers (`from: 'answers'`, the default), the project's diagrams (`from: 'diagrams'`, sent as
+ * PlantUML without their layout) or pasted review feedback (`from: 'feedback'`, never stored or
+ * logged) into proposed rules. Nothing is stored: the owner accepts a proposal (possibly edited)
  * with `POST …/rules` and `source: 'llm'`. Session only.
  *
  * The key (or the user's connected subscription) is read here, handed to the provider's client and
@@ -42,7 +45,8 @@ export default class AgentConfigProposalsController {
     const config = await findOwnedAgentConfig(params.id, user)
     if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
 
-    const { provider, apiKey, from, diagramIds } = await request.validateUsing(agentProposalsInput)
+    const { provider, apiKey, from, diagramIds, feedback } =
+      await request.validateUsing(agentProposalsInput)
     const diagrams =
       from === AgentProposalSource.Diagrams ? await readConfigDiagrams(config, diagramIds) : null
     if (diagrams === 'notFound') return response.notFound(DIAGRAM_NOT_FOUND)
@@ -65,9 +69,7 @@ export default class AgentConfigProposalsController {
     const { model } = built
     const started = performance.now()
     try {
-      const result: AgentProposalsOutput = diagrams
-        ? await proposeArchitectureRules(model, await architectureSource(config, diagrams))
-        : { ...(await proposeRules(model, await answersSource(config))), skipped: [] }
+      const result: AgentProposalsOutput = await propose(model, config, diagrams, from, feedback)
       logger.info(
         {
           ...log,
@@ -113,11 +115,29 @@ async function answersSource(config: AgentConfig) {
   }
 }
 
+async function propose(
+  model: LanguageModel,
+  config: AgentConfig,
+  diagrams: ArchitectureDiagram[] | null,
+  from: AgentProposalSource | undefined,
+  feedback: string | undefined,
+): Promise<AgentProposalsOutput> {
+  if (diagrams)
+    return proposeArchitectureRules(model, { diagrams, ...(await existingSource(config)) })
+  const result =
+    from === AgentProposalSource.Feedback
+      ? await proposeFeedbackRules(model, {
+          feedback: feedback ?? '',
+          ...(await existingSource(config)),
+        })
+      : await proposeRules(model, await answersSource(config))
+  return { ...result, skipped: [] }
+}
+
 /** What is already in the file, and the sections a rule may go to. */
-async function architectureSource(config: AgentConfig, diagrams: ArchitectureDiagram[]) {
+async function existingSource(config: AgentConfig) {
   const inputs = await currentInputs(config)
   return {
-    diagrams,
     sections: ruleSections(resolveQuestionnaires(inputs.questionnaires)),
     existing: [...render(inputs).fragments, ...inputs.rules],
   }

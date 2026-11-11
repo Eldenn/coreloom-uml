@@ -623,6 +623,15 @@ export const en = {
     proposeFromDiagrams: 'Propose from these diagrams',
     proposalsStepSendDiagrams: 'Send the checked diagrams and the rules already present',
     proposalsNoneDiagrams: 'The model found nothing to add from your diagrams.',
+    fromFeedback: 'Review feedback',
+    proposalsHintFeedback: (model: string) =>
+      `${model} turns what your coding assistant keeps getting wrong into rules. Paste review comments or your own notes; the text is sent to it and never saved, and nothing is saved until you accept a rule.`,
+    feedbackLabel: 'Review comments or notes on what went wrong',
+    proposeFromFeedback: 'Propose from this feedback',
+    proposalsStepSendFeedback: 'Send the feedback and the rules already present',
+    proposalsNoneFeedback: 'The model found nothing to add from this feedback.',
+    proposalsTruncatedFeedback:
+      'The end of the feedback was left out to fit what the model can read.',
     proposalsSkipped: (titles: string) =>
       `Left out to fit what the model can read: ${titles}. Check fewer diagrams to include them.`,
     accepted: 'Rule added.',
@@ -1287,6 +1296,15 @@ export const fr: Messages = {
     proposeFromDiagrams: 'Proposer à partir de ces diagrammes',
     proposalsStepSendDiagrams: 'Envoyer les diagrammes cochés et les règles déjà présentes',
     proposalsNoneDiagrams: 'Le modèle n’a rien trouvé à ajouter à partir de vos diagrammes.',
+    fromFeedback: 'Retours de revue',
+    proposalsHintFeedback: (model: string) =>
+      `${model} transforme en règles ce que votre assistant de code fait mal à répétition. Collez des commentaires de revue ou vos propres notes ; le texte lui est envoyé sans jamais être enregistré, et rien n’est enregistré tant que vous n’acceptez pas une règle.`,
+    feedbackLabel: 'Commentaires de revue ou notes sur ce qui n’allait pas',
+    proposeFromFeedback: 'Proposer à partir de ces retours',
+    proposalsStepSendFeedback: 'Envoyer les retours et les règles déjà présentes',
+    proposalsNoneFeedback: 'Le modèle n’a rien trouvé à ajouter à partir de ces retours.',
+    proposalsTruncatedFeedback:
+      'La fin des retours a été laissée de côté pour tenir dans ce que le modèle peut lire.',
     proposalsSkipped: (titles: string) =>
       `Laissés de côté pour tenir dans ce que le modèle peut lire : ${titles}. Cochez moins de diagrammes pour les inclure.`,
     accepted: 'Règle ajoutée.',

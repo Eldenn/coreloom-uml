@@ -8,9 +8,11 @@ import {
   AGENT_IMPORT_MAX_LENGTH,
   AGENT_NOTES_MAX_LENGTH,
   AGENT_PROPOSAL_DIAGRAMS_MAX,
+  AGENT_PROPOSAL_FEEDBACK_MAX_LENGTH,
   AGENT_PROPOSAL_SOURCES,
   AGENT_RULE_SOURCES,
   AGENT_RULE_TEXT_MAX_LENGTH,
+  AgentProposalSource,
   TARGETS,
 } from '#app/agent-configs/constants/agent-config'
 import { llmCallFields } from '#app/llm/validators/llm-input'
@@ -133,8 +135,9 @@ export const updateAgentRuleInput = vine.create(
 
 /**
  * `POST /agent-configs/:id/proposals`: the user's provider, and what the model reads —
- * the answers' notes (default), or its diagrams (all of them when `diagramIds` is
- * omitted, in the given order otherwise).
+ * the answers' notes (default), its diagrams (all of them when `diagramIds` is
+ * omitted, in the given order otherwise), or the review `feedback` the owner pasted (required
+ * with `from: 'feedback'`, never stored).
  */
 export const agentProposalsInput = vine.create(
   vine.object({
@@ -146,6 +149,13 @@ export const agentProposalsInput = vine.create(
       .maxLength(AGENT_PROPOSAL_DIAGRAMS_MAX)
       .distinct()
       .optional(),
+    feedback: vine
+      .string()
+      .trim()
+      .minLength(1)
+      .maxLength(AGENT_PROPOSAL_FEEDBACK_MAX_LENGTH)
+      .optional()
+      .requiredWhen('from', '=', AgentProposalSource.Feedback),
   }),
 )
 

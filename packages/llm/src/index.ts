@@ -65,6 +65,13 @@ export {
   LlmFailureReason,
 } from './failure.ts'
 export {
+  FEEDBACK_INSTRUCTIONS,
+  type FeedbackSource,
+  feedbackOutputSchema,
+  feedbackPrompt,
+  proposeFeedbackRules,
+} from './feedback.ts'
+export {
   cleanImportedAnswers,
   IMPORT_EVIDENCE_MAX_LENGTH,
   IMPORT_INSTRUCTIONS,
