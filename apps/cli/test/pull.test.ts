@@ -1,6 +1,6 @@
 import { mkdir, readFile, stat, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { HASH_MARKERS, wrapManagedBlock } from '@coreloom-uml/catalog'
+import { HASH_MARKERS, SLASH_MARKERS, wrapManagedBlock } from '@coreloom-uml/catalog'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { CliError, ExitCode } from '../src/errors.ts'
 import { MANIFEST_FILE, readManifest } from '../src/manifest.ts'
@@ -396,6 +396,28 @@ describe('pull, settings files', () => {
     api.current = generation(2, [toml('sandbox_mode = "workspace-write"')])
     expect(await run({ yes: true })).toBe(ExitCode.Ok)
     expect(await read(TOML)).toBe(`${api.current.files[0]?.content}\n${own}`)
+  })
+
+  it('writes a .cjs configuration in `//` markers, keeps what follows the block, and asks first', async () => {
+    const CONFIG = '.dependency-cruiser.cjs'
+    const config = (rules: string) =>
+      settingsFile(CONFIG, wrapManagedBlock(`module.exports = ${rules}`, SLASH_MARKERS))
+    api.current = generation(1, [config('{ forbidden: [1] }')])
+    await expect(run()).rejects.toThrow(/--yes/)
+    expect(await exists(CONFIG)).toBe(false)
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await read(CONFIG)).toBe(api.current.files[0]?.content)
+
+    const mine = 'module.exports.forbidden.push(2)\n'
+    await writeFile(join(dir.path, CONFIG), `${await read(CONFIG)}${mine}`)
+    api.current = generation(2, [config('{ forbidden: [3] }')])
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await read(CONFIG)).toBe(`${api.current.files[0]?.content}${mine}`)
+
+    await writeFile(join(dir.path, CONFIG), api.current.files[0]?.content ?? '')
+    api.current = generation(3, [file(AGENTS, 'a')])
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await exists(CONFIG)).toBe(false)
   })
 
   it('refuses a TOML file that already sets a managed key', async () => {

@@ -27,6 +27,10 @@ export {
   SCALE_LABELS,
 } from './questionnaires/index.ts'
 export {
+  DEPENDENCY_CRUISER_FILE,
+  type PackageDiagramShape,
+} from './render/architecture-boundaries.ts'
+export {
   type BlockMarkers,
   findManagedBlock,
   HASH_MARKERS,
@@ -35,6 +39,7 @@ export {
   MANAGED_BLOCK_END,
   MARKDOWN_MARKERS,
   type ManagedBlockLocation,
+  SLASH_MARKERS,
   wrapManagedBlock,
 } from './render/managed-block.ts'
 export { MARKER_PREFIX } from './render/markdown.ts'

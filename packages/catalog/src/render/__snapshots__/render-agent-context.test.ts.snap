@@ -1,5 +1,99 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`renderAgentContext > renders dependency-cruiser rules from the package diagrams 1`] = `
+"// coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
+// Dependency rules drawn from the package diagrams in Coreloom UML: a package may only
+// depend on the packages it has an arrow to. A package is matched by its name, read as a
+// folder path from the repository root.
+// Check them with: npx depcruise packages/shared.kit src
+// Add your own rules and options after this block, on \`module.exports\`.
+module.exports = {
+  "forbidden": [
+    {
+      "name": "not-in-diagram:packages/shared.kit",
+      "severity": "error",
+      "comment": "The package diagrams draw no dependency from packages/shared.kit to these packages.",
+      "from": {
+        "path": "^packages/shared\\\\.kit/"
+      },
+      "to": {
+        "path": [
+          "^src/"
+        ]
+      }
+    },
+    {
+      "name": "not-in-diagram:src/domain",
+      "severity": "error",
+      "comment": "The package diagrams draw no dependency from src/domain to these packages.",
+      "from": {
+        "path": "^src/domain/"
+      },
+      "to": {
+        "path": [
+          "^src/infra/",
+          "^src/ui/"
+        ]
+      }
+    },
+    {
+      "name": "not-in-diagram:src/infra",
+      "severity": "error",
+      "comment": "The package diagrams draw no dependency from src/infra to these packages.",
+      "from": {
+        "path": "^src/infra/",
+        "pathNot": [
+          "^src/infra/db/"
+        ]
+      },
+      "to": {
+        "path": [
+          "^src/ui/"
+        ]
+      }
+    },
+    {
+      "name": "not-in-diagram:src/infra/db",
+      "severity": "error",
+      "comment": "The package diagrams draw no dependency from src/infra/db to these packages.",
+      "from": {
+        "path": "^src/infra/db/"
+      },
+      "to": {
+        "path": [
+          "^src/ui/"
+        ]
+      }
+    },
+    {
+      "name": "not-in-diagram:src/ui",
+      "severity": "error",
+      "comment": "The package diagrams draw no dependency from src/ui to these packages.",
+      "from": {
+        "path": "^src/ui/"
+      },
+      "to": {
+        "path": [
+          "^src/infra/"
+        ],
+        "pathNot": [
+          "^src/infra/db/"
+        ]
+      }
+    }
+  ],
+  "options": {
+    "doNotFollow": {
+      "path": [
+        "node_modules"
+      ]
+    }
+  }
+}
+// coreloom-uml:end
+"
+`;
+
 exports[`renderAgentContext > renders the back-end, Git and security questionnaires together 1`] = `
 "<!-- coreloom-uml:begin · managed block, edits inside it are replaced on the next pull -->
 ## Project

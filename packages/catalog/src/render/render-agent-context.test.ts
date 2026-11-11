@@ -6,6 +6,7 @@ import {
   HASH_MARKERS,
   hashManagedBlock,
   MANAGED_BLOCK_BEGIN,
+  SLASH_MARKERS,
 } from './managed-block.ts'
 import { type AgentContextInput, renderAgentContext } from './render-agent-context.ts'
 
@@ -173,6 +174,115 @@ describe('renderAgentContext', () => {
     const headings = [...text.matchAll(/^## (.+)$/gm)].map((match) => match[1])
     expect(headings).toEqual(['Project', 'Architecture', 'Working style'])
     expect(text).toContain('## Architecture\n\n- \\`billing\\` never imports from \\`auth\\`.')
+  })
+
+  it('renders dependency-cruiser rules from the package diagrams', () => {
+    const packages = {
+      elements: [
+        { id: 'src', kind: 'package' },
+        { id: 'ui', kind: 'package', parent: 'src' },
+        { id: 'domain', kind: 'package', parent: 'src' },
+        { id: 'infra', kind: 'package', label: 'src/infra', parent: 'src' },
+        { id: 'db', kind: 'package', parent: 'infra' },
+        { id: 'Order', kind: 'class', parent: 'domain' },
+        { id: 'shared', kind: 'package', label: 'packages/shared.kit/' },
+        { id: 'misc', kind: 'package', label: 'Not a folder!' },
+        { id: 'lost', kind: 'package', parent: 'misc' },
+      ],
+      relations: [
+        { from: 'ui', to: 'domain' },
+        { from: 'ui', to: 'db' },
+        { from: 'infra', to: 'Order' },
+        { from: 'src', to: 'shared' },
+        { from: 'lost', to: 'ui' },
+      ],
+    }
+    const input: AgentContextInput = {
+      ...INPUT,
+      project: {
+        ...INPUT.project,
+        architectures: [
+          {
+            title: 'Orders',
+            description: null,
+            diagrams: [
+              { kind: 'package', title: 'Layers', packages },
+              // No arrow between two folders: says nothing, so `tools` is not a boundary.
+              {
+                kind: 'package',
+                title: 'Tools',
+                packages: { elements: [{ id: 'tools', kind: 'package' }], relations: [] },
+              },
+            ],
+          },
+        ],
+      },
+    }
+    const { files } = renderAgentContext(input)
+    const file = files.find((item) => item.path === '.dependency-cruiser.cjs')
+    expect(file?.kind).toBe('config')
+    expect(file?.content).toMatchSnapshot()
+
+    const block = findManagedBlock(file?.content ?? '', SLASH_MARKERS)
+    expect(file?.content).toBe(`${block?.block}\n`)
+    expect(hashManagedBlock(block?.block ?? '')).toBe(file?.blockHash)
+
+    const config = new Function('module', `${file?.content}; return module.exports`)({})
+    expect(config.forbidden.map((rule: { name: string }) => rule.name)).toEqual([
+      'not-in-diagram:packages/shared.kit',
+      'not-in-diagram:src/domain',
+      'not-in-diagram:src/infra',
+      'not-in-diagram:src/infra/db',
+      'not-in-diagram:src/ui',
+    ])
+    expect(config.forbidden[4].to).toEqual({
+      path: ['^src/infra/'],
+      pathNot: ['^src/infra/db/'],
+    })
+
+    expect(agentsMd(input)).toContain(
+      '## Architecture\n\n- Dependencies between packages are checked against the package diagrams: run `npx depcruise packages/shared.kit src` (dependency-cruiser, rules in `.dependency-cruiser.cjs`)',
+    )
+  })
+
+  it('renders no dependency-cruiser file when the diagrams forbid nothing', () => {
+    const diagram = (
+      packages: NonNullable<
+        AgentContextInput['project']['architectures'][number]['diagrams'][number]['packages']
+      >,
+    ) => {
+      const { files } = renderAgentContext({
+        ...INPUT,
+        project: {
+          ...INPUT.project,
+          architectures: [
+            {
+              title: 'A',
+              description: null,
+              diagrams: [{ kind: 'package', title: 'P', packages }],
+            },
+          ],
+        },
+      })
+      return files.map((file) => file.path)
+    }
+    const elements = [
+      { id: 'a', kind: 'package' },
+      { id: 'b', kind: 'package' },
+    ]
+    expect(diagram({ elements, relations: [] })).not.toContain('.dependency-cruiser.cjs')
+    expect(
+      diagram({
+        elements,
+        relations: [
+          { from: 'a', to: 'b' },
+          { from: 'b', to: 'a' },
+        ],
+      }),
+    ).not.toContain('.dependency-cruiser.cjs')
+    expect(diagram({ elements, relations: [{ from: 'a', to: 'b' }] })).toContain(
+      '.dependency-cruiser.cjs',
+    )
   })
 
   it('renders the notes under their attribution, without raw HTML', () => {

@@ -802,6 +802,46 @@ test.group('Agent configs - generations', (group) => {
     )
   })
 
+  test('renders dependency rules from a package diagram of the project', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    const project = await createProject(client, user)
+    const architecture = await client
+      .post('/architectures')
+      .headers(json)
+      .loginAs(user)
+      .json({ projectId: project.id, title: 'Layers', diagram: { kind: 'package' } })
+    architecture.assertStatus(201)
+    const { id, diagrams } = architecture.body().architecture
+    const saved = await client
+      .patch(`/architectures/${id}/diagrams/${diagrams[0].id}`)
+      .headers(json)
+      .loginAs(user)
+      .json({
+        version: 1,
+        content: {
+          kind: 'package',
+          elements: [
+            { id: 'src', kind: 'package' },
+            { id: 'ui', kind: 'package', parent: 'src' },
+            { id: 'domain', kind: 'package', parent: 'src' },
+          ],
+          relations: [{ from: 'ui', to: 'domain' }],
+        },
+      })
+    saved.assertStatus(200)
+    const { config } = await createConfig(client, user, project.id)
+
+    const generation = await generate(client, user, config.id)
+    const rules = generation.files.find((file) => file.path === '.dependency-cruiser.cjs')
+    assert.equal(rules?.kind, 'config')
+    assert.include(rules?.content, '"name": "not-in-diagram:src/domain"')
+    assert.notInclude(rules?.content, 'not-in-diagram:src/ui')
+    assert.include(generation.files[0]?.content, 'run `npx depcruise src`')
+  })
+
   test('answers 404 for the latest generation before the first one', async ({ client }) => {
     const user = await makeUser()
     const project = await createProject(client, user)

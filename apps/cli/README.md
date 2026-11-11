@@ -29,6 +29,13 @@ before it hands back): `.claude/settings.json`, `.gemini/settings.json` and `.co
 Because a settings file decides what the assistant may run on your machine, every change to one
 is shown and confirmed first (or accepted with `--yes`).
 
+When the project's package diagrams draw dependencies between packages, the generation also holds a
+`.dependency-cruiser.cjs` for [dependency-cruiser](https://github.com/sverweij/dependency-cruiser):
+its block uses `//` markers, so rules and options you add after the block
+(`module.exports.forbidden.push(…)`) are kept. A package is matched by its name, read as a folder
+path from the repository root. The file is code that dependency-cruiser runs, so every change to
+it is shown and confirmed first too.
+
 Requires Node.js 22 or newer.
 
 ## Quick start

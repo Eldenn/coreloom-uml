@@ -14,6 +14,7 @@ import { type Manifest, type ManifestFile, readManifest, writeManifest } from '.
 import {
   ChangeAction,
   type FileChange,
+  isCjs,
   isJson,
   isSettings,
   needsConfirmation,
@@ -185,9 +186,11 @@ export async function pull(options: PullOptions): Promise<ExitCode> {
       if (change.edited || isSettings(change.path)) showDiff(io, change)
       const question = change.edited
         ? `${change.path}: overwrite what was edited by hand?`
-        : isSettings(change.path)
-          ? `${change.path}: write these settings? They decide what the assistant may run.`
-          : `${change.path} exists without a managed block: add one at its end?`
+        : isCjs(change.path)
+          ? `${change.path}: write this configuration? It is code the tool that reads it runs.`
+          : isSettings(change.path)
+            ? `${change.path}: write these settings? They decide what the assistant may run.`
+            : `${change.path} exists without a managed block: add one at its end?`
       if (!(await io.confirm(question))) skipped.add(change)
     }
   }
