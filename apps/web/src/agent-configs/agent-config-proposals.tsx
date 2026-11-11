@@ -1,5 +1,6 @@
 // Proposed rules: the user's own model (set in Settings, kept in this browser) turns the notes
-// under the answers, or the diagrams the owner checks, into rules, shown in a side panel. Each one is accepted, edited then
+// under the answers, the diagrams the owner checks, or the review feedback they paste, into rules,
+// shown in a side panel. Each one is accepted, edited then
 // accepted (`POST …/rules` with `source: 'llm'`), or ignored. Nothing is stored before that, and
 // the proposals stay in the panel until the page is left or the model is asked again.
 import { WandSparklesIcon } from 'lucide-react'
@@ -23,6 +24,7 @@ import {
 } from '@/components/ui/sheet'
 import { toast } from '@/components/ui/sonner'
 import { type Suggestion, SuggestionList } from '@/components/ui/suggestion-list'
+import { Textarea } from '@/components/ui/textarea'
 import { type AgentConfig, type Questionnaire, RULES_MAX, useCreateRule } from '@/lib/agent-configs'
 import { getErrorMessage } from '@/lib/client'
 import { useCoreloomI18n } from '@/lib/i18n'
@@ -40,7 +42,10 @@ interface Proposal extends RuleProposal {
   id: string
 }
 
-type Source = 'answers' | 'diagrams'
+type Source = 'answers' | 'diagrams' | 'feedback'
+
+/** Longest feedback the API reads (`AGENT_PROPOSAL_FEEDBACK_MAX_LENGTH`). */
+const FEEDBACK_MAX_LENGTH = 20_000
 
 /** "Propose rules" and its panel; nothing at all while no provider is set in this browser. */
 export function RuleProposals({
@@ -58,6 +63,7 @@ export function RuleProposals({
   const [source, setSource] = React.useState<Source>('answers')
   /** The diagrams to read; `null` until the owner unchecks one, meaning all of them. */
   const [checked, setChecked] = React.useState<number[] | null>(null)
+  const [feedback, setFeedback] = React.useState('')
   const [result, setResult] = React.useState<{
     proposals: Proposal[]
     truncated: boolean
@@ -73,7 +79,11 @@ export function RuleProposals({
   const run = (current: StoredProvider, from: Source) => {
     setResult(null)
     propose.mutate(
-      { provider: current, ...(from === 'diagrams' ? { diagramIds: picked } : {}) },
+      {
+        provider: current,
+        ...(from === 'diagrams' ? { diagramIds: picked } : {}),
+        ...(from === 'feedback' ? { feedback } : {}),
+      },
       {
         onSuccess: (body) => {
           setResult({
@@ -91,8 +101,8 @@ export function RuleProposals({
   }
 
   if (!provider) return null
-  // Diagrams are picked first; the notes are sent as soon as the panel opens.
-  const picking = source === 'diagrams' && !propose.isPending && !propose.isError && !result
+  // Diagrams are picked and feedback pasted first; the notes are sent as soon as the panel opens.
+  const picking = source !== 'answers' && !propose.isPending && !propose.isError && !result
   return (
     <>
       <Button
@@ -112,38 +122,33 @@ export function RuleProposals({
           <SheetHeader>
             <SheetTitle>{t.llm.proposalsTitle}</SheetTitle>
             <SheetDescription>
-              {source === 'diagrams'
-                ? t.llm.proposalsHintDiagrams(provider.model)
-                : t.llm.proposalsHint(provider.model)}
+              {{
+                answers: t.llm.proposalsHint,
+                diagrams: t.llm.proposalsHintDiagrams,
+                feedback: t.llm.proposalsHintFeedback,
+              }[source](provider.model)}
             </SheetDescription>
-            {diagrams.length > 0 && (
-              <SegmentedControl
-                size="sm"
-                aria-label={t.llm.proposalsFrom}
-                value={source}
-                disabled={propose.isPending}
-                options={[
-                  { value: 'answers', label: t.llm.fromAnswers },
-                  { value: 'diagrams', label: t.llm.fromDiagrams },
-                ]}
-                onValueChange={(value) => {
-                  const next = value === 'diagrams' ? 'diagrams' : 'answers'
-                  setSource(next)
-                  setResult(null)
-                  propose.reset()
-                  if (next === 'answers') run(provider, 'answers')
-                }}
-              />
-            )}
+            <SourceSwitch
+              value={source}
+              withDiagrams={diagrams.length > 0}
+              disabled={propose.isPending}
+              onChange={(next) => {
+                setSource(next)
+                setResult(null)
+                propose.reset()
+                if (next === 'answers') run(provider, 'answers')
+              }}
+            />
           </SheetHeader>
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4">
             {picking && (
-              <DiagramPicker
+              <ProposalsInput
+                source={source}
                 diagrams={diagrams}
                 picked={picked}
-                onChange={(ids) => {
-                  setChecked(ids)
-                }}
+                onPick={setChecked}
+                feedback={feedback}
+                onFeedback={setFeedback}
               />
             )}
             {propose.isPending && <ProposalsWaiting model={provider.model} source={source} />}
@@ -156,6 +161,11 @@ export function RuleProposals({
                 proposals={result.proposals}
                 truncated={result.truncated}
                 skipped={result.skipped}
+                truncatedText={
+                  source === 'feedback'
+                    ? t.llm.proposalsTruncatedFeedback
+                    : t.llm.proposalsTruncated
+                }
                 empty={emptyText(t, source, result.received)}
                 onHandled={(id) => {
                   setResult(
@@ -171,15 +181,16 @@ export function RuleProposals({
           </div>
           <ProposalsFooter
             picking={picking}
-            canPropose={picked.length > 0}
+            source={source}
+            canPropose={source === 'feedback' ? feedback.trim() !== '' : picked.length > 0}
             pending={propose.isPending}
             failed={propose.isError}
             onPropose={() => {
-              run(provider, 'diagrams')
+              run(provider, source)
             }}
             onAgain={() => {
-              // From diagrams, "again" goes back to the picker; the notes are sent at once.
-              if (source === 'diagrams') {
+              // "Again" goes back to the picker or the pasted text; the notes are sent at once.
+              if (source !== 'answers') {
                 setResult(null)
                 propose.reset()
               } else {
@@ -197,12 +208,17 @@ type Messages = ReturnType<typeof useT>
 
 function emptyText(t: Messages, source: Source, received: number): string {
   if (received > 0) return t.llm.proposalsEmpty
-  return source === 'diagrams' ? t.llm.proposalsNoneDiagrams : t.llm.proposalsNone
+  return {
+    answers: t.llm.proposalsNone,
+    diagrams: t.llm.proposalsNoneDiagrams,
+    feedback: t.llm.proposalsNoneFeedback,
+  }[source]
 }
 
-/** Sends the checked diagrams while picking them; asks again once there is an answer. */
+/** Sends the checked diagrams or the pasted feedback; asks again once there is an answer. */
 function ProposalsFooter({
   picking,
+  source,
   canPropose,
   pending,
   failed,
@@ -210,6 +226,7 @@ function ProposalsFooter({
   onAgain,
 }: {
   picking: boolean
+  source: Source
   canPropose: boolean
   pending: boolean
   failed: boolean
@@ -221,7 +238,8 @@ function ProposalsFooter({
     <SheetFooter>
       {picking ? (
         <Button disabled={!canPropose} onClick={onPropose}>
-          <WandSparklesIcon /> {t.llm.proposeFromDiagrams}
+          <WandSparklesIcon />{' '}
+          {source === 'feedback' ? t.llm.proposeFromFeedback : t.llm.proposeFromDiagrams}
         </Button>
       ) : (
         <Button variant="outline" disabled={pending} onClick={onAgain}>
@@ -229,6 +247,72 @@ function ProposalsFooter({
         </Button>
       )}
     </SheetFooter>
+  )
+}
+
+/** Where the rules come from; diagrams only when the project has some with content. */
+function SourceSwitch({
+  value,
+  withDiagrams,
+  disabled,
+  onChange,
+}: {
+  value: Source
+  withDiagrams: boolean
+  disabled: boolean
+  onChange: (source: Source) => void
+}) {
+  const t = useT()
+  return (
+    <SegmentedControl
+      size="sm"
+      aria-label={t.llm.proposalsFrom}
+      value={value}
+      disabled={disabled}
+      options={[
+        { value: 'answers', label: t.llm.fromAnswers },
+        ...(withDiagrams ? [{ value: 'diagrams', label: t.llm.fromDiagrams }] : []),
+        { value: 'feedback', label: t.llm.fromFeedback },
+      ]}
+      onValueChange={(next) => {
+        onChange(next === 'diagrams' || next === 'feedback' ? next : 'answers')
+      }}
+    />
+  )
+}
+
+/** What the owner gives before the model is asked: the diagrams to read, or the feedback. */
+function ProposalsInput({
+  source,
+  diagrams,
+  picked,
+  onPick,
+  feedback,
+  onFeedback,
+}: {
+  source: Source
+  diagrams: AgentConfig['diagrams']
+  picked: number[]
+  onPick: (ids: number[]) => void
+  feedback: string
+  onFeedback: (text: string) => void
+}) {
+  const t = useT()
+  if (source === 'diagrams')
+    return <DiagramPicker diagrams={diagrams} picked={picked} onChange={onPick} />
+  return (
+    <Field>
+      <FieldLabel htmlFor="proposal-feedback">{t.llm.feedbackLabel}</FieldLabel>
+      <Textarea
+        id="proposal-feedback"
+        className="min-h-64"
+        maxLength={FEEDBACK_MAX_LENGTH}
+        value={feedback}
+        onChange={(event) => {
+          onFeedback(event.target.value)
+        }}
+      />
+    </Field>
   )
 }
 
@@ -283,8 +367,11 @@ function ProposalsWaiting({ model, source }: { model: string; source: Source }) 
         steps: [
           {
             id: 'send',
-            title:
-              source === 'diagrams' ? t.llm.proposalsStepSendDiagrams : t.llm.proposalsStepSend,
+            title: {
+              answers: t.llm.proposalsStepSend,
+              diagrams: t.llm.proposalsStepSendDiagrams,
+              feedback: t.llm.proposalsStepSendFeedback,
+            }[source],
             status: 'done',
           },
           { id: 'wait', title: t.llm.proposalsStepWait(model), status: 'running' },
@@ -311,6 +398,7 @@ export function ProposalsReview({
   proposals,
   truncated,
   skipped,
+  truncatedText,
   empty,
   onHandled,
 }: {
@@ -321,6 +409,8 @@ export function ProposalsReview({
   truncated: boolean
   /** Diagrams left out to fit the model's budget. */
   skipped: number[]
+  /** Said when `truncated`; the notes' wording by default. */
+  truncatedText?: string
   empty: string
   onHandled: (id: string) => void
 }) {
@@ -373,7 +463,7 @@ export function ProposalsReview({
       ) : (
         truncated && (
           <Alert>
-            <AlertDescription>{t.llm.proposalsTruncated}</AlertDescription>
+            <AlertDescription>{truncatedText ?? t.llm.proposalsTruncated}</AlertDescription>
           </Alert>
         )
       )}

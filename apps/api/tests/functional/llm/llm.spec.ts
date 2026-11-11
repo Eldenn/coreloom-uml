@@ -570,6 +570,96 @@ test.group('LLM - rule proposals from diagrams', (group) => {
   })
 })
 
+test.group('LLM - rule proposals from review feedback', (group) => {
+  group.each.setup(() => withDefaultFlags())
+  group.each.teardown(() => app.container.restore(LanguageModels))
+
+  const FEEDBACK = 'Third time: no raw fetch in a component, go through the query hooks.'
+
+  test('turns pasted feedback into new rules, accepted like any proposal', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    const project = await configuredProject(client, user)
+    const rules = `/agent-configs/${project.configId}/rules`
+    ;(
+      await client
+        .post(rules)
+        .headers(json)
+        .loginAs(user)
+        .json({ section: 'Testing', text: 'Write a test for every bug fix.' })
+    ).assertStatus(201)
+    const model = answeringModel(
+      JSON.stringify({
+        proposals: [
+          { section: 'Workflow', text: 'Never call `fetch` in a component.' },
+          { section: 'Testing', text: 'write a test for every bug fix' },
+          { section: 'Nowhere', text: 'Dropped.' },
+        ],
+      }),
+    )
+    useModel(model)
+    const logs = captureLogs()
+
+    const response = await propose(client, user, project.configId, {
+      provider: hosted,
+      apiKey: KEY,
+      from: 'feedback',
+      feedback: FEEDBACK,
+    })
+    logs.restore()
+    response.assertStatus(200)
+    assert.deepEqual(response.body(), {
+      proposals: [
+        { section: 'Workflow', text: 'Never call `fetch` in a component.', basedOn: null },
+      ],
+      truncated: false,
+      skipped: [],
+    })
+    const prompt = JSON.stringify(model.doGenerateCalls[0])
+    assert.include(prompt, FEEDBACK)
+    assert.include(prompt, 'Write a test for every bug fix.')
+    assert.notInclude(prompt, 'Sauf dans les tests')
+    assert.notInclude(prompt, KEY)
+    // The pasted text is read once: neither logged nor stored.
+    assert.notInclude(logs.lines.join('\n'), 'raw fetch')
+    assert.notInclude(await dumpDatabase(), 'raw fetch')
+
+    const before = (
+      await client.get(`/agent-configs/${project.configId}`).headers(json).loginAs(user)
+    ).body().config.revision as number
+    const accepted = await client
+      .post(rules)
+      .headers(json)
+      .loginAs(user)
+      .json({ ...response.body().proposals[0], source: 'llm' })
+    accepted.assertStatus(201)
+    const after = (
+      await client.get(`/agent-configs/${project.configId}`).headers(json).loginAs(user)
+    ).body().config.revision as number
+    assert.equal(after, before + 1)
+  })
+
+  test('refuses feedback as a source without any feedback', async ({ client, assert }) => {
+    const user = await makeUser()
+    const project = await configuredProject(client, user)
+    const model = answeringModel(JSON.stringify({ proposals: [] }))
+    useModel(model)
+
+    for (const feedback of [undefined, '   ']) {
+      const response = await propose(client, user, project.configId, {
+        provider: hosted,
+        apiKey: KEY,
+        from: 'feedback',
+        feedback,
+      })
+      response.assertStatus(422)
+    }
+    assert.lengthOf(model.doGenerateCalls, 0)
+  })
+})
+
 function importFile(client: Client, user: User, configId: number, content: string) {
   return client
     .post(`/agent-configs/${configId}/imports`)

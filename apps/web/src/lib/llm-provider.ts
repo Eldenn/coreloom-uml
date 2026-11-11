@@ -110,16 +110,20 @@ export function useProposeRules(configId: number) {
     mutationFn: ({
       provider,
       diagramIds,
+      feedback,
     }: {
       provider: StoredProvider
       /** Reads these diagrams instead of the answers' notes. */
       diagramIds?: number[]
+      /** Reads this pasted review feedback instead of the answers' notes. */
+      feedback?: string
     }) =>
       client.api.agentConfigs.proposals.store({
         params: { id: configId },
         body: {
           ...callBody(provider),
           ...(diagramIds ? { from: 'diagrams' as const, diagramIds } : {}),
+          ...(feedback ? { from: 'feedback' as const, feedback } : {}),
         },
         ...MODEL_CALL,
       }),
