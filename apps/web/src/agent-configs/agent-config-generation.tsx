@@ -43,7 +43,10 @@ import { apiBaseUrl } from '@/lib/client'
 import { useT } from '@/lib/locale'
 
 /** Files as a tree of folders, in the generation's order. */
-function fileTree(files: AgentFile[], pointer: string): TreeViewNode[] {
+function fileTree(
+  files: AgentFile[],
+  kinds: Partial<Record<AgentFile['kind'], string>>,
+): TreeViewNode[] {
   const root: TreeViewNode[] = []
   for (const file of files) {
     const parts = file.path.split('/')
@@ -57,19 +60,30 @@ function fileTree(files: AgentFile[], pointer: string): TreeViewNode[] {
       }
       level = folder.children ?? []
     })
+    const kind = kinds[file.kind]
     level.push({
       id: file.path,
       label: parts.at(-1) ?? file.path,
       icon: <FileIcon />,
-      meta: file.kind === 'pointer' ? <Badge variant="outline">{pointer}</Badge> : undefined,
+      meta: kind ? <Badge variant="outline">{kind}</Badge> : undefined,
     })
   }
   return root
 }
 
+/** The MIME type of a generated file, by its extension; anything else is Markdown. */
+const MIME_TYPES: Partial<Record<string, string>> = {
+  json: 'application/json',
+  toml: 'application/toml',
+  cjs: 'text/javascript',
+  js: 'text/javascript',
+  rules: 'text/plain',
+}
+
 /** Saves the text as a file, without any request: the content is already here. */
 function download(file: AgentFile) {
-  const url = URL.createObjectURL(new Blob([file.content], { type: 'text/markdown;charset=utf-8' }))
+  const type = MIME_TYPES[file.path.split('.').at(-1) ?? ''] ?? 'text/markdown'
+  const url = URL.createObjectURL(new Blob([file.content], { type: `${type};charset=utf-8` }))
   const link = document.createElement('a')
   link.href = url
   link.download = file.path.split('/').at(-1) ?? 'AGENTS.md'
@@ -185,8 +199,8 @@ function FilesCard({ generation }: { generation: AgentGeneration }) {
   const [selected, setSelected] = React.useState(generation.files.at(0)?.path ?? null)
   const file = generation.files.find((f) => f.path === selected) ?? generation.files.at(0)
   const nodes = React.useMemo(
-    () => fileTree(generation.files, t.agents.pointer),
-    [generation.files, t.agents.pointer],
+    () => fileTree(generation.files, t.agents.fileKinds),
+    [generation.files, t.agents.fileKinds],
   )
   const folders = nodes.filter((node) => node.children).map((node) => node.id)
 
@@ -211,13 +225,7 @@ function FilesCard({ generation }: { generation: AgentGeneration }) {
         />
         {file && (
           <div className="flex min-w-0 flex-col gap-2">
-            <CodeViewer
-              title={file.path}
-              language="markdown"
-              code={file.content}
-              wrap
-              maxHeight="32rem"
-            />
+            <CodeViewer title={file.path} code={file.content} wrap maxHeight="32rem" />
             <Button
               variant="outline"
               className="w-fit"
