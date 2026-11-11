@@ -16,6 +16,13 @@ the API's provider settings and their tests. They describe what the product gene
 credit or attribute this repository's code. Agent-specific files themselves stay out of the repository:
 `node scripts/check-agent-files.mjs` (run in CI) fails when one is tracked outside `packages/catalog`.
 
+## Workflow
+
+Every change is made in its own git worktree, on its own branch: create one before the first
+edit (`git worktree add <path> -b <branch> origin/main`) and run every command from it. Never
+create or switch branches in the main clone, which stays on `main`, and never edit files there.
+Several tasks can then run side by side without touching each other's files.
+
 ## Conventions
 
 Coreloom UML follows the same conventions as [coreloom](https://github.com/eldenn/coreloom),
