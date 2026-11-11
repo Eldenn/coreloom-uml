@@ -217,8 +217,25 @@ describe('renderAgentContext', () => {
 
   it('suggests Claude Code permissions from the checks answer', () => {
     const { recommendations } = renderAgentContext(INPUT)
-    expect(recommendations.map((item) => item.target)).toEqual(['cursor', 'claude-code'])
+    expect(recommendations.map((item) => item.target)).toEqual(['cursor', 'claude-code', 'generic'])
     expect(recommendations[1]?.body).toContain('- `"Bash(pnpm lint)"`\n- `"Bash(pnpm test)"`')
+  })
+
+  it('recommends CI steps that pin the CLI and run the checks', () => {
+    const body = renderAgentContext({ ...INPUT, targets: [] }).recommendations[0]?.body
+    expect(body).toContain(
+      [
+        '```yaml',
+        '- name: Check the agent conventions',
+        '  run: npx @coreloom-uml/cli@0.1.0 check',
+        '  env:',
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub Actions expression syntax.
+        '    CORELOOM_UML_API_KEY: ${{ secrets.CORELOOM_UML_API_KEY }}',
+        '- run: pnpm lint',
+        '- run: pnpm test',
+        '```',
+      ].join('\n'),
+    )
   })
 
   it('reports each fragment with its question and section', () => {

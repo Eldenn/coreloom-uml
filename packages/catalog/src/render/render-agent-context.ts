@@ -1,9 +1,11 @@
 import { fragmentTexts } from '../answers.ts'
 import type { AnswerValue, Questionnaire } from '../schemas.ts'
 import { Section, sectionOrder } from '../sections.ts'
+import { splitCommands } from '../targets/claude-code.ts'
 import { TARGET_TEMPLATES } from '../targets/index.ts'
 import type { Recommendation } from '../targets/types.ts'
-import { AGENTS_FILE, AgentFileKind, TARGETS, type Target } from '../targets.ts'
+import { AGENTS_FILE, AgentFileKind, TARGETS, Target } from '../targets.ts'
+import { CLI_CHECK_VERSION } from '../version.ts'
 import { hashManagedBlock, wrapManagedBlock } from './managed-block.ts'
 import { blockMarkdown, inlineMarkdown, oneLine } from './markdown.ts'
 
@@ -96,6 +98,7 @@ export function renderAgentContext(input: AgentContextInput): AgentContextOutput
   const recommendations = targets.flatMap((target) =>
     TARGET_TEMPLATES[target].recommendations({ checks }).map((item) => ({ target, ...item })),
   )
+  recommendations.push(ciRecommendation(checks))
 
   return { files, recommendations, fragments }
 }
@@ -167,6 +170,26 @@ function checksAnswer(input: AgentContextInput): string | null {
     if (typeof answer?.value === 'string' && answer.value.trim()) return oneLine(answer.value)
   }
   return null
+}
+
+/**
+ * The CI steps that keep the pulled conventions up to date, then run the checks. Advice only:
+ * the workflow file belongs to the repository, so it is never written.
+ */
+function ciRecommendation(checks: string | null): Recommendation {
+  const steps = [
+    '- name: Check the agent conventions',
+    `  run: npx @coreloom-uml/cli@${CLI_CHECK_VERSION} check`,
+    '  env:',
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub Actions expression syntax.
+    '    CORELOOM_UML_API_KEY: ${{ secrets.CORELOOM_UML_API_KEY }}',
+    ...(checks ? splitCommands(checks) : []).map((command) => `- run: ${command}`),
+  ]
+  return {
+    target: Target.Generic,
+    title: 'Check the conventions in CI',
+    body: `To fail a build when the conventions in the repository are not the latest generation, or were edited by hand, commit \`.coreloom-uml.json\`, store an API key with the \`read\` ability as the \`CORELOOM_UML_API_KEY\` secret, and add these steps to a GitHub Actions job (after the checkout, with Node.js 22 or newer):\n\n\`\`\`yaml\n${steps.join('\n')}\n\`\`\``,
+  }
 }
 
 function toFile(path: string, kind: AgentFileKind, body: string): AgentContextFile {

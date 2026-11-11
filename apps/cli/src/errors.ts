@@ -5,6 +5,10 @@ export const ExitCode = {
   Error: 1,
   /** A block edited by hand was left as it is. */
   EditedBlockKept: 2,
+  /** `check`: a newer generation exists. */
+  Stale: 3,
+  /** `check`: a managed block, or its file, is missing. */
+  BlockMissing: 4,
 } as const
 
 export type ExitCode = (typeof ExitCode)[keyof typeof ExitCode]
