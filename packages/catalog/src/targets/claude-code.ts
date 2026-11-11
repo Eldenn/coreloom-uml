@@ -1,4 +1,5 @@
 import { Target } from '../targets.ts'
+import { MCP_KEY_ENV, MCP_SERVER_NAME, MCP_SERVER_URL, mcpRecommendation } from './mcp.ts'
 import type { TargetContext, TargetTemplate } from './types.ts'
 
 /**
@@ -28,6 +29,9 @@ const DEFAULT_DENY = [
  * `Stop` hook takes no matcher, runs with `sh -c` in the current directory, and exit code 2
  * sends its stderr to the model, which keeps working (at most 8 times in a row without a tool
  * call).
+ *
+ * MCP page read 2026-11-11: `claude mcp add --transport http <name> <url> --header "…"`, kept
+ * in the local scope (outside the repository) unless `--scope project` is passed.
  */
 export const claudeCode: TargetTemplate = {
   target: Target.ClaudeCode,
@@ -37,6 +41,7 @@ export const claudeCode: TargetTemplate = {
     'https://code.claude.com/docs/en/memory',
     'https://code.claude.com/docs/en/permissions',
     'https://code.claude.com/docs/en/hooks',
+    'https://code.claude.com/docs/en/mcp',
   ],
   readsAgentsMd: false,
   pointer: { path: 'CLAUDE.md', body: '@AGENTS.md' },
@@ -64,6 +69,11 @@ export const claudeCode: TargetTemplate = {
           ? '`.claude/settings.json` denies reading secrets and destructive commands, allows your checks and runs them before Claude Code hands back. The allowed commands apply once you accept the workspace trust dialog.'
           : '`.claude/settings.json` denies reading secrets and destructive commands.',
     },
+    mcpRecommendation(
+      'Then run, from the repository (the key is kept in your local Claude Code settings, not in the repository):',
+      'sh',
+      `claude mcp add --transport http ${MCP_SERVER_NAME} ${MCP_SERVER_URL} --header "Authorization: Bearer $${MCP_KEY_ENV}"`,
+    ),
   ],
 }
 

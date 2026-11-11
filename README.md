@@ -60,6 +60,12 @@ silently.
   architecture's views and propose view changes shown as diffs to accept, reject or undo. A gauge
   shows how full the context is, and a long conversation can continue in a new one from its
   summary. It is behind the `diagram-assistant` feature flag, off by default.
+- **MCP server.** `POST /mcp` is a Model Context Protocol endpoint (Streamable HTTP, stateless)
+  for coding agents: with an account API key (`Authorization: Bearer clu_…`, the `read` ability
+  is enough) an agent lists the account's projects and their diagrams, reads a diagram as Mermaid,
+  PlantUML or JSON and reads a project's latest generated AGENTS.md. It only reads. It is behind
+  the `mcp-server` feature flag, off by default; generated agent conventions say how to register
+  it in each tool.
 
 The business rules (RM-xx, referenced in the code) are in the scoping document. The monorepo comes
 from [lightloom](https://github.com/eldenn/lightloom) (itself [coreloom](https://github.com/eldenn/coreloom)

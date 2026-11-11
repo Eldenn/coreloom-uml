@@ -1,4 +1,5 @@
 import { Target } from '../targets.ts'
+import { MCP_KEY_ENV, MCP_SERVER_NAME, MCP_SERVER_URL, mcpRecommendation } from './mcp.ts'
 import type { TargetTemplate } from './types.ts'
 
 /**
@@ -9,6 +10,10 @@ import type { TargetTemplate } from './types.ts'
  * Settings (`.gemini/settings.json`): `tools.allowed` lists what runs without a confirmation,
  * such as `run_shell_command(npm test)`. Nothing is denied from here: `tools.exclude` is
  * deprecated in favour of the policy engine, whose workspace policies are disabled.
+ *
+ * MCP page read 2026-11-11: `gemini mcp add --scope user --transport http --header "…" <name> <url>`. The page
+ * does not say that settings.json expands variables in `headers`, so the command is suggested,
+ * in the user scope: the project's `.gemini/settings.json` is written by the CLI.
  */
 export const geminiCli: TargetTemplate = {
   target: Target.GeminiCli,
@@ -18,6 +23,7 @@ export const geminiCli: TargetTemplate = {
     'https://geminicli.com/docs/cli/gemini-md/',
     'https://geminicli.com/docs/reference/configuration/',
     'https://geminicli.com/docs/reference/policy-engine/',
+    'https://geminicli.com/docs/tools/mcp-server/',
   ],
   readsAgentsMd: false,
   pointer: { path: 'GEMINI.md', body: '@./AGENTS.md' },
@@ -37,5 +43,10 @@ export const geminiCli: TargetTemplate = {
       title: 'Gemini CLI context file',
       body: 'GEMINI.md imports AGENTS.md. Instead, you can set `"context": { "fileName": ["AGENTS.md", "GEMINI.md"] }` in `.gemini/settings.json` and leave GEMINI.md out.',
     },
+    mcpRecommendation(
+      'Then run (the user scope keeps the key in `~/.gemini/settings.json`, outside the repository):',
+      'sh',
+      `gemini mcp add --scope user --transport http --header "Authorization: Bearer $${MCP_KEY_ENV}" ${MCP_SERVER_NAME} ${MCP_SERVER_URL}`,
+    ),
   ],
 }

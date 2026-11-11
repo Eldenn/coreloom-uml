@@ -7,6 +7,7 @@ export const FeatureFlagKey = {
   LlmSubscriptionChatgpt: 'llm-subscription-chatgpt',
   LlmSubscriptionClaude: 'llm-subscription-claude',
   DiagramAssistant: 'diagram-assistant',
+  McpServer: 'mcp-server',
 } as const
 
 export type FeatureFlagKey = (typeof FeatureFlagKey)[keyof typeof FeatureFlagKey]
@@ -44,6 +45,14 @@ export const FEATURE_FLAGS: readonly FeatureFlagDeclaration[] = [
     name: 'Workspace AI assistant',
     description: 'Lets people ask a model about an architecture and accept the views it proposes.',
     tags: ['llm'],
+    defaultState: OFF,
+  },
+  {
+    key: FeatureFlagKey.McpServer,
+    name: 'MCP server',
+    description:
+      'Lets coding agents read projects, diagrams and agent conventions through MCP with an API key.',
+    tags: ['agents'],
     defaultState: OFF,
   },
 ]

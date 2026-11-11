@@ -751,6 +751,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/sharing/controllers/sharing-controller').default['regenerateCode']>>>
     }
   }
+  'mcp': {
+    methods: ["GET","POST","DELETE"]
+    pattern: '/mcp'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/mcp/controllers/mcp-controller').default['handle']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/mcp/controllers/mcp-controller').default['handle']>>>
+    }
+  }
   'architectures.assistant.conversations.index': {
     methods: ["GET","HEAD"]
     pattern: '/architectures/:id/assistant/conversations'
