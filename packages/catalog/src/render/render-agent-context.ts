@@ -7,6 +7,11 @@ import { TARGET_TEMPLATES } from '../targets/index.ts'
 import type { Recommendation, TargetContext } from '../targets/types.ts'
 import { AGENTS_FILE, AgentFileKind, TARGETS, Target } from '../targets.ts'
 import { CLI_CHECK_VERSION } from '../version.ts'
+import {
+  DEPENDENCY_CRUISER_FILE,
+  type PackageDiagramShape,
+  renderDependencyCruiser,
+} from './architecture-boundaries.ts'
 import { hashManagedBlock, wrapManagedBlock } from './managed-block.ts'
 import { blockMarkdown, inlineMarkdown, stripMarkers } from './markdown.ts'
 
@@ -16,7 +21,8 @@ export type AgentContextProject = {
   architectures: {
     title: string
     description: string | null
-    diagrams: { kind: string; title: string }[]
+    /** `packages`: what a package diagram draws, from which dependency rules are rendered. */
+    diagrams: { kind: string; title: string; packages?: PackageDiagramShape }[]
   }[]
 }
 
@@ -84,6 +90,19 @@ export function renderAgentContext(input: AgentContextInput): AgentContextOutput
     if (text) bodies.get(rule.section)?.push(text)
   }
 
+  const boundaries = renderDependencyCruiser(
+    input.project.architectures.flatMap((architecture) =>
+      architecture.diagrams.flatMap((diagram) => (diagram.packages ? [diagram.packages] : [])),
+    ),
+  )
+  if (boundaries) {
+    bodies
+      .get(Section.Architecture)
+      ?.push(
+        `Dependencies between packages are checked against the package diagrams: run \`${boundaries.command}\` (dependency-cruiser, rules in \`${DEPENDENCY_CRUISER_FILE}\`) before handing work back, and fix the code, not the rules, when it reports a violation.`,
+      )
+  }
+
   const markdown = sections
     .map((section) => renderSection(section, bodies.get(section) ?? [], input))
     .filter((block): block is string => block !== null)
@@ -109,6 +128,11 @@ export function renderAgentContext(input: AgentContextInput): AgentContextOutput
         blockHash: hashManagedBlock(settings.content),
       })
     }
+  }
+
+  if (boundaries) {
+    const { content, blockHash } = boundaries
+    files.push({ path: DEPENDENCY_CRUISER_FILE, kind: AgentFileKind.Config, content, blockHash })
   }
 
   const recommendations = targets.flatMap((target) =>

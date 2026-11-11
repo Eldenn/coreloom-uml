@@ -8,6 +8,7 @@ import {
   MANAGED_BLOCK_END,
   matchSkills,
   migrateAnswers,
+  type PackageDiagramShape,
   type Questionnaire,
   renderAgentContext,
   Section,
@@ -16,6 +17,7 @@ import {
   type StoredAnswer,
   sectionOrder,
 } from '@coreloom-uml/catalog'
+import type { PackageDiagram } from '@coreloom-uml/uml'
 import type { Target } from '#app/agent-configs/constants/agent-config'
 import type AgentConfig from '#app/agent-configs/models/agent-config'
 import type { AgentConfigQuestionnaire } from '#app/agent-configs/models/agent-config'
@@ -73,10 +75,23 @@ export function outdatedQuestionnaires(config: AgentConfig) {
   })
 }
 
+function packageShape(diagram: PackageDiagram): PackageDiagramShape {
+  return {
+    elements: diagram.elements.map(({ id, kind, label, parent }) => ({
+      id,
+      kind,
+      ...(label === undefined ? {} : { label }),
+      ...(parent === undefined ? {} : { parent }),
+    })),
+    relations: diagram.relations.map(({ from, to }) => ({ from, to })),
+  }
+}
+
 /**
  * What the `Project` section shows: the project's name and description (the configuration's
  * name outside any project), then the architectures it reads from with the kind and title of
- * their diagrams (never their content).
+ * their diagrams. Of their content, only what a package diagram draws (its elements and the
+ * arrows between them), which the dependency rules are rendered from.
  */
 export async function projectContext(config: AgentConfig): Promise<AgentContextProject> {
   const project = config.projectId === null ? null : await Project.findOrFail(config.projectId)
@@ -93,6 +108,7 @@ export async function projectContext(config: AgentConfig): Promise<AgentContextP
       diagrams: architecture.diagrams.map((diagram) => ({
         kind: diagram.kind,
         title: diagram.title,
+        ...(diagram.content?.kind === 'package' ? { packages: packageShape(diagram.content) } : {}),
       })),
     })),
   }

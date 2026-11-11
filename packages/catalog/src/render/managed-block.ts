@@ -27,6 +27,13 @@ export const HASH_MARKERS: BlockMarkers = {
   end: '# coreloom-uml:end',
 }
 
+/** For files whose comments start with `//` (a CommonJS configuration file). */
+export const SLASH_MARKERS: BlockMarkers = {
+  begin: '// coreloom-uml:begin · managed block, edits inside it are replaced on the next pull',
+  beginPrefix: '// coreloom-uml:begin',
+  end: '// coreloom-uml:end',
+}
+
 /** Wraps a body in the markers. The block has no trailing newline. */
 export function wrapManagedBlock(body: string, markers = MARKDOWN_MARKERS): string {
   return `${markers.begin}\n${body.trim()}\n${markers.end}`

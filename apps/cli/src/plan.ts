@@ -5,6 +5,7 @@ import {
   hashManagedBlock,
   MARKDOWN_MARKERS,
   type ManagedBlockLocation,
+  SLASH_MARKERS,
 } from '@coreloom-uml/catalog'
 import type { Generation } from './api.ts'
 import { CliError } from './errors.ts'
@@ -58,8 +59,13 @@ export type FileChange = {
 export const isJson = (path: string) => path.endsWith('.json')
 /** A TOML settings file: its block uses `#` markers and sits at the top, before any table. */
 const isToml = (path: string) => path.endsWith('.toml')
-/** A tool's settings file: unlike Markdown, it decides what the tool runs without asking. */
-export const isSettings = (path: string) => isJson(path) || isToml(path)
+/** A CommonJS configuration file: its block uses `//` markers, and a tool runs it as code. */
+export const isCjs = (path: string) => path.endsWith('.cjs')
+/**
+ * A tool's settings or configuration file: unlike Markdown, it decides what runs here without
+ * asking.
+ */
+export const isSettings = (path: string) => isJson(path) || isToml(path) || isCjs(path)
 
 /**
  * Whether applying the change asks the user first: adding to an existing file, a hand edit, or
@@ -84,7 +90,8 @@ async function readText(path: string): Promise<string | null> {
 
 export function locateBlock(path: string, text: string): ManagedBlockLocation | null {
   try {
-    return findManagedBlock(text, isToml(path) ? HASH_MARKERS : MARKDOWN_MARKERS)
+    const markers = isToml(path) ? HASH_MARKERS : isCjs(path) ? SLASH_MARKERS : MARKDOWN_MARKERS
+    return findManagedBlock(text, markers)
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
     throw new CliError(`${path}: ${reason}. Fix the markers by hand, then pull again.`)
