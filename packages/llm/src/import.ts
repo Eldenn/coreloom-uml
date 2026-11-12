@@ -15,7 +15,7 @@ import { failureReason, LlmCallError } from './failure.ts'
 import { cleanProposals, PROPOSALS_TEMPERATURE, PROPOSALS_TIMEOUT_MS } from './proposals.ts'
 
 /** Past this estimate of the input (characters / 4), the end of the file is cut. */
-export const IMPORT_MAX_INPUT_TOKENS = 16_000
+export const IMPORT_MAX_INPUT_TOKENS = 32_000
 export const IMPORT_MAX_OUTPUT_TOKENS = 4000
 /** Longest quote kept to show where an answer comes from. */
 export const IMPORT_EVIDENCE_MAX_LENGTH = 200
@@ -129,7 +129,7 @@ export function importPrompt(
     ...(existing.length > 0 ? existing.map((text) => `- ${text}`) : ['- (none)']),
     '',
     'Questions, as JSON:',
-    JSON.stringify(questions, null, 1),
+    JSON.stringify(questions),
     '',
     'The file:',
     '<file>',

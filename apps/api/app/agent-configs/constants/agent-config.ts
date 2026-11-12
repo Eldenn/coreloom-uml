@@ -20,7 +20,7 @@ export const AGENT_NOTES_MAX_LENGTH = 10_000
 /** Longest "more details" text on one answer. */
 export const AGENT_ANSWER_DETAILS_MAX_LENGTH = 2000
 /** Answers one `PUT …/answers` can carry. */
-export const AGENT_ANSWERS_PER_REQUEST_MAX = 200
+export const AGENT_ANSWERS_PER_REQUEST_MAX = 500
 /** Generations kept per configuration: past this, the oldest is deleted. */
 export const AGENT_GENERATIONS_KEPT = 50
 

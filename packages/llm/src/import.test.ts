@@ -75,7 +75,7 @@ describe('importAgentFile', () => {
   it('never sends the managed block, and cuts a file past the budget', async () => {
     const model = answeringModel(reply([]))
     const content = `Mine.\n${MANAGED_BLOCK_BEGIN}\nGenerated.\n${MANAGED_BLOCK_END}\n${'x'.repeat(20_000)}`
-    const result = await importAgentFile(model, source({ content }), { maxInputTokens: 2000 })
+    const result = await importAgentFile(model, source({ content }), { maxInputTokens: 6000 })
     const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt)
     expect(prompt).toContain('Mine.')
     expect(prompt).not.toContain('Generated.')

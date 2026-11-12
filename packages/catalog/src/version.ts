@@ -4,7 +4,7 @@
  * `package.json` (a test checks it): bump both together whenever a questionnaire, a fragment,
  * a template or the renderer changes its output.
  */
-export const CATALOG_VERSION = '0.13.0'
+export const CATALOG_VERSION = '0.14.0'
 
 /**
  * The `@coreloom-uml/cli` version the generated CI workflow pins: the first one with `check`. Raise
