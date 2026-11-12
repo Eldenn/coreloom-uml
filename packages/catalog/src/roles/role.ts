@@ -83,6 +83,8 @@ const folder = z
 const REQUIRED_BY: readonly (readonly [Right, Right])[] = [
   [Right.Write, Right.Read],
   [Right.Shell, Right.RunChecks],
+  // Committing is a command.
+  [Right.Commit, Right.RunChecks],
   [Right.Push, Right.Commit],
 ]
 

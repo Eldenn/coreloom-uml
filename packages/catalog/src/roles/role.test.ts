@@ -62,7 +62,12 @@ describe('roleSchema', () => {
 
   it('refuses push without commit', () => {
     expect(accepts({ rights: ['read', 'push'] })).toBe(false)
-    expect(accepts({ rights: ['read', 'commit', 'push'] })).toBe(true)
+    expect(accepts({ rights: ['read', 'run-checks', 'commit', 'push'] })).toBe(true)
+  })
+
+  it('refuses commit without run-checks', () => {
+    expect(accepts({ rights: ['read', 'write', 'commit'] })).toBe(false)
+    expect(accepts({ rights: ['read', 'run-checks', 'commit'] })).toBe(true)
   })
 
   it('refuses a right listed twice or unknown', () => {
