@@ -20,7 +20,7 @@ FROM base AS runtime
 ENV NODE_ENV=production
 # Claude subscriptions run the official, unmodified Claude Code binary (`claude`), pinned. Each
 # account gets its own config folder under CLAUDE_CODE_HOME (a volume in the Compose stacks).
-RUN npm install -g @anthropic-ai/claude-code@2.1.319
+RUN npm install -g @anthropic-ai/claude-code@2.1.322
 COPY --from=build /app /app
 WORKDIR /app/apps/api/build
 EXPOSE 3333

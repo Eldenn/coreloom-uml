@@ -50,8 +50,8 @@ function tool(name: string, variable: string, npmPackage: string): string | null
 }
 
 // The versions the CI job installs (`.github/workflows/ci.yml`).
-const CODEX = tool('codex', 'CODEX_BIN', '@openai/codex@0.167.1')
-const CLAUDE = tool('claude', 'CLAUDE_BIN', '@anthropic-ai/claude-code@2.1.319')
+const CODEX = tool('codex', 'CODEX_BIN', '@openai/codex@0.167.2')
+const CLAUDE = tool('claude', 'CLAUDE_BIN', '@anthropic-ai/claude-code@2.1.322')
 
 const schema = (name: string) => JSON.parse(readFileSync(join(here, 'schemas', name), 'utf8'))
 
