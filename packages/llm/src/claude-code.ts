@@ -8,7 +8,7 @@ import { LlmCallError, type LlmFailureReason } from './failure.ts'
 /**
  * A model of the user's Claude subscription, called through the unmodified `claude` binary
  * (Claude Code) in print mode. The binary holds the user's credentials in its own configuration
- * folder; this code never reads them. Flags checked against Claude Code 2.1.319 on 2026-11-09.
+ * folder; this code never reads them. Flags checked against Claude Code 2.1.322 on 2026-11-12.
  */
 
 /** What a call with a connected Claude subscription needs: the account's own folder. */

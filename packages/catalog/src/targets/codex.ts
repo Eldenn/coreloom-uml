@@ -14,7 +14,7 @@ const READ_ONLY_FROM = 5
  *
  * Settings: a trusted project's `.codex/config.toml` overrides the user's. `approval_policy` is
  * `on-request`, `never` or a `granular` table; the reference calls `untrusted` unsupported and
- * `on-failure` deprecated, though Codex 0.167.1 still reads both without an error;
+ * `on-failure` deprecated, though Codex 0.167.2 still reads both without an error;
  * `sandbox_mode` is `read-only`, `workspace-write` or `danger-full-access`. Only the first of
  * each is ever written here, and the sandbox comes from the autonomy answer.
  *

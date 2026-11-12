@@ -7,7 +7,7 @@ const MAX_OUTPUT_BYTES = 1_000_000
 const STATUS_TIMEOUT_MS = 15_000
 /** How long the binary may take to accept or refuse a pasted code. */
 const SUBMIT_TIMEOUT_MS = 30_000
-/** The sign-in page `claude auth login` prints (checked against 2.1.319). */
+/** The sign-in page `claude auth login` prints (checked against 2.1.322). */
 const LOGIN_URL = /https:\/\/\S+\/oauth\/authorize\?\S+/
 /** The error `execFile` gives when the output passes `maxBuffer` (it kills the child too). */
 const OUTPUT_TOO_LARGE = 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER'
