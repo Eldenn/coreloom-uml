@@ -84,6 +84,13 @@ describe('roleSchema', () => {
     expect(accepts({ scope: ['apps/api/app'] })).toBe(true)
   })
 
+  it('refuses a dot segment in a scope', () => {
+    for (const folder of ['.', './src', 'src/.', 'src/./x']) {
+      expect(accepts({ scope: [folder] }), folder).toBe(false)
+    }
+    expect(accepts({ scope: ['.github', 'src/.config'] })).toBe(true)
+  })
+
   it('refuses text over its limit', () => {
     expect(accepts({ name: 'n'.repeat(ROLE_NAME_MAX_LENGTH) })).toBe(true)
     expect(accepts({ name: 'n'.repeat(ROLE_NAME_MAX_LENGTH + 1) })).toBe(false)

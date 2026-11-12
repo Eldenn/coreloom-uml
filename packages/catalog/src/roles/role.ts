@@ -75,7 +75,9 @@ const line = z
 const folder = z
   .string()
   .regex(FOLDER_PATH)
-  .refine((path) => !path.split('/').includes('..'), { message: 'A folder cannot hold `..`' })
+  .refine((path) => !path.split('/').some((part) => part === '.' || part === '..'), {
+    message: 'A folder cannot hold `.` or `..`',
+  })
 
 /** A right that only makes sense together with another one. */
 const REQUIRED_BY: readonly (readonly [Right, Right])[] = [
