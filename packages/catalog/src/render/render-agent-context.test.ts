@@ -319,8 +319,10 @@ describe('renderAgentContext', () => {
       // A JSON settings file has no markers: its whole content is hashed.
       const block = file.path.endsWith('.json')
         ? file.content
-        : findManagedBlock(file.content, file.path.endsWith('.toml') ? HASH_MARKERS : undefined)
-            ?.block
+        : findManagedBlock(
+            file.content,
+            /\.(toml|rules)$/.test(file.path) ? HASH_MARKERS : undefined,
+          )?.block
       expect(block && hashManagedBlock(block)).toBe(file.blockHash)
     }
   })
@@ -333,12 +335,14 @@ describe('renderAgentContext', () => {
       'CLAUDE.md',
       'GEMINI.md',
       '.codex/config.toml',
+      '.codex/rules/coreloom-uml.rules',
       '.claude/settings.json',
       '.gemini/settings.json',
     ])
     expect(paths(['codex', 'cursor', 'github-copilot', 'generic'])).toEqual([
       'AGENTS.md',
       '.codex/config.toml',
+      '.codex/rules/coreloom-uml.rules',
     ])
     expect(paths([])).toEqual(['AGENTS.md'])
   })
@@ -346,10 +350,13 @@ describe('renderAgentContext', () => {
   const settings = (input: AgentContextInput, path: string) =>
     renderAgentContext(input).files.find((file) => file.path === path)?.content
 
+  const CODEX_RULES = '.codex/rules/coreloom-uml.rules'
+
   it('renders the settings each tool enforces from the tooling and autonomy answers', () => {
     const input: AgentContextInput = { ...INPUT, targets: ['codex', 'claude-code', 'gemini-cli'] }
     expect(settings(input, '.claude/settings.json')).toMatchSnapshot()
     expect(settings(input, '.codex/config.toml')).toMatchSnapshot()
+    expect(settings(input, CODEX_RULES)).toMatchSnapshot()
     expect(settings(input, '.gemini/settings.json')).toMatchSnapshot()
     expect(renderAgentContext(input).recommendations.map((item) => item.target)).toEqual([
       'codex',
@@ -371,6 +378,24 @@ describe('renderAgentContext', () => {
     expect(settings(autonomy(5), '.codex/config.toml')).toContain('sandbox_mode = "read-only"')
     expect(settings(autonomy(1), '.codex/config.toml')).toContain('"workspace-write"')
     expect(settings({ ...autonomy(1), answers: [] }, '.codex/config.toml')).toBeUndefined()
+  })
+
+  it('forbids the default commands in Codex rules whatever the answers', () => {
+    const rules = (answers: AgentContextInput['answers']) =>
+      settings({ ...INPUT, targets: ['codex'], answers }, CODEX_RULES) ?? ''
+    expect(rules([])).toMatchSnapshot()
+    // A check with a pipe or a wildcard never becomes a rule; an unknown package manager forbids none.
+    const unsafe = rules([
+      answer('checks', 'pnpm test | tee out; rm -rf *; pnpm lint'),
+      answer('package-manager', 'cargo'),
+    ])
+    expect(unsafe.match(/decision = "allow"/g)).toHaveLength(1)
+    expect(unsafe).toContain('pattern = ["pnpm", "lint"]')
+    expect(unsafe).not.toMatch(/"(npm|yarn|bun)"/)
+    // `allow` leaves the sandbox: none when the assistant must ask before acting.
+    const asksFirst = rules([answer('checks', 'pnpm lint'), answer('ask-before-act', 5)])
+    expect(asksFirst).not.toContain('"allow"')
+    expect(asksFirst).toContain('"forbidden"')
   })
 
   it('keeps the default deny list without answers, and unsafe commands out of the settings', () => {

@@ -20,7 +20,8 @@ export type TargetContext = {
 
 /**
  * A tool's settings file. `content` is either a JSON object, of which the CLI owns only the
- * entries listed (it merges them into the file), or a managed block in `HASH_MARKERS` (TOML).
+ * entries listed (it merges them into the file), or a managed block in `HASH_MARKERS` (TOML, or
+ * a Codex `.rules` file).
  */
 export type TargetSettings = { path: string; content: string }
 
@@ -39,7 +40,7 @@ export type TargetTemplate = {
   /** The pointer file for a tool that does not read AGENTS.md: its path and its block body. */
   pointer?: { path: string; body: string }
   /** What the tool enforces by itself, whatever the model does; `null` when nothing applies. */
-  settings?: (context: TargetContext) => TargetSettings | null
+  settings?: (context: TargetContext) => TargetSettings | TargetSettings[] | null
   recommendations: (context: TargetContext) => Omit<Recommendation, 'target'>[]
 }
 

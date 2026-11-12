@@ -119,8 +119,7 @@ export function renderAgentContext(input: AgentContextInput): AgentContextOutput
 
   const context = targetContext(input)
   for (const target of targets) {
-    const settings = TARGET_TEMPLATES[target].settings?.(context)
-    if (settings) {
+    for (const settings of [TARGET_TEMPLATES[target].settings?.(context) ?? []].flat()) {
       files.push({
         path: settings.path,
         kind: AgentFileKind.Settings,

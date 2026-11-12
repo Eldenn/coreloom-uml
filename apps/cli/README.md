@@ -17,10 +17,13 @@ Everything outside the block is yours and is never touched.
 
 The generation can also hold **settings files**, which make a tool enforce part of the
 conventions (commands it may run without asking, what it must never read or run, checks run
-before it hands back): `.claude/settings.json`, `.gemini/settings.json` and `.codex/config.toml`.
+before it hands back): `.claude/settings.json`, `.gemini/settings.json`, `.codex/config.toml` and
+`.codex/rules/coreloom-uml.rules`.
 
 - In a TOML file, the block uses `#` markers and is put at the top of the file, before any table.
   A file that already sets one of the block's keys is refused: remove that line first.
+- In a Codex rules file (`.rules`, Starlark), the block uses `#` markers too; rules you add
+  outside it are kept.
 - A JSON file cannot hold markers, so the CLI owns **entries** instead: its entries are merged
   into your file (objects key by key, lists as sets), and `.coreloom-uml.json` records them. The
   next pull takes out the entries it wrote and adds the new ones; everything else in the file is
