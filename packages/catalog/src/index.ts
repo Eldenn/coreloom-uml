@@ -59,6 +59,7 @@ export {
   NOTES_INTRO,
   renderAgentContext,
 } from './render/render-agent-context.ts'
+export { deniedRights, roleMatrix } from './roles/matrix.ts'
 export {
   RIGHTS,
   Right,
@@ -124,6 +125,8 @@ export { isSlot, SLOTS, type Slot } from './slots.ts'
 export { TARGET_TEMPLATES } from './targets/index.ts'
 export {
   type Recommendation,
+  type RoleContext,
+  type RoleRender,
   type TargetContext,
   type TargetSettings,
   type TargetTemplate,

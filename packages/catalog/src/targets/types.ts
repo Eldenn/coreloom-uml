@@ -1,3 +1,4 @@
+import type { Right, Role } from '../roles/role.ts'
 import type { Target } from '../targets.ts'
 
 /** Advice the renderer cannot write as a file (a setting, a choice to make by hand). */
@@ -24,6 +25,22 @@ export type TargetContext = {
  * a Codex `.rules` file).
  */
 export type TargetSettings = { path: string; content: string }
+
+/** What a role is rendered from besides the role itself: the answers, read by slot. */
+export type RoleContext = TargetContext & {
+  /** Whether the `security.sandbox` answer is `container`. */
+  container: boolean
+}
+
+/** A role as one tool runs it. */
+export type RoleRender = {
+  /** Each file's path and whole content, without a final line break. */
+  files: TargetSettings[]
+  /** The command that starts the tool as this role; `null` when the tool has none. */
+  launch: string | null
+  /** The rights the role lacks that the tool itself refuses for that launch. */
+  enforced: readonly Right[]
+}
 
 /**
  * How a command-line tool is installed and used in the sandboxed development container
@@ -59,6 +76,12 @@ export type TargetTemplate = {
   /** What the tool enforces by itself, whatever the model does; `null` when nothing applies. */
   settings?: (context: TargetContext) => TargetSettings | TargetSettings[] | null
   recommendations: (context: TargetContext) => Omit<Recommendation, 'target'>[]
+  /**
+   * The files that make the tool work as a role. A right is `enforced` only when the tool's
+   * documentation (`sources`) establishes that the tool refuses it; otherwise the role's text
+   * states it.
+   */
+  role?: (role: Role, context: RoleContext) => RoleRender
   /** Only for a tool that runs as a command inside the container. */
   sandbox?: TargetSandbox
 }
