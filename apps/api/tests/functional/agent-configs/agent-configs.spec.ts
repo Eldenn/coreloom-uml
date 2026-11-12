@@ -672,6 +672,8 @@ test.group('Agent configs - generations', (group) => {
         ['AGENTS.md', 'generic'],
         ['CLAUDE.md', 'pointer'],
         ['.claude/settings.json', 'settings'],
+        ['.githooks/pre-commit', 'config'],
+        ['.github/workflows/agent-conventions.yml', 'config'],
       ],
     )
     const [agents, claude, settings] = generation.files
@@ -711,7 +713,13 @@ test.group('Agent configs - generations', (group) => {
       .loginAs(user)
     list.assertStatus(200)
     assert.deepEqual(list.body().meta, { page: 1, perPage: 1, total: 2, lastPage: 2 })
-    assert.deepEqual(list.body().data[0].paths, ['AGENTS.md', 'CLAUDE.md', '.claude/settings.json'])
+    assert.deepEqual(list.body().data[0].paths, [
+      'AGENTS.md',
+      'CLAUDE.md',
+      '.claude/settings.json',
+      '.githooks/pre-commit',
+      '.github/workflows/agent-conventions.yml',
+    ])
     assert.notProperty(list.body().data[0], 'files')
 
     const detail = await client.get(`/agent-configs/${config.id}`).headers(json).loginAs(user)
