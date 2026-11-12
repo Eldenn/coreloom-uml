@@ -21,12 +21,14 @@ export function renderRoleBody(
   role: Role,
   options: { checks: readonly string[]; instructionRights: readonly Right[] },
 ): string {
+  // "Run commands" already covers the shell, whose phrase points at commands this role cannot run.
+  const stated = options.instructionRights.includes('run-checks')
+    ? options.instructionRights.filter((right) => right !== 'shell')
+    : options.instructionRights
   const forbidden = [
     ...role.forbidden.map((line) => inlineMarkdown(line, ROLE_LINE_MAX_LENGTH)),
     ...RIGHTS.flatMap((right) =>
-      right !== 'read' && options.instructionRights.includes(right)
-        ? [`You must not ${RIGHT_PHRASES[right]}.`]
-        : [],
+      right !== 'read' && stated.includes(right) ? [`You must not ${RIGHT_PHRASES[right]}.`] : [],
     ),
   ]
   // A role that cannot run commands is not asked to make one pass.

@@ -100,4 +100,17 @@ describe('renderRoleBody', () => {
 
     expect(body).toContain('## Forbidden\n\n- You must not push to any remote.')
   })
+
+  it('drops the shell refusal when the role cannot run commands at all', () => {
+    const body = renderRoleBody(minimal, {
+      checks: [],
+      instructionRights: ['run-checks', 'shell', 'commit'],
+    })
+
+    expect(body).toContain('## Forbidden\n\n- You must not run commands.\n- You must not commit.')
+    expect(body).not.toContain('Done when')
+    expect(renderRoleBody(minimal, { checks: [], instructionRights: ['shell'] })).toContain(
+      '- You must not run commands other than the checks listed under "Done when".',
+    )
+  })
 })
