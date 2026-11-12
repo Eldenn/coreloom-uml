@@ -14,6 +14,7 @@ import {
 import { type GatesInput, renderGates } from './gates.ts'
 import { hashManagedBlock, wrapManagedBlock } from './managed-block.ts'
 import { blockMarkdown, inlineMarkdown, stripMarkers } from './markdown.ts'
+import { renderSandbox } from './sandbox.ts'
 
 export type AgentContextProject = {
   name: string
@@ -141,6 +142,27 @@ export function renderAgentContext(input: AgentContextInput): AgentContextOutput
   const gates = renderGates(gatesInput(input, context.checks, boundaries?.command ?? null))
   for (const gate of gates.files) files.push({ ...gate, kind: AgentFileKind.Config })
   recommendations.push(...gates.recommendations)
+
+  if (slotAnswer(input, 'security.sandbox') === 'container') {
+    const text = (slot: Slot) => {
+      const value = slotAnswer(input, slot)
+      return typeof value === 'string' ? value : undefined
+    }
+    const sandbox = renderSandbox({
+      targets,
+      packageManager: text('tooling.package-manager'),
+      network: text('security.network'),
+    })
+    for (const { path, content } of sandbox.files) {
+      files.push({
+        path,
+        kind: AgentFileKind.Config,
+        content: `${content}\n`,
+        blockHash: hashManagedBlock(content),
+      })
+    }
+    recommendations.push(sandbox.recommendation)
+  }
 
   return { files, recommendations, fragments }
 }

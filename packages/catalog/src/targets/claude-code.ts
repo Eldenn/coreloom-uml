@@ -32,6 +32,14 @@ const DEFAULT_DENY = [
  *
  * MCP page read 2026-11-11: `claude mcp add --transport http <name> <url> --header "…"`, kept
  * in the local scope (outside the repository) unless `--scope project` is passed.
+ *
+ * Container and network pages read 2026-11-12: a pinned version is installed with
+ * `npm install -g @anthropic-ai/claude-code@X.Y.Z` and `DISABLE_AUTOUPDATER=1`;
+ * `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` stops telemetry, error reports and feature-flag
+ * fetches (Remote Control stops working with it). Requests go to `api.anthropic.com`; the token
+ * exchange and refresh of a sign-in go to `platform.claude.com`. `--dangerously-skip-permissions`
+ * is refused as root, and a container does not stop a session from sending out what it can read,
+ * the credentials in `~/.claude` included.
  */
 export const claudeCode: TargetTemplate = {
   target: Target.ClaudeCode,
@@ -42,9 +50,19 @@ export const claudeCode: TargetTemplate = {
     'https://code.claude.com/docs/en/permissions',
     'https://code.claude.com/docs/en/hooks',
     'https://code.claude.com/docs/en/mcp',
+    'https://code.claude.com/docs/en/devcontainer',
+    'https://code.claude.com/docs/en/network-config',
   ],
   readsAgentsMd: false,
   pointer: { path: 'CLAUDE.md', body: '@AGENTS.md' },
+  sandbox: {
+    package: '@anthropic-ai/claude-code',
+    version: '2.1.322',
+    hosts: ['api.anthropic.com', 'platform.claude.com'],
+    env: { DISABLE_AUTOUPDATER: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' },
+    credential: 'set `ANTHROPIC_API_KEY`, or run `claude` and sign in',
+    unattended: 'claude --dangerously-skip-permissions',
+  },
   settings: ({ checks, otherPackageManagers }: TargetContext) => ({
     path: '.claude/settings.json',
     content: JSON.stringify(

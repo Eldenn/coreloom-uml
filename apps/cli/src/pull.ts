@@ -18,6 +18,7 @@ import {
   isHook,
   isJson,
   isSettings,
+  isShell,
   isYaml,
   needsConfirmation,
   planPull,
@@ -195,13 +196,15 @@ export async function pull(options: PullOptions): Promise<ExitCode> {
         ? `${change.path}: overwrite what was edited by hand?`
         : isCjs(change.path)
           ? `${change.path}: write this configuration? It is code the tool that reads it runs.`
-          : isHook(change.path)
-            ? `${change.path}: write this hook? It is a script Git runs on every commit.`
-            : isYaml(change.path)
-              ? `${change.path}: write this workflow? It decides what your CI runs.`
-              : isSettings(change.path)
-                ? `${change.path}: write these settings? They decide what the assistant may run.`
-                : `${change.path} exists without a managed block: add one at its end?`
+          : isShell(change.path)
+            ? `${change.path}: write this script? It is code, run by whatever starts it.`
+            : isHook(change.path)
+              ? `${change.path}: write this hook? It is a script Git runs on every commit.`
+              : isYaml(change.path)
+                ? `${change.path}: write this workflow? It decides what your CI runs.`
+                : isSettings(change.path)
+                  ? `${change.path}: write these settings? They decide what the assistant may run.`
+                  : `${change.path} exists without a managed block: add one at its end?`
       if (!(await io.confirm(question))) skipped.add(change)
     }
   }

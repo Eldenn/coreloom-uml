@@ -76,6 +76,7 @@ const MIME_TYPES: Partial<Record<string, string>> = {
   json: 'application/json',
   toml: 'application/toml',
   cjs: 'text/javascript',
+  sh: 'text/x-shellscript',
   js: 'text/javascript',
   rules: 'text/plain',
   yml: 'application/yaml',

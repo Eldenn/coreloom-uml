@@ -65,6 +65,13 @@ The generation also holds gates that apply to every commit, whatever tool wrote 
 Both are code that runs on your machine or in your CI, so every change to one is shown and
 confirmed first (or accepted with `--yes`).
 
+When the security questionnaire asks for a sandboxed development container, the generation also
+holds `.devcontainer/devcontainer.json` (merged entry by entry like any JSON file, so it cannot hold
+comments) and `.devcontainer/init-firewall.sh`, the container's firewall. The script's block uses
+`#` markers: a line you add above it, such as `EXTRA_ALLOWED_DOMAINS="uml.example.com"`, is kept.
+It is run with `bash`, so the CLI does not make it executable. Both files decide what runs in the
+container, so every change to them is shown and confirmed first too.
+
 Requires Node.js 22 or newer.
 
 ## Quick start

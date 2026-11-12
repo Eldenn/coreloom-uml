@@ -14,6 +14,11 @@ import type { TargetTemplate } from './types.ts'
  * MCP page read 2026-11-11: `gemini mcp add --scope user --transport http --header "…" <name> <url>`. The page
  * does not say that settings.json expands variables in `headers`, so the command is suggested,
  * in the user scope: the project's `.gemini/settings.json` is written by the CLI.
+ *
+ * Authentication and configuration pages read 2026-11-12: without a cached sign-in, a session
+ * reads `GEMINI_API_KEY`; `--yolo` approves every action and can only be given on the command
+ * line. The pages name no host: `generativelanguage.googleapis.com` is the Gemini API's, and a
+ * Google account sign-in needs others, which the firewall does not allow.
  */
 export const geminiCli: TargetTemplate = {
   target: Target.GeminiCli,
@@ -24,9 +29,18 @@ export const geminiCli: TargetTemplate = {
     'https://geminicli.com/docs/reference/configuration/',
     'https://geminicli.com/docs/reference/policy-engine/',
     'https://geminicli.com/docs/tools/mcp-server/',
+    'https://geminicli.com/docs/get-started/authentication/',
+    'https://ai.google.dev/api',
   ],
   readsAgentsMd: false,
   pointer: { path: 'GEMINI.md', body: '@./AGENTS.md' },
+  sandbox: {
+    package: '@google/gemini-cli',
+    version: '0.68.0',
+    hosts: ['generativelanguage.googleapis.com'],
+    credential: 'set `GEMINI_API_KEY`',
+    unattended: 'gemini --yolo',
+  },
   settings: ({ checks }) =>
     checks.length === 0
       ? null

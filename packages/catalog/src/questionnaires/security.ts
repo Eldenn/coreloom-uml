@@ -1,20 +1,22 @@
 import type { Questionnaire } from '../schemas.ts'
 
 /**
- * What the assistant may touch and reach. Questions 2, 3, 5 and 6 are rules the owner sets;
+ * What the assistant may touch and reach. Questions 2, 3, 5, 6 and 8 are rules the owner sets;
  * 1, 4 and 7 are preferences on a 1–5 agreement scale, where 3 produces nothing. It feeds only
- * its own `security.*` slots, so it combines with any other questionnaire.
+ * its own `security.*` slots, so it combines with any other questionnaire. Question 8 is
+ * optional: its `container` answer also renders the development container (`render/sandbox.ts`),
+ * whose firewall reads the answer to question 6.
  *
  * Bump `version` on any change to a question, an option or a fragment; never reuse a removed
  * question id; declare a removed option in `migrations`.
  */
 export const security = {
   id: 'security',
-  version: '1.0.0',
+  version: '1.1.0',
   title: { en: 'Security', fr: 'Sécurité' },
   description: {
-    en: 'Secrets, dependencies, untrusted input, destructive commands and network access: what your coding assistant may do, and what it asks first.',
-    fr: 'Secrets, dépendances, entrées non fiables, commandes destructrices et accès réseau : ce que votre assistant de code peut faire, et ce qu’il demande d’abord.',
+    en: 'Secrets, dependencies, untrusted input, destructive commands, network access and where it runs: what your coding assistant may do, and what it asks first.',
+    fr: 'Secrets, dépendances, entrées non fiables, commandes destructrices, accès réseau et lieu d’exécution : ce que votre assistant de code peut faire, et ce qu’il demande d’abord.',
   },
   sections: ['Security'],
   questions: [
@@ -232,6 +234,40 @@ export const security = {
         {
           when: { scaleAtMost: 2 },
           text: 'Change authentication and authorization code like any other, with a test for the allowed case and one for the refused case; never write your own cryptography.',
+        },
+      ],
+    },
+    {
+      id: 'sandbox',
+      type: 'single',
+      slot: 'security.sandbox',
+      section: 'Security',
+      label: {
+        en: 'The assistant runs:',
+        fr: "L'assistant s'exécute :",
+      },
+      options: [
+        {
+          value: 'container',
+          label: {
+            en: 'In a sandboxed development container, behind a firewall (adds a `.devcontainer` folder)',
+            fr: 'Dans un conteneur de développement isolé, derrière un pare-feu (ajoute un dossier `.devcontainer`)',
+          },
+        },
+        {
+          value: 'host',
+          label: { en: 'Directly on my machine', fr: 'Directement sur ma machine' },
+        },
+      ],
+      required: false,
+      fragments: [
+        {
+          when: { equals: 'container' },
+          text: 'You run inside a development container whose firewall only lets through the hosts listed in `.devcontainer/init-firewall.sh`: never try to change, stop or get around the firewall, and never edit the `.devcontainer` folder; when a host you need is blocked, stop and ask.',
+        },
+        {
+          when: { equals: 'host' },
+          text: 'You run directly on the developer’s machine, with no sandbox around you: never read or change anything outside the working directory.',
         },
       ],
     },

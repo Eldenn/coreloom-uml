@@ -39,6 +39,7 @@ export const SLOTS = {
   'security.destructive-commands': 'Commands that delete or overwrite',
   'security.network': 'Network access',
   'security.sensitive-code': 'Changes to authentication and cryptography code',
+  'security.sandbox': 'Where the assistant runs',
 } as const satisfies Record<string, string>
 
 export type Slot = keyof typeof SLOTS
