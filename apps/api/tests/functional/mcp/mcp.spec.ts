@@ -183,6 +183,35 @@ test.group('MCP server', (group) => {
     assert.equal(after.content[0].text, generated.body().generation.files[0].content)
   })
 
+  test('lists agent conventions and reads ones outside any project by id', async ({
+    client,
+    assert,
+  }) => {
+    const { user, secret } = await setup(client)
+    const created = await client
+      .post('/agent-configs')
+      .headers(json)
+      .loginAs(user)
+      .json({ name: 'Loose conventions', questionnaires: ['frontend-react'], targets: ['codex'] })
+    created.assertStatus(201)
+    const configId = created.body().config.id
+    const generated = await client
+      .post(`/agent-configs/${configId}/generations`)
+      .headers(json)
+      .loginAs(user)
+    generated.assertStatus(201)
+
+    const list = await callTool(client, secret, McpTool.ListAgentConventions)
+    const byId = await callTool(client, secret, McpTool.GetAgentConventions, { configId })
+    const neither = await callTool(client, secret, McpTool.GetAgentConventions, {})
+
+    assert.deepEqual(JSON.parse(list.content[0].text), [
+      { id: configId, name: 'Loose conventions', projectId: null },
+    ])
+    assert.equal(byId.content[0].text, generated.body().generation.files[0].content)
+    assert.isTrue(neither.isError)
+  })
+
   test('reads what belongs to someone else as not found', async ({ client, assert }) => {
     const { secret } = await setup(client)
     const other = await setup(client)
@@ -197,10 +226,20 @@ test.group('MCP server', (group) => {
     const conventions = await callTool(client, secret, McpTool.GetAgentConventions, {
       projectId: other.project.id,
     })
+    const otherConfig = await client
+      .post('/agent-configs')
+      .headers(json)
+      .loginAs(other.user)
+      .json({ name: 'Theirs', questionnaires: ['frontend-react'], targets: ['codex'] })
+    const byId = await callTool(client, secret, McpTool.GetAgentConventions, {
+      configId: otherConfig.body().config.id,
+    })
+    const configs = await callTool(client, secret, McpTool.ListAgentConventions)
 
     assert.notInclude(projects.content[0].text, String(other.project.id))
     assert.lengthOf(JSON.parse(projects.content[0].text), 1)
-    for (const result of [diagrams, diagram, conventions]) assert.isTrue(result.isError)
+    for (const result of [diagrams, diagram, conventions, byId]) assert.isTrue(result.isError)
+    assert.deepEqual(JSON.parse(configs.content[0].text), [])
     assert.equal(diagram.content[0].text, 'Diagram not found')
   })
 })
