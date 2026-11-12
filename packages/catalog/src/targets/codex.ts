@@ -1,8 +1,18 @@
 import { HASH_MARKERS, wrapManagedBlock } from '../render/managed-block.ts'
+import { oneLine, stripMarkers } from '../render/markdown.ts'
+import { renderRoleBody } from '../render/role.ts'
+import { deniedRights } from '../roles/matrix.ts'
+import type { Right, Role } from '../roles/role.ts'
 import { Target } from '../targets.ts'
 import { PACKAGE_MANAGERS } from './commands.ts'
 import { MCP_KEY_ENV, MCP_SERVER_NAME, MCP_SERVER_URL, mcpRecommendation } from './mcp.ts'
-import type { TargetContext, TargetSettings, TargetTemplate } from './types.ts'
+import type {
+  RoleContext,
+  RoleRender,
+  TargetContext,
+  TargetSettings,
+  TargetTemplate,
+} from './types.ts'
 
 /** From this `workflow.autonomy` answer up, Codex asks before writing anything. */
 const READ_ONLY_FROM = 5
@@ -38,11 +48,54 @@ const READ_ONLY_FROM = 5
  * read, Codex credentials included. An API key is piped to `codex login --with-api-key`; a
  * ChatGPT account signs in on a machine without a browser with `codex login --device-auth`
  * (`auth.openai.com`), and its requests go to `chatgpt.com`.
+ *
+ * Roles. Subagents, advanced configuration, configuration reference, CLI reference, sandboxing,
+ * approvals and rules pages read 2026-11-12, and Codex 0.167.2 run offline
+ * (`codex debug prompt-input` prints the sandbox in force and the tools the model is given). A
+ * project's custom agent is `.codex/agents/<file>.toml`: "Each file defines one custom agent";
+ * `name`, `description` and `developer_instructions` are required; "Matching the filename to the
+ * agent name is the simplest convention, but the `name` field is the source of truth". The page
+ * only shows names with `_`; 0.167.2 offers one named with a hyphen as a role to spawn. Such an
+ * agent is a subagent, which the main session starts: no page tells how to start Codex as one,
+ * and "Other session settings, including `sandbox_mode`, `approval_policy`, `model_provider`, and
+ * `mcp_servers`, don't override the parent configuration when placed in a custom agent file". So
+ * the launch command sets the sandbox itself and asks the main session to act as the file.
+ *
+ * (a) Established: the command line wins over `.codex/config.toml`. "Any `-c key=value`
+ *     overrides you pass at the command line take precedence for that invocation"; a profile "is
+ *     a layer above your base user config and below project and CLI config"; `--sandbox` is to
+ *     "Select the sandbox policy for model-generated shell commands". Run: with
+ *     `sandbox_mode = "workspace-write"` in a trusted project's file, `--sandbox read-only` gives
+ *     a read-only session, `-c sandbox_workspace_write.network_access=true` an open network, and
+ *     `--dangerously-bypass-approvals-and-sandbox` gives `danger-full-access`.
+ * (b) Established, and unusable: `-c features.shell_tool=false` removes the command tools of the
+ *     main session (`features.shell_tool`: "Enable command execution tools (stable; on by
+ *     default)"; `--disable` "translates to `-c features.<name>=false`"). Run: `exec_command` and
+ *     `write_stdin` are gone, and what is left (`apply_patch`, `view_image`, the MCP resource
+ *     tools, and `spawn_agent` unless `agents.enabled=false`) reads no file. Codex reads with
+ *     commands, so a session without them cannot read the repository, nor its own agent file.
+ *     Every role can read: the command tools stay, in the file and in the launch command.
+ * (c) Established: the sandbox keeps the network off. "By default, the agent runs with network
+ *     access turned off"; "the default `workspace-write` sandbox mode keeps network access turned
+ *     off unless you enable it in your configuration". Run: a read-only session is told "The
+ *     sandbox only permits reading files. Network access is restricted."
+ * (d) What keeps every right an instruction: the sandbox does not hold every command. A rule's
+ *     `allow` is to "Run the command outside the sandbox without prompting", whatever the sandbox
+ *     mode, and matches a prefix, so any argument may follow. The rules file rendered here allows
+ *     the project's checks that way, and "When you add a command to the allow list in the TUI,
+ *     Codex writes to the user layer at `~/.codex/rules/default.rules`", which the repository
+ *     does not hold: a person who once let `git push` through has it run unsandboxed in every
+ *     later session. The sandbox also "does not filter web search, app or connector tool calls,
+ *     MCP server connections" (web search is on, from a cache, unless `web_search = "disabled"`).
+ *
+ * So the launch command still picks the narrowest sandbox the rights leave (read-only: "The
+ * agent can inspect files, but it can't edit files or run commands without approval"; `.git` is
+ * read-only inside a writable workspace), but no right is called enforced because of it.
  */
 export const codex: TargetTemplate = {
   target: Target.Codex,
   name: 'Codex',
-  verifiedOn: '2026-11-11',
+  verifiedOn: '2026-11-12',
   sources: [
     'https://learn.chatgpt.com/docs/agent-configuration/agents-md',
     'https://learn.chatgpt.com/docs/config-file/config-reference',
@@ -50,6 +103,10 @@ export const codex: TargetTemplate = {
     'https://developers.openai.com/codex/mcp',
     'https://learn.chatgpt.com/docs/agent-approvals-security',
     'https://learn.chatgpt.com/docs/auth',
+    'https://learn.chatgpt.com/docs/agent-configuration/subagents',
+    'https://learn.chatgpt.com/docs/config-file/config-advanced',
+    'https://learn.chatgpt.com/docs/cli/reference',
+    'https://learn.chatgpt.com/docs/sandboxing',
   ],
   readsAgentsMd: true,
   sandbox: {
@@ -74,6 +131,7 @@ export const codex: TargetTemplate = {
         ]),
     rulesFile(context),
   ],
+  role: renderRole,
   recommendations: (context) => [
     {
       title: 'Codex project settings',
@@ -92,6 +150,45 @@ export const codex: TargetTemplate = {
 }
 
 const RULES_PATH = '.codex/rules/coreloom-uml.rules'
+
+/**
+ * A TOML basic string. A JSON string is one, but for the two things JSON lets through and TOML
+ * refuses: a raw DEL, and the escape of half a surrogate pair.
+ */
+const tomlString = (text: string) =>
+  // With the `u` flag a surrogate matches only when it stands alone.
+  JSON.stringify(text.replace(/\p{Surrogate}/gu, '\ufffd')).replaceAll('\u007f', '\\u007F')
+
+/** The custom agent file a role becomes and the command that starts Codex as it; see (d) above. */
+function renderRole(role: Role, { checks, container }: RoleContext): RoleRender {
+  const has = (right: Right) => role.rights.includes(right)
+  const path = `.codex/agents/${role.slug}.toml`
+  const body = renderRoleBody(role, {
+    checks,
+    instructionRights: deniedRights(role),
+    readsWithCommands: true,
+  })
+  const sandbox = container
+    ? '--dangerously-bypass-approvals-and-sandbox'
+    : has('write')
+      ? `--sandbox workspace-write -c sandbox_workspace_write.network_access=${has('network')}`
+      : '--sandbox read-only'
+
+  return {
+    files: [
+      {
+        path,
+        content: [
+          `name = ${tomlString(role.slug)}`,
+          `description = ${tomlString(oneLine(stripMarkers(role.description)))}`,
+          `developer_instructions = ${tomlString(body)}`,
+        ].join('\n'),
+      },
+    ],
+    launch: `codex ${sandbox} "Act as the agent defined in ${path}."`,
+    enforced: [],
+  }
+}
 
 const readOnly = ({ autonomy }: TargetContext) => autonomy !== null && autonomy >= READ_ONLY_FROM
 

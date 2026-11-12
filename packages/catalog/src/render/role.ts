@@ -16,11 +16,21 @@ const RIGHT_PHRASES: Record<Exclude<Right, 'read'>, string> = {
  * break. `checks` are the commands the repository runs: a done command outside them is left out,
  * and so is every done command of a role without `run-checks`.
  * `instructionRights` are the rights the role lacks and the tool does not refuse by itself.
+ * `readsWithCommands` is for a tool whose only way to read a file is a command: a role that runs
+ * no check still has to read.
  */
 export function renderRoleBody(
   role: Role,
-  options: { checks: readonly string[]; instructionRights: readonly Right[] },
+  options: {
+    checks: readonly string[]
+    instructionRights: readonly Right[]
+    readsWithCommands?: boolean
+  },
 ): string {
+  const phrase = (right: Exclude<Right, 'read'>) =>
+    right === 'run-checks' && options.readsWithCommands
+      ? `${RIGHT_PHRASES[right]}, except to read the repository`
+      : RIGHT_PHRASES[right]
   // "Run commands" already covers the shell, whose phrase points at commands this role cannot run.
   const stated = options.instructionRights.includes('run-checks')
     ? options.instructionRights.filter((right) => right !== 'shell')
@@ -28,7 +38,7 @@ export function renderRoleBody(
   const forbidden = [
     ...role.forbidden.map((line) => inlineMarkdown(line, ROLE_LINE_MAX_LENGTH)),
     ...RIGHTS.flatMap((right) =>
-      right !== 'read' && stated.includes(right) ? [`You must not ${RIGHT_PHRASES[right]}.`] : [],
+      right !== 'read' && stated.includes(right) ? [`You must not ${phrase(right)}.`] : [],
     ),
   ]
   // A role that cannot run commands is not asked to make one pass.

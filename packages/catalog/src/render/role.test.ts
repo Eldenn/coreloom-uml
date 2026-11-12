@@ -113,4 +113,17 @@ describe('renderRoleBody', () => {
       '- You must not run commands other than the checks listed under "Done when".',
     )
   })
+
+  it('keeps the commands a tool reads files with', () => {
+    const body = renderRoleBody(minimal, {
+      checks: [],
+      instructionRights: ['run-checks', 'shell'],
+      readsWithCommands: true,
+    })
+
+    expect(body).toContain(
+      '## Forbidden\n\n- You must not run commands, except to read the repository.',
+    )
+    expect(body).not.toContain('Done when')
+  })
 })
