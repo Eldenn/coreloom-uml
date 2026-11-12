@@ -65,6 +65,8 @@ const isToml = (path: string) => path.endsWith('.toml')
 const isRules = (path: string) => path.endsWith('.rules')
 /** A CommonJS configuration file: its block uses `//` markers, and a tool runs it as code. */
 export const isCjs = (path: string) => path.endsWith('.cjs')
+/** A shell script: its block uses `#` markers, and whatever starts it runs it as code. */
+export const isShell = (path: string) => path.endsWith('.sh')
 /**
  * A Git hook (a shell script without extension, in the tracked hooks folder): its block uses `#`
  * markers, after the `#!` line the file starts with, and Git runs it on every commit.
@@ -77,9 +79,15 @@ export const isYaml = (path: string) => /\.ya?ml$/.test(path)
  * here without asking.
  */
 export const isSettings = (path: string) =>
-  isJson(path) || isToml(path) || isRules(path) || isCjs(path) || isHook(path) || isYaml(path)
+  isJson(path) ||
+  isToml(path) ||
+  isRules(path) ||
+  isCjs(path) ||
+  isHook(path) ||
+  isYaml(path) ||
+  isShell(path)
 const usesHashMarkers = (path: string) =>
-  isToml(path) || isRules(path) || isHook(path) || isYaml(path)
+  isToml(path) || isRules(path) || isHook(path) || isYaml(path) || isShell(path)
 
 /**
  * Whether applying the change asks the user first: adding to an existing file, a hand edit, or

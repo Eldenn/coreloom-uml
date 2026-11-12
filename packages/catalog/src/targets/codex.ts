@@ -31,6 +31,13 @@ const READ_ONLY_FROM = 5
  *
  * MCP page read 2026-11-11: a `[mcp_servers.<name>]` table in `~/.codex/config.toml` with `url`
  * and `bearer_token_env_var` (`codex mcp add` shows no option for a bearer token).
+ *
+ * Approvals and authentication pages read 2026-11-12: when a container is the security boundary,
+ * Codex is run with full access inside it, so that it does not try to add its own sandbox, which
+ * a container may block; a devcontainer does not stop a session from sending out what it can
+ * read, Codex credentials included. An API key is piped to `codex login --with-api-key`; a
+ * ChatGPT account signs in on a machine without a browser with `codex login --device-auth`
+ * (`auth.openai.com`), and its requests go to `chatgpt.com`.
  */
 export const codex: TargetTemplate = {
   target: Target.Codex,
@@ -41,8 +48,18 @@ export const codex: TargetTemplate = {
     'https://learn.chatgpt.com/docs/config-file/config-reference',
     'https://learn.chatgpt.com/docs/agent-configuration/rules',
     'https://developers.openai.com/codex/mcp',
+    'https://learn.chatgpt.com/docs/agent-approvals-security',
+    'https://learn.chatgpt.com/docs/auth',
   ],
   readsAgentsMd: true,
+  sandbox: {
+    package: '@openai/codex',
+    version: '0.167.2',
+    hosts: ['api.openai.com', 'auth.openai.com', 'chatgpt.com'],
+    credential:
+      'run `printenv OPENAI_API_KEY | codex login --with-api-key`, or `codex login --device-auth`',
+    unattended: 'codex --dangerously-bypass-approvals-and-sandbox',
+  },
   settings: (context) => [
     ...(context.autonomy === null
       ? []

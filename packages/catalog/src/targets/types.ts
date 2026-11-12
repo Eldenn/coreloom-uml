@@ -26,6 +26,23 @@ export type TargetContext = {
 export type TargetSettings = { path: string; content: string }
 
 /**
+ * How a command-line tool is installed and used in the sandboxed development container
+ * (`render/sandbox.ts`): its npm package at an exact version, the hosts the firewall lets it
+ * reach (inference and sign-in, never telemetry), the environment that keeps it from updating
+ * itself or calling blocked hosts, how it gets its credential, and the command that skips its
+ * own prompts, which is only acceptable inside the container.
+ */
+export type TargetSandbox = {
+  package: string
+  version: string
+  hosts: readonly string[]
+  env?: Readonly<Record<string, string>>
+  /** Markdown, one clause: how the credential reaches the tool inside the container. */
+  credential: string
+  unattended: string
+}
+
+/**
  * How Coreloom UML renders files for one coding tool. `verifiedOn` is the date its
  * documentation (`sources`) was last read to confirm what it loads; re-read it and update the
  * date whenever the tool's behaviour may have changed.
@@ -42,6 +59,8 @@ export type TargetTemplate = {
   /** What the tool enforces by itself, whatever the model does; `null` when nothing applies. */
   settings?: (context: TargetContext) => TargetSettings | TargetSettings[] | null
   recommendations: (context: TargetContext) => Omit<Recommendation, 'target'>[]
+  /** Only for a tool that runs as a command inside the container. */
+  sandbox?: TargetSandbox
 }
 
 /**

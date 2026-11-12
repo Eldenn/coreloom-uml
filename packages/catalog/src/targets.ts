@@ -21,7 +21,7 @@ export const TARGETS = Object.values(Target) as readonly Target[]
 /**
  * What a rendered file is: the shared conventions, a pointer to them, or a tool's own settings
  * file (JSON or TOML) holding what the tool enforces, or the configuration of a tool that checks
- * them.
+ * them or of the container the tools run in.
  */
 export const AgentFileKind = {
   Generic: 'generic',

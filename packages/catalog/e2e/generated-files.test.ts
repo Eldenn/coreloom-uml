@@ -11,7 +11,9 @@
  * skips the confirmation for an allowed command, and how Codex splits a `bash -lc` script before
  * it checks each command. For the gates, GitHub Actions itself is not run: the workflow is read
  * as YAML and its key-detection script run with `bash -e`, as a runner would, and the secret scan
- * is not downloaded.
+ * is not downloaded. For the development container, Docker is not run: `devcontainer.json` is
+ * read as JSON and the firewall script only parsed by bash, so that it blocks and lets through
+ * what it says is checked by hand, by starting the container (see `src/render/sandbox.ts`).
  */
 import { execFileSync, spawnSync } from 'node:child_process'
 import {
@@ -578,5 +580,63 @@ describe('Gates', () => {
       })
       expect(spawnSync('bash', ['-n', '-c', scan]).status).toBe(0)
     })
+  })
+})
+
+describe('Development container', () => {
+  const DEVCONTAINER = '.devcontainer/devcontainer.json'
+  const FIREWALL = '.devcontainer/init-firewall.sh'
+  const security = findQuestionnaire('security') as Questionnaire
+  const render = (sandbox?: string) =>
+    renderAgentContext({
+      project: { name: 'Shop', description: null, architectures: [] },
+      questionnaires: [frontendReact, security],
+      answers: [
+        { questionnaireId: frontendReact.id, questionId: 'package-manager', value: 'pnpm' },
+        { questionnaireId: security.id, questionId: 'network-access', value: 'registry' },
+        ...(sandbox
+          ? [{ questionnaireId: security.id, questionId: 'sandbox', value: sandbox }]
+          : []),
+      ],
+      rules: [],
+      notes: null,
+      targets: ['claude-code', 'codex', 'gemini-cli', 'cursor'],
+    }).files
+  const content = (path: string) => render('container').find((file) => file.path === path)?.content
+
+  it.each([undefined, 'host'])('renders no container for the answer %s', (answer) => {
+    expect(render(answer).filter((file) => file.path.startsWith('.devcontainer'))).toEqual([])
+    expect(() => read(autonomous, DEVCONTAINER)).toThrow(/ENOENT/)
+  })
+
+  it('renders a devcontainer.json that is plain JSON, with its image pinned by digest', () => {
+    // No comment and no trailing comma: the CLI merges this file as JSON.
+    const json = JSON.parse(content(DEVCONTAINER) ?? '')
+    expect(json.image).toMatch(/^[\w./-]+:\d+\.\d+\.\d+-[\w-]+@sha256:[0-9a-f]{64}$/)
+    expect(json.runArgs).toEqual(['--cap-add=NET_ADMIN', '--cap-add=NET_RAW'])
+    expect(json.postStartCommand).toMatch(/^sudo \S+bash \S+init-firewall\.sh$/)
+    expect(json.waitFor).toBe('postStartCommand')
+    expect(json.postCreateCommand).toContain(`${FIREWALL} `)
+  })
+
+  it('installs each command-line tool at an exact version', () => {
+    const { postCreateCommand } = JSON.parse(content(DEVCONTAINER) ?? '')
+    const install = /npm install -g (.+)$/.exec(postCreateCommand)?.[1]?.split(' ') ?? []
+    expect(install.map((spec) => spec.replace(/@[^@]+$/, ''))).toEqual([
+      '@openai/codex',
+      '@anthropic-ai/claude-code',
+      '@google/gemini-cli',
+    ])
+    for (const spec of install) expect(spec).toMatch(/@\d+\.\d+\.\d+$/)
+  })
+
+  it('renders a firewall script bash accepts', () => {
+    const script = join(tmp, 'init-firewall.sh')
+    writeFileSync(script, content(FIREWALL) ?? '')
+    const { status, stderr } = spawnSync('bash', ['-n', script], { encoding: 'utf8' })
+    expect(stderr).toBe('')
+    expect(status).toBe(0)
+    writeFileSync(script, `${content(FIREWALL)}if then\n`)
+    expect(spawnSync('bash', ['-n', script]).status).not.toBe(0)
   })
 })

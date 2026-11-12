@@ -540,6 +540,58 @@ describe('pull, settings files', () => {
     expect(await read(WORKFLOW)).toBe('name: Mine\n')
   })
 
+  it('writes the development container: a script in `#` markers, asked for, under the owner’s own hosts', async () => {
+    const SCRIPT = '.devcontainer/init-firewall.sh'
+    const DEVCONTAINER = '.devcontainer/devcontainer.json'
+    const script = (domains: string) =>
+      settingsFile(SCRIPT, wrapManagedBlock(`ALLOWED_DOMAINS="${domains}"`, HASH_MARKERS))
+    const devcontainer = (image: string) =>
+      settingsFile(DEVCONTAINER, JSON.stringify({ image, runArgs: ['--cap-add=NET_ADMIN'] }))
+    api.current = generation(1, [devcontainer('node:1'), script('registry.npmjs.org')])
+    await expect(run()).rejects.toThrow(/--yes/)
+    expect(await exists(SCRIPT)).toBe(false)
+
+    const recorder = recordingIo({ interactive: true, answers: [true, true] })
+    expect(await run({}, recorder.io)).toBe(ExitCode.Ok)
+    expect(recorder.questions).toEqual([
+      expect.stringContaining('write these settings?'),
+      expect.stringContaining('write this script? It is code'),
+    ])
+    expect(await read(SCRIPT)).toBe(api.current.files[1]?.content)
+
+    const mine = 'EXTRA_ALLOWED_DOMAINS="uml.example.com"\n'
+    await writeFile(join(dir.path, SCRIPT), `${mine}${await read(SCRIPT)}`)
+    await writeFile(
+      join(dir.path, DEVCONTAINER),
+      JSON.stringify({
+        ...JSON.parse(await read(DEVCONTAINER)),
+        name: 'Mine',
+        runArgs: ['--init', '--cap-add=NET_ADMIN'],
+      }),
+    )
+    api.current = generation(2, [
+      devcontainer('node:2'),
+      script('registry.npmjs.org api.openai.com'),
+    ])
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await read(SCRIPT)).toBe(`${mine}${api.current.files[1]?.content}`)
+    expect(JSON.parse(await read(DEVCONTAINER))).toEqual({
+      name: 'Mine',
+      image: 'node:2',
+      runArgs: ['--init', '--cap-add=NET_ADMIN'],
+    })
+
+    await writeFile(join(dir.path, SCRIPT), `${mine}${script('example.com').content}`)
+    api.current = generation(3, [devcontainer('node:2'), script('registry.npmjs.org')])
+    expect(await run({ yes: true })).toBe(ExitCode.EditedBlockKept)
+    expect(await read(SCRIPT)).toContain('ALLOWED_DOMAINS="example.com"')
+
+    api.current = generation(4, [file(AGENTS, 'a')])
+    expect(await run({ yes: true, force: true })).toBe(ExitCode.Ok)
+    expect(await read(SCRIPT)).toBe(mine)
+    expect(JSON.parse(await read(DEVCONTAINER))).toEqual({ name: 'Mine', runArgs: ['--init'] })
+  })
+
   it('refuses a TOML file that already sets a managed key', async () => {
     await mkdir(join(dir.path, '.codex'))
     await writeFile(join(dir.path, TOML), 'sandbox_mode = "danger-full-access"\n')
