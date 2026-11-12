@@ -40,7 +40,7 @@ export type RightStatus = (typeof RightStatus)[keyof typeof RightStatus]
 export const ROLE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 export const ROLE_SLUG_MAX_LENGTH = 64
 export const ROLE_NAME_MAX_LENGTH = 100
-export const ROLE_DESCRIPTION_MAX_LENGTH = 300
+export const ROLE_DESCRIPTION_MAX_LENGTH = 600
 export const ROLE_MISSION_MAX_LENGTH = 40_000
 /** One line of `forbidden` or `done.commands`, `done.text`, `escalation`. */
 export const ROLE_LINE_MAX_LENGTH = 300
@@ -66,11 +66,12 @@ export type Role = {
 
 const slug = z.string().max(ROLE_SLUG_MAX_LENGTH).regex(ROLE_SLUG)
 
-const line = z
+const oneLine = z
   .string()
   .min(1)
-  .max(ROLE_LINE_MAX_LENGTH)
   .refine((text) => !/[\r\n]/.test(text), { message: 'One line only' })
+
+const line = oneLine.max(ROLE_LINE_MAX_LENGTH)
 
 const folder = z
   .string()
@@ -91,8 +92,8 @@ const REQUIRED_BY: readonly (readonly [Right, Right])[] = [
 export const roleSchema: z.ZodType<Role> = z
   .object({
     slug,
-    name: line.max(ROLE_NAME_MAX_LENGTH),
-    description: line.max(ROLE_DESCRIPTION_MAX_LENGTH),
+    name: oneLine.max(ROLE_NAME_MAX_LENGTH),
+    description: oneLine.max(ROLE_DESCRIPTION_MAX_LENGTH),
     mission: z
       .string()
       .max(ROLE_MISSION_MAX_LENGTH)

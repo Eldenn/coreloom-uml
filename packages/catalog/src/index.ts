@@ -61,6 +61,14 @@ export {
 } from './render/render-agent-context.ts'
 export { deniedRights, roleMatrix } from './roles/matrix.ts'
 export {
+  AGENCY_AGENTS_COMMIT,
+  AGENCY_AGENTS_REPOSITORY,
+  presetRole,
+  READ_ONLY_PRESETS,
+  ROLE_PRESETS,
+  type RolePreset,
+} from './roles/presets/index.ts'
+export {
   RIGHTS,
   Right,
   RightStatus,

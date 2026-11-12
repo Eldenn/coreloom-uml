@@ -99,6 +99,7 @@ describe('roleSchema', () => {
   it('refuses text over its limit', () => {
     expect(accepts({ name: 'n'.repeat(ROLE_NAME_MAX_LENGTH) })).toBe(true)
     expect(accepts({ name: 'n'.repeat(ROLE_NAME_MAX_LENGTH + 1) })).toBe(false)
+    expect(accepts({ description: 'd'.repeat(ROLE_DESCRIPTION_MAX_LENGTH) })).toBe(true)
     expect(accepts({ description: 'd'.repeat(ROLE_DESCRIPTION_MAX_LENGTH + 1) })).toBe(false)
     expect(accepts({ forbidden: ['f'.repeat(ROLE_LINE_MAX_LENGTH)] })).toBe(true)
     expect(accepts({ forbidden: ['f'.repeat(ROLE_LINE_MAX_LENGTH + 1)] })).toBe(false)
