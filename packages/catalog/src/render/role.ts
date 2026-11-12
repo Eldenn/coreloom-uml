@@ -13,7 +13,8 @@ const RIGHT_PHRASES: Record<Exclude<Right, 'read'>, string> = {
 
 /**
  * The Markdown every tool's role file shares, without block markers and without a final line
- * break. `checks` are the commands the repository runs: a done command outside them is left out.
+ * break. `checks` are the commands the repository runs: a done command outside them is left out,
+ * and so is every done command of a role without `run-checks`.
  * `instructionRights` are the rights the role lacks and the tool does not refuse by itself.
  */
 export function renderRoleBody(
@@ -28,8 +29,10 @@ export function renderRoleBody(
         : [],
     ),
   ]
+  // A role that cannot run commands is not asked to make one pass.
+  const commands = role.rights.includes('run-checks') ? role.done.commands : []
   const done = [
-    ...role.done.commands
+    ...commands
       // A backtick would close the code span the command is written in.
       .filter((command) => options.checks.includes(command) && !command.includes('`'))
       .map((command) => `\`${stripMarkers(command)}\` passes.`),

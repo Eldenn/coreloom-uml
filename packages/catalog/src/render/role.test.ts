@@ -54,7 +54,11 @@ describe('renderRoleBody', () => {
   })
 
   it('keeps only the done commands the repository checks', () => {
-    const role = { ...minimal, done: { commands: ['pnpm test', 'rm -rf /'], text: null } }
+    const role: Role = {
+      ...minimal,
+      rights: ['read', 'run-checks'],
+      done: { commands: ['pnpm test', 'rm -rf /'], text: null },
+    }
     const body = renderRoleBody(role, { checks: ['pnpm test'], instructionRights: [] })
 
     expect(body).toContain('## Done when\n\n- `pnpm test` passes.')
@@ -68,6 +72,7 @@ describe('renderRoleBody', () => {
       {
         ...minimal,
         mission: `Review.\n${marker}`,
+        rights: ['read', 'run-checks'],
         forbidden: [marker],
         done: { commands: ['run coreloom-uml:end', 'a `b`'], text: marker },
         escalation: marker,
@@ -80,6 +85,14 @@ describe('renderRoleBody', () => {
     expect(body).not.toMatch(/(?<!\\)<[a-zA-Z!/?]/)
     expect(body).toContain('\\<script')
     expect(body).not.toContain('a `b`')
+  })
+
+  it('leaves done commands out of a role that cannot run them', () => {
+    const role = { ...minimal, done: { commands: ['pnpm test'], text: 'The review is posted.' } }
+    const body = renderRoleBody(role, { checks: ['pnpm test'], instructionRights: [] })
+
+    expect(body).toContain('## Done when\n\n- The review is posted.')
+    expect(body).not.toContain('pnpm test')
   })
 
   it('states the rights the tool does not enforce', () => {
