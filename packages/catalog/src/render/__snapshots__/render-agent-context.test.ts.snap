@@ -23,6 +23,81 @@ prefix_rule(
 "
 `;
 
+exports[`renderAgentContext > renders a commit-msg hook only for what an answer states 1`] = `
+"# coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
+# From the agent conventions (Coreloom UML). It applies to every commit, whoever writes it.
+# Git runs it once the hooks are turned on: git config core.hooksPath .githooks
+# The file must start with #!/bin/sh and be executable; the CLI sees to both.
+# Comment lines, and the diff of \`git commit -v\`, are not part of the message.
+coreloom_message=$(sed -e '/^# -* >8 -*$/,$d' -e '/^#/d' "$1")
+coreloom_subject=$(printf '%s\\n' "$coreloom_message" | sed -n '/./{p;q;}')
+case "$coreloom_subject" in
+  "Merge "* | "Revert "* | "fixup! "* | "squash! "* | "amend! "*) ;;
+  *)
+    if ! printf '%s\\n' "$coreloom_subject" | grep -Eq '^[a-z]+(\\([^()]+\\))?!?: .+'; then
+      echo 'commit-msg: the subject must follow Conventional Commits, "type(scope): summary".' >&2
+      exit 1
+    fi
+    ;;
+esac
+if printf '%s\\n' "$coreloom_message" | grep -Eiq '^co-authored-by:.*(claude code|anthropic|copilot|cursor|codex|chatgpt|openai|gemini|aider|devin-ai|windsurf|codeium|amazon q|google-labs-jules|opencode)|generated (with|by) .*(claude code|anthropic|copilot|cursor|codex|chatgpt|openai|gemini|aider|devin-ai|windsurf|codeium|amazon q|google-labs-jules|opencode)'; then
+  echo 'commit-msg: the message must not credit a coding assistant (co-author trailer, "generated with" line).' >&2
+  exit 1
+fi
+# coreloom-uml:end
+"
+`;
+
+exports[`renderAgentContext > renders a workflow that pins the CLI and its actions and runs the checks 1`] = `
+"# coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
+# From the agent conventions (Coreloom UML). It applies to every change, whoever writes it.
+# The conventions check needs the committed .coreloom-uml.json and an API key with the read
+# ability, stored as the CORELOOM_UML_API_KEY secret; without the secret it is skipped with a
+# warning, and the other steps still run. Steps added after this block, at the same
+# indentation, are kept.
+name: Agent conventions
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  agent-conventions:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Look for the API key
+        id: key
+        env:
+          CORELOOM_UML_API_KEY: \${{ secrets.CORELOOM_UML_API_KEY }}
+        run: |
+          if [ -n "$CORELOOM_UML_API_KEY" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::The agent conventions check was skipped: the CORELOOM_UML_API_KEY secret is missing (a pull request from a fork, or a secret that is not configured)."
+          fi
+      - name: Check the agent conventions
+        if: steps.key.outputs.present == 'true'
+        run: npx @coreloom-uml/cli@0.1.0 check
+        env:
+          CORELOOM_UML_API_KEY: \${{ secrets.CORELOOM_UML_API_KEY }}
+      - run: 'corepack enable'
+      - run: 'pnpm install --frozen-lockfile'
+      - run: 'pnpm lint'
+      - run: 'pnpm test'
+# coreloom-uml:end
+"
+`;
+
 exports[`renderAgentContext > renders dependency-cruiser rules from the package diagrams 1`] = `
 "// coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
 // Dependency rules drawn from the package diagrams in Coreloom UML: a package may only
@@ -352,5 +427,75 @@ Deploys go through **staging** first.
 
 \\<script>alert(1)\\</script>
 <!-- coreloom-uml:end -->
+"
+`;
+
+exports[`renderAgentContext > runs the checks and the dependency rules in the pre-commit hook, never an unsafe command 1`] = `
+"# coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
+# From the agent conventions (Coreloom UML). It applies to every commit, whoever writes it.
+# Git runs it once the hooks are turned on: git config core.hooksPath .githooks
+# The file must start with #!/bin/sh and be executable; the CLI sees to both.
+# Steps of your own go before or after this block.
+pnpm lint || exit 1
+# coreloom-uml:end
+"
+`;
+
+exports[`renderAgentContext > scans for secrets only when an answer keeps them out, with a pinned and checked binary 1`] = `
+"# coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
+# From the agent conventions (Coreloom UML). It applies to every change, whoever writes it.
+# The conventions check needs the committed .coreloom-uml.json and an API key with the read
+# ability, stored as the CORELOOM_UML_API_KEY secret; without the secret it is skipped with a
+# warning, and the other steps still run. Steps added after this block, at the same
+# indentation, are kept.
+name: Agent conventions
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  agent-conventions:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Look for the API key
+        id: key
+        env:
+          CORELOOM_UML_API_KEY: \${{ secrets.CORELOOM_UML_API_KEY }}
+        run: |
+          if [ -n "$CORELOOM_UML_API_KEY" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::The agent conventions check was skipped: the CORELOOM_UML_API_KEY secret is missing (a pull request from a fork, or a secret that is not configured)."
+          fi
+      - name: Check the agent conventions
+        if: steps.key.outputs.present == 'true'
+        run: npx @coreloom-uml/cli@0.1.0 check
+        env:
+          CORELOOM_UML_API_KEY: \${{ secrets.CORELOOM_UML_API_KEY }}
+      # The gitleaks binary, checked against its published checksum. It reads the whole
+      # history: list a finding that is not a secret in .gitleaksignore.
+      - name: Scan for secrets
+        run: |
+          curl -fsSLo "$RUNNER_TEMP/gitleaks.tar.gz" https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  $RUNNER_TEMP/gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP" gitleaks
+          "$RUNNER_TEMP/gitleaks" git --redact --no-banner .
+      - run: 'corepack enable'
+      - run: 'pnpm install --frozen-lockfile'
+      - run: 'pnpm lint'
+      - run: 'pnpm test'
+# coreloom-uml:end
 "
 `;

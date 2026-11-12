@@ -78,11 +78,15 @@ const MIME_TYPES: Partial<Record<string, string>> = {
   cjs: 'text/javascript',
   js: 'text/javascript',
   rules: 'text/plain',
+  yml: 'application/yaml',
 }
 
 /** Saves the text as a file, without any request: the content is already here. */
 function download(file: AgentFile) {
-  const type = MIME_TYPES[file.path.split('.').at(-1) ?? ''] ?? 'text/markdown'
+  // A Git hook has no extension: it is a shell script.
+  const type = file.path.startsWith('.githooks/')
+    ? 'text/x-shellscript'
+    : (MIME_TYPES[file.path.split('.').at(-1) ?? ''] ?? 'text/markdown')
   const url = URL.createObjectURL(new Blob([file.content], { type: `${type};charset=utf-8` }))
   const link = document.createElement('a')
   link.href = url

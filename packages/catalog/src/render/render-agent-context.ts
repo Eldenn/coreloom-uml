@@ -5,13 +5,13 @@ import type { Slot } from '../slots.ts'
 import { PACKAGE_MANAGERS, splitCommands } from '../targets/commands.ts'
 import { TARGET_TEMPLATES } from '../targets/index.ts'
 import type { Recommendation, TargetContext } from '../targets/types.ts'
-import { AGENTS_FILE, AgentFileKind, TARGETS, Target } from '../targets.ts'
-import { CLI_CHECK_VERSION } from '../version.ts'
+import { AGENTS_FILE, AgentFileKind, TARGETS, type Target } from '../targets.ts'
 import {
   DEPENDENCY_CRUISER_FILE,
   type PackageDiagramShape,
   renderDependencyCruiser,
 } from './architecture-boundaries.ts'
+import { type GatesInput, renderGates } from './gates.ts'
 import { hashManagedBlock, wrapManagedBlock } from './managed-block.ts'
 import { blockMarkdown, inlineMarkdown, stripMarkers } from './markdown.ts'
 
@@ -137,7 +137,10 @@ export function renderAgentContext(input: AgentContextInput): AgentContextOutput
   const recommendations = targets.flatMap((target) =>
     TARGET_TEMPLATES[target].recommendations(context).map((item) => ({ target, ...item })),
   )
-  recommendations.push(ciRecommendation(context.checks))
+
+  const gates = renderGates(gatesInput(input, context.checks, boundaries?.command ?? null))
+  for (const gate of gates.files) files.push({ ...gate, kind: AgentFileKind.Config })
+  recommendations.push(...gates.recommendations)
 
   return { files, recommendations, fragments }
 }
@@ -225,23 +228,26 @@ function targetContext(input: AgentContextInput): TargetContext {
   }
 }
 
-/**
- * The CI steps that keep the pulled conventions up to date, then run the checks. Advice only:
- * the workflow file belongs to the repository, so it is never written.
- */
-function ciRecommendation(checks: readonly string[]): Recommendation {
-  const steps = [
-    '- name: Check the agent conventions',
-    `  run: npx @coreloom-uml/cli@${CLI_CHECK_VERSION} check`,
-    '  env:',
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub Actions expression syntax.
-    '    CORELOOM_UML_API_KEY: ${{ secrets.CORELOOM_UML_API_KEY }}',
-    ...checks.map((command) => `- run: ${command}`),
-  ]
+/** What the hooks and the CI workflow check: only what an answer states without ambiguity. */
+function gatesInput(
+  input: AgentContextInput,
+  checks: readonly string[],
+  boundariesCommand: string | null,
+): GatesInput {
+  const packageManager = slotAnswer(input, 'tooling.package-manager')
+  const attribution = slotAnswer(input, 'git.attribution')
+  const neverCommit = slotAnswer(input, 'git.never-commit')
+  const secrets = slotAnswer(input, 'security.secrets')
   return {
-    target: Target.Generic,
-    title: 'Check the conventions in CI',
-    body: `To fail a build when the conventions in the repository are not the latest generation, or were edited by hand, commit \`.coreloom-uml.json\`, store an API key with the \`read\` ability as the \`CORELOOM_UML_API_KEY\` secret, and add these steps to a GitHub Actions job (after the checkout, with Node.js 22 or newer):\n\n\`\`\`yaml\n${steps.join('\n')}\n\`\`\``,
+    checks,
+    packageManager: PACKAGE_MANAGERS.find((manager) => manager === packageManager) ?? null,
+    boundariesCommand,
+    conventionalCommits: slotAnswer(input, 'git.commit-messages') === 'conventional',
+    noAttribution: typeof attribution === 'number' && attribution >= 4,
+    ciWorkflow: slotAnswer(input, 'git.ci-workflow') === 'github-actions',
+    secretScan:
+      (Array.isArray(neverCommit) && neverCommit.includes('secrets')) ||
+      (typeof secrets === 'number' && secrets >= 4),
   }
 }
 

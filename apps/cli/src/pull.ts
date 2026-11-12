@@ -1,4 +1,4 @@
-import { mkdir, unlink, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, stat, unlink, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import {
   describeSource,
@@ -15,8 +15,10 @@ import {
   ChangeAction,
   type FileChange,
   isCjs,
+  isHook,
   isJson,
   isSettings,
+  isYaml,
   needsConfirmation,
   planPull,
 } from './plan.ts'
@@ -105,6 +107,11 @@ async function apply(change: FileChange) {
   }
   await mkdir(dirname(change.target), { recursive: true })
   await writeFile(change.target, change.after, 'utf8')
+  // Git skips a hook that is not executable. Only the execute bits are added, on a path
+  // `resolveSafePath` checked; where the file system has no such bit, this changes nothing.
+  if (isHook(change.path)) {
+    await chmod(change.target, ((await stat(change.target)).mode & 0o777) | 0o111)
+  }
 }
 
 function printOutcome(io: Io, generation: Generation) {
@@ -188,9 +195,13 @@ export async function pull(options: PullOptions): Promise<ExitCode> {
         ? `${change.path}: overwrite what was edited by hand?`
         : isCjs(change.path)
           ? `${change.path}: write this configuration? It is code the tool that reads it runs.`
-          : isSettings(change.path)
-            ? `${change.path}: write these settings? They decide what the assistant may run.`
-            : `${change.path} exists without a managed block: add one at its end?`
+          : isHook(change.path)
+            ? `${change.path}: write this hook? It is a script Git runs on every commit.`
+            : isYaml(change.path)
+              ? `${change.path}: write this workflow? It decides what your CI runs.`
+              : isSettings(change.path)
+                ? `${change.path}: write these settings? They decide what the assistant may run.`
+                : `${change.path} exists without a managed block: add one at its end?`
       if (!(await io.confirm(question))) skipped.add(change)
     }
   }

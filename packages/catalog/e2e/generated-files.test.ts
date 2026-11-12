@@ -9,7 +9,9 @@
  * rule matches and that a `Stop` hook's stderr goes back to the model (Claude Code documents no
  * offline evaluator: `claude doctor` only says whether it accepts the rules), that Gemini CLI
  * skips the confirmation for an allowed command, and how Codex splits a `bash -lc` script before
- * it checks each command.
+ * it checks each command. For the gates, GitHub Actions itself is not run: the workflow is read
+ * as YAML and its key-detection script run with `bash -e`, as a runner would, and the secret scan
+ * is not downloaded.
  */
 import { execFileSync, spawnSync } from 'node:child_process'
 import {
@@ -27,6 +29,7 @@ import { fileURLToPath } from 'node:url'
 import { Ajv } from 'ajv'
 import { Ajv2020 } from 'ajv/dist/2020.js'
 import { afterAll, describe, expect, it } from 'vitest'
+import { parse as parseYaml } from 'yaml'
 import { findQuestionnaire, type Questionnaire, renderAgentContext } from '../src/index.ts'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -366,5 +369,214 @@ describe('dependency-cruiser', () => {
     const { status, stdout } = depcruise()
     expect(stdout).toContain('not-in-diagram:src/domain: src/domain/leak.js → src/ui/page.js')
     expect(status).toBe(1)
+  })
+})
+
+describe('Gates', () => {
+  const HOOK_SHEBANG = '#!/bin/sh\n'
+  const WORKFLOW = '.github/workflows/agent-conventions.yml'
+
+  /** Renders the hooks and the workflow, and writes them as the CLI does, in a Git repository. */
+  const gated = (name: string, answers: [string, string, number | string | string[]][]) => {
+    const { files } = renderAgentContext({
+      project: { name: 'Shop', description: null, architectures: [] },
+      questionnaires: ['frontend-react', 'git-workflow', 'security'].map(
+        (id) => findQuestionnaire(id) as Questionnaire,
+      ),
+      answers: answers.map(([questionnaireId, questionId, value]) => ({
+        questionnaireId,
+        questionId,
+        value,
+      })),
+      rules: [],
+      notes: null,
+      targets: [],
+    })
+    const root = join(tmp, name)
+    for (const file of files) {
+      const hook = file.path.startsWith('.githooks/')
+      mkdirSync(dirname(join(root, file.path)), { recursive: true })
+      writeFileSync(join(root, file.path), `${hook ? HOOK_SHEBANG : ''}${file.content}`)
+      if (hook) chmodSync(join(root, file.path), 0o755)
+    }
+    execFileSync('git', ['init', '--quiet', root])
+    // What the recommendation asks the owner to run.
+    execFileSync('git', ['config', 'core.hooksPath', '.githooks'], { cwd: root })
+    return root
+  }
+
+  const root = gated('gates', [
+    ['frontend-react', 'package-manager', 'pnpm'],
+    ['frontend-react', 'checks', 'pnpm lint && pnpm test: unit'],
+    ['git-workflow', 'commit-messages', 'conventional'],
+    ['git-workflow', 'attribution', 5],
+    ['git-workflow', 'ci-workflow', 'github-actions'],
+    ['security', 'secrets', 5],
+  ])
+
+  const fakeBin = join(tmp, 'gates-bin')
+  mkdirSync(fakeBin)
+  // A package manager whose `$FAIL` script fails.
+  writeFileSync(join(fakeBin, 'pnpm'), '#!/bin/sh\necho "pnpm $*"\n[ "$1" != "$FAIL" ]\n')
+  chmodSync(join(fakeBin, 'pnpm'), 0o755)
+
+  /** A real commit, with nobody's own Git configuration: both hooks run, as for any author. */
+  const commit = (message: string, fail = '') =>
+    spawnSync('git', ['commit', '--allow-empty', '--message', message], {
+      cwd: root,
+      env: {
+        PATH: `${fakeBin}:${process.env.PATH}`,
+        FAIL: fail,
+        GIT_CONFIG_GLOBAL: '/dev/null',
+        GIT_CONFIG_NOSYSTEM: '1',
+        GIT_AUTHOR_NAME: 'Ada',
+        GIT_AUTHOR_EMAIL: 'ada@example.com',
+        GIT_COMMITTER_NAME: 'Ada',
+        GIT_COMMITTER_EMAIL: 'ada@example.com',
+      },
+      encoding: 'utf8',
+    })
+  const commits = () =>
+    Number(execFileSync('git', ['rev-list', '--count', '--all'], { cwd: root, encoding: 'utf8' }))
+
+  it.each(['pre-commit', 'commit-msg'])('renders a %s hook the shell accepts', (hook) => {
+    const { status, stderr } = spawnSync('sh', ['-n', join(root, '.githooks', hook)], {
+      encoding: 'utf8',
+    })
+    expect({ status, stderr }).toEqual({ status: 0, stderr: '' })
+  })
+
+  it('lets a commit through when the checks pass and the message fits', () => {
+    const { status, stderr } = commit('feat(shop): add the basket\n\nBecause.')
+    // Every check ran, in order, with its arguments kept whole. Git sends a hook's output to
+    // its own stderr.
+    expect(stderr).toBe('pnpm lint\npnpm test: unit\n')
+    expect(status).toBe(0)
+    expect(commits()).toBe(1)
+  })
+
+  it('refuses the commit at the first check that fails', () => {
+    const { status, stderr } = commit('feat: never committed', 'lint')
+    expect(status).toBe(1)
+    expect(stderr).toBe('pnpm lint\n')
+    expect(commit('feat: never committed', 'test:').status).toBe(1)
+    expect(commits()).toBe(1)
+  })
+
+  it('refuses a subject that is not a Conventional Commit', () => {
+    const { status, stderr } = commit('Add the basket')
+    expect(status).toBe(1)
+    expect(stderr).toContain('commit-msg: the subject must follow Conventional Commits')
+    expect(commits()).toBe(1)
+  })
+
+  it('refuses a message that credits an assistant, and lets a person be credited', () => {
+    const refused = commit('fix: round the total\n\nCo-Authored-By: Claude <noreply@anthropic.com>')
+    expect(refused.status).toBe(1)
+    expect(refused.stderr).toContain('must not credit a coding assistant')
+    expect(commits()).toBe(1)
+
+    const person = 'fix: round the total\n\nCo-authored-by: Claude Dupont <claude@example.com>'
+    expect(commit(person).status).toBe(0)
+    expect(commits()).toBe(2)
+  })
+
+  it('renders no commit-msg hook and no workflow when no answer asks for one', () => {
+    const plain = gated('gates-plain', [
+      ['frontend-react', 'checks', 'pnpm lint'],
+      ['git-workflow', 'commit-messages', 'imperative'],
+      ['git-workflow', 'attribution', 3],
+    ])
+    const tracked = execFileSync('git', ['ls-files', '--others'], { cwd: plain, encoding: 'utf8' })
+    expect(tracked.trim().split('\n')).toEqual(['.githooks/pre-commit', 'AGENTS.md'])
+  })
+
+  describe('workflow', () => {
+    type Step = {
+      id?: string
+      name?: string
+      if?: string
+      uses?: string
+      run?: string
+      env?: Record<string, string>
+    }
+    const workflow = parseYaml(read(root, WORKFLOW))
+    const job = workflow.jobs['agent-conventions']
+    const steps: Step[] = job.steps
+    const step = (name: string) => steps.findIndex((item) => item.name === name)
+
+    it('is YAML a runner can read, started by pull requests and pushes', () => {
+      expect(Object.keys(workflow.on)).toEqual(['pull_request', 'push'])
+      expect(workflow.permissions).toEqual({ contents: 'read' })
+      expect(job['runs-on']).toBe('ubuntu-24.04')
+      for (const item of steps) expect(typeof (item.uses ?? item.run)).toBe('string')
+    })
+
+    it('pins every action by a full commit', () => {
+      const uses = steps.flatMap((item) => (item.uses ? [item.uses] : []))
+      expect(uses.map((action) => action.split('@')[0])).toEqual([
+        'actions/checkout',
+        'actions/setup-node',
+      ])
+      for (const action of uses) expect(action).toMatch(/^[\w-]+\/[\w-]+@[0-9a-f]{40}$/)
+    })
+
+    it('runs each check as it was answered, after the install', () => {
+      const runs = steps.flatMap((item) => (item.run && !item.name ? [item.run] : []))
+      expect(runs).toEqual([
+        'corepack enable',
+        'pnpm install --frozen-lockfile',
+        'pnpm lint',
+        'pnpm test: unit',
+      ])
+    })
+
+    it('gives the key to the detection and check steps only, and guards the check', () => {
+      const [detect, check] = [step('Look for the API key'), step('Check the agent conventions')]
+      expect(detect).toBeGreaterThan(-1)
+      expect(check).toBe(detect + 1)
+      expect(steps[detect]?.id).toBe('key')
+      expect(steps[check]?.if).toBe("steps.key.outputs.present == 'true'")
+      expect(steps[check]?.run).toMatch(/^npx @coreloom-uml\/cli@\d+\.\d+\.\d+ check$/)
+      expect(job.env).toBeUndefined()
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub Actions expression syntax.
+      const secret = { CORELOOM_UML_API_KEY: '${{ secrets.CORELOOM_UML_API_KEY }}' }
+      expect(steps.map((item) => item.env)).toEqual(
+        steps.map((_, index) => (index === detect || index === check ? secret : undefined)),
+      )
+    })
+
+    it('warns and sets no output without the key, and sets it with one', () => {
+      const output = join(tmp, 'github-output')
+      /** As a runner runs a `run` step: `bash -e`. */
+      const detect = (key: string) => {
+        writeFileSync(output, '')
+        const { status, stdout } = spawnSync(
+          'bash',
+          ['-e', '-c', steps[step('Look for the API key')]?.run ?? 'exit 9'],
+          { env: { CORELOOM_UML_API_KEY: key, GITHUB_OUTPUT: output }, encoding: 'utf8' },
+        )
+        return { status, stdout, output: readFileSync(output, 'utf8') }
+      }
+      const missing = detect('')
+      expect(missing.status).toBe(0)
+      expect(missing.stdout).toMatch(/^::warning::The agent conventions check was skipped/)
+      expect(missing.output).toBe('')
+      expect(detect('clu_fixture-key')).toEqual({ status: 0, stdout: '', output: 'present=true\n' })
+    })
+
+    it('scans the whole history with a binary pinned by version and checksum', () => {
+      const scan = steps[step('Scan for secrets')]?.run ?? ''
+      expect(scan).toMatch(/releases\/download\/v(\d+\.\d+\.\d+)\/gitleaks_\1_linux_x64\.tar\.gz/)
+      expect(scan).toMatch(
+        /echo "[0-9a-f]{64} {2}\$RUNNER_TEMP\/gitleaks\.tar\.gz" \| sha256sum -c -/,
+      )
+      expect(steps[0]?.uses).toMatch(/^actions\/checkout@/)
+      expect((steps[0] as { with?: object }).with).toEqual({
+        'persist-credentials': false,
+        'fetch-depth': 0,
+      })
+      expect(spawnSync('bash', ['-n', '-c', scan]).status).toBe(0)
+    })
   })
 })

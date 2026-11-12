@@ -39,6 +39,32 @@ its block uses `//` markers, so rules and options you add after the block
 path from the repository root. The file is code that dependency-cruiser runs, so every change to
 it is shown and confirmed first too.
 
+The generation also holds gates that apply to every commit, whatever tool wrote it:
+
+- **Git hooks**, `.githooks/pre-commit` (your checks, and the dependency rules when there are
+  some) and `.githooks/commit-msg` (the commit message format and the refusal to credit an
+  assistant, when the conventions say so). The block uses `#` markers; lines you add before or
+  after it are kept. When the CLI creates the file it writes `#!/bin/sh` as its first line, and
+  it makes the file executable on every write (on Windows, where there is no such bit, run
+  `git update-index --chmod=+x` on each hook once). A block is never added to an existing hook
+  written in another language than shell. **The CLI never changes Git's configuration**: the
+  hooks run only once you have told Git to read the folder, in each clone:
+
+  ```sh
+  git config core.hooksPath .githooks
+  ```
+
+  If another tool already owns the hooks path (Husky, for instance), call the scripts from its
+  hooks instead: `sh .githooks/commit-msg "$1"`.
+- **A GitHub Actions workflow**, `.github/workflows/agent-conventions.yml`, when the Git
+  workflow questionnaire asks for it: it runs `check` (below), then your checks. The block uses `#` markers; steps you add after it, at the same
+  indentation, are kept. `check` needs the `CORELOOM_UML_API_KEY` repository secret: without it (a pull request from a
+  fork, or a secret not configured) that step is skipped with a warning and the others still
+  run. An existing file of that name without a block is refused rather than appended to.
+
+Both are code that runs on your machine or in your CI, so every change to one is shown and
+confirmed first (or accepted with `--yes`).
+
 Requires Node.js 22 or newer.
 
 ## Quick start
@@ -74,7 +100,7 @@ Fetches the conventions' latest generation and, for each file:
 | holds the block the last pull wrote         | the block is replaced                                     |
 | holds a block edited by hand                | the diff is shown and a confirmation asked                |
 | left the generation (a target was removed)  | its block is removed, and the file deleted if left empty |
-| is a settings file with new content         | the diff is shown and a confirmation asked                |
+| is a settings file, a hook or a workflow with new content | the diff is shown and a confirmation asked |
 | is a JSON file missing an entry it was given | it counts as edited by hand: same as a block edited by hand |
 
 - `--dry-run` shows the plan and the diffs, and writes nothing.
@@ -113,16 +139,10 @@ anything and never writes.
 When several apply, the first of 2, 4, 3 is returned (edited, then missing, then stale). `--json` prints one object instead of text: `ok`, `exitCode`, `generationId`,
 `latestGenerationId` and `files` (`path`, `state`).
 
-As a GitHub Actions step, with the key stored as a repository secret (pin the version you use):
-
-```yaml
-- name: Check the agent conventions
-  run: npx @coreloom-uml/cli@0.1.0 check
-  env:
-    CORELOOM_UML_API_KEY: ${{ secrets.CORELOOM_UML_API_KEY }}
-```
-
-The app shows the same steps, followed by your own checks, in the generation's recommendations.
+When the Git workflow questionnaire asks for it, the generation holds a GitHub Actions workflow
+that runs it, then your own checks: `.github/workflows/agent-conventions.yml`, written by `pull`.
+It reads the key from the `CORELOOM_UML_API_KEY` repository secret. In another CI, run
+`npx @coreloom-uml/cli@<version> check` with that variable set (pin the version you use).
 
 ### `config set-key`
 

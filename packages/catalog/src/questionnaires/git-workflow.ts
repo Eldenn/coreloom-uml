@@ -3,14 +3,15 @@ import type { Questionnaire } from '../schemas.ts'
 /**
  * How the assistant uses Git. Questions 1 to 5 record how the repository is worked on; 6 and 7
  * are preferences on a 1–5 agreement scale, where 3 produces nothing. It feeds only its own
- * `git.*` slots, so it combines with any other questionnaire.
+ * `git.*` slots, so it combines with any other questionnaire. Question 8 is optional: its
+ * `github-actions` answer also renders the CI workflow (`render/gates.ts`).
  *
  * Bump `version` on any change to a question, an option or a fragment; never reuse a removed
  * question id; declare a removed option in `migrations`.
  */
 export const gitWorkflow = {
   id: 'git-workflow',
-  version: '1.0.0',
+  version: '1.1.0',
   title: { en: 'Git workflow', fr: 'Travail avec Git' },
   description: {
     en: 'Branches, commit messages, what your coding assistant may commit and push, and what never goes into the repository.',
@@ -278,6 +279,36 @@ export const gitWorkflow = {
         {
           when: { scaleAtMost: 2 },
           text: 'Add a co-author trailer naming the assistant to every commit it writes.',
+        },
+      ],
+    },
+    {
+      id: 'ci-workflow',
+      type: 'single',
+      slot: 'git.ci-workflow',
+      section: 'Git',
+      label: {
+        en: 'Every pull request is checked in CI:',
+        fr: 'Chaque pull request est vérifiée en CI :',
+      },
+      options: [
+        {
+          value: 'github-actions',
+          label: {
+            en: 'By a generated GitHub Actions workflow (adds `.github/workflows/agent-conventions.yml`)',
+            fr: 'Par un workflow GitHub Actions généré (ajoute `.github/workflows/agent-conventions.yml`)',
+          },
+        },
+        {
+          value: 'none',
+          label: { en: 'No generated workflow', fr: 'Pas de workflow généré' },
+        },
+      ],
+      required: false,
+      fragments: [
+        {
+          when: { equals: 'github-actions' },
+          text: 'The `.github/workflows/agent-conventions.yml` workflow runs the checks on every pull request: never edit, skip or disable it; fix what it reports.',
         },
       ],
     },

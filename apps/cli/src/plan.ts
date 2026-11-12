@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises'
 import {
   findManagedBlock,
   HASH_MARKERS,
+  HOOK_SHEBANG,
+  HOOKS_DIRECTORY,
   hashManagedBlock,
   MARKDOWN_MARKERS,
   type ManagedBlockLocation,
@@ -64,11 +66,20 @@ const isRules = (path: string) => path.endsWith('.rules')
 /** A CommonJS configuration file: its block uses `//` markers, and a tool runs it as code. */
 export const isCjs = (path: string) => path.endsWith('.cjs')
 /**
- * A tool's settings or configuration file: unlike Markdown, it decides what runs here without
- * asking.
+ * A Git hook (a shell script without extension, in the tracked hooks folder): its block uses `#`
+ * markers, after the `#!` line the file starts with, and Git runs it on every commit.
+ */
+export const isHook = (path: string) => path.startsWith(`${HOOKS_DIRECTORY}/`)
+/** A YAML file (a CI workflow): its block uses `#` markers, and the CI runs what it says. */
+export const isYaml = (path: string) => /\.ya?ml$/.test(path)
+/**
+ * A tool's settings or configuration file, or a script: unlike Markdown, it decides what runs
+ * here without asking.
  */
 export const isSettings = (path: string) =>
-  isJson(path) || isToml(path) || isRules(path) || isCjs(path)
+  isJson(path) || isToml(path) || isRules(path) || isCjs(path) || isHook(path) || isYaml(path)
+const usesHashMarkers = (path: string) =>
+  isToml(path) || isRules(path) || isHook(path) || isYaml(path)
 
 /**
  * Whether applying the change asks the user first: adding to an existing file, a hand edit, or
@@ -93,8 +104,11 @@ async function readText(path: string): Promise<string | null> {
 
 export function locateBlock(path: string, text: string): ManagedBlockLocation | null {
   try {
-    const markers =
-      isToml(path) || isRules(path) ? HASH_MARKERS : isCjs(path) ? SLASH_MARKERS : MARKDOWN_MARKERS
+    const markers = usesHashMarkers(path)
+      ? HASH_MARKERS
+      : isCjs(path)
+        ? SLASH_MARKERS
+        : MARKDOWN_MARKERS
     return findManagedBlock(text, markers)
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
@@ -127,6 +141,25 @@ function refuseDuplicateKeys(path: string, block: string, rest: string) {
   if (duplicate) {
     throw new CliError(
       `${path} already sets ${duplicate} outside the managed block: remove that line, then pull again.`,
+    )
+  }
+}
+
+/**
+ * A block cannot be added blindly to these files: a second YAML document root makes the workflow
+ * invalid, and shell lines mean nothing to a hook written in another language.
+ */
+function refuseUnsafeAppend(path: string, text: string) {
+  if (text.trim() === '') return
+  if (isYaml(path)) {
+    throw new CliError(
+      `${path} exists without a managed block: move or delete it, then pull again.`,
+    )
+  }
+  const shebang = /^#!.*/.exec(text)?.[0]
+  if (isHook(path) && shebang && !/\b(ba|da|k|z)?sh\b/.test(shebang.trim())) {
+    throw new CliError(
+      `${path} is not a shell script (${shebang.trim()}): the block cannot be added to it. Move it, then pull again.`,
     )
   }
 }
@@ -220,7 +253,8 @@ export async function planPull(
         ...base,
         action: ChangeAction.Create,
         edited: false,
-        after: content,
+        // The `#!` line must be the first of the file, so it stays outside the block.
+        after: isHook(file.path) ? `${HOOK_SHEBANG}\n${content}` : content,
         oldBlock: null,
       })
       continue
@@ -231,6 +265,7 @@ export async function planPull(
       refuseDuplicateKeys(file.path, newBlock, rest)
     }
     if (!location) {
+      refuseUnsafeAppend(file.path, before)
       changes.push({
         ...base,
         action: ChangeAction.Append,
@@ -289,13 +324,14 @@ export async function planPull(
     }
     const location = before === null ? null : locateBlock(path, before)
     if (before === null || !location) continue
+    const rest = removeBlock(before, location)
     changes.push({
       path,
       target,
       action: ChangeAction.Remove,
       edited: hashManagedBlock(location.block) !== previous.blockHash,
       before,
-      after: removeBlock(before, location),
+      after: isHook(path) && rest?.trim() === HOOK_SHEBANG ? null : rest,
       oldBlock: location.block,
       newBlock: null,
       blockHash: null,
