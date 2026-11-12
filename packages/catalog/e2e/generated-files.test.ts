@@ -2,6 +2,9 @@
  * Loads the settings files the catalog renders into the tools they are written for, offline: no
  * account, no key, no model call. Run with `pnpm test:e2e` (the unit suite stays in `src`).
  *
+ * Codex and Claude Code are not dependencies: they are found on `PATH`, or through `CODEX_BIN`
+ * and `CLAUDE_BIN`. Without one, its cases are skipped locally and fail in CI, which installs both.
+ *
  * What only a live session could show is not covered: which commands a Claude Code permission
  * rule matches and that a `Stop` hook's stderr goes back to the model (Claude Code documents no
  * offline evaluator: `claude doctor` only says whether it accepts the rules), that Gemini CLI
@@ -28,6 +31,23 @@ import { findQuestionnaire, type Questionnaire, renderAgentContext } from '../sr
 
 const here = dirname(fileURLToPath(import.meta.url))
 const bin = (name: string) => join(here, '../node_modules/.bin', name)
+/**
+ * A tool this suite does not install: its command, or `null` when it is missing, which CI refuses
+ * so that these cases cannot stop running unnoticed.
+ */
+function tool(name: string, variable: string, npmPackage: string): string | null {
+  const command = process.env[variable] || name
+  if (spawnSync(command, ['--version'], { stdio: 'ignore' }).status === 0) return command
+  const message = `\`${command}\` not found: install it with \`npm install --global ${npmPackage}\`, or set ${variable} to its path.`
+  if (process.env.CI) throw new Error(message)
+  process.stderr.write(`Skipping the ${name} cases: ${message}\n`)
+  return null
+}
+
+// The versions the CI job installs (`.github/workflows/ci.yml`).
+const CODEX = tool('codex', 'CODEX_BIN', '@openai/codex@0.167.1')
+const CLAUDE = tool('claude', 'CLAUDE_BIN', '@anthropic-ai/claude-code@2.1.319')
+
 const schema = (name: string) => JSON.parse(readFileSync(join(here, 'schemas', name), 'utf8'))
 
 // `realpath`: Codex names a trusted project by its resolved path.
@@ -96,7 +116,7 @@ const autonomous = project('autonomous', 3)
 /** The assistant asks before anything: read-only sandbox, no check allowed. */
 const asksFirst = project('asks-first', 5)
 
-describe('Codex', () => {
+describe.skipIf(CODEX === null)('Codex', () => {
   const RULES = '.codex/rules/coreloom-uml.rules'
   const codexHome = join(tmp, 'codex-home')
   mkdirSync(codexHome)
@@ -106,7 +126,7 @@ describe('Codex', () => {
       roots.map((root) => `[projects.${JSON.stringify(root)}]\ntrust_level = "trusted"\n`).join(''),
     )
   const codex = (cwd: string, ...args: string[]) =>
-    execFileSync(bin('codex'), args, {
+    execFileSync(CODEX as string, args, {
       cwd,
       env: { ...process.env, CODEX_HOME: codexHome },
       encoding: 'utf8',
@@ -201,7 +221,7 @@ describe('Claude Code', () => {
     expect(validate({ hooks: { Stop: [{ hooks: [{ type: 'command' }] }] } })).toBe(false)
   })
 
-  describe('doctor', () => {
+  describe.skipIf(CLAUDE === null)('doctor', () => {
     const configDir = join(tmp, 'claude-config')
     mkdirSync(configDir)
     const trust = (...roots: string[]) =>
@@ -215,19 +235,15 @@ describe('Claude Code', () => {
       )
     /**
      * `claude doctor` reads the settings as a session would and reports what it refuses, without
-     * signing in. The package's wrapper is run with Node: its install script is not allowed.
+     * signing in.
      */
     const doctor = (root: string) =>
-      spawnSync(
-        process.execPath,
-        [join(here, '../node_modules/@anthropic-ai/claude-code/cli-wrapper.cjs'), 'doctor'],
-        {
-          cwd: root,
-          env: { ...process.env, CLAUDE_CONFIG_DIR: configDir, DISABLE_AUTOUPDATER: '1' },
-          encoding: 'utf8',
-          stdio: ['ignore', 'pipe', 'pipe'],
-        },
-      )
+      spawnSync(CLAUDE as string, ['doctor'], {
+        cwd: root,
+        env: { ...process.env, CLAUDE_CONFIG_DIR: configDir, DISABLE_AUTOUPDATER: '1' },
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
     const PROBLEMS = /Invalid settings|may not work as written/
     const UNTRUSTED = /Ignoring 2 permissions\.allow entries from \.claude\/settings\.json/
 

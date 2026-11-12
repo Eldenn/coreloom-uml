@@ -13,7 +13,8 @@ const READ_ONLY_FROM = 5
  * by default). No pointer needed.
  *
  * Settings: a trusted project's `.codex/config.toml` overrides the user's. `approval_policy` is
- * `on-request` or `never` (`untrusted` is no longer supported, `on-failure` is deprecated);
+ * `on-request`, `never` or a `granular` table; the reference calls `untrusted` unsupported and
+ * `on-failure` deprecated, though Codex 0.167.1 still reads both without an error;
  * `sandbox_mode` is `read-only`, `workspace-write` or `danger-full-access`. Only the first of
  * each is ever written here, and the sandbox comes from the autonomy answer.
  *
