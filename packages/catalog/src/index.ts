@@ -59,6 +59,20 @@ export {
   renderAgentContext,
 } from './render/render-agent-context.ts'
 export {
+  RIGHTS,
+  Right,
+  RightStatus,
+  ROLE_DESCRIPTION_MAX_LENGTH,
+  ROLE_LINE_MAX_LENGTH,
+  ROLE_LIST_MAX,
+  ROLE_MISSION_MAX_LENGTH,
+  ROLE_NAME_MAX_LENGTH,
+  ROLE_SLUG,
+  ROLE_SLUG_MAX_LENGTH,
+  type Role,
+  roleSchema,
+} from './roles/role.ts'
+export {
   ACCEPTED_AUDIT_RISKS,
   ANSWER_TEXT_MAX_LENGTH,
   type AnswerValue,

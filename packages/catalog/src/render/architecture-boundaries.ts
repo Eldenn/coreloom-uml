@@ -13,7 +13,7 @@ export type PackageDiagramShape = {
 type ArchitectureBoundaries = { paths: string[]; allowed: Set<string> }
 
 /** A folder path that needs no quoting in a shell and no surprise in a regular expression. */
-const FOLDER_PATH = /^[A-Za-z0-9._@-]+(?:\/[A-Za-z0-9._@-]+)*$/
+export const FOLDER_PATH = /^[A-Za-z0-9._@-]+(?:\/[A-Za-z0-9._@-]+)*$/
 
 /** Whether `path` is the folder `ancestor` or lies inside it. */
 function within(path: string, ancestor: string): boolean {
