@@ -140,14 +140,21 @@ test.group('Agent configs - questionnaires', (group) => {
     const list = await client.get('/questionnaires').headers(json).loginAs(user)
     list.assertStatus(200)
     assert.containsSubset(list.body().questionnaires, [
-      { id: Q, version: '1.0.0', questionCount: 11 },
+      { id: Q, version: '1.1.0', questionCount: 50 },
     ])
 
     const shown = await client.get(`/questionnaires/${Q}`).headers(json).loginAs(user)
     shown.assertStatus(200)
     const { questionnaire } = shown.body()
-    assert.lengthOf(questionnaire.questions, 11)
-    assert.deepEqual(questionnaire.sections, ['TypeScript', 'React'])
+    assert.lengthOf(questionnaire.questions, 50)
+    assert.deepEqual(questionnaire.sections, [
+      'TypeScript',
+      'React',
+      'HTML, CSS and accessibility',
+      'Framework and rendering',
+      'Data and API',
+      'Front-end security',
+    ])
     assert.properties(questionnaire.scaleLabels, ['min', 'max'])
     for (const question of questionnaire.questions) assert.notProperty(question, 'fragments')
 
@@ -164,24 +171,21 @@ test.group('Agent configs - questionnaires', (group) => {
     const list = await client.get('/questionnaires').headers(json).loginAs(user)
     list.assertStatus(200)
     const ids = (list.body().questionnaires as { id: string }[]).map((item) => item.id)
-    assert.deepEqual(ids, [Q, 'backend-node', 'git-workflow', 'security'])
+    assert.deepEqual(ids, [
+      Q,
+      'backend-node',
+      'git-workflow',
+      'security',
+      'system-design',
+      'software-design',
+      'ai-engineering',
+      'ai-agents',
+      'frontend-performance',
+    ])
 
     const created = await createConfig(client, user, null, { questionnaires: ids })
-    assert.deepEqual(created.config.ruleSections, [
-      'Project',
-      'Architecture',
-      'Working style',
-      'TypeScript',
-      'React',
-      'API',
-      'Errors and logging',
-      'Database',
-      'Git',
-      'Security',
-      'Testing',
-      'Workflow',
-      'Tooling',
-    ])
+    assert.includeMembers(created.config.ruleSections, ['React', 'Database', 'Git', 'Agent loop'])
+    assert.notInclude(created.config.ruleSections, 'Project notes')
   })
 
   test('requires a session or an API token', async ({ client }) => {
@@ -204,7 +208,7 @@ test.group('Agent configs - configuration', (group) => {
     assert.containsSubset(created.config, {
       projectId: project.id,
       name: 'Storefront conventions',
-      questionnaires: [{ id: Q, version: '1.0.0' }],
+      questionnaires: [{ id: Q, version: '1.1.0' }],
       targets: ['claude-code', 'cursor'],
       notes: 'Ship on Fridays.',
       revision: 1,
@@ -219,6 +223,10 @@ test.group('Agent configs - configuration', (group) => {
       'Working style',
       'TypeScript',
       'React',
+      'HTML, CSS and accessibility',
+      'Framework and rendering',
+      'Data and API',
+      'Front-end security',
       'Testing',
       'Workflow',
       'Tooling',
@@ -234,7 +242,7 @@ test.group('Agent configs - configuration', (group) => {
     updated.assertStatus(200)
     assert.containsSubset(updated.body().config, {
       id: config.id,
-      questionnaires: [{ id: Q, version: '1.0.0' }],
+      questionnaires: [{ id: Q, version: '1.1.0' }],
       targets: ['generic'],
       notes: 'Ship on Fridays.',
       revision: 2,
@@ -997,7 +1005,7 @@ test.group('Agent configs - questionnaire versions', (group) => {
     const detail = await client.get(`/agent-configs/${config.id}`).headers(json).loginAs(user)
     detail.assertStatus(200)
     assert.deepEqual(detail.body().config.outdatedQuestionnaires, [
-      { id: Q, version: '0.9.0', currentVersion: '1.0.0' },
+      { id: Q, version: '0.9.0', currentVersion: '1.1.0' },
     ])
     assert.lengthOf(detail.body().config.answers, 1)
 
@@ -1008,7 +1016,7 @@ test.group('Agent configs - questionnaire versions', (group) => {
       .json({ questionnaires: [Q], targets: ['claude-code', 'cursor'] })
     upgraded.assertStatus(200)
     assert.deepEqual(upgraded.body().config.outdatedQuestionnaires, [])
-    assert.deepEqual(upgraded.body().config.questionnaires, [{ id: Q, version: '1.0.0' }])
+    assert.deepEqual(upgraded.body().config.questionnaires, [{ id: Q, version: '1.1.0' }])
     assert.lengthOf(upgraded.body().config.answers, 1)
   })
 })

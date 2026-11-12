@@ -38,9 +38,9 @@ describe('the real catalog', () => {
     expect(new Set(slots).size).toBe(slots.length)
   })
 
-  it('asks the eleven frontend-react questions of the spec', () => {
-    expect(frontendReact.version).toBe('1.0.0')
-    expect(frontendReact.questions.map((question) => question.id)).toEqual([
+  it('still asks the eleven frontend-react questions of the spec first', () => {
+    const spec = frontendReact.questions.slice(0, 11)
+    expect(spec.map((question) => question.id)).toEqual([
       'ts-any',
       'ts-strict',
       'components-size',
@@ -55,27 +55,25 @@ describe('the real catalog', () => {
     ])
   })
 
-  it('adds questionnaires of five to ten questions that combine with every other one', () => {
-    const added = QUESTIONNAIRES.filter((questionnaire) => questionnaire.id !== 'frontend-react')
-    expect(added.map((questionnaire) => questionnaire.id)).toEqual([
+  it('adds questionnaires that combine with every other one, each with its own sections', () => {
+    expect(QUESTIONNAIRES.map((questionnaire) => questionnaire.id)).toEqual([
+      'frontend-react',
       'backend-node',
       'git-workflow',
       'security',
+      'system-design',
+      'software-design',
+      'ai-engineering',
+      'ai-agents',
+      'frontend-performance',
     ])
-    for (const questionnaire of added) {
+    for (const questionnaire of QUESTIONNAIRES) {
       expect(questionnaire.questions.length).toBeGreaterThanOrEqual(5)
-      expect(questionnaire.questions.length).toBeLessThanOrEqual(10)
     }
     expect(composeQuestionnaires(QUESTIONNAIRES)).toMatchObject({ ok: true })
-    expect(sectionOrder(QUESTIONNAIRES).slice(3, -4)).toEqual([
-      'TypeScript',
-      'React',
-      'API',
-      'Errors and logging',
-      'Database',
-      'Git',
-      'Security',
-    ])
+    const own = QUESTIONNAIRES.flatMap((questionnaire) => questionnaire.sections)
+    expect(new Set(own).size).toBe(own.length)
+    expect(sectionOrder(QUESTIONNAIRES).slice(3, -4)).toEqual(own)
   })
 
   it('never reuses a question id across questionnaires', () => {
@@ -232,8 +230,7 @@ describe('composeQuestionnaires', () => {
         'Project',
         'Architecture',
         'Working style',
-        'TypeScript',
-        'React',
+        ...frontendReact.sections,
         'Testing',
         'Workflow',
         'Tooling',
@@ -250,9 +247,8 @@ describe('composeQuestionnaires', () => {
 
   it('merges sections in questionnaire order without duplicates', () => {
     const disjoint = { ...backend, questions: [] } as unknown as Questionnaire
-    expect(sectionOrder([frontendReact, disjoint]).slice(3, 6)).toEqual([
-      'TypeScript',
-      'React',
+    expect(sectionOrder([frontendReact, disjoint]).slice(3, -4)).toEqual([
+      ...frontendReact.sections,
       'Node',
     ])
   })

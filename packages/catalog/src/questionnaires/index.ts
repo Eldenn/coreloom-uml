@@ -1,9 +1,14 @@
 import type { Localized, Questionnaire } from '../schemas.ts'
 import { sectionOrder } from '../sections.ts'
+import { aiAgents } from './ai-agents.ts'
+import { aiEngineering } from './ai-engineering.ts'
 import { backendNode } from './backend-node.ts'
+import { frontendPerformance } from './frontend-performance.ts'
 import { frontendReact } from './frontend-react.ts'
 import { gitWorkflow } from './git-workflow.ts'
 import { security } from './security.ts'
+import { softwareDesign } from './software-design.ts'
+import { systemDesign } from './system-design.ts'
 
 /** Every questionnaire of the catalog, at its current version. */
 export const QUESTIONNAIRES: readonly Questionnaire[] = [
@@ -11,6 +16,11 @@ export const QUESTIONNAIRES: readonly Questionnaire[] = [
   backendNode,
   gitWorkflow,
   security,
+  systemDesign,
+  softwareDesign,
+  aiEngineering,
+  aiAgents,
+  frontendPerformance,
 ]
 
 /** Labels of the ends of every agreement scale. */
