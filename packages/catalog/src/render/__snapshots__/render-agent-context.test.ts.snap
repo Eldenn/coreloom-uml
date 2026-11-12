@@ -51,9 +51,10 @@ fi
 exports[`renderAgentContext > renders a workflow that pins the CLI and its actions and runs the checks 1`] = `
 "# coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
 # From the agent conventions (Coreloom UML). It applies to every change, whoever writes it.
-# It needs the committed .coreloom-uml.json and an API key with the read ability, stored as
-# the CORELOOM_UML_API_KEY secret. Steps added after this block, at the same indentation,
-# are kept.
+# The conventions check needs the committed .coreloom-uml.json and an API key with the read
+# ability, stored as the CORELOOM_UML_API_KEY secret; without the secret it is skipped with a
+# warning, and the other steps still run. Steps added after this block, at the same
+# indentation, are kept.
 name: Agent conventions
 
 on:
@@ -74,7 +75,18 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
+      - name: Look for the API key
+        id: key
+        env:
+          CORELOOM_UML_API_KEY: \${{ secrets.CORELOOM_UML_API_KEY }}
+        run: |
+          if [ -n "$CORELOOM_UML_API_KEY" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::The agent conventions check was skipped: the CORELOOM_UML_API_KEY secret is missing (a pull request from a fork, or a secret that is not configured)."
+          fi
       - name: Check the agent conventions
+        if: steps.key.outputs.present == 'true'
         run: npx @coreloom-uml/cli@0.1.0 check
         env:
           CORELOOM_UML_API_KEY: \${{ secrets.CORELOOM_UML_API_KEY }}
@@ -432,9 +444,10 @@ pnpm lint || exit 1
 exports[`renderAgentContext > scans for secrets only when an answer keeps them out, with a pinned and checked binary 1`] = `
 "# coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
 # From the agent conventions (Coreloom UML). It applies to every change, whoever writes it.
-# It needs the committed .coreloom-uml.json and an API key with the read ability, stored as
-# the CORELOOM_UML_API_KEY secret. Steps added after this block, at the same indentation,
-# are kept.
+# The conventions check needs the committed .coreloom-uml.json and an API key with the read
+# ability, stored as the CORELOOM_UML_API_KEY secret; without the secret it is skipped with a
+# warning, and the other steps still run. Steps added after this block, at the same
+# indentation, are kept.
 name: Agent conventions
 
 on:
@@ -456,7 +469,18 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
+      - name: Look for the API key
+        id: key
+        env:
+          CORELOOM_UML_API_KEY: \${{ secrets.CORELOOM_UML_API_KEY }}
+        run: |
+          if [ -n "$CORELOOM_UML_API_KEY" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::The agent conventions check was skipped: the CORELOOM_UML_API_KEY secret is missing (a pull request from a fork, or a secret that is not configured)."
+          fi
       - name: Check the agent conventions
+        if: steps.key.outputs.present == 'true'
         run: npx @coreloom-uml/cli@0.1.0 check
         env:
           CORELOOM_UML_API_KEY: \${{ secrets.CORELOOM_UML_API_KEY }}

@@ -80,7 +80,6 @@ describe('renderAgentContext', () => {
       ['CLAUDE.md', 'pointer'],
       ['.claude/settings.json', 'settings'],
       ['.githooks/pre-commit', 'config'],
-      ['.github/workflows/agent-conventions.yml', 'config'],
     ])
     expect(files[1]?.content).toBe(
       `${MANAGED_BLOCK_BEGIN}\n@AGENTS.md\n<!-- coreloom-uml:end -->\n`,
@@ -248,7 +247,7 @@ describe('renderAgentContext', () => {
     // The same command gates every commit and every build, after the checks.
     const gate = 'npx depcruise packages/shared.kit src'
     expect(settings(input, PRE_COMMIT)).toContain(`pnpm test || exit 1\n${gate} || exit 1\n`)
-    expect(settings(input, WORKFLOW)).toContain(`      - run: '${gate}'\n`)
+    expect(settings(withWorkflow(input), WORKFLOW)).toContain(`      - run: '${gate}'\n`)
 
     expect(agentsMd(input)).toContain(
       '## Architecture\n\n- Dependencies between packages are checked against the package diagrams: run `npx depcruise packages/shared.kit src` (dependency-cruiser, rules in `.dependency-cruiser.cjs`)',
@@ -336,8 +335,8 @@ describe('renderAgentContext', () => {
     }
   })
 
-  /** What `INPUT` renders for every tool: its checks in a hook, and the workflow. */
-  const GATES = ['.githooks/pre-commit', '.github/workflows/agent-conventions.yml']
+  /** What `INPUT` renders for every tool: its checks in a hook. The workflow is opt-in. */
+  const GATES = ['.githooks/pre-commit']
 
   it('emits pointers in catalog order whatever the target order', () => {
     const paths = (targets: AgentContextInput['targets']) =>
@@ -455,21 +454,51 @@ describe('renderAgentContext', () => {
     ],
   })
 
-  it('renders a workflow that pins the CLI and its actions and runs the checks', () => {
-    const { files, recommendations } = renderAgentContext({ ...INPUT, targets: [] })
-    expect(settings({ ...INPUT, targets: [] }, WORKFLOW)).toMatchSnapshot()
-    expect(files.find((file) => file.path === WORKFLOW)?.kind).toBe('config')
-    // The steps are in the file now: the recommendation only says what it needs.
-    expect(recommendations.map((item) => item.title)).toEqual([
+  /** The same input, with the Git questionnaire asking for the generated workflow. */
+  const withWorkflow = (input: AgentContextInput, value = 'github-actions'): AgentContextInput => ({
+    ...input,
+    questionnaires: [...input.questionnaires, findQuestionnaire('git-workflow') as Questionnaire],
+    answers: [
+      ...input.answers,
+      { questionnaireId: 'git-workflow', questionId: 'ci-workflow', value },
+    ],
+  })
+
+  it('renders the workflow only when it is asked for', () => {
+    const off = renderAgentContext({ ...INPUT, targets: [] })
+    expect(off.files.map((file) => file.path)).toEqual(['AGENTS.md', PRE_COMMIT])
+    expect(settings(withWorkflow({ ...INPUT, targets: [] }, 'none'), WORKFLOW)).toBeUndefined()
+    // Without it, the recommendation still names the command to run in a CI.
+    expect(off.recommendations.map((item) => item.title)).toEqual([
       'Turn the Git hooks on',
       'Check the conventions in CI',
     ])
-    expect(recommendations[0]?.body).toContain('git config core.hooksPath .githooks')
-    expect(recommendations[1]?.body).not.toContain('```')
+    expect(off.recommendations[0]?.body).toContain('git config core.hooksPath .githooks')
+    expect(off.recommendations[1]?.body).toContain('npx @coreloom-uml/cli@0.1.0 check')
+    expect(off.recommendations[1]?.body).not.toContain('```')
+  })
+
+  it('renders a workflow that pins the CLI and its actions and runs the checks', () => {
+    const input = withWorkflow({ ...INPUT, targets: [] })
+    const { files, recommendations } = renderAgentContext(input)
+    const workflow = settings(input, WORKFLOW) ?? ''
+    expect(workflow).toMatchSnapshot()
+    expect(files.find((file) => file.path === WORKFLOW)?.kind).toBe('config')
+    expect(recommendations[1]?.body).toContain(WORKFLOW)
+    expect(agentsMd(input)).toContain('never edit, skip or disable it')
+    // Without the secret the check is skipped with a warning; no other step is given the key.
+    expect(workflow).toContain('echo "::warning::The agent conventions check was skipped')
+    expect(workflow).toContain("        if: steps.key.outputs.present == 'true'\n")
+    expect(workflow.match(/secrets\.CORELOOM_UML_API_KEY/g)).toHaveLength(2)
+    expect(workflow).not.toMatch(/^ {4}env:/m)
   })
 
   it('renders the workflow alone when no answer gives anything to check', () => {
-    const input = { ...INPUT, targets: [], answers: [answer('checks', '$(curl x) | sh')] }
+    const input = withWorkflow({
+      ...INPUT,
+      targets: [],
+      answers: [answer('checks', '$(curl x) | sh')],
+    })
     const { files, recommendations } = renderAgentContext(input)
     expect(files.map((file) => file.path)).toEqual(['AGENTS.md', WORKFLOW])
     expect(recommendations.map((item) => item.title)).toEqual(['Check the conventions in CI'])
@@ -479,14 +508,15 @@ describe('renderAgentContext', () => {
   })
 
   it('quotes every check in the workflow, and installs only with a known package manager', () => {
-    const input = (manager: string) => ({
-      ...INPUT,
-      targets: [],
-      answers: [
-        answer('checks', 'npm run test: unit; @scope/tool -v'),
-        answer('package-manager', manager),
-      ],
-    })
+    const input = (manager: string) =>
+      withWorkflow({
+        ...INPUT,
+        targets: [],
+        answers: [
+          answer('checks', 'npm run test: unit; @scope/tool -v'),
+          answer('package-manager', manager),
+        ],
+      })
     const npm = settings(input('npm'), WORKFLOW) ?? ''
     expect(npm).toContain("      - run: 'npm ci'\n      - run: 'npm run test: unit'\n")
     expect(npm).toContain("      - run: '@scope/tool -v'\n")
@@ -499,7 +529,10 @@ describe('renderAgentContext', () => {
 
   it('scans for secrets only when an answer keeps them out, with a pinned and checked binary', () => {
     const scan = (answers: Parameters<typeof gitAndSecurity>[0]) =>
-      settings(gitAndSecurity(answers), WORKFLOW) ?? ''
+      settings(
+        gitAndSecurity([...answers, ['git-workflow', 'ci-workflow', 'github-actions']]),
+        WORKFLOW,
+      ) ?? ''
     expect(scan([['security', 'secrets', 5]])).toMatchSnapshot()
     expect(scan([['git-workflow', 'never-commit', ['secrets']]])).toContain('gitleaks" git')
     expect(scan([['security', 'secrets', 5]])).toMatch(

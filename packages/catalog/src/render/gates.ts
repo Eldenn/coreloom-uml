@@ -69,6 +69,8 @@ export type GatesInput = {
   noAttribution: boolean
   /** Secrets are never committed (`git.never-commit`) or never handled (`security.secrets`). */
   secretScan: boolean
+  /** `git.ci-workflow` is `github-actions`: the workflow is asked for. Off without an answer. */
+  ciWorkflow: boolean
 }
 
 export type GateFile = { path: string; content: string; blockHash: string }
@@ -135,9 +137,10 @@ function workflow(input: GatesInput, commands: readonly string[]): GateFile {
   const install = commands.length > 0 ? (INSTALL_STEPS[input.packageManager ?? ''] ?? null) : null
   const lines = [
     '# From the agent conventions (Coreloom UML). It applies to every change, whoever writes it.',
-    '# It needs the committed .coreloom-uml.json and an API key with the read ability, stored as',
-    '# the CORELOOM_UML_API_KEY secret. Steps added after this block, at the same indentation,',
-    '# are kept.',
+    '# The conventions check needs the committed .coreloom-uml.json and an API key with the read',
+    '# ability, stored as the CORELOOM_UML_API_KEY secret; without the secret it is skipped with a',
+    '# warning, and the other steps still run. Steps added after this block, at the same',
+    '# indentation, are kept.',
     'name: Agent conventions',
     '',
     'on:',
@@ -160,7 +163,20 @@ function workflow(input: GatesInput, commands: readonly string[]): GateFile {
     `      - uses: ${SETUP_NODE_ACTION}`,
     '        with:',
     '          node-version: 22',
+    // An `if` cannot read a secret, and only these two steps are given the key.
+    '      - name: Look for the API key',
+    '        id: key',
+    '        env:',
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub Actions expression syntax.
+    '          CORELOOM_UML_API_KEY: ${{ secrets.CORELOOM_UML_API_KEY }}',
+    '        run: |',
+    '          if [ -n "$CORELOOM_UML_API_KEY" ]; then',
+    '            echo "present=true" >> "$GITHUB_OUTPUT"',
+    '          else',
+    '            echo "::warning::The agent conventions check was skipped: the CORELOOM_UML_API_KEY secret is missing (a pull request from a fork, or a secret that is not configured)."',
+    '          fi',
     '      - name: Check the agent conventions',
+    "        if: steps.key.outputs.present == 'true'",
     `        run: npx @coreloom-uml/cli@${CLI_CHECK_VERSION} check`,
     '        env:',
     // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub Actions expression syntax.
@@ -191,7 +207,7 @@ function workflow(input: GatesInput, commands: readonly string[]): GateFile {
 
 /**
  * The hooks and the workflow the answers call for. A hook is rendered only when it has something
- * to check; the workflow always is, since it at least checks that the conventions are current.
+ * to check, and the workflow only when it is asked for: it runs in the owner's CI.
  * Only commands `splitCommands` kept go into a script, and no other text from an answer does.
  */
 export function renderGates(input: GatesInput): {
@@ -211,7 +227,10 @@ export function renderGates(input: GatesInput): {
   recommendations.push({
     target: Target.Generic,
     title: 'Check the conventions in CI',
-    body: `\`${CI_WORKFLOW_FILE}\` fails a build when the conventions in the repository are not the latest generation or were edited by hand, then runs your checks. Commit it with \`.coreloom-uml.json\`, and store an API key with the \`read\` ability as the \`CORELOOM_UML_API_KEY\` repository secret.`,
+    body: input.ciWorkflow
+      ? `\`${CI_WORKFLOW_FILE}\` fails a build when the conventions in the repository are not the latest generation or were edited by hand, then runs your checks. Commit it with \`.coreloom-uml.json\`, and store an API key with the \`read\` ability as the \`CORELOOM_UML_API_KEY\` repository secret; without the secret that check is skipped with a warning.`
+      : `To fail a build when the conventions in the repository are not the latest generation or were edited by hand, run \`npx @coreloom-uml/cli@${CLI_CHECK_VERSION} check\` in your CI with the \`CORELOOM_UML_API_KEY\` secret, or ask for the generated GitHub Actions workflow in the Git workflow questionnaire.`,
   })
-  return { files: [...hooks, workflow(input, commands)], recommendations }
+  const files = input.ciWorkflow ? [...hooks, workflow(input, commands)] : hooks
+  return { files, recommendations }
 }

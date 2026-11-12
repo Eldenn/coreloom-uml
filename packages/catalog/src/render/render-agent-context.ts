@@ -244,6 +244,7 @@ function gatesInput(
     boundariesCommand,
     conventionalCommits: slotAnswer(input, 'git.commit-messages') === 'conventional',
     noAttribution: typeof attribution === 'number' && attribution >= 4,
+    ciWorkflow: slotAnswer(input, 'git.ci-workflow') === 'github-actions',
     secretScan:
       (Array.isArray(neverCommit) && neverCommit.includes('secrets')) ||
       (typeof secrets === 'number' && secrets >= 4),

@@ -673,7 +673,6 @@ test.group('Agent configs - generations', (group) => {
         ['CLAUDE.md', 'pointer'],
         ['.claude/settings.json', 'settings'],
         ['.githooks/pre-commit', 'config'],
-        ['.github/workflows/agent-conventions.yml', 'config'],
       ],
     )
     const [agents, claude, settings] = generation.files
@@ -718,7 +717,6 @@ test.group('Agent configs - generations', (group) => {
       'CLAUDE.md',
       '.claude/settings.json',
       '.githooks/pre-commit',
-      '.github/workflows/agent-conventions.yml',
     ])
     assert.notProperty(list.body().data[0], 'files')
 

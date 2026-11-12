@@ -31,6 +31,7 @@ export const SLOTS = {
   'git.never-commit': 'What is never committed',
   'git.history': 'Rewriting pushed history',
   'git.attribution': 'Crediting the assistant in commits',
+  'git.ci-workflow': 'CI workflow that checks every change',
   'security.secrets': 'Reading and printing secrets',
   'security.dependencies': 'Adding a dependency',
   'security.version-pins': 'Exact versions or ranges',
