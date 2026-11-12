@@ -7,9 +7,10 @@ export const McpTool = {
   ListProjects: 'list_projects',
   ListDiagrams: 'list_diagrams',
   GetDiagram: 'get_diagram',
+  ListAgentConventions: 'list_agent_conventions',
   GetAgentConventions: 'get_agent_conventions',
 } as const
 export type McpTool = (typeof McpTool)[keyof typeof McpTool]
 
-/** Projects or architectures listed by one call, newest first. */
+/** Projects, architectures or agent conventions listed by one call, newest first. */
 export const MCP_LIST_MAX = 200

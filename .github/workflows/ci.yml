@@ -77,6 +77,15 @@ jobs:
 
       - run: pnpm test
 
+      # Not dependencies of the workspace: only this job needs them. Exact versions; Claude Code's
+      # is the one the API image pins.
+      - name: Install the coding tools the generated files are written for
+        run: npm install --global @openai/codex@0.167.1 @anthropic-ai/claude-code@2.1.319
+
+      # No test signs in or calls a model. A missing tool fails here instead of being skipped.
+      - name: Load the generated agent files into the tools they target
+        run: pnpm --filter @coreloom-uml/catalog test:e2e
+
       - run: pnpm build
 
       - name: Validate production compose file

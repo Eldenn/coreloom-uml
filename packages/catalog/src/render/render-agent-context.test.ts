@@ -1,7 +1,9 @@
+import { spawnSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { findQuestionnaire } from '../questionnaires/index.ts'
 import type { Questionnaire } from '../schemas.ts'
 import { TARGETS } from '../targets.ts'
+import { yamlString } from './gates.ts'
 import {
   findManagedBlock,
   HASH_MARKERS,
@@ -77,6 +79,7 @@ describe('renderAgentContext', () => {
       ['AGENTS.md', 'generic'],
       ['CLAUDE.md', 'pointer'],
       ['.claude/settings.json', 'settings'],
+      ['.githooks/pre-commit', 'config'],
     ])
     expect(files[1]?.content).toBe(
       `${MANAGED_BLOCK_BEGIN}\n@AGENTS.md\n<!-- coreloom-uml:end -->\n`,
@@ -241,6 +244,11 @@ describe('renderAgentContext', () => {
       pathNot: ['^src/infra/db/'],
     })
 
+    // The same command gates every commit and every build, after the checks.
+    const gate = 'npx depcruise packages/shared.kit src'
+    expect(settings(input, PRE_COMMIT)).toContain(`pnpm test || exit 1\n${gate} || exit 1\n`)
+    expect(settings(withWorkflow(input), WORKFLOW)).toContain(`      - run: '${gate}'\n`)
+
     expect(agentsMd(input)).toContain(
       '## Architecture\n\n- Dependencies between packages are checked against the package diagrams: run `npx depcruise packages/shared.kit src` (dependency-cruiser, rules in `.dependency-cruiser.cjs`)',
     )
@@ -319,11 +327,16 @@ describe('renderAgentContext', () => {
       // A JSON settings file has no markers: its whole content is hashed.
       const block = file.path.endsWith('.json')
         ? file.content
-        : findManagedBlock(file.content, file.path.endsWith('.toml') ? HASH_MARKERS : undefined)
-            ?.block
+        : findManagedBlock(
+            file.content,
+            /\.(toml|rules|yml)$|^\.githooks\//.test(file.path) ? HASH_MARKERS : undefined,
+          )?.block
       expect(block && hashManagedBlock(block)).toBe(file.blockHash)
     }
   })
+
+  /** What `INPUT` renders for every tool: its checks in a hook. The workflow is opt-in. */
+  const GATES = ['.githooks/pre-commit']
 
   it('emits pointers in catalog order whatever the target order', () => {
     const paths = (targets: AgentContextInput['targets']) =>
@@ -333,23 +346,32 @@ describe('renderAgentContext', () => {
       'CLAUDE.md',
       'GEMINI.md',
       '.codex/config.toml',
+      '.codex/rules/coreloom-uml.rules',
       '.claude/settings.json',
       '.gemini/settings.json',
+      ...GATES,
     ])
     expect(paths(['codex', 'cursor', 'github-copilot', 'generic'])).toEqual([
       'AGENTS.md',
       '.codex/config.toml',
+      '.codex/rules/coreloom-uml.rules',
+      ...GATES,
     ])
-    expect(paths([])).toEqual(['AGENTS.md'])
+    expect(paths([])).toEqual(['AGENTS.md', ...GATES])
   })
 
   const settings = (input: AgentContextInput, path: string) =>
     renderAgentContext(input).files.find((file) => file.path === path)?.content
 
+  const CODEX_RULES = '.codex/rules/coreloom-uml.rules'
+  const WORKFLOW = '.github/workflows/agent-conventions.yml'
+  const PRE_COMMIT = '.githooks/pre-commit'
+
   it('renders the settings each tool enforces from the tooling and autonomy answers', () => {
     const input: AgentContextInput = { ...INPUT, targets: ['codex', 'claude-code', 'gemini-cli'] }
     expect(settings(input, '.claude/settings.json')).toMatchSnapshot()
     expect(settings(input, '.codex/config.toml')).toMatchSnapshot()
+    expect(settings(input, CODEX_RULES)).toMatchSnapshot()
     expect(settings(input, '.gemini/settings.json')).toMatchSnapshot()
     expect(renderAgentContext(input).recommendations.map((item) => item.target)).toEqual([
       'codex',
@@ -358,6 +380,7 @@ describe('renderAgentContext', () => {
       'claude-code',
       'gemini-cli',
       'gemini-cli',
+      'generic',
       'generic',
     ])
   })
@@ -371,6 +394,24 @@ describe('renderAgentContext', () => {
     expect(settings(autonomy(5), '.codex/config.toml')).toContain('sandbox_mode = "read-only"')
     expect(settings(autonomy(1), '.codex/config.toml')).toContain('"workspace-write"')
     expect(settings({ ...autonomy(1), answers: [] }, '.codex/config.toml')).toBeUndefined()
+  })
+
+  it('forbids the default commands in Codex rules whatever the answers', () => {
+    const rules = (answers: AgentContextInput['answers']) =>
+      settings({ ...INPUT, targets: ['codex'], answers }, CODEX_RULES) ?? ''
+    expect(rules([])).toMatchSnapshot()
+    // A check with a pipe or a wildcard never becomes a rule; an unknown package manager forbids none.
+    const unsafe = rules([
+      answer('checks', 'pnpm test | tee out; rm -rf *; pnpm lint'),
+      answer('package-manager', 'cargo'),
+    ])
+    expect(unsafe.match(/decision = "allow"/g)).toHaveLength(1)
+    expect(unsafe).toContain('pattern = ["pnpm", "lint"]')
+    expect(unsafe).not.toMatch(/"(npm|yarn|bun)"/)
+    // `allow` leaves the sandbox: none when the assistant must ask before acting.
+    const asksFirst = rules([answer('checks', 'pnpm lint'), answer('ask-before-act', 5)])
+    expect(asksFirst).not.toContain('"allow"')
+    expect(asksFirst).toContain('"forbidden"')
   })
 
   it('keeps the default deny list without answers, and unsafe commands out of the settings', () => {
@@ -395,21 +436,189 @@ describe('renderAgentContext', () => {
     expect(settings(none, '.gemini/settings.json')).toBeUndefined()
   })
 
-  it('recommends CI steps that pin the CLI and run the checks', () => {
-    const body = renderAgentContext({ ...INPUT, targets: [] }).recommendations[0]?.body
-    expect(body).toContain(
-      [
-        '```yaml',
-        '- name: Check the agent conventions',
-        '  run: npx @coreloom-uml/cli@0.1.0 check',
-        '  env:',
-        // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub Actions expression syntax.
-        '    CORELOOM_UML_API_KEY: ${{ secrets.CORELOOM_UML_API_KEY }}',
-        '- run: pnpm lint',
-        '- run: pnpm test',
-        '```',
-      ].join('\n'),
+  const gitAndSecurity = (answers: [string, string, number | string | string[]][]) => ({
+    ...INPUT,
+    targets: [],
+    questionnaires: [
+      frontendReact,
+      findQuestionnaire('git-workflow') as Questionnaire,
+      findQuestionnaire('security') as Questionnaire,
+    ],
+    answers: [
+      ...INPUT.answers,
+      ...answers.map(([questionnaireId, questionId, value]) => ({
+        questionnaireId,
+        questionId,
+        value,
+      })),
+    ],
+  })
+
+  /** The same input, with the Git questionnaire asking for the generated workflow. */
+  const withWorkflow = (input: AgentContextInput, value = 'github-actions'): AgentContextInput => ({
+    ...input,
+    questionnaires: [...input.questionnaires, findQuestionnaire('git-workflow') as Questionnaire],
+    answers: [
+      ...input.answers,
+      { questionnaireId: 'git-workflow', questionId: 'ci-workflow', value },
+    ],
+  })
+
+  it('renders the workflow only when it is asked for', () => {
+    const off = renderAgentContext({ ...INPUT, targets: [] })
+    expect(off.files.map((file) => file.path)).toEqual(['AGENTS.md', PRE_COMMIT])
+    expect(settings(withWorkflow({ ...INPUT, targets: [] }, 'none'), WORKFLOW)).toBeUndefined()
+    // Without it, the recommendation still names the command to run in a CI.
+    expect(off.recommendations.map((item) => item.title)).toEqual([
+      'Turn the Git hooks on',
+      'Check the conventions in CI',
+    ])
+    expect(off.recommendations[0]?.body).toContain('git config core.hooksPath .githooks')
+    expect(off.recommendations[1]?.body).toContain('npx @coreloom-uml/cli@0.1.0 check')
+    expect(off.recommendations[1]?.body).not.toContain('```')
+  })
+
+  it('renders a workflow that pins the CLI and its actions and runs the checks', () => {
+    const input = withWorkflow({ ...INPUT, targets: [] })
+    const { files, recommendations } = renderAgentContext(input)
+    const workflow = settings(input, WORKFLOW) ?? ''
+    expect(workflow).toMatchSnapshot()
+    expect(files.find((file) => file.path === WORKFLOW)?.kind).toBe('config')
+    expect(recommendations[1]?.body).toContain(WORKFLOW)
+    expect(agentsMd(input)).toContain('never edit, skip or disable it')
+    // Without the secret the check is skipped with a warning; no other step is given the key.
+    expect(workflow).toContain('echo "::warning::The agent conventions check was skipped')
+    expect(workflow).toContain("        if: steps.key.outputs.present == 'true'\n")
+    expect(workflow.match(/secrets\.CORELOOM_UML_API_KEY/g)).toHaveLength(2)
+    expect(workflow).not.toMatch(/^ {4}env:/m)
+  })
+
+  it('renders the workflow alone when no answer gives anything to check', () => {
+    const input = withWorkflow({
+      ...INPUT,
+      targets: [],
+      answers: [answer('checks', '$(curl x) | sh')],
+    })
+    const { files, recommendations } = renderAgentContext(input)
+    expect(files.map((file) => file.path)).toEqual(['AGENTS.md', WORKFLOW])
+    expect(recommendations.map((item) => item.title)).toEqual(['Check the conventions in CI'])
+    const workflow = settings(input, WORKFLOW) ?? ''
+    expect(workflow).toContain('run: npx @coreloom-uml/cli@0.1.0 check')
+    expect(workflow).not.toMatch(/curl|gitleaks|install|fetch-depth/)
+  })
+
+  it('quotes every check in the workflow, and installs only with a known package manager', () => {
+    const input = (manager: string) =>
+      withWorkflow({
+        ...INPUT,
+        targets: [],
+        answers: [
+          answer('checks', 'npm run test: unit; @scope/tool -v'),
+          answer('package-manager', manager),
+        ],
+      })
+    const npm = settings(input('npm'), WORKFLOW) ?? ''
+    expect(npm).toContain("      - run: 'npm ci'\n      - run: 'npm run test: unit'\n")
+    expect(npm).toContain("      - run: '@scope/tool -v'\n")
+    expect(settings(input('yarn'), WORKFLOW)).toContain("- run: 'yarn install --frozen-lockfile'")
+    const bun = settings(input('bun'), WORKFLOW) ?? ''
+    expect(bun).toContain('# No install step')
+    expect(bun).not.toContain('install --')
+    expect(yamlString("it's")).toBe("'it''s'")
+  })
+
+  it('scans for secrets only when an answer keeps them out, with a pinned and checked binary', () => {
+    const scan = (answers: Parameters<typeof gitAndSecurity>[0]) =>
+      settings(
+        gitAndSecurity([...answers, ['git-workflow', 'ci-workflow', 'github-actions']]),
+        WORKFLOW,
+      ) ?? ''
+    expect(scan([['security', 'secrets', 5]])).toMatchSnapshot()
+    expect(scan([['git-workflow', 'never-commit', ['secrets']]])).toContain('gitleaks" git')
+    expect(scan([['security', 'secrets', 5]])).toMatch(
+      /[0-9a-f]{64} {2}\$RUNNER_TEMP.*sha256sum -c/,
     )
+    for (const answers of [
+      [['security', 'secrets', 3]],
+      [['security', 'secrets', 1]],
+      [['git-workflow', 'never-commit', ['debug']]],
+    ] satisfies Parameters<typeof gitAndSecurity>[0][]) {
+      expect(scan(answers)).not.toContain('gitleaks')
+    }
+  })
+
+  it('runs the checks and the dependency rules in the pre-commit hook, never an unsafe command', () => {
+    const hook = settings(
+      {
+        ...INPUT,
+        targets: [],
+        answers: [answer('checks', 'pnpm test | tee out; rm -rf *; pnpm lint')],
+      },
+      PRE_COMMIT,
+    )
+    expect(hook).toMatchSnapshot()
+    expect(hook).not.toMatch(/tee|rm -rf/)
+  })
+
+  /** Runs the rendered commit-msg hook on a message, as Git does; `null` when none is rendered. */
+  const commitMsg = (answers: Parameters<typeof gitAndSecurity>[0], message = '') => {
+    const hook = settings(gitAndSecurity(answers), '.githooks/commit-msg')
+    if (hook === undefined) return null
+    const script = `printf '%s' "$1" > "$0.msg"; sh -c "$2" hook "$0.msg"; code=$?; rm -f "$0.msg"; exit $code`
+    const file = `${process.env.TMPDIR ?? '/tmp'}/coreloom-commit-msg-${process.pid}`
+    return spawnSync('sh', ['-c', script, file, message, `#!/bin/sh\n${hook}`]).status
+  }
+
+  it('renders a commit-msg hook only for what an answer states', () => {
+    expect(commitMsg([])).toBeNull()
+    expect(commitMsg([['git-workflow', 'commit-messages', 'imperative']])).toBeNull()
+    expect(commitMsg([['git-workflow', 'commit-messages', 'Ticket id first']])).toBeNull()
+    expect(commitMsg([['git-workflow', 'attribution', 3]])).toBeNull()
+    expect(commitMsg([['git-workflow', 'attribution', 1]])).toBeNull()
+    expect(
+      settings(
+        gitAndSecurity([
+          ['git-workflow', 'commit-messages', 'conventional'],
+          ['git-workflow', 'attribution', 4],
+        ]),
+        '.githooks/commit-msg',
+      ),
+    ).toMatchSnapshot()
+  })
+
+  it.skipIf(process.platform === 'win32')('enforces Conventional Commits on the subject', () => {
+    const run = (message: string) =>
+      commitMsg([['git-workflow', 'commit-messages', 'conventional']], message)
+    expect(run('feat(api): add the thing\n\nBecause.\n')).toBe(0)
+    expect(run('fix!: drop the old flag')).toBe(0)
+    expect(run('# a comment first\n\nchore: tidy\n')).toBe(0)
+    expect(run('Merge branch main into topic')).toBe(0)
+    expect(run('fixup! feat: x')).toBe(0)
+    expect(run('Add the thing')).toBe(1)
+    expect(run('feat:missing space')).toBe(1)
+    expect(run('Feat: capital')).toBe(1)
+    // Without the attribution answer, a trailer is not this hook's business.
+    expect(run('feat: x\n\nCo-Authored-By: Claude <noreply@anthropic.com>')).toBe(0)
+  })
+
+  it.skipIf(process.platform === 'win32')('refuses a commit that credits an assistant', () => {
+    const run = (message: string) => commitMsg([['git-workflow', 'attribution', 5]], message)
+    expect(run('Add the thing\n\nCo-authored-by: Ada Lovelace <ada@example.com>\n')).toBe(0)
+    // A person may be called Claude: only the assistant's own signature is refused.
+    expect(run('Add the thing\n\nCo-authored-by: Claude Dupont <claude@example.com>\n')).toBe(0)
+    expect(run('Add the thing\n\nThe report is generated with pandoc.\n')).toBe(0)
+    expect(run('Add the thing\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n')).toBe(1)
+    expect(
+      run('Add the thing\n\nco-authored-by: Copilot <1+Copilot@users.noreply.github.com>'),
+    ).toBe(1)
+    expect(
+      run('Add the thing\n\nGenerated with [Claude Code](https://claude.com/claude-code)'),
+    ).toBe(1)
+    // What `git commit -v` shows below the scissors line is not the message.
+    const scissors = '# ------------------------ >8 ------------------------'
+    expect(
+      run(`Add the thing\n${scissors}\n+Co-Authored-By: Claude <noreply@anthropic.com>\n`),
+    ).toBe(0)
   })
 
   it('says how to register the MCP server in each tool, without ever holding a key', () => {

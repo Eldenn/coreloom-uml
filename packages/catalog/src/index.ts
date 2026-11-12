@@ -31,6 +31,12 @@ export {
   type PackageDiagramShape,
 } from './render/architecture-boundaries.ts'
 export {
+  CI_WORKFLOW_FILE,
+  HOOK_SHEBANG,
+  HOOKS_DIRECTORY,
+  HOOKS_PATH_COMMAND,
+} from './render/gates.ts'
+export {
   type BlockMarkers,
   findManagedBlock,
   HASH_MARKERS,

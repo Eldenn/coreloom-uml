@@ -1,6 +1,6 @@
 {
   "name": "@coreloom-uml/catalog",
-  "version": "0.10.0",
+  "version": "0.12.0",
   "private": true,
   "type": "module",
   "sideEffects": false,
@@ -10,7 +10,8 @@
   "scripts": {
     "lint": "biome check .",
     "check-types": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --dir src",
+    "test:e2e": "vitest run --dir e2e"
   },
   "dependencies": {
     "zod": "4.6.7"
@@ -18,7 +19,10 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.16",
     "@coreloom-uml/config": "workspace:*",
+    "ajv": "8.20.0",
+    "dependency-cruiser": "18.7.2",
     "typescript": "6.0.3",
-    "vitest": "4.1.9"
+    "vitest": "4.1.9",
+    "yaml": "2.9.0"
   }
 }

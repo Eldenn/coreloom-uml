@@ -420,6 +420,126 @@ describe('pull, settings files', () => {
     expect(await exists(CONFIG)).toBe(false)
   })
 
+  it('writes Codex rules in `#` markers at the end of the file, and asks first', async () => {
+    const RULES = '.codex/rules/coreloom-uml.rules'
+    const rules = (decision: string) =>
+      settingsFile(
+        RULES,
+        wrapManagedBlock(
+          `prefix_rule(pattern = ["rm", "-rf"], decision = "${decision}")`,
+          HASH_MARKERS,
+        ),
+      )
+    api.current = generation(1, [rules('forbidden')])
+    await expect(run()).rejects.toThrow(/--yes/)
+    expect(await exists(RULES)).toBe(false)
+
+    const recorder = recordingIo({ interactive: true, answers: [true] })
+    expect(await run({}, recorder.io)).toBe(ExitCode.Ok)
+    expect(recorder.questions).toEqual([expect.stringContaining('write these settings?')])
+    expect(await read(RULES)).toBe(api.current.files[0]?.content)
+
+    const mine = 'prefix_rule(pattern = ["gh"], decision = "prompt")\n'
+    await writeFile(join(dir.path, RULES), `${mine}\n${await read(RULES)}`)
+    api.current = generation(2, [rules('prompt')])
+    await expect(run()).rejects.toThrow(/--yes/)
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await read(RULES)).toBe(`${mine}\n${api.current.files[0]?.content}`)
+
+    api.current = generation(3, [file(AGENTS, 'a')])
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await read(RULES)).toBe(mine)
+  })
+
+  it.skipIf(process.platform === 'win32')(
+    'writes a Git hook after its #! line, makes it executable, keeps the owner’s lines, and asks first',
+    async () => {
+      const HOOK = '.githooks/pre-commit'
+      const hook = (command: string) =>
+        settingsFile(HOOK, wrapManagedBlock(`${command} || exit 1`, HASH_MARKERS))
+      const mode = async () => (await stat(join(dir.path, HOOK))).mode & 0o777
+      api.current = generation(1, [hook('pnpm lint')])
+      await expect(run()).rejects.toThrow(/--yes/)
+      expect(await exists(HOOK)).toBe(false)
+
+      const recorder = recordingIo({ interactive: true, answers: [true] })
+      expect(await run({}, recorder.io)).toBe(ExitCode.Ok)
+      expect(recorder.questions).toEqual([expect.stringContaining('write this hook?')])
+      expect(await read(HOOK)).toBe(`#!/bin/sh\n${api.current.files[0]?.content}`)
+      expect((await mode()) & 0o111).toBe(0o111)
+      // Git config is never touched: the command is only printed, with the recommendations.
+      expect(await exists('.git')).toBe(false)
+
+      const mine = 'echo mine\n'
+      await writeFile(join(dir.path, HOOK), `${await read(HOOK)}${mine}`)
+      api.current = generation(2, [hook('pnpm test')])
+      expect(await run({ yes: true })).toBe(ExitCode.Ok)
+      expect(await read(HOOK)).toBe(`#!/bin/sh\n${api.current.files[0]?.content}${mine}`)
+
+      // The block leaves: the owner's lines stay, and a file left with its #! line alone goes.
+      api.current = generation(3, [file(AGENTS, 'a')])
+      expect(await run({ yes: true })).toBe(ExitCode.Ok)
+      expect(await read(HOOK)).toBe(`#!/bin/sh\n${mine}`)
+      api.current = generation(4, [hook('pnpm lint')])
+      await writeFile(join(dir.path, HOOK), '#!/bin/sh\n')
+      expect(await run({ yes: true })).toBe(ExitCode.Ok)
+      api.current = generation(5, [file(AGENTS, 'a')])
+      expect(await run({ yes: true })).toBe(ExitCode.Ok)
+      expect(await exists(HOOK)).toBe(false)
+    },
+  )
+
+  it.skipIf(process.platform === 'win32')(
+    'adds its block to a shell hook that is not executable yet, and refuses one in another language',
+    async () => {
+      const HOOK = '.githooks/commit-msg'
+      api.current = generation(1, [settingsFile(HOOK, wrapManagedBlock('exit 0', HASH_MARKERS))])
+      await mkdir(join(dir.path, '.githooks'))
+      await writeFile(join(dir.path, HOOK), '#!/usr/bin/env bash\necho mine\n', { mode: 0o640 })
+      expect(await run({ yes: true })).toBe(ExitCode.Ok)
+      expect(await read(HOOK)).toBe(
+        `#!/usr/bin/env bash\necho mine\n\n${api.current.files[0]?.content}`,
+      )
+      expect((await stat(join(dir.path, HOOK))).mode & 0o777).toBe(0o751)
+
+      await writeFile(join(dir.path, HOOK), '#!/usr/bin/env node\nprocess.exit(0)\n')
+      await expect(run({ yes: true })).rejects.toThrow(/not a shell script/)
+
+      await symlink(join(dir.path, 'elsewhere'), join(dir.path, '.githooks', 'pre-commit'))
+      api.current = generation(2, [
+        settingsFile('.githooks/pre-commit', wrapManagedBlock('exit 0', HASH_MARKERS)),
+      ])
+      await expect(run({ yes: true })).rejects.toThrow(/symbolic link/)
+      expect(await exists('elsewhere')).toBe(false)
+    },
+  )
+
+  it('writes a workflow in `#` markers, keeps the steps after the block, and asks first', async () => {
+    const WORKFLOW = '.github/workflows/agent-conventions.yml'
+    const workflow = (command: string) =>
+      settingsFile(
+        WORKFLOW,
+        wrapManagedBlock(`jobs:\n  a:\n    steps:\n      - run: '${command}'`, HASH_MARKERS),
+      )
+    api.current = generation(1, [workflow('pnpm lint')])
+    await expect(run()).rejects.toThrow(/--yes/)
+    const recorder = recordingIo({ interactive: true, answers: [true] })
+    expect(await run({}, recorder.io)).toBe(ExitCode.Ok)
+    expect(recorder.questions).toEqual([expect.stringContaining('write this workflow?')])
+    expect(await read(WORKFLOW)).toBe(api.current.files[0]?.content)
+
+    const mine = '      - run: echo mine\n'
+    await writeFile(join(dir.path, WORKFLOW), `${await read(WORKFLOW)}${mine}`)
+    api.current = generation(2, [workflow('pnpm test')])
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await read(WORKFLOW)).toBe(`${api.current.files[0]?.content}${mine}`)
+
+    // A second document root would make the file invalid: never appended to a workflow.
+    await writeFile(join(dir.path, WORKFLOW), 'name: Mine\n')
+    await expect(run({ yes: true })).rejects.toThrow(/without a managed block/)
+    expect(await read(WORKFLOW)).toBe('name: Mine\n')
+  })
+
   it('refuses a TOML file that already sets a managed key', async () => {
     await mkdir(join(dir.path, '.codex'))
     await writeFile(join(dir.path, TOML), 'sandbox_mode = "danger-full-access"\n')

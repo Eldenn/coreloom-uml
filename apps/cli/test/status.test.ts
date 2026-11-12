@@ -1,5 +1,6 @@
 import { readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { HASH_MARKERS, wrapManagedBlock } from '@coreloom-uml/catalog'
 import { afterEach, beforeEach, expect, it } from 'vitest'
 import { ExitCode } from '../src/errors.ts'
 import { pull } from '../src/pull.ts'
@@ -37,6 +38,8 @@ it('reports each file and whether a newer generation exists', async () => {
     file('D.md', 'd'),
     settingsFile('e.json', '{"deny":["x"]}'),
     settingsFile('f.json', '{"deny":["x"]}'),
+    settingsFile('.githooks/pre-commit', wrapManagedBlock('exit 0', HASH_MARKERS)),
+    settingsFile('.github/workflows/g.yml', wrapManagedBlock('name: G', HASH_MARKERS)),
   ])
   await pull({ cwd: dir.path, io: recordingIo().io, env, apiUrl: api.url, config: '3', yes: true })
   await writeFile(join(dir.path, 'e.json'), '{"deny":["x","mine"],"other":1}')
@@ -56,6 +59,9 @@ it('reports each file and whether a newer generation exists', async () => {
   expect(output).toMatch(/file missing\s+D\.md/)
   expect(output).toMatch(/unchanged\s+e\.json/)
   expect(output).toMatch(/keys edited\s+f\.json/)
+  // A hook (after its #! line) and a workflow hold their block in `#` markers.
+  expect(output).toMatch(/unchanged\s+\.githooks\/pre-commit/)
+  expect(output).toMatch(/unchanged\s+\.github\/workflows\/g\.yml/)
   expect(output).toContain('A newer generation exists (#2')
 })
 
