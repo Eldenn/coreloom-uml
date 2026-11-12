@@ -10,6 +10,6 @@
     // The types are inferred from zod, whose optional fields are `?: T | undefined`.
     "exactOptionalPropertyTypes": false
   },
-  "include": ["src"],
+  "include": ["src", "e2e"],
   "exclude": ["node_modules"]
 }
