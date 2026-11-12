@@ -91,7 +91,10 @@ export const roleSchema: z.ZodType<Role> = z
     slug,
     name: line.max(ROLE_NAME_MAX_LENGTH),
     description: line.max(ROLE_DESCRIPTION_MAX_LENGTH),
-    mission: z.string().min(1).max(ROLE_MISSION_MAX_LENGTH),
+    mission: z
+      .string()
+      .max(ROLE_MISSION_MAX_LENGTH)
+      .refine((text) => text.trim() !== '', { message: 'A mission cannot be blank' }),
     rights: z.array(z.enum(Right)),
     scope: z.array(folder).max(ROLE_LIST_MAX),
     forbidden: z.array(line).max(ROLE_LIST_MAX),

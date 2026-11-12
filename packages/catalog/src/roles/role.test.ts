@@ -107,6 +107,13 @@ describe('roleSchema', () => {
     )
   })
 
+  it('refuses a blank mission', () => {
+    for (const mission of ['', ' ', '\n\t \r\n']) {
+      expect(accepts({ mission }), JSON.stringify(mission)).toBe(false)
+    }
+    expect(accepts({ mission: ' Review.\n' })).toBe(true)
+  })
+
   it('refuses a source whose commit is not a full sha', () => {
     expect(accepts({ source: { preset: 'reviewer', commit: 'abc123' } })).toBe(false)
   })
