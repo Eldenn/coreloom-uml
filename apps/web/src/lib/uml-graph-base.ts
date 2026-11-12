@@ -90,6 +90,8 @@ interface DiagramNode {
   parent?: string
   /** Drawn on its frame's edge rather than inside it: a component's port. */
   border?: boolean
+  /** The concurrent region of its frame it sits in (a composite state's), when not the first. */
+  region?: number
   shape: DiagramShape
   role: DiagramRole
   title: string

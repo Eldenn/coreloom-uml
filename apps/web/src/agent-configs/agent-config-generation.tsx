@@ -40,6 +40,7 @@ import {
   useGenerations,
 } from '@/lib/agent-configs'
 import { apiBaseUrl } from '@/lib/client'
+import { downloadText } from '@/lib/download'
 import { useT } from '@/lib/locale'
 
 /** Files as a tree of folders, in the generation's order. */
@@ -67,14 +68,12 @@ function fileTree(files: AgentFile[], pointer: string): TreeViewNode[] {
   return root
 }
 
-/** Saves the text as a file, without any request: the content is already here. */
 function download(file: AgentFile) {
-  const url = URL.createObjectURL(new Blob([file.content], { type: 'text/markdown;charset=utf-8' }))
-  const link = document.createElement('a')
-  link.href = url
-  link.download = file.path.split('/').at(-1) ?? 'AGENTS.md'
-  link.click()
-  URL.revokeObjectURL(url)
+  downloadText(
+    file.path.split('/').at(-1) ?? 'AGENTS.md',
+    file.content,
+    'text/markdown;charset=utf-8',
+  )
 }
 
 export function AgentConfigGeneration({

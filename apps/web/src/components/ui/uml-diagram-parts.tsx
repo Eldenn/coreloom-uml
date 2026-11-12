@@ -33,12 +33,15 @@ import {
 import { type Messages, useCoreloomI18n } from '@/lib/i18n'
 import type { UmlDirection } from '@/lib/uml'
 import type { DiagramEdge, DiagramNode, DiagramRow } from '@/lib/uml-graph'
+import type { RegionLines } from '@/lib/uml-layout'
 import { cn } from '@/lib/utils'
 
 /** `connectable`: the node shows a dot to drag a new line from. */
 interface NodeData extends Record<string, unknown> {
   node: DiagramNode
   connectable?: boolean
+  /** A frame with concurrent regions: the dashed lines between them. */
+  regions?: RegionLines
 }
 type BoxNodeType = Node<NodeData, 'box'>
 type PseudoNodeType = Node<NodeData, 'pseudo'>
@@ -299,6 +302,18 @@ function FrameNode(props: NodeProps<FrameNodeType>) {
           {top && <p className="truncate font-mono text-[10.5px] text-fg-secondary">{top}</p>}
         </div>
       </div>
+      {/* Concurrent regions: a dashed line between each two, under the name. */}
+      {data.regions?.at.map((at) => (
+        <div
+          key={at}
+          aria-hidden
+          className={cn(
+            'pointer-events-none absolute border-dashed border-border-strong',
+            data.regions?.axis === 'x' ? 'top-10 bottom-0 border-l' : 'inset-x-0 border-t',
+          )}
+          style={data.regions?.axis === 'x' ? { left: at } : { top: at }}
+        />
+      ))}
     </>
   )
 }

@@ -19,6 +19,7 @@ import { relationEnds, relationTypes, START_END, type UmlRelationType } from '@/
 import {
   elementFields,
   relationFields,
+  stateRegionChoices,
   type UmlElementFields,
   type UmlRelationFields,
 } from '@/lib/uml-edit-fields'
@@ -93,6 +94,7 @@ function stereotypeHint(kind: UmlSpec['kind'], p: PropertiesText['properties']):
 function ElementForm({
   target,
   kind,
+  regions,
   locked,
   onChange,
   nameRef,
@@ -101,6 +103,8 @@ function ElementForm({
   target: Extract<Target, { kind: 'element' }>
   /** The diagram's kind: a deployment node's stereotype is a platform, a class's a role. */
   kind: UmlSpec['kind']
+  /** A state inside a composite one: the regions it can sit in. */
+  regions: ReturnType<typeof stateRegionChoices>
   locked: boolean
   onChange: (id: string, fields: UmlElementFields) => void
   nameRef?: React.Ref<NameField> | undefined
@@ -182,6 +186,20 @@ function ElementForm({
               onCommit={commit}
             />
           ),
+      )}
+      {fields.region !== undefined && regions && (
+        <Choice
+          label={p.region}
+          value={String(fields.region)}
+          options={[
+            ...regions.regions.map((n, i) => ({ value: String(n), label: p.regionNumber(i + 1) })),
+            ...(regions.next === null ? [] : [{ value: String(regions.next), label: p.newRegion }]),
+          ]}
+          disabled={locked}
+          onChange={(region) => {
+            onChange(id, { ...fields, ...drafts, region: Number(region) })
+          }}
+        />
       )}
       {fields.technology !== undefined && (
         <TextField
@@ -340,6 +358,7 @@ function DiagramProperties({
         <ElementForm
           target={target}
           kind={diagram.kind}
+          regions={stateRegionChoices(diagram, target.id)}
           locked={locked}
           onChange={onElementChange}
           nameRef={nameRef}

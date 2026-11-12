@@ -72,6 +72,11 @@ interface UmlDiagramProps {
   selection?: UmlSelection
   onSelectionChange?: (selection: UmlSelection) => void
   /**
+   * Element ids to point out without selecting them (the active states of a simulation, say): an
+   * outline outside the selection ring, so a box can be both. Not drawn in a sequence diagram.
+   */
+  highlighted?: readonly string[]
+  /**
    * With `editable`, each element shows a dot to drag onto another one; this gets both ends, and
    * the app adds the relation to its diagram (`addRelation`).
    */
@@ -419,6 +424,7 @@ function DiagramCanvas({
   label,
   selection: selectionProp,
   onSelectionChange,
+  highlighted,
   onConnect,
   onDelete,
   onRename,
@@ -449,11 +455,14 @@ function DiagramCanvas({
   })
   const { selection } = change
   const connectable = editable && Boolean(onConnect)
-  // While an image is made, nothing is drawn as selected.
+  // While an image is made, nothing is drawn as selected or pointed out.
   const [exporting, setExporting] = React.useState(false)
   const shown = exporting ? NOTHING : selection
   const selected = new Set(shown.elements)
-  const nodes = graph ? flowNodes({ graph, boxes, editable, connectable, selected, t }) : []
+  const pointed = exporting ? undefined : new Set(highlighted)
+  const nodes = graph
+    ? flowNodes({ graph, boxes, editable, connectable, selected, highlighted: pointed, t })
+    : []
   const pickedLines = new Set(shown.relations)
   const edges = graph ? flowEdges({ graph, markers, selected: pickedLines, t }) : []
 

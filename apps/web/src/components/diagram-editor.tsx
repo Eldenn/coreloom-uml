@@ -63,6 +63,11 @@ interface DiagramEditorProps {
    * diagram are off. Copy, Download, zoom and full screen stay. Default: false.
    */
   readOnly?: boolean
+  /**
+   * Element ids to point out on the drawing without selecting them (the active states of a
+   * simulation, say). The text and the selection are left alone.
+   */
+  highlighted?: readonly string[]
   className?: string
 }
 
@@ -423,6 +428,7 @@ function DiagramEditor({
   onViewChange,
   actions,
   readOnly = false,
+  highlighted,
   className,
 }: DiagramEditorProps) {
   const { messages } = useCoreloomI18n()
@@ -561,6 +567,7 @@ function DiagramEditor({
             editing={editing}
             directions={keptDirections(diagram, format)}
             notes={keepsNotes(diagram, format)}
+            highlighted={highlighted}
             imageRef={image}
             onLayoutChange={setLayout}
           />

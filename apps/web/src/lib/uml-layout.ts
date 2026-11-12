@@ -6,6 +6,8 @@ interface LayoutNode {
   parent?: string
   /** Set on its frame's edge, not laid out inside it: a component's port. */
   border?: boolean
+  /** The concurrent region of its frame it sits in (default: 0). */
+  region?: number
   width: number
   height: number
 }
@@ -37,6 +39,8 @@ const FRAME_PAD = 24
 const FRAME_HEAD = 40
 /** Room between the things on one side of a frame, and from its corners. */
 const BORDER_GAP = 12
+/** Room between two concurrent regions of a frame: the line between them runs down its middle. */
+const GAP_REGION = 56
 
 /** The two sides of a frame, and what goes on each: the first half on the left. */
 function bySide(edge: readonly LayoutNode[]): [LayoutNode[], LayoutNode[]] {
@@ -318,6 +322,104 @@ function layoutScope(
 }
 
 /**
+ * Lays out one scope region by region: each region on its own, then next to each other across
+ * the flow (side by side top-down, stacked left to right), in region order. A line between two
+ * regions doesn't pull them together. With a single region, this is `layoutScope`.
+ */
+function layoutRegions(
+  nodes: readonly LayoutNode[],
+  sizes: Map<string, Size>,
+  edges: readonly LayoutEdge[],
+  direction: UmlDirection,
+) {
+  const regionOf = (n: LayoutNode) => n.region ?? 0
+  const numbers = [...new Set(nodes.map(regionOf))].sort((a, b) => a - b)
+  if (numbers.length < 2)
+    return layoutScope(
+      nodes.map((n) => n.id),
+      sizes,
+      edges,
+      direction,
+    )
+  const horizontal = direction === 'LR' || direction === 'RL'
+  const axis = horizontal ? 'y' : 'x'
+  const dim = horizontal ? 'height' : 'width'
+  const out = new Map<string, UmlPoint>()
+  let at = 0
+  for (const region of numbers) {
+    const ids = nodes.filter((n) => regionOf(n) === region).map((n) => n.id)
+    const inside = edges.filter((e) => ids.includes(e.source) && ids.includes(e.target))
+    let extent = 0
+    for (const [id, p] of layoutScope(ids, sizes, inside, direction)) {
+      out.set(id, { ...p, [axis]: p[axis] + at })
+      extent = Math.max(extent, p[axis] + (sizes.get(id)?.[dim] ?? 0))
+    }
+    at += extent + GAP_REGION
+  }
+  return out
+}
+
+/** The lines between a frame's regions: where they cross `axis`, relative to the frame. */
+interface RegionLines {
+  /** `x`: vertical lines, regions side by side. `y`: horizontal lines, regions stacked. */
+  axis: 'x' | 'y'
+  at: number[]
+}
+
+/** Where a line can part the spans (one per region) along an axis: every span wholly on one side. */
+function between(spans: readonly [number, number][]): number[] {
+  const sorted = [...spans].sort((a, b) => a[0] - b[0])
+  const at: number[] = []
+  let end = sorted[0]?.[1] ?? 0
+  for (const [from, to] of sorted.slice(1)) {
+    if (from >= end) at.push((end + from) / 2)
+    end = Math.max(end, to)
+  }
+  return at
+}
+
+/**
+ * The dashed lines that separate the concurrent regions of each frame, by frame id, read from
+ * where its nodes really are (`boxes`, from `layoutDiagram`): halfway between two neighbouring
+ * regions. Regions that overlap (someone dragged a state into another region's area) get no line
+ * between them, and a frame with no line no entry: no line is better than one on the wrong side
+ * of a state.
+ */
+function regionLines(
+  nodes: readonly LayoutNode[],
+  boxes: ReadonlyMap<string, LayoutBox>,
+  direction: UmlDirection = 'TB',
+): Map<string, RegionLines> {
+  const frames = new Map<string, Map<number, LayoutBox[]>>()
+  for (const n of nodes) {
+    const box = boxes.get(n.id)
+    if (!n.parent || n.border || !box) continue
+    const regions = frames.get(n.parent) ?? new Map<number, LayoutBox[]>()
+    regions.set(n.region ?? 0, [...(regions.get(n.region ?? 0) ?? []), box])
+    frames.set(n.parent, regions)
+  }
+  const horizontal = direction === 'LR' || direction === 'RL'
+  const out = new Map<string, RegionLines>()
+  for (const [frame, regions] of frames) {
+    if (regions.size < 2) continue
+    const along = (axis: 'x' | 'y'): RegionLines => {
+      const dim = axis === 'x' ? 'width' : 'height'
+      const spans = [...regions.values()].map((list): [number, number] => [
+        Math.min(...list.map((b) => b[axis])),
+        Math.max(...list.map((b) => b[axis] + b[dim])),
+      ])
+      return { axis, at: between(spans) }
+    }
+    // Across the flow unless the other way parts more regions: that's how the automatic layout
+    // sets them.
+    const [across, other] = horizontal ? [along('y'), along('x')] : [along('x'), along('y')]
+    const lines = other.at.length > across.at.length ? other : across
+    if (lines.at.length) out.set(frame, lines)
+  }
+  return out
+}
+
+/**
  * Where every node goes. `fixed` holds positions someone dragged (relative to the node's frame);
  * those stay, and frames grow to hold them.
  */
@@ -378,7 +480,7 @@ function layoutDiagram(input: {
       return source && target && source !== target ? [{ source, target }] : []
     })
     const ids = children.map((c) => c.id)
-    const auto = layoutScope(ids, sizes, local, direction)
+    const auto = layoutRegions(children, sizes, local, direction)
     const offset = scope === undefined ? { x: 0, y: 0 } : { x: FRAME_PAD, y: FRAME_HEAD }
     let width = 0
     let height = 0
@@ -396,4 +498,13 @@ function layoutDiagram(input: {
   return result
 }
 
-export { FRAME_HEAD, FRAME_PAD, type LayoutBox, layoutDiagram, type LayoutEdge, type LayoutNode }
+export {
+  FRAME_HEAD,
+  FRAME_PAD,
+  type LayoutBox,
+  layoutDiagram,
+  type LayoutEdge,
+  type LayoutNode,
+  regionLines,
+  type RegionLines,
+}

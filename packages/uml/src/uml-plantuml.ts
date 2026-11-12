@@ -214,7 +214,8 @@ function classLine(text: string): string | string[] | null {
 
 function stateLine(text: string): string | null {
   if (/^left to right direction$/i.test(text)) return 'direction LR'
-  if (/^(\|\||--)$/.test(text)) return null
+  // Both separate the concurrent regions of a composite state.
+  if (/^(\|\||--)$/.test(text)) return '--'
   const desc = match(/^state\s+([\w.]+)\s*(?:#\w+)?\s*:\s*(.+)$/, text)
   if (desc) return `${desc[1] ?? ''} : ${desc[2] ?? ''}`
   // Colours go from the declaration, not from what is said after the colon (`: order #42`).

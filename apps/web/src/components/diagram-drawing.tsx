@@ -101,6 +101,7 @@ function Drawing({
   editing,
   directions,
   notes = true,
+  highlighted,
   imageRef,
   onLayoutChange,
 }: {
@@ -117,6 +118,8 @@ function Drawing({
   directions: readonly UmlDirection[]
   /** The text's format keeps notes (a Mermaid flowchart has none). Default: true. */
   notes?: boolean
+  /** Element ids to point out on the drawing, beside the selection. */
+  highlighted?: readonly string[] | undefined
   imageRef: React.Ref<UmlDiagramHandle>
 }) {
   const empty = useCoreloomI18n().messages.diagram.empty
@@ -184,6 +187,7 @@ function Drawing({
               onLayoutChange={problems ? onLayoutChange : editing.move}
               selection={editing.selection}
               onSelectionChange={editing.select}
+              {...(highlighted ? { highlighted } : {})}
               {...editable}
               height="100%"
               label={label}

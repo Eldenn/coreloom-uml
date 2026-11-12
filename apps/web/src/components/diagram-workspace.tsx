@@ -76,6 +76,8 @@ interface DiagramWorkspaceProps {
    * panes are 560px tall.
    */
   height?: string
+  /** Element ids to point out on the open view's drawing (see DiagramEditor's `highlighted`). */
+  highlighted?: readonly string[]
   className?: string
 }
 
@@ -494,6 +496,7 @@ function DiagramWorkspace({
   onRetrySave,
   actions,
   height,
+  highlighted,
   className,
 }: DiagramWorkspaceProps) {
   const t = useCoreloomI18n().messages.diagramWorkspace
@@ -578,6 +581,7 @@ function DiagramWorkspace({
             onFormatChange={reports.onFormatChange}
             fileName={downloadName(active.title)}
             height={height ? 'fill' : undefined}
+            {...(highlighted ? { highlighted } : {})}
             className="min-w-0"
           />
         ) : null}
