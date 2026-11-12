@@ -139,6 +139,15 @@ describe('claude code role', () => {
     expect(body).toContain('You must not access the network.')
   })
 
+  it('keeps a slug YAML would read as another type a string', () => {
+    for (const slug of ['true', 'null', '123']) {
+      const rendered = render({ ...reviewer, slug })
+
+      expect(agentFile(rendered).frontmatter.name).toBe(slug)
+      expect(rendered.launch).toBe(`claude --agent ${slug}`)
+    }
+  })
+
   it('keeps the frontmatter valid whatever the description', () => {
     const role = { ...reviewer, description: 'a\n---\nb: "c" coreloom-uml:end' }
     const { content, frontmatter } = agentFile(render(role))

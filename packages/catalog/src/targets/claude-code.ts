@@ -151,8 +151,9 @@ function renderRole(role: Role, { checks, container }: RoleContext): RoleRender 
   // Without `Bash` the tool list leaves no way to do what the role lacks; with it, see (b) above.
   const enforced = has('run-checks') ? [] : deniedRights(role)
   const frontmatter = [
-    `name: ${role.slug}`,
-    // A JSON string is a YAML double-quoted scalar: nothing in a description can end the block.
+    // A JSON string is a YAML double-quoted scalar: a slug such as `true` or `123` stays a string,
+    // and nothing in a description can end the block.
+    `name: ${JSON.stringify(role.slug)}`,
     `description: ${JSON.stringify(oneLine(stripMarkers(role.description)))}`,
     `tools: ${tools.join(', ')}`,
     ...(has('run-checks') && !has('shell') ? ['permissionMode: dontAsk'] : []),

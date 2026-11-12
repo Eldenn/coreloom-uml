@@ -2,7 +2,7 @@
 
 exports[`claude code role > renders a reviewer without commands 1`] = `
 "---
-name: reviewer
+name: "reviewer"
 description: "Reviews a change and reports what it finds."
 tools: Read, Grep, Glob
 ---
