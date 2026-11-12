@@ -2,6 +2,12 @@ import { RIGHTS, type Right, ROLE_LINE_MAX_LENGTH, type Role } from '../roles/ro
 import { blockMarkdown, inlineMarkdown, stripMarkers } from './markdown.ts'
 
 /** How a right the tool does not refuse by itself reads after "You must not". Reading is never forbidden. */
+/** What a tool that reads files with commands adds to the two phrases that would forbid reading. */
+const READING: Partial<Record<Right, string>> = {
+  'run-checks': ', except to read the repository',
+  shell: ' and those that read the repository',
+}
+
 const RIGHT_PHRASES: Record<Exclude<Right, 'read'>, string> = {
   write: 'edit or create files',
   'run-checks': 'run commands',
@@ -17,7 +23,7 @@ const RIGHT_PHRASES: Record<Exclude<Right, 'read'>, string> = {
  * and so is every done command of a role without `run-checks`.
  * `instructionRights` are the rights the role lacks and the tool does not refuse by itself.
  * `readsWithCommands` is for a tool whose only way to read a file is a command: a role that runs
- * no check still has to read.
+ * no check, or only the checks, still has to read.
  */
 export function renderRoleBody(
   role: Role,
@@ -28,9 +34,7 @@ export function renderRoleBody(
   },
 ): string {
   const phrase = (right: Exclude<Right, 'read'>) =>
-    right === 'run-checks' && options.readsWithCommands
-      ? `${RIGHT_PHRASES[right]}, except to read the repository`
-      : RIGHT_PHRASES[right]
+    RIGHT_PHRASES[right] + ((options.readsWithCommands && READING[right]) || '')
   // "Run commands" already covers the shell, whose phrase points at commands this role cannot run.
   const stated = options.instructionRights.includes('run-checks')
     ? options.instructionRights.filter((right) => right !== 'shell')

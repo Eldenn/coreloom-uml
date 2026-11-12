@@ -86,7 +86,14 @@ const READ_ONLY_FROM = 5
  *     Codex writes to the user layer at `~/.codex/rules/default.rules`", which the repository
  *     does not hold: a person who once let `git push` through has it run unsandboxed in every
  *     later session. The sandbox also "does not filter web search, app or connector tool calls,
- *     MCP server connections" (web search is on, from a cache, unless `web_search = "disabled"`).
+ *     MCP server connections": "Codex defaults to using a web search cache", and setting
+ *     `web_search` to `"disabled"` is to "turn the tool off" (0.167.2 accepts
+ *     `-c web_search=disabled`), which the launch command does for a role without `network`.
+ *     A `forbidden` rule in the project does outrank a user's `allow` (`forbidden` > `prompt` >
+ *     `allow`), and still makes no right enforced for a role: rules are loaded for the whole
+ *     project, not for one role, so forbidding `git push` would forbid it to the roles that may
+ *     push; a prefix is all a rule matches, so `git -C . push` gets through; and `apply_patch`
+ *     writes files without any command for a rule to see.
  *
  * So the launch command still picks the narrowest sandbox the rights leave (read-only: "The
  * agent can inspect files, but it can't edit files or run commands without approval"; `.git` is
@@ -185,7 +192,8 @@ function renderRole(role: Role, { checks, container }: RoleContext): RoleRender 
         ].join('\n'),
       },
     ],
-    launch: `codex ${sandbox} "Act as the agent defined in ${path}."`,
+    // Hosted web search is no command: the sandbox's network setting leaves it on.
+    launch: `codex ${sandbox}${has('network') ? '' : ' -c web_search=disabled'} "Act as the agent defined in ${path}."`,
     enforced: [],
   }
 }

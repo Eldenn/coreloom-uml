@@ -73,7 +73,7 @@ describe('codex role', () => {
     expect(Object.keys(file)).toEqual(['name', 'description', 'developer_instructions'])
     expect(file.name).toBe('reviewer')
     expect(file.description).toBe('Reviews a change and reports what it finds.')
-    expect(rendered.launch).toBe(`codex --sandbox read-only ${ACT}`)
+    expect(rendered.launch).toBe(`codex --sandbox read-only -c web_search=disabled ${ACT}`)
     expect(roleMatrix(reviewer, rendered.enforced)).toEqual({
       read: 'granted',
       write: 'instruction',
@@ -103,7 +103,9 @@ describe('codex role', () => {
   it('drops the sandbox in the container', () => {
     const rendered = render(reviewer, contained)
 
-    expect(rendered.launch).toBe(`codex --dangerously-bypass-approvals-and-sandbox ${ACT}`)
+    expect(rendered.launch).toBe(
+      `codex --dangerously-bypass-approvals-and-sandbox -c web_search=disabled ${ACT}`,
+    )
     expect(rendered.files).toEqual(render(reviewer).files)
     expect(roleMatrix(reviewer, rendered.enforced)).toEqual(instructions(reviewer))
   })
@@ -113,10 +115,10 @@ describe('codex role', () => {
     const rendered = render(role)
     const body = agentFile(rendered).developer_instructions
 
-    expect(rendered.launch).toBe(`codex --sandbox read-only ${ACT}`)
+    expect(rendered.launch).toBe(`codex --sandbox read-only -c web_search=disabled ${ACT}`)
     expect(body?.match(/^- You must not .+$/gm)).toEqual([
       '- You must not edit or create files.',
-      '- You must not run commands other than the checks listed under "Done when".',
+      '- You must not run commands other than the checks listed under "Done when" and those that read the repository.',
       '- You must not commit.',
       '- You must not push to any remote.',
       '- You must not access the network.',
@@ -130,11 +132,16 @@ describe('codex role', () => {
     const online = withRights([...implementer.rights, 'network'])
     const offline = '--sandbox workspace-write -c sandbox_workspace_write.network_access=false'
 
-    expect(render(implementer).launch).toBe(`codex ${offline} ${ACT}`)
+    // Hosted web search is not a command: the sandbox's network setting does not turn it off.
+    expect(render(implementer).launch).toBe(`codex ${offline} -c web_search=disabled ${ACT}`)
     expect(render(online).launch).toBe(`codex ${offline.replace('false', 'true')} ${ACT}`)
     expect(render(implementer, contained).launch).toBe(
+      `codex --dangerously-bypass-approvals-and-sandbox -c web_search=disabled ${ACT}`,
+    )
+    expect(render(online, contained).launch).toBe(
       `codex --dangerously-bypass-approvals-and-sandbox ${ACT}`,
     )
+    expect(render(withRights(['read', 'network'])).launch).toBe(`codex --sandbox read-only ${ACT}`)
     for (const roleContext of [context, contained]) {
       const { enforced } = render(implementer, roleContext)
 
