@@ -40,6 +40,7 @@ import {
   useGenerations,
 } from '@/lib/agent-configs'
 import { apiBaseUrl } from '@/lib/client'
+import { downloadText } from '@/lib/download'
 import { useT } from '@/lib/locale'
 
 /** Files as a tree of folders, in the generation's order. */
@@ -82,18 +83,12 @@ const MIME_TYPES: Partial<Record<string, string>> = {
   yml: 'application/yaml',
 }
 
-/** Saves the text as a file, without any request: the content is already here. */
 function download(file: AgentFile) {
   // A Git hook has no extension: it is a shell script.
   const type = file.path.startsWith('.githooks/')
     ? 'text/x-shellscript'
     : (MIME_TYPES[file.path.split('.').at(-1) ?? ''] ?? 'text/markdown')
-  const url = URL.createObjectURL(new Blob([file.content], { type: `${type};charset=utf-8` }))
-  const link = document.createElement('a')
-  link.href = url
-  link.download = file.path.split('/').at(-1) ?? 'AGENTS.md'
-  link.click()
-  URL.revokeObjectURL(url)
+  downloadText(file.path.split('/').at(-1) ?? 'AGENTS.md', file.content, `${type};charset=utf-8`)
 }
 
 export function AgentConfigGeneration({

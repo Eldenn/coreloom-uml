@@ -264,9 +264,16 @@ function addToState(d: StateDiagram, input: AddElementInput): EditResult {
   // Next to a simple state, inside a composite one.
   const composite = near && d.states.some((s) => s.parent === near.id)
   const parent = composite ? near.id : near?.parent
+  // Next to a state, in its region; a composite's first region otherwise.
+  const region = composite ? undefined : near?.region
   const id = uniqueId(toIdentifier(input.name, 'State'), takenIds(d))
   const kind = STATE_KIND[input.type]
-  const state = { id, ...(kind ? { kind } : {}), ...(parent ? { parent } : {}) }
+  const state = {
+    id,
+    ...(kind ? { kind } : {}),
+    ...(parent ? { parent } : {}),
+    ...(parent && region ? { region } : {}),
+  }
   return { diagram: { ...d, states: [...d.states, state] }, id }
 }
 
@@ -502,9 +509,10 @@ function deleteFromClass(d: ClassDiagram, removed: Set<string>, rel: Set<number>
 
 function deleteFromState(d: StateDiagram, removed: Set<string>, rel: Set<number>): StateDiagram {
   const parentOf = (id: string) => d.states.find((s) => s.id === id)?.parent
-  const reparent = <T extends { parent?: string }>(x: T): T => {
+  // A region belongs to the parent that goes: what moves up joins the first region of the new one.
+  const reparent = <T extends { parent?: string; region?: number }>(x: T): T => {
     if (!x.parent || !removed.has(x.parent)) return x
-    const { parent: _p, ...rest } = x
+    const { parent: _p, region: _r, ...rest } = x
     const parent = survivor(x.parent, parentOf, removed)
     return (parent ? { ...rest, parent } : rest) as T
   }

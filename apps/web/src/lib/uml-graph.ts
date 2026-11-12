@@ -105,10 +105,12 @@ function classGraph(d: ClassDiagram): DiagramGraph {
 
 // ── State ───────────────────────────────────────────────────────────────────────────────────────
 
-const pseudo = (kind: 'start' | 'end', scope: string | undefined) => `[*]${kind}:${scope ?? ''}`
+/** A start or end's id: one per scope, and per concurrent region of it past the first. */
+const pseudo = (kind: 'start' | 'end', scope: string | undefined, region: number) =>
+  `[*]${kind}:${scope ?? ''}${region ? `:${String(region)}` : ''}`
 
 function stateNode(d: StateDiagram, s: StateDiagram['states'][number]): DiagramNode {
-  const parent = s.parent ? { parent: s.parent } : {}
+  const parent = s.parent ? { parent: s.parent, ...(s.region ? { region: s.region } : {}) } : {}
   const title = s.label ?? s.id
   const horizontal = d.direction === 'LR' || d.direction === 'RL'
   switch (s.kind) {
@@ -142,9 +144,13 @@ function stateNode(d: StateDiagram, s: StateDiagram['states'][number]): DiagramN
 function stateGraph(d: StateDiagram): DiagramGraph {
   const nodes = d.states.map((s) => stateNode(d, s))
   const used = new Map<string, DiagramNode>()
-  const end = (id: string, kind: 'start' | 'end', scope: string | undefined) => {
+  // A start or end sits in the region of the state at its other end.
+  const regionIn = (scope: string | undefined, other: string) =>
+    (scope && nodes.find((n) => n.id === other && n.parent === scope)?.region) || 0
+  const end = (id: string, kind: 'start' | 'end', scope: string | undefined, other: string) => {
     if (id !== '[*]') return id
-    const key = pseudo(kind, scope)
+    const region = regionIn(scope, other)
+    const key = pseudo(kind, scope, region)
     if (!used.has(key)) {
       used.set(key, {
         id: key,
@@ -154,13 +160,14 @@ function stateGraph(d: StateDiagram): DiagramGraph {
         width: 22,
         height: 22,
         ...(scope ? { parent: scope } : {}),
+        ...(region ? { region } : {}),
       })
     }
     return key
   }
   const edges = d.transitions.map((t, i): DiagramEdge => {
-    const source = end(t.from, 'start', t.parent)
-    const target = end(t.to, 'end', t.parent)
+    const source = end(t.from, 'start', t.parent, t.to)
+    const target = end(t.to, 'end', t.parent, t.from)
     return {
       id: `t${String(i)}`,
       source,
@@ -174,6 +181,12 @@ function stateGraph(d: StateDiagram): DiagramGraph {
   })
   const all = [...used.values(), ...nodes]
   const notes = noteNodes(d.notes, (id) => all.find((n) => n.id === id)?.parent)
+  // A note stays in the region of the state it's about.
+  ;(d.notes ?? []).forEach((note, i) => {
+    const region = nodes.find((n) => n.id === note.for)?.region
+    const node = notes.nodes[i]
+    if (region && node) node.region = region
+  })
   return {
     direction: d.direction ?? 'TB',
     nodes: [...all, ...notes.nodes],

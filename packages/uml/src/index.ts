@@ -126,6 +126,17 @@ export { keepLayout, withoutLayout } from './uml-layout-merge.ts'
 export { isMermaidSpec, type MermaidSpec, parseMermaid, toMermaid } from './uml-mermaid.ts'
 export { isPlantUml, parsePlantUml, toPlantUml } from './uml-plantuml.ts'
 export {
+  stateToXState,
+  XSTATE_PROBLEM_CODES,
+  type XStateConfig,
+  type XStateExport,
+  type XStateNode,
+  type XStateProblem,
+  type XStateProblemCode,
+  type XStateTransition,
+  type XStateTransitions,
+} from './uml-xstate.ts'
+export {
   DIAGRAM_TEXT_FORMATS,
   type DiagramTextFormat,
   detectDiagramTextFormat,

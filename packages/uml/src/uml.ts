@@ -113,6 +113,12 @@ interface UmlState {
   description?: string
   /** The composite state it sits in. A state with states inside it is composite. */
   parent?: string
+  /**
+   * The concurrent region of `parent` it sits in (default: 0). A composite whose states name more
+   * than one region runs them side by side; a `[*]` start or end belongs to the region of the
+   * state at its other end.
+   */
+  region?: number
 }
 
 /** `[*]` as `from` is the start of the scope (`parent`, or the whole diagram); as `to`, its end. */
@@ -360,6 +366,9 @@ const classSchema = z.object({
   layout,
 })
 
+/** The highest region index a state can name. */
+const STATE_REGIONS_MAX = 31
+
 const stateSchema = z.object({
   kind: z.literal('state'),
   title: text.optional(),
@@ -371,6 +380,7 @@ const stateSchema = z.object({
       kind: z.enum(['state', 'choice', 'fork', 'join']).optional(),
       description: text.optional(),
       parent: id.optional(),
+      region: z.number().int().min(0).max(STATE_REGIONS_MAX).optional(),
     }),
   ),
   transitions: z.array(
@@ -600,6 +610,7 @@ export {
   type SequenceDiagram,
   type SequenceParticipant,
   type SequenceStep,
+  STATE_REGIONS_MAX,
   type StateDiagram,
   type StateKind,
   type StateTransition,

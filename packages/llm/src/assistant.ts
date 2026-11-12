@@ -151,7 +151,7 @@ export const ASSISTANT_FORMAT: Record<UmlSpec['kind'], { example: UmlSpec; value
       ],
     },
     values:
-      'state kind: state (default), choice, fork, join. "[*]" is the start as "from" and the end as "to". "parent" is the id of the composite state a state or a transition is in.',
+      'state kind: state (default), choice, fork, join. "[*]" is the start as "from" and the end as "to". "parent" is the id of the composite state a state or a transition is in. "region" (0 by default) is the concurrent region of its parent a state runs in; a "[*]" start or end belongs to the region of the state at its other end.',
   },
   er: {
     example: {
