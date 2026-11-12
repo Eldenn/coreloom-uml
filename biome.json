@@ -18,6 +18,7 @@
       "!**/coverage",
       "!**/playwright-report",
       "!**/packages/cli/templates",
+      "!**/packages/catalog/e2e/schemas",
       "!**/apps/web"
     ]
   },

@@ -10,14 +10,19 @@
   "scripts": {
     "lint": "biome check .",
     "check-types": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --dir src",
+    "test:e2e": "vitest run --dir e2e"
   },
   "dependencies": {
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@anthropic-ai/claude-code": "2.1.319",
     "@biomejs/biome": "2.4.16",
     "@coreloom-uml/config": "workspace:*",
+    "@openai/codex": "0.167.1",
+    "ajv": "8.20.0",
+    "dependency-cruiser": "18.7.2",
     "typescript": "6.0.3",
     "vitest": "4.1.9"
   }

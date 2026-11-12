@@ -13,6 +13,9 @@ allowBuilds:
   '@tailwindcss/oxide': true
   # protobufjs' only install script is a no-op version-scheme warning check.
   protobufjs: false
+  # Only run by the catalog's end-to-end tests, through its `cli-wrapper.cjs`, which needs no
+  # install script.
+  '@anthropic-ai/claude-code': false
 
 minimumReleaseAgeExclude:
   - '@tanstack/history@1.162.4'
