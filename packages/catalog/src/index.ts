@@ -29,6 +29,7 @@ export {
 export {
   DEPENDENCY_CRUISER_FILE,
   type PackageDiagramShape,
+  packageFolders,
 } from './render/architecture-boundaries.ts'
 export {
   CI_WORKFLOW_FILE,

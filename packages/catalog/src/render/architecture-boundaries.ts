@@ -25,10 +25,52 @@ function related(a: string, b: string): boolean {
 }
 
 /**
- * Reads folders and allowed dependencies from package diagrams. A diagram has no folder paths,
- * so a package's name is taken as its folder: the name as written (`src`, `apps/api/app`), under
- * its parent package's folder when it is nested (`domain` inside `src` is `src/domain`). A
- * package whose name is not a plain folder path is left out, with everything inside it. An arrow
+ * The folder of each element of a package diagram. A diagram has no folder paths, so a package's
+ * name is taken as its folder: the name as written (`src`, `apps/api/app`), under its parent
+ * package's folder when it is nested (`domain` inside `src` is `src/domain`). A package whose
+ * name is not a plain folder path has none (`null`), like everything inside it. A class has the
+ * folder of the package that holds it, `''` outside any package.
+ */
+function folderReader(diagram: PackageDiagramShape): (id: string) => string | null {
+  const byId = new Map(diagram.elements.map((element) => [element.id, element]))
+  const folders = new Map<string, string | null>()
+  const folderOf = (id: string, depth = 0): string | null => {
+    const known = folders.get(id)
+    if (known !== undefined) return known
+    const element = byId.get(id)
+    // The depth bound stops a cycle of parents.
+    if (!element || depth > diagram.elements.length) return null
+    const parent = element.parent === undefined ? '' : folderOf(element.parent, depth + 1)
+    let folder = parent
+    if (element.kind === 'package' && parent !== null) {
+      const name = (element.label ?? element.id).trim().replace(/^(?:\.?\/)+|\/+$/g, '')
+      const path = parent === '' || within(name, parent) ? name : `${parent}/${name}`
+      folder = FOLDER_PATH.test(path) && !path.split('/').includes('..') ? path : null
+    }
+    folders.set(id, folder)
+    return folder
+  }
+  return (id) => folderOf(id)
+}
+
+/**
+ * Every package folder the diagrams draw (see `folderReader`), without duplicate, sorted. A
+ * diagram without any arrow counts too, and a folder with a `.` segment is left out.
+ */
+export function packageFolders(diagrams: readonly PackageDiagramShape[]): string[] {
+  const paths = new Set<string>()
+  for (const diagram of diagrams) {
+    const folderOf = folderReader(diagram)
+    for (const element of diagram.elements) {
+      const folder = element.kind === 'package' ? folderOf(element.id) : null
+      if (folder && !folder.split('/').includes('.')) paths.add(folder)
+    }
+  }
+  return [...paths].sort()
+}
+
+/**
+ * Reads folders and allowed dependencies from package diagrams (see `folderReader`). An arrow
  * from or to a class counts for the package that holds it. A diagram without any arrow between
  * two folders says nothing about dependencies and is left out whole. `null` when no diagram is
  * left: nothing can be checked.
@@ -40,24 +82,7 @@ function collectBoundaries(
   const allowed = new Set<string>()
 
   for (const diagram of diagrams) {
-    const byId = new Map(diagram.elements.map((element) => [element.id, element]))
-    const folders = new Map<string, string | null>()
-    const folderOf = (id: string, depth = 0): string | null => {
-      const known = folders.get(id)
-      if (known !== undefined) return known
-      const element = byId.get(id)
-      // The depth bound stops a cycle of parents.
-      if (!element || depth > diagram.elements.length) return null
-      const parent = element.parent === undefined ? '' : folderOf(element.parent, depth + 1)
-      let folder = parent
-      if (element.kind === 'package' && parent !== null) {
-        const name = (element.label ?? element.id).trim().replace(/^(?:\.?\/)+|\/+$/g, '')
-        const path = parent === '' || within(name, parent) ? name : `${parent}/${name}`
-        folder = FOLDER_PATH.test(path) && !path.split('/').includes('..') ? path : null
-      }
-      folders.set(id, folder)
-      return folder
-    }
+    const folderOf = folderReader(diagram)
 
     const arrows: string[] = []
     for (const relation of diagram.relations) {
