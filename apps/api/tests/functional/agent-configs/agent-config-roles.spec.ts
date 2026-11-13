@@ -86,7 +86,10 @@ const FLAG_ON = { enabled: true, rollout: 100, rules: [] }
 type Client = TestContext['client']
 
 /** A user with the flag on (unless told otherwise) and a configuration answering `checks`. */
-async function setup(client: Client, { flag = true } = {}) {
+async function setup(
+  client: Client,
+  { flag = true, targets = ['claude-code'] }: { flag?: boolean; targets?: string[] } = {},
+) {
   const user = await User.create({
     email: `agent-roles-${Math.random().toString(36).slice(2)}@example.com`,
     password: 'a-very-strong-passphrase',
@@ -100,7 +103,7 @@ async function setup(client: Client, { flag = true } = {}) {
       name: 'Storefront',
       projectId: null,
       questionnaires: ['frontend-react'],
-      targets: ['claude-code'],
+      targets,
     })
   created.assertStatus(201)
   const configId = created.body().config.id as number
@@ -306,5 +309,87 @@ test.group('Agent configs - roles routes', (group) => {
     ;(await deleteRole(client, user, configId, created.role.id)).assertStatus(204)
     assert.isNull(await AgentConfigRole.find(created.role.id))
     assert.equal(await revisionOf(configId), before + 1)
+  })
+})
+
+const REVIEWER_FILES = ['.claude/agents/reviewer.md', '.codex/agents/reviewer.toml']
+
+function generate(client: Client, user: User, configId: number) {
+  return client.post(`/agent-configs/${configId}/generations`).headers(json).loginAs(user)
+}
+
+async function impactOf(client: Client, user: User, configId: number) {
+  const response = await client.get(`/agent-configs/${configId}`).headers(json).loginAs(user)
+  response.assertStatus(200)
+  return response.body().impact as { files: { path: string; change: string }[] }
+}
+
+test.group('Agent configs - roles in generations', (group) => {
+  group.each.setup(() => withDefaultFlags())
+
+  test('renders a role for each target and stores its launch and matrix', async ({
+    client,
+    assert,
+  }) => {
+    const { user, configId } = await setup(client, { targets: ['claude-code', 'codex'] })
+    ;(await postRole(client, user, configId, { ...NEW_ROLE, slug: 'reviewer' })).assertStatus(201)
+
+    const response = await generate(client, user, configId)
+    response.assertStatus(201)
+    const generation = response.body().generation
+    const paths = generation.files.map((file: { path: string }) => file.path)
+    for (const path of REVIEWER_FILES) assert.include(paths, path)
+    assert.lengthOf(generation.roles, 2)
+    for (const role of generation.roles) {
+      assert.equal(role.slug, 'reviewer')
+      assert.property(role, 'launch')
+      assert.property(role, 'matrix')
+    }
+    assert.sameMembers(
+      generation.roles.map((role: { target: string }) => role.target),
+      ['claude-code', 'codex'],
+    )
+  })
+
+  test('replays a generation stored before roles, listing the role files as added', async ({
+    client,
+    assert,
+  }) => {
+    const { user, configId } = await setup(client, { targets: ['claude-code', 'codex'] })
+    ;(await generate(client, user, configId)).assertStatus(201)
+    // A generation stored before roles existed: its inputs have no `roles` key.
+    const latest = await AgentConfigGeneration.query()
+      .where('agentConfigId', configId)
+      .orderBy('id', 'desc')
+      .firstOrFail()
+    const { roles: _roles, ...inputs } = latest.inputs
+    latest.inputs = inputs as AgentConfigGeneration['inputs']
+    await latest.save()
+    await latest.refresh()
+    assert.notProperty(latest.inputs, 'roles')
+    ;(await postRole(client, user, configId, { ...NEW_ROLE, slug: 'reviewer' })).assertStatus(201)
+
+    const impact = await impactOf(client, user, configId)
+    for (const path of REVIEWER_FILES) {
+      assert.deepInclude(
+        impact.files.map(({ path: file, change }) => ({ path: file, change })),
+        { path, change: 'added' },
+      )
+    }
+  })
+
+  test('deleting a role lists its files as removed', async ({ client, assert }) => {
+    const { user, configId } = await setup(client, { targets: ['claude-code', 'codex'] })
+    const created = await postRole(client, user, configId, { ...NEW_ROLE, slug: 'reviewer' })
+    ;(await generate(client, user, configId)).assertStatus(201)
+    ;(await deleteRole(client, user, configId, created.body().role.id)).assertStatus(204)
+
+    const impact = await impactOf(client, user, configId)
+    for (const path of REVIEWER_FILES) {
+      assert.deepInclude(
+        impact.files.map(({ path: file, change }) => ({ path: file, change })),
+        { path, change: 'removed' },
+      )
+    }
   })
 })

@@ -10,6 +10,7 @@ import {
   migrateAnswers,
   type PackageDiagramShape,
   type Questionnaire,
+  type Role,
   renderAgentContext,
   repositoryChecks,
   Section,
@@ -39,6 +40,8 @@ export type AgentConfigInputs = {
   rules: { section: string; text: string }[]
   notes: string | null
   targets: Target[]
+  /** In id order; generations stored before roles hold none. */
+  roles?: Role[]
 }
 
 export const FileChange = {
@@ -130,6 +133,7 @@ export async function currentInputs(config: AgentConfig): Promise<AgentConfigInp
     rules: config.rules.map(({ section, text }) => ({ section, text })),
     notes: config.notes,
     targets: [...config.targets],
+    roles: config.roles.map((role) => role.toRole()),
   }
 }
 
@@ -159,7 +163,7 @@ export function render(inputs: AgentConfigInputs): AgentContextOutput {
     rules: inputs.rules,
     notes: inputs.notes,
     targets: inputs.targets,
-    roles: [],
+    roles: inputs.roles ?? [],
   })
 }
 
