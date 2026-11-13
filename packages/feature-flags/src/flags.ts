@@ -59,7 +59,8 @@ export const FEATURE_FLAGS: readonly FeatureFlagDeclaration[] = [
   {
     key: FeatureFlagKey.AgentRoles,
     name: 'Agent roles',
-    description: 'Roles in agent conventions: framed agents rendered per tool.',
+    description:
+      'Roles in agent conventions: framed agents rendered per tool. Keep off until the CLI writes role files whole (it appends them again on a second pull).',
     tags: ['agents'],
     defaultState: OFF,
   },
