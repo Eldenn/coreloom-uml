@@ -11,6 +11,7 @@ import {
   type PackageDiagramShape,
   type Questionnaire,
   renderAgentContext,
+  repositoryChecks,
   Section,
   type Skill,
   type SkillSuggestions,
@@ -133,11 +134,16 @@ export async function currentInputs(config: AgentConfig): Promise<AgentConfigInp
 }
 
 /** The questionnaires of the inputs at their current version, and the answers migrated to it. */
-function resolveInputs(inputs: AgentConfigInputs) {
+function resolveInputs(inputs: Pick<AgentConfigInputs, 'questionnaires' | 'answers'>) {
   const questionnaires = resolveQuestionnaires(inputs.questionnaires)
   let answers: StoredAnswer[] = inputs.answers
   for (const questionnaire of questionnaires) answers = migrateAnswers(questionnaire, answers)
   return { questionnaires, answers }
+}
+
+/** The repository's checks as the inputs answer them (answers read like `render` reads them). */
+export function inputsChecks(inputs: Pick<AgentConfigInputs, 'questionnaires' | 'answers'>) {
+  return repositoryChecks(resolveInputs(inputs))
 }
 
 /**
