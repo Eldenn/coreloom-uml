@@ -737,6 +737,16 @@ describe('renderAgentContext', () => {
       {
         target: 'cursor',
         title: 'Roles',
+        body: "Cursor cannot load roles yet: use each role's plain file in `.agents/roles/`.",
+      },
+    ])
+    // Without the AGENTS.md target those files are not rendered: the recommendation says so.
+    const withoutGeneric = renderAgentContext({ ...ROLES_INPUT, targets: ['cursor', 'codex'] })
+    expect(withoutGeneric.files.some((file) => file.path.startsWith('.agents/roles/'))).toBe(false)
+    expect(withoutGeneric.recommendations.filter((item) => item.title === 'Roles')).toEqual([
+      {
+        target: 'cursor',
+        title: 'Roles',
         body: 'Cursor cannot load roles yet: choose the AGENTS.md target to get each role as a plain file in `.agents/roles/`.',
       },
     ])

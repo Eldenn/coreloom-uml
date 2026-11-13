@@ -221,7 +221,9 @@ export function renderAgentContext(input: AgentContextInput): AgentContextOutput
       recommendations.push({
         target,
         title: 'Roles',
-        body: `${name} cannot load roles yet: choose the AGENTS.md target to get each role as a plain file in \`.agents/roles/\`.`,
+        body: targets.includes('generic')
+          ? `${name} cannot load roles yet: use each role's plain file in \`.agents/roles/\`.`
+          : `${name} cannot load roles yet: choose the AGENTS.md target to get each role as a plain file in \`.agents/roles/\`.`,
       })
     }
   }
