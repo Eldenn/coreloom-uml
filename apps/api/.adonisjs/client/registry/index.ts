@@ -162,6 +162,24 @@ const routes = {
     tokens: [{"old":"/agent-configs/:id/rules/:ruleId","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/rules/:ruleId","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/rules/:ruleId","type":0,"val":"rules","end":""},{"old":"/agent-configs/:id/rules/:ruleId","type":1,"val":"ruleId","end":""}],
     types: placeholder as Registry['agent_configs.rules.destroy']['types'],
   },
+  'agent_configs.roles.store': {
+    methods: ["POST"],
+    pattern: '/agent-configs/:id/roles',
+    tokens: [{"old":"/agent-configs/:id/roles","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/roles","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/roles","type":0,"val":"roles","end":""}],
+    types: placeholder as Registry['agent_configs.roles.store']['types'],
+  },
+  'agent_configs.roles.update': {
+    methods: ["PATCH"],
+    pattern: '/agent-configs/:id/roles/:roleId',
+    tokens: [{"old":"/agent-configs/:id/roles/:roleId","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/roles/:roleId","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/roles/:roleId","type":0,"val":"roles","end":""},{"old":"/agent-configs/:id/roles/:roleId","type":1,"val":"roleId","end":""}],
+    types: placeholder as Registry['agent_configs.roles.update']['types'],
+  },
+  'agent_configs.roles.destroy': {
+    methods: ["DELETE"],
+    pattern: '/agent-configs/:id/roles/:roleId',
+    tokens: [{"old":"/agent-configs/:id/roles/:roleId","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/roles/:roleId","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/roles/:roleId","type":0,"val":"roles","end":""},{"old":"/agent-configs/:id/roles/:roleId","type":1,"val":"roleId","end":""}],
+    types: placeholder as Registry['agent_configs.roles.destroy']['types'],
+  },
   'agent_configs.generations.store': {
     methods: ["POST"],
     pattern: '/agent-configs/:id/generations',
@@ -257,6 +275,12 @@ const routes = {
     pattern: '/questionnaires/:questionnaireId',
     tokens: [{"old":"/questionnaires/:questionnaireId","type":0,"val":"questionnaires","end":""},{"old":"/questionnaires/:questionnaireId","type":1,"val":"questionnaireId","end":""}],
     types: placeholder as Registry['questionnaires.show']['types'],
+  },
+  'role_presets.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/role-presets',
+    tokens: [{"old":"/role-presets","type":0,"val":"role-presets","end":""}],
+    types: placeholder as Registry['role_presets.index']['types'],
   },
   'skills.index': {
     methods: ["GET","HEAD"],

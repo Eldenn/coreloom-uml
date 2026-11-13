@@ -319,6 +319,42 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-rules-controller').default['destroy']>>>
     }
   }
+  'agent_configs.roles.store': {
+    methods: ["POST"]
+    pattern: '/agent-configs/:id/roles'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').createAgentRoleFromPresetInput)>|InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').createAgentRoleInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').createAgentRoleFromPresetInput)>|InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').createAgentRoleInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-roles-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-roles-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'agent_configs.roles.update': {
+    methods: ["PATCH"]
+    pattern: '/agent-configs/:id/roles/:roleId'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').updateAgentRoleInput)>>
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; roleId: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').updateAgentRoleInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-roles-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-roles-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'agent_configs.roles.destroy': {
+    methods: ["DELETE"]
+    pattern: '/agent-configs/:id/roles/:roleId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; roleId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-roles-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-roles-controller').default['destroy']>>>
+    }
+  }
   'agent_configs.generations.store': {
     methods: ["POST"]
     pattern: '/agent-configs/:id/generations'
@@ -509,6 +545,18 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/questionnaires-controller').default['show']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/questionnaires-controller').default['show']>>>
+    }
+  }
+  'role_presets.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/role-presets'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/role-presets-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/role-presets-controller').default['index']>>>
     }
   }
   'skills.index': {
