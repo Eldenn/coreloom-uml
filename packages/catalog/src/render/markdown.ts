@@ -13,6 +13,15 @@ export function truncate(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`
 }
 
+/**
+ * Writes half a surrogate pair as a replacement character: no UTF-8 file can hold one, TOML has
+ * no escape for it and a YAML reader may refuse the escape or hand the half back.
+ */
+export function wellFormed(text: string): string {
+  // With the `u` flag a surrogate matches only when it stands alone.
+  return text.replace(/\p{Surrogate}/gu, '\ufffd')
+}
+
 /** Removes managed-block markers, so that no input can open or close a block. */
 export function stripMarkers(text: string): string {
   return text.replaceAll(MARKER_PREFIX, 'coreloom-uml ')

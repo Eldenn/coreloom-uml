@@ -161,6 +161,15 @@ describe('claude code role', () => {
     expect(content).not.toContain('coreloom-uml:')
   })
 
+  it('writes a lone surrogate in the description as a replacement character', () => {
+    const { content, frontmatter } = agentFile(
+      render({ ...reviewer, description: 'a \ud800 b 😀' }),
+    )
+
+    expect(frontmatter.description).toBe('a � b 😀')
+    expect(content).not.toMatch(/\\ud800/i)
+  })
+
   it('forbids commands, not "other than the checks", when a preset comes with no check', () => {
     const preset = ROLE_PRESETS.find((item) => item.slug === 'code-reviewer')
     if (preset === undefined) throw new Error('No code-reviewer preset')

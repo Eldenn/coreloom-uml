@@ -1,5 +1,5 @@
 import { HASH_MARKERS, wrapManagedBlock } from '../render/managed-block.ts'
-import { oneLine, stripMarkers } from '../render/markdown.ts'
+import { oneLine, stripMarkers, wellFormed } from '../render/markdown.ts'
 import { renderRoleBody } from '../render/role.ts'
 import { deniedRights } from '../roles/matrix.ts'
 import type { Right, Role } from '../roles/role.ts'
@@ -163,8 +163,7 @@ const RULES_PATH = '.codex/rules/coreloom-uml.rules'
  * refuses: a raw DEL, and the escape of half a surrogate pair.
  */
 const tomlString = (text: string) =>
-  // With the `u` flag a surrogate matches only when it stands alone.
-  JSON.stringify(text.replace(/\p{Surrogate}/gu, '\ufffd')).replaceAll('\u007f', '\\u007F')
+  JSON.stringify(wellFormed(text)).replaceAll('\u007f', '\\u007F')
 
 /** The custom agent file a role becomes and the command that starts Codex as it; see (d) above. */
 function renderRole(role: Role, { checks, container }: RoleContext): RoleRender {

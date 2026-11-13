@@ -1,4 +1,4 @@
-import { oneLine, stripMarkers } from '../render/markdown.ts'
+import { oneLine, stripMarkers, wellFormed } from '../render/markdown.ts'
 import { renderRoleBody } from '../render/role.ts'
 import { deniedRights } from '../roles/matrix.ts'
 import type { Right, Role } from '../roles/role.ts'
@@ -152,9 +152,10 @@ function renderRole(role: Role, { checks, container }: RoleContext): RoleRender 
   const enforced = has('run-checks') ? [] : deniedRights(role)
   const frontmatter = [
     // A JSON string is a YAML double-quoted scalar: a slug such as `true` or `123` stays a string,
-    // and nothing in a description can end the block.
+    // and nothing in a description can end the block. Half a surrogate pair is replaced, as
+    // for Codex, rather than left to what a YAML reader makes of its escape.
     `name: ${JSON.stringify(role.slug)}`,
-    `description: ${JSON.stringify(oneLine(stripMarkers(role.description)))}`,
+    `description: ${JSON.stringify(wellFormed(oneLine(stripMarkers(role.description))))}`,
     `tools: ${tools.join(', ')}`,
     ...(has('run-checks') && !has('shell') ? ['permissionMode: dontAsk'] : []),
   ]
