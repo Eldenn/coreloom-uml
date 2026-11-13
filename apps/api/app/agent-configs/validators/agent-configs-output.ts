@@ -1,9 +1,11 @@
 import type {
   AgentContextFile,
+  AgentContextRole,
   AnswerValue,
   Localized,
   Question,
   Recommendation,
+  Role,
 } from '@coreloom-uml/catalog'
 import type { AgentRuleSource, Target } from '#app/agent-configs/constants/agent-config'
 import type { AgentConfigQuestionnaire } from '#app/agent-configs/models/agent-config'
@@ -51,6 +53,8 @@ export type AgentRuleOutput = {
   updatedAt: string
 }
 
+export type AgentRoleOutput = Role & { id: number; createdAt: string; updatedAt: string }
+
 /** A configuration's own fields. */
 export type AgentConfigOutput = {
   id: number
@@ -79,6 +83,8 @@ export type AgentGenerationOutput = AgentGenerationSummaryOutput & {
   files: AgentContextFile[]
   recommendations: Recommendation[]
   skills: AgentGenerationSkills
+  /** What each target does with each role. */
+  roles: AgentContextRole[]
 }
 
 /** A configured questionnaire answered against an older version than the catalog's. */
@@ -109,6 +115,8 @@ export type AgentConfigDetailOutput = AgentConfigOutput & {
   answers: AgentAnswerOutput[]
   /** In position order. */
   rules: AgentRuleOutput[]
+  /** In id order. */
+  roles: AgentRoleOutput[]
   latestGeneration: AgentGenerationSummaryOutput | null
   outdatedQuestionnaires: OutdatedQuestionnaireOutput[]
   /** Its diagrams with content, architecture by architecture. */

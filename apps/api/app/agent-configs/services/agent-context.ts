@@ -118,6 +118,7 @@ export async function projectContext(config: AgentConfig): Promise<AgentContextP
 export async function currentInputs(config: AgentConfig): Promise<AgentConfigInputs> {
   await config.load('answers', (query) => query.orderBy('id', 'asc'))
   await config.load('rules', (query) => query.orderBy('position', 'asc').orderBy('id', 'asc'))
+  await config.load('roles', (query) => query.orderBy('id', 'asc'))
   const configured = new Set(config.questionnaires.map((item) => item.id))
   return {
     project: await projectContext(config),
