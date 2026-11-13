@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 
 import { roleMatrix } from '../roles/matrix.ts'
+import { presetRole, ROLE_PRESETS } from '../roles/presets/index.ts'
 import type { Right, Role } from '../roles/role.ts'
 import { claudeCode } from './claude-code.ts'
 import type { RoleContext, RoleRender } from './types.ts'
@@ -158,5 +159,21 @@ describe('claude code role', () => {
       tools: 'Read, Grep, Glob',
     })
     expect(content).not.toContain('coreloom-uml:')
+  })
+
+  it('forbids commands, not "other than the checks", when a preset comes with no check', () => {
+    const preset = ROLE_PRESETS.find((item) => item.slug === 'code-reviewer')
+    if (preset === undefined) throw new Error('No code-reviewer preset')
+
+    const { body } = agentFile(render(presetRole(preset, []), { ...context, checks: [] }))
+    expect(body).not.toContain('## Done when')
+    expect(body).toContain('- You must not run commands.')
+    expect(body).not.toContain('listed under')
+
+    const checked = agentFile(render(presetRole(preset, ['pnpm test']))).body
+    expect(checked).toContain('## Done when\n\n- `pnpm test` passes.')
+    expect(checked).toContain(
+      '- You must not run commands other than the checks listed under "Done when".',
+    )
   })
 })

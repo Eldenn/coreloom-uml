@@ -29,6 +29,13 @@ const full: Role = {
 
 const none = { checks: [], instructionRights: [] }
 
+/** Runs the checks, and nothing else. */
+const checker: Role = {
+  ...minimal,
+  rights: ['read', 'run-checks'],
+  done: { commands: ['pnpm test'], text: null },
+}
+
 describe('renderRoleBody', () => {
   it('renders every section in order', () => {
     const body = renderRoleBody(full, {
@@ -109,9 +116,27 @@ describe('renderRoleBody', () => {
 
     expect(body).toContain('## Forbidden\n\n- You must not run commands.\n- You must not commit.')
     expect(body).not.toContain('Done when')
-    expect(renderRoleBody(minimal, { checks: [], instructionRights: ['shell'] })).toContain(
-      '- You must not run commands other than the checks listed under "Done when".',
-    )
+    expect(
+      renderRoleBody(checker, { checks: ['pnpm test'], instructionRights: ['shell'] }),
+    ).toContain('- You must not run commands other than the checks listed under "Done when".')
+  })
+
+  it('does not point at checks the body does not list', () => {
+    // No check is configured, a done text alone lists no command, and a command outside the checks is left out.
+    for (const done of [
+      { commands: [], text: null },
+      { commands: [], text: 'The review is posted.' },
+      { commands: ['pnpm test'], text: null },
+    ]) {
+      const role = { ...checker, done }
+      const body = renderRoleBody(role, { checks: [], instructionRights: ['shell'] })
+
+      expect(body).toContain('- You must not run commands.')
+      expect(body).not.toContain('listed under')
+      expect(
+        renderRoleBody(role, { checks: [], instructionRights: ['shell'], readsWithCommands: true }),
+      ).toContain('- You must not run commands, except to read the repository.')
+    }
   })
 
   it('keeps the commands a tool reads files with', () => {
@@ -126,8 +151,8 @@ describe('renderRoleBody', () => {
     )
     expect(body).not.toContain('Done when')
     expect(
-      renderRoleBody(minimal, {
-        checks: [],
+      renderRoleBody(checker, {
+        checks: ['pnpm test'],
         instructionRights: ['shell'],
         readsWithCommands: true,
       }),

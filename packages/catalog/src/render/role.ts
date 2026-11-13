@@ -33,8 +33,15 @@ export function renderRoleBody(
     readsWithCommands?: boolean
   },
 ): string {
-  const phrase = (right: Exclude<Right, 'read'>) =>
-    RIGHT_PHRASES[right] + ((options.readsWithCommands && READING[right]) || '')
+  // A role that cannot run commands is not asked to make one pass.
+  const commands = (role.rights.includes('run-checks') ? role.done.commands : [])
+    // A backtick would close the code span the command is written in.
+    .filter((command) => options.checks.includes(command) && !command.includes('`'))
+  const phrase = (right: Exclude<Right, 'read'>) => {
+    // Without a check listed under "Done when", "other than the checks" would point at nothing.
+    const worded = right === 'shell' && commands.length === 0 ? 'run-checks' : right
+    return RIGHT_PHRASES[worded] + ((options.readsWithCommands && READING[worded]) || '')
+  }
   // "Run commands" already covers the shell, whose phrase points at commands this role cannot run.
   const stated = options.instructionRights.includes('run-checks')
     ? options.instructionRights.filter((right) => right !== 'shell')
@@ -45,13 +52,8 @@ export function renderRoleBody(
       right !== 'read' && stated.includes(right) ? [`You must not ${phrase(right)}.`] : [],
     ),
   ]
-  // A role that cannot run commands is not asked to make one pass.
-  const commands = role.rights.includes('run-checks') ? role.done.commands : []
   const done = [
-    ...commands
-      // A backtick would close the code span the command is written in.
-      .filter((command) => options.checks.includes(command) && !command.includes('`'))
-      .map((command) => `\`${stripMarkers(command)}\` passes.`),
+    ...commands.map((command) => `\`${stripMarkers(command)}\` passes.`),
     ...(role.done.text === null ? [] : [inlineMarkdown(role.done.text)]),
   ]
   const list = (lines: string[]) => lines.map((line) => `- ${line}`).join('\n')
