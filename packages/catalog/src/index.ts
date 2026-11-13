@@ -56,6 +56,7 @@ export {
   type AgentContextInput,
   type AgentContextOutput,
   type AgentContextProject,
+  type AgentContextRole,
   NOTES_INTRO,
   renderAgentContext,
 } from './render/render-agent-context.ts'

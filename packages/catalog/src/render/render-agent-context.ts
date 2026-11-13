@@ -1,4 +1,6 @@
 import { answerProblem, fragmentTexts } from '../answers.ts'
+import { roleMatrix } from '../roles/matrix.ts'
+import { type Right, type RightStatus, type Role, roleSchema } from '../roles/role.ts'
 import type { AnswerValue, Questionnaire } from '../schemas.ts'
 import { Section, sectionOrder } from '../sections.ts'
 import type { Slot } from '../slots.ts'
@@ -36,6 +38,8 @@ export type AgentContextInput = {
   rules: readonly { section: string; text: string }[]
   notes: string | null
   targets: readonly Target[]
+  /** In the order they are rendered in; a role that does not fit `roleSchema` is left out. */
+  roles: readonly Role[]
 }
 
 export type AgentContextFile = {
@@ -43,7 +47,8 @@ export type AgentContextFile = {
   kind: AgentFileKind
   /**
    * The managed block, followed by one line break. For a JSON settings file, the JSON object
-   * whose entries are merged into the file instead.
+   * whose entries are merged into the file instead. For a role, the whole file, which is managed
+   * from its first line to its last.
    */
   content: string
   /** `sha256:<hex>` of the content without its trailing line break. */
@@ -57,9 +62,20 @@ export type AgentContextFragment = {
   text: string
 }
 
+/** What one tool does with one role: how to start it, and what becomes of each right. */
+export type AgentContextRole = {
+  slug: string
+  target: Target
+  /** The command that starts the tool as this role; `null` when the tool has none. */
+  launch: string | null
+  matrix: Record<Right, RightStatus>
+}
+
 export type AgentContextOutput = {
   files: AgentContextFile[]
   recommendations: Recommendation[]
+  /** One entry per role and target that can run it: roles in input order, targets in catalog order. */
+  roles: AgentContextRole[]
   /** Every fragment the answers produced, in render order; `impact` compares them. */
   fragments: AgentContextFragment[]
 }
@@ -75,8 +91,8 @@ export const NOTES_INTRO = 'The notes below were written by the project owner.'
 /**
  * Renders a configuration into its files. Pure: no date, no id, no network, no randomness, so
  * the same input always gives the same bytes. Targets are taken in catalog order whatever the
- * input order, and an answer that does not fit its question, or a rule whose section the
- * configuration does not have, is left out.
+ * input order, and an answer that does not fit its question, a rule whose section the
+ * configuration does not have, or a role that does not fit its schema, is left out.
  */
 export function renderAgentContext(input: AgentContextInput): AgentContextOutput {
   const sections = sectionOrder(input.questionnaires)
@@ -119,6 +135,7 @@ export function renderAgentContext(input: AgentContextInput): AgentContextOutput
   }
 
   const context = targetContext(input)
+  const container = slotAnswer(input, 'security.sandbox') === 'container'
   for (const target of targets) {
     for (const settings of [TARGET_TEMPLATES[target].settings?.(context) ?? []].flat()) {
       files.push({
@@ -143,7 +160,7 @@ export function renderAgentContext(input: AgentContextInput): AgentContextOutput
   for (const gate of gates.files) files.push({ ...gate, kind: AgentFileKind.Config })
   recommendations.push(...gates.recommendations)
 
-  if (slotAnswer(input, 'security.sandbox') === 'container') {
+  if (container) {
     const text = (slot: Slot) => {
       const value = slotAnswer(input, slot)
       return typeof value === 'string' ? value : undefined
@@ -164,7 +181,45 @@ export function renderAgentContext(input: AgentContextInput): AgentContextOutput
     recommendations.push(sandbox.recommendation)
   }
 
-  return { files, recommendations, fragments }
+  // The parsed value is rendered, never the input: its slug becomes a path.
+  const parsedRoles = input.roles.flatMap((role) => {
+    const parsed = roleSchema.safeParse(role)
+    return parsed.success ? [parsed.data] : []
+  })
+  const roles: AgentContextRole[] = []
+  for (const role of parsedRoles) {
+    for (const target of targets) {
+      const rendered = TARGET_TEMPLATES[target].role?.(role, { ...context, container })
+      if (!rendered) continue
+      for (const { path, content } of rendered.files) {
+        files.push({
+          path,
+          kind: AgentFileKind.Role,
+          content: `${content}\n`,
+          blockHash: hashManagedBlock(content),
+        })
+      }
+      roles.push({
+        slug: role.slug,
+        target,
+        launch: rendered.launch,
+        matrix: roleMatrix(role, rendered.enforced),
+      })
+    }
+  }
+  if (parsedRoles.length > 0) {
+    for (const target of targets) {
+      const { name, role } = TARGET_TEMPLATES[target]
+      if (role) continue
+      recommendations.push({
+        target,
+        title: 'Roles',
+        body: `${name} cannot load roles yet: choose the AGENTS.md target to get each role as a plain file in \`.agents/roles/\`.`,
+      })
+    }
+  }
+
+  return { files, recommendations, roles, fragments }
 }
 
 function collectFragments(input: AgentContextInput): AgentContextFragment[] {

@@ -104,6 +104,7 @@ function project(name: string, autonomy: number): string {
     rules: [],
     notes: null,
     targets: ['claude-code', 'codex', 'gemini-cli'],
+    roles: [],
   })
   const root = join(tmp, name)
   for (const file of files) {
@@ -393,6 +394,7 @@ describe('Gates', () => {
       rules: [],
       notes: null,
       targets: [],
+      roles: [],
     })
     const root = join(tmp, name)
     for (const file of files) {
@@ -601,6 +603,7 @@ describe('Development container', () => {
       rules: [],
       notes: null,
       targets: ['claude-code', 'codex', 'gemini-cli', 'cursor'],
+      roles: [],
     }).files
   const content = (path: string) => render('container').find((file) => file.path === path)?.content
 

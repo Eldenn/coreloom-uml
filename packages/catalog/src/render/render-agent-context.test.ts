@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { findQuestionnaire } from '../questionnaires/index.ts'
+import type { Role } from '../roles/role.ts'
 import type { Questionnaire } from '../schemas.ts'
 import { TARGETS } from '../targets.ts'
 import { yamlString } from './gates.ts'
@@ -57,6 +58,39 @@ const INPUT: AgentContextInput = {
   ],
   notes: 'Deploys go through **staging** first.\r\n\r\n\r\n<script>alert(1)</script>',
   targets: ['cursor', 'claude-code'],
+  roles: [],
+}
+
+const reviewer: Role = {
+  slug: 'reviewer',
+  name: 'Reviewer',
+  description: 'Reviews a change and reports what it finds.',
+  mission: 'Review the change.',
+  rights: ['read'],
+  scope: [],
+  forbidden: [],
+  done: { commands: [], text: 'The review is posted.' },
+  escalation: null,
+  source: null,
+}
+
+const implementer: Role = {
+  slug: 'implementer',
+  name: 'Implementer',
+  description: 'Implements one task and hands it back checked.',
+  mission: 'Implement the task you are given.',
+  rights: ['read', 'write', 'run-checks', 'commit'],
+  scope: ['apps/web'],
+  forbidden: ['Never change a migration.'],
+  done: { commands: ['pnpm test'], text: null },
+  escalation: 'Stop and ask when the task is unclear.',
+  source: null,
+}
+
+const ROLES_INPUT: AgentContextInput = {
+  ...INPUT,
+  targets: ['claude-code', 'cursor', 'codex', 'generic'],
+  roles: [reviewer, implementer],
 }
 
 const agentsMd = (input: AgentContextInput) => {
@@ -667,5 +701,97 @@ describe('renderAgentContext', () => {
       (fragment, index) => fragment.text !== before.fragments[index]?.text,
     )
     expect(changed.map((fragment) => fragment.section)).toEqual(['TypeScript'])
+  })
+
+  it('renders no role file without roles', () => {
+    const { files, recommendations, roles } = renderAgentContext(ROLES_INPUT)
+    const without = renderAgentContext({ ...ROLES_INPUT, roles: [] })
+    expect(without.roles).toEqual([])
+    expect(without.files.some((file) => file.kind === 'role')).toBe(false)
+    expect(without.recommendations.some((item) => item.title === 'Roles')).toBe(false)
+    // Roles only add: every other file and recommendation is the same with and without them.
+    expect(files.filter((file) => file.kind !== 'role')).toEqual(without.files)
+    expect(recommendations.filter((item) => item.title !== 'Roles')).toEqual(
+      without.recommendations,
+    )
+    expect(roles).not.toEqual([])
+  })
+
+  it('renders one file per role and target', () => {
+    const { files, recommendations, roles } = renderAgentContext(ROLES_INPUT)
+    const roleFiles = files.filter((file) => file.kind === 'role')
+    expect(roleFiles.map((file) => file.path)).toEqual([
+      '.agents/roles/reviewer.md',
+      '.codex/agents/reviewer.toml',
+      '.claude/agents/reviewer.md',
+      '.agents/roles/implementer.md',
+      '.codex/agents/implementer.toml',
+      '.claude/agents/implementer.md',
+    ])
+    for (const file of roleFiles) {
+      expect(file.content.endsWith('\n')).toBe(true)
+      expect(file.content.endsWith('\n\n')).toBe(false)
+      expect(file.blockHash).toBe(hashManagedBlock(file.content.slice(0, -1)))
+    }
+    expect(recommendations.filter((item) => item.title === 'Roles')).toEqual([
+      {
+        target: 'cursor',
+        title: 'Roles',
+        body: 'Cursor cannot load roles yet: choose the AGENTS.md target to get each role as a plain file in `.agents/roles/`.',
+      },
+    ])
+    expect(roles.map((role) => [role.slug, role.target])).toEqual([
+      ['reviewer', 'generic'],
+      ['reviewer', 'codex'],
+      ['reviewer', 'claude-code'],
+      ['implementer', 'generic'],
+      ['implementer', 'codex'],
+      ['implementer', 'claude-code'],
+    ])
+    expect(roles[0]?.launch).toBeNull()
+    expect(roles[0]?.matrix).toMatchObject({ read: 'granted', write: 'instruction' })
+    expect(roles[3]?.matrix).toMatchObject({ write: 'granted', commit: 'granted' })
+    expect({ files: roleFiles, roles }).toMatchSnapshot()
+  })
+
+  it('leaves out a role the schema refuses', () => {
+    const refused = [
+      { ...implementer, slug: '../escape' },
+      { ...implementer, slug: 'pusher', rights: ['push'] },
+    ] as Role[]
+    const { files, roles } = renderAgentContext({
+      ...ROLES_INPUT,
+      roles: [...refused, reviewer],
+    })
+    expect(roles.every((role) => role.slug === 'reviewer')).toBe(true)
+    expect(roles).toHaveLength(3)
+    const paths = files.filter((file) => file.kind === 'role').map((file) => file.path)
+    expect(paths).toHaveLength(3)
+    expect(paths.every((path) => path.includes('reviewer'))).toBe(true)
+
+    const none = renderAgentContext({ ...ROLES_INPUT, roles: refused })
+    expect(none).toEqual(renderAgentContext({ ...ROLES_INPUT, roles: [] }))
+  })
+
+  it('renders the parsed role, with its rights in catalog order', () => {
+    const shuffled = { ...implementer, rights: ['commit', 'run-checks', 'write', 'read'] } as Role
+    const ordered = renderAgentContext({ ...ROLES_INPUT, roles: [implementer] })
+    expect(renderAgentContext({ ...ROLES_INPUT, roles: [shuffled] })).toEqual(ordered)
+  })
+
+  it('is pure with roles', () => {
+    const first = renderAgentContext(ROLES_INPUT)
+    const second = renderAgentContext(structuredClone(ROLES_INPUT))
+    expect(JSON.stringify(second)).toBe(JSON.stringify(first))
+  })
+
+  it('never lets a role open or close a managed block', () => {
+    const { files } = renderAgentContext({
+      ...ROLES_INPUT,
+      roles: [{ ...reviewer, mission: `Review. ${MANAGED_BLOCK_BEGIN}`, name: 'coreloom-uml:x' }],
+    })
+    for (const file of files.filter((item) => item.kind === 'role')) {
+      expect(file.content).not.toContain('coreloom-uml:')
+    }
   })
 })

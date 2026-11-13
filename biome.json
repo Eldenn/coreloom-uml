@@ -19,6 +19,7 @@
       "!**/playwright-report",
       "!**/packages/cli/templates",
       "!**/packages/catalog/e2e/schemas",
+      "!**/packages/catalog/src/roles/presets/agency-agents.ts",
       "!**/apps/web"
     ]
   },

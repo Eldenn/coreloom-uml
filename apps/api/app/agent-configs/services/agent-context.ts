@@ -152,6 +152,7 @@ export function render(inputs: AgentConfigInputs): AgentContextOutput {
     rules: inputs.rules,
     notes: inputs.notes,
     targets: inputs.targets,
+    roles: [],
   })
 }
 
