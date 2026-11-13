@@ -55,6 +55,15 @@ export type AgentRuleOutput = {
 
 export type AgentRoleOutput = Role & { id: number; createdAt: string; updatedAt: string }
 
+/** A ready-made role, without its mission. */
+export type RolePresetOutput = {
+  slug: string
+  name: string
+  description: string
+  readOnly: boolean
+  source: { repository: string; commit: string }
+}
+
 /** A configuration's own fields. */
 export type AgentConfigOutput = {
   id: number

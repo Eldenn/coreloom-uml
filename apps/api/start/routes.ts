@@ -286,6 +286,21 @@ router
 
 /*
 |--------------------------------------------------------------------------
+| Ready-made agent roles of the catalog (`@coreloom-uml/catalog`)
+|--------------------------------------------------------------------------
+|
+| Behind the `agent-roles` flag: 404 while it is off for the caller.
+*/
+router
+  .get('/role-presets', [
+    () => import('#app/agent-configs/controllers/role-presets-controller'),
+    'index',
+  ])
+  .as('role_presets.index')
+  .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
+
+/*
+|--------------------------------------------------------------------------
 | Skills catalog (read-only, shared by every account)
 |--------------------------------------------------------------------------
 |
