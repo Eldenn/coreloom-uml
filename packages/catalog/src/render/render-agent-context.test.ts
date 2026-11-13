@@ -773,6 +773,15 @@ describe('renderAgentContext', () => {
     expect(none).toEqual(renderAgentContext({ ...ROLES_INPUT, roles: [] }))
   })
 
+  it('renders one role per slug: the first valid one', () => {
+    const second = { ...implementer, slug: 'reviewer' }
+    const refused = { ...reviewer, rights: ['fly'] } as unknown as Role
+    const output = renderAgentContext({ ...ROLES_INPUT, roles: [refused, reviewer, second] })
+    expect(output).toEqual(renderAgentContext({ ...ROLES_INPUT, roles: [reviewer] }))
+    const paths = output.files.map((file) => file.path)
+    expect(new Set(paths).size).toBe(paths.length)
+  })
+
   it('renders the parsed role, with its rights in catalog order', () => {
     const shuffled = { ...implementer, rights: ['commit', 'run-checks', 'write', 'read'] } as Role
     const ordered = renderAgentContext({ ...ROLES_INPUT, roles: [implementer] })

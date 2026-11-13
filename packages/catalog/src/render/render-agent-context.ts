@@ -38,7 +38,10 @@ export type AgentContextInput = {
   rules: readonly { section: string; text: string }[]
   notes: string | null
   targets: readonly Target[]
-  /** In the order they are rendered in; a role that does not fit `roleSchema` is left out. */
+  /**
+   * In the order they are rendered in; a role that does not fit `roleSchema` is left out, and so
+   * is one whose slug an earlier role has.
+   */
   roles: readonly Role[]
 }
 
@@ -182,10 +185,14 @@ export function renderAgentContext(input: AgentContextInput): AgentContextOutput
   }
 
   // The parsed value is rendered, never the input: its slug becomes a path.
-  const parsedRoles = input.roles.flatMap((role) => {
+  // The first role of a slug is kept: a second one would render the same paths again.
+  const parsedRoles: Role[] = []
+  for (const role of input.roles) {
     const parsed = roleSchema.safeParse(role)
-    return parsed.success ? [parsed.data] : []
-  })
+    if (parsed.success && !parsedRoles.some((kept) => kept.slug === parsed.data.slug)) {
+      parsedRoles.push(parsed.data)
+    }
+  }
   const roles: AgentContextRole[] = []
   for (const role of parsedRoles) {
     for (const target of targets) {
