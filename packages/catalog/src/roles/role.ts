@@ -60,7 +60,7 @@ export type Role = {
   forbidden: string[]
   done: { commands: string[]; text: string | null }
   escalation: string | null
-  /** The ready-made role it was copied from, and the catalog commit it was copied at. */
+  /** The ready-made role it was copied from, and the agency-agents commit it was copied at. */
   source: { preset: string; commit: string } | null
 }
 

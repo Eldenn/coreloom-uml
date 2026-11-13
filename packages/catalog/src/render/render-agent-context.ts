@@ -7,7 +7,7 @@ import type { Slot } from '../slots.ts'
 import { PACKAGE_MANAGERS, splitCommands } from '../targets/commands.ts'
 import { TARGET_TEMPLATES } from '../targets/index.ts'
 import type { Recommendation, TargetContext } from '../targets/types.ts'
-import { AGENTS_FILE, AgentFileKind, TARGETS, type Target } from '../targets.ts'
+import { AGENTS_FILE, AgentFileKind, TARGETS, Target } from '../targets.ts'
 import {
   DEPENDENCY_CRUISER_FILE,
   type PackageDiagramShape,
@@ -221,7 +221,7 @@ export function renderAgentContext(input: AgentContextInput): AgentContextOutput
       recommendations.push({
         target,
         title: 'Roles',
-        body: targets.includes('generic')
+        body: targets.includes(Target.Generic)
           ? `${name} cannot load roles yet: use each role's plain file in \`.agents/roles/\`.`
           : `${name} cannot load roles yet: choose the AGENTS.md target to get each role as a plain file in \`.agents/roles/\`.`,
       })

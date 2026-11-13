@@ -1,13 +1,13 @@
 import { RIGHTS, type Right, ROLE_LINE_MAX_LENGTH, type Role } from '../roles/role.ts'
 import { blockMarkdown, inlineMarkdown, stripMarkers } from './markdown.ts'
 
-/** How a right the tool does not refuse by itself reads after "You must not". Reading is never forbidden. */
 /** What a tool that reads files with commands adds to the two phrases that would forbid reading. */
 const READING: Partial<Record<Right, string>> = {
   'run-checks': ', except to read the repository',
   shell: ' and those that read the repository',
 }
 
+/** How a right the tool does not refuse by itself reads after "You must not". Reading is never forbidden. */
 const RIGHT_PHRASES: Record<Exclude<Right, 'read'>, string> = {
   write: 'edit or create files',
   'run-checks': 'run commands',
