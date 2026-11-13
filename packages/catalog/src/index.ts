@@ -29,6 +29,7 @@ export {
 export {
   DEPENDENCY_CRUISER_FILE,
   type PackageDiagramShape,
+  packageFolders,
 } from './render/architecture-boundaries.ts'
 export {
   CI_WORKFLOW_FILE,
@@ -55,9 +56,33 @@ export {
   type AgentContextInput,
   type AgentContextOutput,
   type AgentContextProject,
+  type AgentContextRole,
   NOTES_INTRO,
   renderAgentContext,
 } from './render/render-agent-context.ts'
+export { deniedRights, roleMatrix } from './roles/matrix.ts'
+export {
+  AGENCY_AGENTS_COMMIT,
+  AGENCY_AGENTS_REPOSITORY,
+  presetRole,
+  READ_ONLY_PRESETS,
+  ROLE_PRESETS,
+  type RolePreset,
+} from './roles/presets/index.ts'
+export {
+  RIGHTS,
+  Right,
+  RightStatus,
+  ROLE_DESCRIPTION_MAX_LENGTH,
+  ROLE_LINE_MAX_LENGTH,
+  ROLE_LIST_MAX,
+  ROLE_MISSION_MAX_LENGTH,
+  ROLE_NAME_MAX_LENGTH,
+  ROLE_SLUG,
+  ROLE_SLUG_MAX_LENGTH,
+  type Role,
+  roleSchema,
+} from './roles/role.ts'
 export {
   ACCEPTED_AUDIT_RISKS,
   ANSWER_TEXT_MAX_LENGTH,
@@ -109,6 +134,8 @@ export { isSlot, SLOTS, type Slot } from './slots.ts'
 export { TARGET_TEMPLATES } from './targets/index.ts'
 export {
   type Recommendation,
+  type RoleContext,
+  type RoleRender,
   type TargetContext,
   type TargetSettings,
   type TargetTemplate,

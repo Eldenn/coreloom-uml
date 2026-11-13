@@ -1,0 +1,19 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`claude code role > renders a reviewer without commands 1`] = `
+"---
+name: "reviewer"
+description: "Reviews a change and reports what it finds."
+tools: Read, Grep, Glob
+---
+
+Read and follow AGENTS.md at the repository root; this file only adds your role.
+
+## Mission
+
+Review the change.
+
+## Done when
+
+- The review is posted."
+`;

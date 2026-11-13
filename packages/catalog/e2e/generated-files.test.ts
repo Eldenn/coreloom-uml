@@ -14,6 +14,11 @@
  * is not downloaded. For the development container, Docker is not run: `devcontainer.json` is
  * read as JSON and the firewall script only parsed by bash, so that it blocks and lets through
  * what it says is checked by hand, by starting the container (see `src/render/sandbox.ts`).
+ * For the roles, no session is started: that Codex acts as the agent file it is asked to read,
+ * that it gets no web search with `web_search=disabled` (`codex debug prompt-input` does not print
+ * that tool) and that a `claude --agent` session has only the tools its file lists are not
+ * covered. Neither tool has a command that reports a role file it refuses (`claude doctor` and
+ * `claude agents` do not read them): both drop it from the roles they list, which is what is read.
  */
 import { execFileSync, spawnSync } from 'node:child_process'
 import {
@@ -32,7 +37,13 @@ import { Ajv } from 'ajv'
 import { Ajv2020 } from 'ajv/dist/2020.js'
 import { afterAll, describe, expect, it } from 'vitest'
 import { parse as parseYaml } from 'yaml'
-import { findQuestionnaire, type Questionnaire, renderAgentContext } from '../src/index.ts'
+import {
+  type AgentContextFile,
+  findQuestionnaire,
+  type Questionnaire,
+  type Role,
+  renderAgentContext,
+} from '../src/index.ts'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const bin = (name: string) => join(here, '../node_modules/.bin', name)
@@ -61,14 +72,14 @@ afterAll(() => rmSync(tmp, { recursive: true, force: true }))
 
 const frontendReact = findQuestionnaire('frontend-react') as Questionnaire
 
-/** Renders for every tool with settings and writes the files into a new folder. */
-function project(name: string, autonomy: number): string {
+/** Renders for every tool with settings. */
+function render(autonomy: number, roles: Role[] = []) {
   const answer = (questionId: string, value: number | string) => ({
     questionnaireId: frontendReact.id,
     questionId,
     value,
   })
-  const { files } = renderAgentContext({
+  return renderAgentContext({
     project: {
       name: 'Shop',
       description: null,
@@ -104,7 +115,12 @@ function project(name: string, autonomy: number): string {
     rules: [],
     notes: null,
     targets: ['claude-code', 'codex', 'gemini-cli'],
+    roles,
   })
+}
+
+/** Writes rendered files into a new folder, a Git repository. */
+function write(name: string, files: AgentContextFile[]): string {
   const root = join(tmp, name)
   for (const file of files) {
     mkdirSync(dirname(join(root, file.path)), { recursive: true })
@@ -114,12 +130,42 @@ function project(name: string, autonomy: number): string {
   return root
 }
 
+const project = (name: string, autonomy: number) => write(name, render(autonomy).files)
+
 const read = (root: string, path: string) => readFileSync(join(root, path), 'utf8')
+
+/** Replaces text in a written file, which must hold it. */
+function corrupt(root: string, path: string, from: string, to: string) {
+  expect(read(root, path)).toContain(from)
+  writeFileSync(join(root, path), read(root, path).replace(from, to))
+}
 
 /** The assistant works alone in its sandbox and may run the checks. */
 const autonomous = project('autonomous', 3)
 /** The assistant asks before anything: read-only sandbox, no check allowed. */
 const asksFirst = project('asks-first', 5)
+
+/** Text a TOML or YAML string must escape, and text it must not. */
+const DESCRIPTION = 'Reviews a "change": never writes, é \\ ✓.'
+const role = (slug: string, rights: Role['rights']): Role => ({
+  slug,
+  name: 'Reviewer',
+  description: DESCRIPTION,
+  mission: 'Review the change.\n\nQuote """three""" and a back\\slash, then a café ✓.',
+  rights,
+  scope: [],
+  forbidden: [],
+  done: { commands: [], text: 'The review is posted.' },
+  escalation: null,
+  source: null,
+})
+/** In a project whose own settings let the assistant write. */
+const staffed = render(3, [
+  role('reviewer', ['read']),
+  role('code-checker', ['read', 'run-checks']),
+])
+const withRoles = write('roles', staffed.files)
+const withBrokenRole = write('broken-role', staffed.files)
 
 describe.skipIf(CODEX === null)('Codex', () => {
   const RULES = '.codex/rules/coreloom-uml.rules'
@@ -136,6 +182,7 @@ describe.skipIf(CODEX === null)('Codex', () => {
       env: { ...process.env, CODEX_HOME: codexHome },
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 30_000,
     })
 
   /** Codex's own evaluator; it refuses a file whose `match`/`not_match` examples do not hold. */
@@ -207,6 +254,50 @@ describe.skipIf(CODEX === null)('Codex', () => {
     expect(prompt.match(SANDBOX)?.[1]).toBe('read-only')
     expect(prompt).not.toContain(ALLOWED)
   })
+
+  describe('roles', () => {
+    /** A role as Codex offers it to spawn: its name and description, read from its file. */
+    const offered = (slug: string) => `${slug}: {\\n${JSON.stringify(DESCRIPTION).slice(1, -1)}\\n}`
+    /** The options of the rendered launch command, without the prompt that ends it. */
+    const launchOptions = (slug: string) => {
+      const launch = staffed.roles.find((item) => item.target === 'codex' && item.slug === slug)
+      return /^codex (.+?) "/.exec(launch?.launch ?? '')?.[1]?.split(' ') ?? []
+    }
+
+    it('starts read-only with the launch command, whatever the project config', {
+      timeout: 60_000,
+    }, () => {
+      trust(withRoles)
+      expect(promptInput(withRoles).match(SANDBOX)?.[1]).toBe('workspace-write')
+      const options = launchOptions('reviewer')
+      expect(options).toEqual(['--sandbox', 'read-only', '-c', 'web_search=disabled'])
+      // Codex refuses an option or a value it does not know, so the command is one it takes.
+      const prompt = codex(withRoles, ...options, 'debug', 'prompt-input', 'hello')
+      expect(prompt.match(SANDBOX)?.[1]).toBe('read-only')
+      expect(() =>
+        codex(withRoles, '-c', 'web_search=sometimes', 'debug', 'prompt-input', 'hello'),
+      ).toThrow(/unknown variant `sometimes`/)
+    })
+
+    it('reads each agent file, and leaves out one it cannot read', { timeout: 60_000 }, () => {
+      trust(withRoles, withBrokenRole)
+      const prompt = promptInput(withRoles)
+      expect(prompt).toContain(offered('reviewer'))
+      // A name with a hyphen, which the documentation does not show.
+      expect(prompt).toContain(offered('code-checker'))
+
+      // Codex reports nothing: a file that is not TOML it can read is no role, without a word.
+      corrupt(
+        withBrokenRole,
+        '.codex/agents/reviewer.toml',
+        'developer_instructions = "',
+        'developer_instructions = "\\q',
+      )
+      const broken = promptInput(withBrokenRole)
+      expect(broken).not.toContain('reviewer: {')
+      expect(broken).toContain(offered('code-checker'))
+    })
+  })
 })
 
 describe('Claude Code', () => {
@@ -248,6 +339,7 @@ describe('Claude Code', () => {
         env: { ...process.env, CLAUDE_CONFIG_DIR: configDir, DISABLE_AUTOUPDATER: '1' },
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 30_000,
       })
     const PROBLEMS = /Invalid settings|may not work as written/
     const UNTRUSTED = /Ignoring 2 permissions\.allow entries from \.claude\/settings\.json/
@@ -276,6 +368,68 @@ describe('Claude Code', () => {
       expect(stdout + stderr).toMatch(
         /Invalid settings[\s\S]*Invalid permission rule "Bash\(rm -rf \*"/,
       )
+    })
+  })
+
+  describe('roles', () => {
+    const AGENT = '.claude/agents/reviewer.md'
+    const frontmatter = (root: string, path: string) =>
+      parseYaml(/^---\n([\s\S]*?)\n---\n/.exec(read(root, path))?.[1] ?? '')
+
+    it('renders agent files whose frontmatter is YAML', () => {
+      expect(frontmatter(withRoles, AGENT)).toEqual({
+        name: 'reviewer',
+        description: DESCRIPTION,
+        tools: 'Read, Grep, Glob',
+      })
+      expect(frontmatter(withRoles, '.claude/agents/code-checker.md')).toEqual({
+        name: 'code-checker',
+        description: DESCRIPTION,
+        tools: 'Read, Grep, Glob, Bash',
+        permissionMode: 'dontAsk',
+      })
+    })
+
+    describe.skipIf(CLAUDE === null)('claude --agent', () => {
+      const home = join(tmp, 'claude-roles-home')
+      mkdirSync(home)
+      /**
+       * The agents a session could start as. `claude --agent` names them when asked for one that
+       * does not exist, before it looks for an account; none is given to it here, nor any
+       * variable that holds a key, so it could not call a model if that order changed.
+       */
+      const agents = (root: string) => {
+        const { stdout, stderr } = spawnSync(
+          CLAUDE as string,
+          ['--print', '--agent', 'no-such-agent', 'hello'],
+          {
+            cwd: root,
+            env: {
+              PATH: process.env.PATH,
+              HOME: home,
+              CLAUDE_CONFIG_DIR: home,
+              DISABLE_AUTOUPDATER: '1',
+              CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+            },
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'pipe'],
+            timeout: 30_000,
+          },
+        )
+        return /'no-such-agent' not found\. Available agents: (.+)/
+          .exec(stdout + stderr)?.[1]
+          ?.split(', ')
+      }
+
+      it('loads each agent file, and leaves out one it cannot read', { timeout: 60_000 }, () => {
+        expect(agents(withRoles)).toEqual(expect.arrayContaining(['reviewer', 'code-checker']))
+
+        // Claude Code reports nothing either: a description it cannot read is no agent.
+        corrupt(withBrokenRole, AGENT, 'description: "', 'description: "\\q')
+        const left = agents(withBrokenRole)
+        expect(left).toContain('code-checker')
+        expect(left).not.toContain('reviewer')
+      })
     })
   })
 
@@ -393,6 +547,7 @@ describe('Gates', () => {
       rules: [],
       notes: null,
       targets: [],
+      roles: [],
     })
     const root = join(tmp, name)
     for (const file of files) {
@@ -601,6 +756,7 @@ describe('Development container', () => {
       rules: [],
       notes: null,
       targets: ['claude-code', 'codex', 'gemini-cli', 'cursor'],
+      roles: [],
     }).files
   const content = (path: string) => render('container').find((file) => file.path === path)?.content
 

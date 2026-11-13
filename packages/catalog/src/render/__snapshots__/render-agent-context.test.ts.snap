@@ -192,6 +192,228 @@ module.exports = {
 "
 `;
 
+exports[`renderAgentContext > renders one file per role and target 1`] = `
+{
+  "files": [
+    {
+      "blockHash": "sha256:d4ea45593a6519582eef8e67d34759156e91a7e72da92232f91c7820495abff7",
+      "content": "Read and follow AGENTS.md at the repository root; this file only adds your role.
+
+## Mission
+
+Review the change.
+
+## Forbidden
+
+- You must not edit or create files.
+- You must not run commands.
+- You must not commit.
+- You must not push to any remote.
+- You must not access the network.
+
+## Done when
+
+- The review is posted.
+",
+      "kind": "role",
+      "path": ".agents/roles/reviewer.md",
+    },
+    {
+      "blockHash": "sha256:8eb95ba14ebf429030dc0ab3b5eec0683c39317d6a7f9ee8d14aa6c4de949f9d",
+      "content": "name = "reviewer"
+description = "Reviews a change and reports what it finds."
+developer_instructions = "Read and follow AGENTS.md at the repository root; this file only adds your role.\\n\\n## Mission\\n\\nReview the change.\\n\\n## Forbidden\\n\\n- You must not edit or create files.\\n- You must not run commands, except to read the repository.\\n- You must not commit.\\n- You must not push to any remote.\\n- You must not access the network.\\n\\n## Done when\\n\\n- The review is posted."
+",
+      "kind": "role",
+      "path": ".codex/agents/reviewer.toml",
+    },
+    {
+      "blockHash": "sha256:1e57e97aab1f9e597fec97365ae2aa4f44701f12a200d4fa8eca037c338beffe",
+      "content": "---
+name: "reviewer"
+description: "Reviews a change and reports what it finds."
+tools: Read, Grep, Glob
+---
+
+Read and follow AGENTS.md at the repository root; this file only adds your role.
+
+## Mission
+
+Review the change.
+
+## Done when
+
+- The review is posted.
+",
+      "kind": "role",
+      "path": ".claude/agents/reviewer.md",
+    },
+    {
+      "blockHash": "sha256:e982deb075f7a75e53e500074796aa3623ae0dbb0494a712809db1aadb96c053",
+      "content": "Read and follow AGENTS.md at the repository root; this file only adds your role.
+
+## Mission
+
+Implement the task you are given.
+
+## Scope
+
+Only change files under: \`apps/web\`.
+
+## Forbidden
+
+- Never change a migration.
+- You must not run commands other than the checks listed under "Done when".
+- You must not push to any remote.
+- You must not access the network.
+
+## Done when
+
+- \`pnpm test\` passes.
+
+## Escalate
+
+Stop and ask when the task is unclear.
+",
+      "kind": "role",
+      "path": ".agents/roles/implementer.md",
+    },
+    {
+      "blockHash": "sha256:67da48cd11496fbfb56143973a474c79d6f5cfc1b57f9251e88bbdb6954ef0de",
+      "content": "name = "implementer"
+description = "Implements one task and hands it back checked."
+developer_instructions = "Read and follow AGENTS.md at the repository root; this file only adds your role.\\n\\n## Mission\\n\\nImplement the task you are given.\\n\\n## Scope\\n\\nOnly change files under: \`apps/web\`.\\n\\n## Forbidden\\n\\n- Never change a migration.\\n- You must not run commands other than the checks listed under \\"Done when\\" and those that read the repository.\\n- You must not push to any remote.\\n- You must not access the network.\\n\\n## Done when\\n\\n- \`pnpm test\` passes.\\n\\n## Escalate\\n\\nStop and ask when the task is unclear."
+",
+      "kind": "role",
+      "path": ".codex/agents/implementer.toml",
+    },
+    {
+      "blockHash": "sha256:2916405362d6286c86ecb509fe0a71a78284b16163f5059d8855809e198a8ee3",
+      "content": "---
+name: "implementer"
+description: "Implements one task and hands it back checked."
+tools: Read, Grep, Glob, Edit, Write, NotebookEdit, Bash
+permissionMode: dontAsk
+---
+
+Read and follow AGENTS.md at the repository root; this file only adds your role.
+
+## Mission
+
+Implement the task you are given.
+
+## Scope
+
+Only change files under: \`apps/web\`.
+
+## Forbidden
+
+- Never change a migration.
+- You must not run commands other than the checks listed under "Done when".
+- You must not push to any remote.
+- You must not access the network.
+
+## Done when
+
+- \`pnpm test\` passes.
+
+## Escalate
+
+Stop and ask when the task is unclear.
+",
+      "kind": "role",
+      "path": ".claude/agents/implementer.md",
+    },
+  ],
+  "roles": [
+    {
+      "launch": null,
+      "matrix": {
+        "commit": "instruction",
+        "network": "instruction",
+        "push": "instruction",
+        "read": "granted",
+        "run-checks": "instruction",
+        "shell": "instruction",
+        "write": "instruction",
+      },
+      "slug": "reviewer",
+      "target": "generic",
+    },
+    {
+      "launch": "codex --sandbox read-only -c web_search=disabled "Act as the agent defined in .codex/agents/reviewer.toml."",
+      "matrix": {
+        "commit": "instruction",
+        "network": "instruction",
+        "push": "instruction",
+        "read": "granted",
+        "run-checks": "instruction",
+        "shell": "instruction",
+        "write": "instruction",
+      },
+      "slug": "reviewer",
+      "target": "codex",
+    },
+    {
+      "launch": "claude --agent reviewer",
+      "matrix": {
+        "commit": "enforced",
+        "network": "enforced",
+        "push": "enforced",
+        "read": "granted",
+        "run-checks": "enforced",
+        "shell": "enforced",
+        "write": "enforced",
+      },
+      "slug": "reviewer",
+      "target": "claude-code",
+    },
+    {
+      "launch": null,
+      "matrix": {
+        "commit": "granted",
+        "network": "instruction",
+        "push": "instruction",
+        "read": "granted",
+        "run-checks": "granted",
+        "shell": "instruction",
+        "write": "granted",
+      },
+      "slug": "implementer",
+      "target": "generic",
+    },
+    {
+      "launch": "codex --sandbox workspace-write -c sandbox_workspace_write.network_access=false -c web_search=disabled "Act as the agent defined in .codex/agents/implementer.toml."",
+      "matrix": {
+        "commit": "granted",
+        "network": "instruction",
+        "push": "instruction",
+        "read": "granted",
+        "run-checks": "granted",
+        "shell": "instruction",
+        "write": "granted",
+      },
+      "slug": "implementer",
+      "target": "codex",
+    },
+    {
+      "launch": "claude --agent implementer",
+      "matrix": {
+        "commit": "granted",
+        "network": "instruction",
+        "push": "instruction",
+        "read": "granted",
+        "run-checks": "granted",
+        "shell": "instruction",
+        "write": "granted",
+      },
+      "slug": "implementer",
+      "target": "claude-code",
+    },
+  ],
+}
+`;
+
 exports[`renderAgentContext > renders the back-end, Git and security questionnaires together 1`] = `
 "<!-- coreloom-uml:begin · managed block, edits inside it are replaced on the next pull -->
 ## Project

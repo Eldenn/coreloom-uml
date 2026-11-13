@@ -1,0 +1,36 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderRoleBody > renders every section in order 1`] = `
+"Read and follow AGENTS.md at the repository root; this file only adds your role.
+
+## Mission
+
+Build the API.
+
+- Keep controllers thin.
+- Write a test first.
+
+## Scope
+
+Only change files under: \`apps/api/app\`, \`packages/uml\`.
+
+## Forbidden
+
+- Never edit a migration that has already run.
+- No \\\`any\\\` in \\*new\\* code.
+- You must not edit or create files.
+- You must not run commands.
+- You must not commit.
+- You must not push to any remote.
+- You must not access the network.
+
+## Done when
+
+- \`pnpm test\` passes.
+- \`pnpm lint\` passes.
+- The change has a test.
+
+## Escalate
+
+Stop and ask when a change leaves the scope."
+`;
