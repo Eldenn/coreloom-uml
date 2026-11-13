@@ -37,7 +37,8 @@ export function inlineMarkdown(text: string, max?: number): string {
   return cut.replace(MARKDOWN_SPECIAL, (character) => `\\${character}`)
 }
 
-const RAW_TAG = /<(?=[a-zA-Z!/?])/g
+/** A tag start with the backslashes before it, which could otherwise cancel its escape. */
+const RAW_TAG = /(\\*)<(?=[a-zA-Z!/?])/g
 const FENCE_OPEN = /^(`{3,}|~{3,})(.*)$/
 const FENCE_LIKE = /```|~~~/
 
@@ -58,14 +59,19 @@ export function blockMarkdown(text: string): string {
     .split('\n')
   const kept = protectedLines(lines)
   return lines
-    .map((line, index) => (kept.has(index) ? line : line.replace(RAW_TAG, '\\<')))
+    .map((line, index) =>
+      kept.has(index)
+        ? line
+        : line.replace(RAW_TAG, (_, backslashes: string) => `${backslashes.repeat(2)}\\<`),
+    )
     .join('\n')
 }
 
 /**
- * The lines inside closed top-level fences. Once any other line looks like a fence (in a list, a
- * quote, indented, unclosed), a later column-0 fence line may close that one rather than open a
- * block, so nothing after it is protected: when in doubt, escape.
+ * The lines inside closed top-level fences. Once any other line holds ``` or ~~~ (a fence in a
+ * list, a quote, indented or unclosed, or just inline in prose), a later column-0 fence line may
+ * close that one rather than open a block, so nothing after it is protected: when in doubt,
+ * escape.
  */
 function protectedLines(lines: string[]): Set<number> {
   const kept = new Set<number>()

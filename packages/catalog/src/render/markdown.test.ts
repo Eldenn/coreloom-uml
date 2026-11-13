@@ -37,6 +37,19 @@ describe('blockMarkdown', () => {
     expect(blockMarkdown('> ```\n```\n<div>\n```')).toBe('> ```\n```\n\\<div>\n```')
   })
 
+  it('lets no backslash cancel the escape of a tag', () => {
+    // Each backslash before the tag is doubled, so the added one always escapes `<`.
+    expect(blockMarkdown('\\<div>')).toBe('\\\\\\<div>')
+    expect(blockMarkdown('\\\\<div>')).toBe('\\\\\\\\\\<div>')
+    expect(blockMarkdown('```\n<b>\n```\n\\<div>')).toBe('```\n<b>\n```\n\\\\\\<div>')
+    // A backslash elsewhere is kept as written.
+    expect(blockMarkdown('a\\b <= c')).toBe('a\\b <= c')
+  })
+
+  it('opens no fence on a backtick line whose info string holds a backtick', () => {
+    expect(blockMarkdown('``` a`b\n<div>\n```')).toBe('``` a`b\n\\<div>\n```')
+  })
+
   it('removes markers inside a fenced code block', () => {
     expect(blockMarkdown(`\`\`\`\n${MARKER_PREFIX}begin\n\`\`\``)).not.toContain(MARKER_PREFIX)
   })
