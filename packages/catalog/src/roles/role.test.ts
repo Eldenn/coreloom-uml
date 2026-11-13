@@ -120,6 +120,19 @@ describe('roleSchema', () => {
     expect(accepts({ mission: ' Review.\n' })).toBe(true)
   })
 
+  it('refuses a blank line', () => {
+    for (const blank of ['', ' ', '\t ', ' ']) {
+      const label = JSON.stringify(blank)
+      expect(accepts({ name: blank }), label).toBe(false)
+      expect(accepts({ description: blank }), label).toBe(false)
+      expect(accepts({ forbidden: ['Never push.', blank] }), label).toBe(false)
+      expect(accepts({ done: { commands: [blank], text: null } }), label).toBe(false)
+      expect(accepts({ done: { commands: [], text: blank } }), label).toBe(false)
+      expect(accepts({ escalation: blank }), label).toBe(false)
+    }
+    expect(accepts({ forbidden: [' Never push. '], escalation: ' Ask. ' })).toBe(true)
+  })
+
   it('refuses a source whose commit is not a full sha', () => {
     expect(accepts({ source: { preset: 'reviewer', commit: 'abc123' } })).toBe(false)
   })

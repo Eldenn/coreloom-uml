@@ -68,7 +68,7 @@ const slug = z.string().max(ROLE_SLUG_MAX_LENGTH).regex(ROLE_SLUG)
 
 const oneLine = z
   .string()
-  .min(1)
+  .refine((text) => text.trim() !== '', { message: 'A line cannot be blank' })
   .refine((text) => !/[\r\n]/.test(text), { message: 'One line only' })
 
 const line = oneLine.max(ROLE_LINE_MAX_LENGTH)
