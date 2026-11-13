@@ -8,6 +8,7 @@ export const FeatureFlagKey = {
   LlmSubscriptionClaude: 'llm-subscription-claude',
   DiagramAssistant: 'diagram-assistant',
   McpServer: 'mcp-server',
+  AgentRoles: 'agent-roles',
 } as const
 
 export type FeatureFlagKey = (typeof FeatureFlagKey)[keyof typeof FeatureFlagKey]
@@ -52,6 +53,13 @@ export const FEATURE_FLAGS: readonly FeatureFlagDeclaration[] = [
     name: 'MCP server',
     description:
       'Lets coding agents read projects, diagrams and agent conventions through MCP with an API key.',
+    tags: ['agents'],
+    defaultState: OFF,
+  },
+  {
+    key: FeatureFlagKey.AgentRoles,
+    name: 'Agent roles',
+    description: 'Roles in agent conventions: framed agents rendered per tool.',
     tags: ['agents'],
     defaultState: OFF,
   },
