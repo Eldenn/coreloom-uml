@@ -182,6 +182,7 @@ describe.skipIf(CODEX === null)('Codex', () => {
       env: { ...process.env, CODEX_HOME: codexHome },
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 30_000,
     })
 
   /** Codex's own evaluator; it refuses a file whose `match`/`not_match` examples do not hold. */
@@ -338,6 +339,7 @@ describe('Claude Code', () => {
         env: { ...process.env, CLAUDE_CONFIG_DIR: configDir, DISABLE_AUTOUPDATER: '1' },
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 30_000,
       })
     const PROBLEMS = /Invalid settings|may not work as written/
     const UNTRUSTED = /Ignoring 2 permissions\.allow entries from \.claude\/settings\.json/
@@ -407,9 +409,11 @@ describe('Claude Code', () => {
               HOME: home,
               CLAUDE_CONFIG_DIR: home,
               DISABLE_AUTOUPDATER: '1',
+              CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
             },
             encoding: 'utf8',
             stdio: ['ignore', 'pipe', 'pipe'],
+            timeout: 30_000,
           },
         )
         return /'no-such-agent' not found\. Available agents: (.+)/
