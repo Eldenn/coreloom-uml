@@ -2,6 +2,7 @@ import { type Questionnaire, ruleSections, SCALE_LABELS } from '@coreloom-uml/ca
 import type AgentConfig from '#app/agent-configs/models/agent-config'
 import type AgentConfigAnswer from '#app/agent-configs/models/agent-config-answer'
 import type AgentConfigGeneration from '#app/agent-configs/models/agent-config-generation'
+import type AgentConfigRole from '#app/agent-configs/models/agent-config-role'
 import type AgentConfigRule from '#app/agent-configs/models/agent-config-rule'
 import {
   outdatedQuestionnaires,
@@ -13,6 +14,7 @@ import type {
   AgentConfigOutput,
   AgentGenerationOutput,
   AgentGenerationSummaryOutput,
+  AgentRoleOutput,
   AgentRuleOutput,
   QuestionnaireOutput,
   QuestionnaireSummaryOutput,
@@ -75,6 +77,15 @@ export function serializeAgentRule(rule: AgentConfigRule): AgentRuleOutput {
   }
 }
 
+export function serializeAgentRole(role: AgentConfigRole): AgentRoleOutput {
+  return {
+    id: role.id,
+    ...role.toRole(),
+    createdAt: role.createdAt.toISO() ?? '',
+    updatedAt: role.updatedAt.toISO() ?? '',
+  }
+}
+
 export function serializeAgentGenerationSummary(
   generation: AgentConfigGeneration,
 ): AgentGenerationSummaryOutput {
@@ -93,10 +104,14 @@ export function serializeAgentGeneration(generation: AgentConfigGeneration): Age
     files: generation.files,
     recommendations: generation.recommendations,
     skills: generation.skills,
+    roles: generation.roles,
   }
 }
 
-/** Expects `answers` and `rules` preloaded (`currentInputs` loads them), rules in position order. */
+/**
+ * Expects `answers`, `rules` and `roles` preloaded (`currentInputs` loads them), rules in
+ * position order, roles in id order.
+ */
 export function serializeAgentConfigDetail(
   config: AgentConfig,
   latest: AgentConfigGeneration | null,
@@ -110,6 +125,7 @@ export function serializeAgentConfigDetail(
       .filter((answer) => configured.has(answer.questionnaireId))
       .map(serializeAgentAnswer),
     rules: config.rules.map(serializeAgentRule),
+    roles: config.roles.map(serializeAgentRole),
     latestGeneration: latest ? serializeAgentGenerationSummary(latest) : null,
     outdatedQuestionnaires: outdatedQuestionnaires(config),
     diagrams,

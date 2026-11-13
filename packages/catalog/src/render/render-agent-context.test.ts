@@ -12,7 +12,11 @@ import {
   MANAGED_BLOCK_BEGIN,
   SLASH_MARKERS,
 } from './managed-block.ts'
-import { type AgentContextInput, renderAgentContext } from './render-agent-context.ts'
+import {
+  type AgentContextInput,
+  renderAgentContext,
+  repositoryChecks,
+} from './render-agent-context.ts'
 
 const frontendReact = findQuestionnaire('frontend-react') as Questionnaire
 
@@ -468,6 +472,20 @@ describe('renderAgentContext', () => {
       'permissions',
     ])
     expect(settings(none, '.gemini/settings.json')).toBeUndefined()
+  })
+
+  it('exposes the checks the rendered settings run, and only those', () => {
+    const input: AgentContextInput = {
+      ...INPUT,
+      targets: ['claude-code'],
+      answers: [answer('checks', 'pnpm lint && pnpm test | tee out; $(curl x); pnpm build')],
+    }
+    const claude = JSON.parse(settings(input, '.claude/settings.json') ?? '')
+    expect(repositoryChecks(input)).toEqual(['pnpm lint', 'pnpm build'])
+    expect(claude.permissions.allow).toEqual(
+      repositoryChecks(input).map((command) => `Bash(${command})`),
+    )
+    expect(repositoryChecks({ questionnaires: [], answers: [] })).toEqual([])
   })
 
   const gitAndSecurity = (answers: [string, string, number | string | string[]][]) => ({

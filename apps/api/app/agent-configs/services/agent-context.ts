@@ -10,7 +10,9 @@ import {
   migrateAnswers,
   type PackageDiagramShape,
   type Questionnaire,
+  type Role,
   renderAgentContext,
+  repositoryChecks,
   Section,
   type Skill,
   type SkillSuggestions,
@@ -38,6 +40,8 @@ export type AgentConfigInputs = {
   rules: { section: string; text: string }[]
   notes: string | null
   targets: Target[]
+  /** In id order; generations stored before roles hold none. */
+  roles?: Role[]
 }
 
 export const FileChange = {
@@ -118,6 +122,7 @@ export async function projectContext(config: AgentConfig): Promise<AgentContextP
 export async function currentInputs(config: AgentConfig): Promise<AgentConfigInputs> {
   await config.load('answers', (query) => query.orderBy('id', 'asc'))
   await config.load('rules', (query) => query.orderBy('position', 'asc').orderBy('id', 'asc'))
+  await config.load('roles', (query) => query.orderBy('id', 'asc'))
   const configured = new Set(config.questionnaires.map((item) => item.id))
   return {
     project: await projectContext(config),
@@ -128,15 +133,21 @@ export async function currentInputs(config: AgentConfig): Promise<AgentConfigInp
     rules: config.rules.map(({ section, text }) => ({ section, text })),
     notes: config.notes,
     targets: [...config.targets],
+    roles: config.roles.map((role) => role.toRole()),
   }
 }
 
 /** The questionnaires of the inputs at their current version, and the answers migrated to it. */
-function resolveInputs(inputs: AgentConfigInputs) {
+function resolveInputs(inputs: Pick<AgentConfigInputs, 'questionnaires' | 'answers'>) {
   const questionnaires = resolveQuestionnaires(inputs.questionnaires)
   let answers: StoredAnswer[] = inputs.answers
   for (const questionnaire of questionnaires) answers = migrateAnswers(questionnaire, answers)
   return { questionnaires, answers }
+}
+
+/** The repository's checks as the inputs answer them (answers read like `render` reads them). */
+export function inputsChecks(inputs: Pick<AgentConfigInputs, 'questionnaires' | 'answers'>) {
+  return repositoryChecks(resolveInputs(inputs))
 }
 
 /**
@@ -152,7 +163,7 @@ export function render(inputs: AgentConfigInputs): AgentContextOutput {
     rules: inputs.rules,
     notes: inputs.notes,
     targets: inputs.targets,
-    roles: [],
+    roles: inputs.roles ?? [],
   })
 }
 
