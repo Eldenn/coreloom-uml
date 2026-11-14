@@ -55,4 +55,12 @@ export {
   normalizeName,
   type RelationCheck,
 } from './match.ts'
+export {
+  CODE_SLICE_DEFAULTS,
+  type CodeSlice,
+  type CodeSliceEdge,
+  type CodeSliceNode,
+  type CodeSliceOptions,
+  codeSlice,
+} from './slice.ts'
 export { type CodeMapSummary, summarizeCodeMap } from './summary.ts'

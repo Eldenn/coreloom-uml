@@ -185,7 +185,7 @@ export function codeMapWorkflow(projectId: number): string {
   ].join('\n')
 }
 
-export const CODE_VIEWS = ['map', 'diagrams', 'processes'] as const
+export const CODE_VIEWS = ['map', 'diagrams', 'review', 'processes'] as const
 export type CodeView = (typeof CODE_VIEWS)[number]
 
 /** Where the tab stands, kept in the page's URL. */
@@ -193,4 +193,6 @@ export interface CodeTabState {
   view?: CodeView | undefined
   map?: number | undefined
   diagram?: number | undefined
+  /** The conformance review shown (`view=review`); the newest when absent. */
+  review?: number | undefined
 }

@@ -155,6 +155,46 @@ router
 
 /*
 |--------------------------------------------------------------------------
+| Conformance reviews: diagrams checked against a code map by the user's own model (`code-maps`)
+|--------------------------------------------------------------------------
+|
+| Starting a review calls no model. Each diagram is then one call, made by the browser in turn,
+| with the provider and its key in the body (never stored or logged): it counts against the LLM
+| limit. The findings are stored with the review; the project keeps its ten newest reviews.
+| Session only.
+*/
+const codeReviewsController = () => import('#app/code-reviews/controllers/code-reviews-controller')
+router
+  .group(() => {
+    router
+      .get('/projects/:id/code-reviews', [codeReviewsController, 'index'])
+      .as('projects.code_reviews.index')
+    router.post('/code-reviews', [codeReviewsController, 'store']).as('code_reviews.store')
+    router.get('/code-reviews/:id', [codeReviewsController, 'show']).as('code_reviews.show')
+    router
+      .delete('/code-reviews/:id', [codeReviewsController, 'destroy'])
+      .as('code_reviews.destroy')
+    router
+      .patch('/code-review-findings/:id', [
+        () => import('#app/code-reviews/controllers/code-review-findings-controller'),
+        'update',
+      ])
+      .as('code_review_findings.update')
+  })
+  .where('id', router.matchers.number())
+  .use(middleware.auth())
+router
+  .post('/code-reviews/:id/diagrams/:diagramId', [
+    () => import('#app/code-reviews/controllers/code-review-diagrams-controller'),
+    'store',
+  ])
+  .as('code_reviews.diagrams.store')
+  .where('id', router.matchers.number())
+  .where('diagramId', router.matchers.number())
+  .use([middleware.auth(), llmThrottle])
+
+/*
+|--------------------------------------------------------------------------
 | Agent conventions: what AGENTS.md and its pointer files are rendered from
 |--------------------------------------------------------------------------
 |

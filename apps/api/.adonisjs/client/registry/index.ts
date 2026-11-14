@@ -150,6 +150,42 @@ const routes = {
     tokens: [{"old":"/code-maps/:id/processes","type":0,"val":"code-maps","end":""},{"old":"/code-maps/:id/processes","type":1,"val":"id","end":""},{"old":"/code-maps/:id/processes","type":0,"val":"processes","end":""}],
     types: placeholder as Registry['code_maps.processes.index']['types'],
   },
+  'projects.code_reviews.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/projects/:id/code-reviews',
+    tokens: [{"old":"/projects/:id/code-reviews","type":0,"val":"projects","end":""},{"old":"/projects/:id/code-reviews","type":1,"val":"id","end":""},{"old":"/projects/:id/code-reviews","type":0,"val":"code-reviews","end":""}],
+    types: placeholder as Registry['projects.code_reviews.index']['types'],
+  },
+  'code_reviews.store': {
+    methods: ["POST"],
+    pattern: '/code-reviews',
+    tokens: [{"old":"/code-reviews","type":0,"val":"code-reviews","end":""}],
+    types: placeholder as Registry['code_reviews.store']['types'],
+  },
+  'code_reviews.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/code-reviews/:id',
+    tokens: [{"old":"/code-reviews/:id","type":0,"val":"code-reviews","end":""},{"old":"/code-reviews/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['code_reviews.show']['types'],
+  },
+  'code_reviews.destroy': {
+    methods: ["DELETE"],
+    pattern: '/code-reviews/:id',
+    tokens: [{"old":"/code-reviews/:id","type":0,"val":"code-reviews","end":""},{"old":"/code-reviews/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['code_reviews.destroy']['types'],
+  },
+  'code_review_findings.update': {
+    methods: ["PATCH"],
+    pattern: '/code-review-findings/:id',
+    tokens: [{"old":"/code-review-findings/:id","type":0,"val":"code-review-findings","end":""},{"old":"/code-review-findings/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['code_review_findings.update']['types'],
+  },
+  'code_reviews.diagrams.store': {
+    methods: ["POST"],
+    pattern: '/code-reviews/:id/diagrams/:diagramId',
+    tokens: [{"old":"/code-reviews/:id/diagrams/:diagramId","type":0,"val":"code-reviews","end":""},{"old":"/code-reviews/:id/diagrams/:diagramId","type":1,"val":"id","end":""},{"old":"/code-reviews/:id/diagrams/:diagramId","type":0,"val":"diagrams","end":""},{"old":"/code-reviews/:id/diagrams/:diagramId","type":1,"val":"diagramId","end":""}],
+    types: placeholder as Registry['code_reviews.diagrams.store']['types'],
+  },
   'agent_configs.index': {
     methods: ["GET","HEAD"],
     pattern: '/agent-configs',

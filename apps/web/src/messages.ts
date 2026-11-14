@@ -403,6 +403,62 @@ export const en = {
     processFolders: 'Folders',
     processCalls: 'Calls reached',
     openInRepository: (place: string) => `Open ${place} in the repository`,
+    viewReview: 'Conformance review',
+    reviewsFailed: 'The conformance reviews could not be loaded.',
+    reviewFailed: 'The review could not be loaded or started.',
+    reviewTitle: 'Conformance review',
+    reviewHint:
+      'Your own model checks each diagram against the code map: one call per diagram, with the provider set in this browser. It reads names, paths and links, never your code. The findings are kept with the review.',
+    reviewStart: 'New review',
+    reviewNothing:
+      'Only package, component, class, sequence and C4 diagrams can be compared with the code.',
+    reviewPick: 'Review',
+    reviewLabel: (date: string, diagrams: number, open: number) =>
+      `${date} · ${String(diagrams)} ${diagrams === 1 ? 'diagram' : 'diagrams'} · ${String(open)} open`,
+    reviewDelete: 'Delete this review',
+    reviewDeleteTitle: 'Delete this review?',
+    reviewDeleteText: 'Its findings are deleted with it.',
+    reviewEmpty: 'No review yet',
+    reviewEmptyText:
+      'Start one to have your model compare the diagrams with this map. The project keeps its ten newest reviews.',
+    reviewStartTitle: 'Review the diagrams against the code',
+    reviewStartText: (model: string) =>
+      `${model} receives each diagram, how it is linked to the code and the part of the map around it: names, paths and links only. One call per diagram.`,
+    reviewNoProvider:
+      'Set your LLM provider in Settings first: the review calls your own model, with your key.',
+    reviewOpenSettings: 'Open Settings',
+    reviewDiagrams: 'Diagrams to review',
+    cancel: 'Cancel',
+    reviewRun: (n: number) => `Review ${String(n)} ${n === 1 ? 'diagram' : 'diagrams'}`,
+    reviewPlan: (model: string | null) => (model ? `Review with ${model}` : 'Review'),
+    reviewFound: (n: number) => `${String(n)} ${n === 1 ? 'finding' : 'findings'}`,
+    reviewTruncated: 'part of the map left out to fit the model',
+    reviewDropped: (n: number) =>
+      `${String(n)} ${n === 1 ? 'finding' : 'findings'} without evidence set aside`,
+    reviewStop: 'Stop',
+    reviewResume: (n: number) => `Review the ${String(n)} remaining`,
+    reviewAgain: (title: string) => `Review “${title}” again`,
+    reviewMapGone: 'The map of this review was deleted: start a new review to go on.',
+    reviewDiagramGone: 'This diagram was deleted or emptied since the review.',
+    reviewFindings: 'Findings',
+    reviewFindingsHint:
+      'Mark a finding done once the diagram or the code is fixed, or dismiss it. Each one cites the places in the code it rests on.',
+    reviewNoFindings: 'Nothing to report on this diagram.',
+    reviewResolveFailed: 'The finding could not be updated.',
+    wholeDiagram: 'Whole diagram',
+    conformance: {
+      conforms: 'Matches the code',
+      deviates: 'Differs from the code',
+      'missing-in-code': 'Missing from the code',
+      'missing-in-diagram': 'Missing from the diagram',
+      uncertain: 'Uncertain',
+    },
+    annotation: {
+      ok: 'Matches the code',
+      warning: 'Differs from the code',
+      error: 'Missing from the code',
+      unknown: 'Uncertain',
+    },
   },
   shared: {
     unavailableTitle: 'This link is not available',
@@ -1234,6 +1290,64 @@ export const fr: Messages = {
     processFolders: 'Dossiers',
     processCalls: 'Appels atteints',
     openInRepository: (place: string) => `Ouvrir ${place} dans le dépôt`,
+    viewReview: 'Revue de conformité',
+    reviewsFailed: 'Les revues de conformité n’ont pas pu être chargées.',
+    reviewFailed: 'La revue n’a pas pu être chargée ou lancée.',
+    reviewTitle: 'Revue de conformité',
+    reviewHint:
+      'Votre propre modèle compare chaque diagramme à la carte du code : un appel par diagramme, avec le fournisseur réglé dans ce navigateur. Il lit des noms, des chemins et des liens, jamais votre code. Les constats sont gardés avec la revue.',
+    reviewStart: 'Nouvelle revue',
+    reviewNothing:
+      'Seuls les diagrammes de paquets, de composants, de classes, de séquence et C4 se comparent au code.',
+    reviewPick: 'Revue',
+    reviewLabel: (date: string, diagrams: number, open: number) =>
+      `${date} · ${String(diagrams)} diagramme${diagrams > 1 ? 's' : ''} · ${String(open)} ouvert${open > 1 ? 's' : ''}`,
+    reviewDelete: 'Supprimer cette revue',
+    reviewDeleteTitle: 'Supprimer cette revue ?',
+    reviewDeleteText: 'Ses constats sont supprimés avec elle.',
+    reviewEmpty: 'Aucune revue pour l’instant',
+    reviewEmptyText:
+      'Lancez-en une pour que votre modèle compare les diagrammes à cette carte. Le projet garde ses dix revues les plus récentes.',
+    reviewStartTitle: 'Comparer les diagrammes au code',
+    reviewStartText: (model: string) =>
+      `${model} reçoit chaque diagramme, ses liens avec le code et la partie de la carte qui l’entoure : des noms, des chemins et des liens seulement. Un appel par diagramme.`,
+    reviewNoProvider:
+      'Réglez d’abord votre fournisseur LLM dans les Réglages : la revue appelle votre propre modèle, avec votre clé.',
+    reviewOpenSettings: 'Ouvrir les Réglages',
+    reviewDiagrams: 'Diagrammes à comparer',
+    cancel: 'Annuler',
+    reviewRun: (n: number) => `Comparer ${String(n)} diagramme${n > 1 ? 's' : ''}`,
+    reviewPlan: (model: string | null) => (model ? `Revue avec ${model}` : 'Revue'),
+    reviewFound: (n: number) => `${String(n)} constat${n > 1 ? 's' : ''}`,
+    reviewTruncated: 'une partie de la carte laissée de côté pour tenir dans le modèle',
+    reviewDropped: (n: number) =>
+      `${String(n)} constat${n > 1 ? 's' : ''} sans preuve écarté${n > 1 ? 's' : ''}`,
+    reviewStop: 'Arrêter',
+    reviewResume: (n: number) =>
+      `Comparer le${n > 1 ? 's' : ''} ${String(n)} restant${n > 1 ? 's' : ''}`,
+    reviewAgain: (title: string) => `Comparer « ${title} » à nouveau`,
+    reviewMapGone:
+      'La carte de cette revue a été supprimée : lancez une nouvelle revue pour continuer.',
+    reviewDiagramGone: 'Ce diagramme a été supprimé ou vidé depuis la revue.',
+    reviewFindings: 'Constats',
+    reviewFindingsHint:
+      'Marquez un constat traité une fois le diagramme ou le code corrigé, ou ignorez-le. Chacun cite les endroits du code sur lesquels il repose.',
+    reviewNoFindings: 'Rien à signaler sur ce diagramme.',
+    reviewResolveFailed: 'Le constat n’a pas pu être mis à jour.',
+    wholeDiagram: 'Diagramme entier',
+    conformance: {
+      conforms: 'Conforme au code',
+      deviates: 'Écart avec le code',
+      'missing-in-code': 'Absent du code',
+      'missing-in-diagram': 'Absent du diagramme',
+      uncertain: 'Incertain',
+    },
+    annotation: {
+      ok: 'Conforme au code',
+      warning: 'Écart avec le code',
+      error: 'Absent du code',
+      unknown: 'Incertain',
+    },
   },
   shared: {
     unavailableTitle: 'Ce lien n’est pas disponible',
