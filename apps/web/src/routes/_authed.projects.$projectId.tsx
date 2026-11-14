@@ -33,7 +33,7 @@ export const Route = createFileRoute('/_authed/projects/$projectId')({
   },
   // `?new=true` opens the "New architecture" dialog; `?tab=agents` shows the agent conventions,
   // with `step=questions` for the questionnaire and `generation=<id>` for generated files;
-  // `?tab=code` shows the code maps, with `view`, `map=<id>` and `diagram=<id>`.
+  // `?tab=code` shows the code maps, with `view`, `map=<id>`, `diagram=<id>` and `review=<id>`.
   validateSearch: z.object({
     new: z.boolean().optional().catch(undefined),
     tab: z.enum(['architectures', 'agents', 'code']).optional().catch(undefined),
@@ -42,6 +42,7 @@ export const Route = createFileRoute('/_authed/projects/$projectId')({
     view: z.enum(CODE_VIEWS).optional().catch(undefined),
     map: z.coerce.number().int().positive().optional().catch(undefined),
     diagram: z.coerce.number().int().positive().optional().catch(undefined),
+    review: z.coerce.number().int().positive().optional().catch(undefined),
   }),
   // The project's name, for the breadcrumbs; the page shows its own error if it can't load.
   loader: ({ context: { queryClient }, params: { projectId } }) =>
@@ -82,6 +83,7 @@ function ProjectView({ project }: { project: Project }) {
     view,
     map,
     diagram,
+    review,
   } = Route.useSearch()
   const codeMaps = useFeature('code-maps')
   // While the flag is off (or still loading), `?tab=code` falls back to the architectures.
@@ -184,7 +186,7 @@ function ProjectView({ project }: { project: Project }) {
           <TabsContent value="code">
             <CodeTab
               projectId={project.id}
-              state={{ view, map, diagram }}
+              state={{ view, map, diagram, review }}
               onStateChange={setCodeState}
             />
           </TabsContent>

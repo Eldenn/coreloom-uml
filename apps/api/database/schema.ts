@@ -224,6 +224,66 @@ export class CodeMapSchema extends BaseModel {
   declare userId: number
 }
 
+export class CodeReviewFindingSchema extends BaseModel {
+  static $columns = ['codeReviewId', 'comment', 'createdAt', 'diagramId', 'elementId', 'evidence', 'id', 'resolution', 'severity', 'status', 'updatedAt'] as const
+  $columns = CodeReviewFindingSchema.$columns
+  @column()
+  declare codeReviewId: number
+  @column()
+  declare comment: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare diagramId: number
+  @column()
+  declare elementId: string | null
+  @column()
+  declare evidence: any
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare resolution: string
+  @column()
+  declare severity: string
+  @column()
+  declare status: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class CodeReviewSchema extends BaseModel {
+  static $columns = ['branch', 'codeMapId', 'commitSha', 'createdAt', 'diagrams', 'id', 'includeSnippets', 'locale', 'model', 'projectId', 'providerKind', 'repositoryUrl', 'updatedAt', 'userId'] as const
+  $columns = CodeReviewSchema.$columns
+  @column()
+  declare branch: string | null
+  @column()
+  declare codeMapId: number | null
+  @column()
+  declare commitSha: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare diagrams: any
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare includeSnippets: boolean
+  @column()
+  declare locale: string
+  @column()
+  declare model: string | null
+  @column()
+  declare projectId: number
+  @column()
+  declare providerKind: string | null
+  @column()
+  declare repositoryUrl: string | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
+}
+
 export class DiagramCodeLinkSchema extends BaseModel {
   static $columns = ['codeKey', 'createdAt', 'diagramId', 'elementId', 'id', 'status', 'updatedAt'] as const
   $columns = DiagramCodeLinkSchema.$columns
