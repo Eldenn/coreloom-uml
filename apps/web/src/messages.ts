@@ -402,6 +402,18 @@ export const en = {
     processDepth: (n: number) => `${String(n)} ${n === 1 ? 'level' : 'levels'} deep`,
     processFolders: 'Folders',
     processCalls: 'Calls reached',
+    proposeDiagram: 'Propose a diagram',
+    proposeTitle: 'Draw this process as a new view',
+    proposeText: (entry: string, model: string) =>
+      `${model} receives the calls followed from ${entry}: names, paths and links only, never your code. The view it draws is proposed in the architecture’s assistant, where you accept or reject it.`,
+    proposeNoProvider:
+      'Set your LLM provider in Settings first: the diagram is drawn by your own model, with your key.',
+    proposeNoArchitecture: 'Add an architecture to this project first: the new view goes into one.',
+    proposeArchitecture: 'Architecture',
+    proposeKind: 'Diagram',
+    proposeRun: 'Propose',
+    proposing: 'Drawing…',
+    proposeFailed: 'The diagram could not be drawn',
     openInRepository: (place: string) => `Open ${place} in the repository`,
     viewReview: 'Conformance review',
     reviewsFailed: 'The conformance reviews could not be loaded.',
@@ -1289,6 +1301,19 @@ export const fr: Messages = {
     processDepth: (n: number) => `${String(n)} niveau${n > 1 ? 'x' : ''} de profondeur`,
     processFolders: 'Dossiers',
     processCalls: 'Appels atteints',
+    proposeDiagram: 'Proposer un diagramme',
+    proposeTitle: 'Dessiner ce processus dans une nouvelle vue',
+    proposeText: (entry: string, model: string) =>
+      `${model} reçoit les appels suivis depuis ${entry} : des noms, des chemins et des liens seulement, jamais votre code. La vue dessinée est proposée dans l’assistant de l’architecture, où vous l’acceptez ou la refusez.`,
+    proposeNoProvider:
+      'Réglez d’abord votre fournisseur LLM dans les Réglages : le diagramme est dessiné par votre propre modèle, avec votre clé.',
+    proposeNoArchitecture:
+      'Ajoutez d’abord une architecture à ce projet : la nouvelle vue y est rangée.',
+    proposeArchitecture: 'Architecture',
+    proposeKind: 'Diagramme',
+    proposeRun: 'Proposer',
+    proposing: 'Dessin en cours…',
+    proposeFailed: 'Le diagramme n’a pas pu être dessiné',
     openInRepository: (place: string) => `Ouvrir ${place} dans le dépôt`,
     viewReview: 'Revue de conformité',
     reviewsFailed: 'Les revues de conformité n’ont pas pu être chargées.',

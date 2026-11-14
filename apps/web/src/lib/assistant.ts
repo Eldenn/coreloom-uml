@@ -212,6 +212,8 @@ export function useChangeAction(architectureId: number) {
           queryKey: assistantKeys.conversation(architectureId, conversationId),
         }),
         queryClient.invalidateQueries({ queryKey: architectureKeys.detail(architectureId) }),
+        // A view drawn from a code map's process brings links to the code with it.
+        queryClient.invalidateQueries({ queryKey: ['code-maps'] }),
       ]),
   })
 }

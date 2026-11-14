@@ -50,7 +50,11 @@ export const Route = createFileRoute('/_authed/architectures/$id')({
     parse: ({ id }) => ({ id: z.coerce.number().int().positive().parse(id) }),
     stringify: ({ id }) => ({ id: String(id) }),
   },
-  validateSearch: z.object({ diagram: z.number().int().optional().catch(undefined) }),
+  validateSearch: z.object({
+    diagram: z.number().int().optional().catch(undefined),
+    /** A conversation to open the assistant on, such as one a code map's process started. */
+    assistant: z.number().int().optional().catch(undefined),
+  }),
   // Its project (if any) and title, for the breadcrumbs; the page shows its own error if it can't load.
   loader: async ({ context: { queryClient }, params: { id } }): Promise<CrumbData | null> => {
     try {
@@ -122,8 +126,8 @@ function isKind(kind: UmlDiagramKind): kind is DiagramKind {
  * active states (pointed out on the drawing). One at a time; opening another view closes the
  * simulation.
  */
-function useSidePanel(view: { id: number; kind: DiagramKind } | undefined) {
-  const [assisting, setAssisting] = React.useState(false)
+function useSidePanel(view: { id: number; kind: DiagramKind } | undefined, assistOnOpen: boolean) {
+  const [assisting, setAssisting] = React.useState(assistOnOpen)
   const [simulated, setSimulated] = React.useState<number | null>(null)
   const [activeStates, setActiveStates] = React.useState<readonly string[]>([])
   const simulateButton = React.useRef<HTMLButtonElement>(null)
@@ -152,7 +156,7 @@ function useSidePanel(view: { id: number; kind: DiagramKind } | undefined) {
 function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
   const t = useT()
   const kinds = useCoreloomI18n().messages.diagram.kinds
-  const { diagram: selected } = Route.useSearch()
+  const { diagram: selected, assistant: conversationId } = Route.useSearch()
   const navigate = Route.useNavigate()
   const router = useRouter()
   const autosave = useDiagramAutosave(architecture)
@@ -173,7 +177,7 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
   const byId = (viewId: string) => diagrams.find((d) => String(d.id) === viewId)
   const failed = (error: unknown) => toast.error(getErrorMessage(error, t.editor.failed))
   const open = active && { ...active, ...autosave.draftOf(active) }
-  const side = useSidePanel(open)
+  const side = useSidePanel(open, conversationId !== undefined)
 
   return (
     <div className="flex flex-col gap-3">
@@ -186,6 +190,7 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
             onOpenChange={side.assist}
             architecture={architecture}
             currentDiagramId={active?.id ?? null}
+            initialConversationId={conversationId ?? null}
             autosave={autosave}
             height={WORKSPACE_HEIGHT}
           >

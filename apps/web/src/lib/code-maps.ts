@@ -2,7 +2,10 @@
 // matches it and the processes no diagram documents (the pattern of src/lib/query.ts).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { assistantKeys } from '@/lib/assistant'
 import { apiBaseUrl, client } from '@/lib/client'
+import { MODEL_CALL, type StoredProvider } from '@/lib/llm-provider'
+import { callBody } from '@/lib/llm-provider-body'
 import { projectKeys } from '@/lib/projects'
 
 export type CodeMapSummary = Awaited<
@@ -195,4 +198,36 @@ export interface CodeTabState {
   diagram?: number | undefined
   /** The conformance review shown (`view=review`); the newest when absent. */
   review?: number | undefined
+}
+
+/** The diagram kinds a process is drawn as; sequence by default. */
+export const PROCESS_DIAGRAM_KINDS = ['sequence', 'activity'] as const
+export type ProcessDiagramKind = (typeof PROCESS_DIAGRAM_KINDS)[number]
+
+/**
+ * Has the user's own model draw an undocumented process as a new view: the proposal lands in a
+ * new conversation of the architecture's assistant, to accept or reject there. One model call,
+ * the key sent with it only.
+ */
+export function useProposeProcess(mapId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      provider,
+      ...body
+    }: {
+      provider: StoredProvider
+      entry: string
+      architectureId: number
+      kind: ProcessDiagramKind
+      locale: 'en' | 'fr'
+    }) =>
+      client.api.codeMaps.processes.propose({
+        params: { id: mapId },
+        body: { ...callBody(provider), ...body },
+        ...MODEL_CALL,
+      }),
+    onSuccess: (result) =>
+      queryClient.invalidateQueries({ queryKey: assistantKeys.list(result.architectureId) }),
+  })
 }
