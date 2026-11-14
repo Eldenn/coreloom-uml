@@ -251,6 +251,29 @@ accounts by email or id, and reads who changed what. The API enforces each flag 
 off flag answers 404); everyone else reads their evaluated flags from `GET /features`. With no
 default account configured, nobody can change the flags and they keep their stored state.
 
+### Code maps
+
+A code map (`app/code-maps/`, tables `code_maps` and `diagram_code_links`) is the structure of a
+repository at one commit (files, symbols, the links between them, never source code) held by one
+of the owner's projects. The row is the header (source, repository, branch, commit, extractor,
+status, counts); the map itself is a gzipped `CodeMap` in Drive (`code-maps/<projectId>/…`). The
+routes sit behind the `code-maps` feature flag, off by default, take the session or an API key
+(`write` to upload), and never call a model.
+
+- `POST /projects/:id/code-maps` takes a multipart `file` (50 MB at most, `.json` or `.gz`):
+  graphify's `graph.json` (read by `importGraphify`) or a map the CLI already normalized (checked
+  by `parseCodeMap`), plain or gzipped. Inflating is capped, and anything that does not pass is a
+  422 with its problems. `repositoryUrl`, `branch` and `commitSha` fields win over the map's
+  header; a user name or token in the repository URL is dropped. A project keeps its 5 newest
+  maps: the older ones are deleted with their file. Projects report `codeMapCount`.
+- `GET /projects/:id/code-maps` lists them, newest first (paginated); `GET /code-maps/:id` adds
+  the summary (folders, communities, entry points detected again on each read, counts);
+  `DELETE /code-maps/:id` deletes it and its file.
+- `GET /code-maps/:id/links?diagramId=` matches a diagram of the map's project against it
+  (`matchDiagram`) with the owner's stored links; `PUT` replaces that diagram's links
+  (`suggested`, `confirmed` or `ignored`) and answers with the new match. Links are keyed by code
+  key, not by map, so they outlive the map they were made on.
+
 ### Agent conventions
 
 An agent configuration (`app/agent-configs/`, tables `agent_configs`, `agent_config_answers`,

@@ -187,6 +187,62 @@ export class AuthAccessTokenSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
+export class CodeMapSchema extends BaseModel {
+  static $columns = ['branch', 'commitSha', 'createdAt', 'edgeCount', 'extractor', 'extractorVersion', 'failureReason', 'id', 'nodeCount', 'projectId', 'repositoryUrl', 'source', 'status', 'storageKey', 'updatedAt', 'userId'] as const
+  $columns = CodeMapSchema.$columns
+  @column()
+  declare branch: string | null
+  @column()
+  declare commitSha: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare edgeCount: number
+  @column()
+  declare extractor: string
+  @column()
+  declare extractorVersion: string
+  @column()
+  declare failureReason: string | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare nodeCount: number
+  @column()
+  declare projectId: number
+  @column()
+  declare repositoryUrl: string | null
+  @column()
+  declare source: string
+  @column()
+  declare status: string
+  @column()
+  declare storageKey: string | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
+}
+
+export class DiagramCodeLinkSchema extends BaseModel {
+  static $columns = ['codeKey', 'createdAt', 'diagramId', 'elementId', 'id', 'status', 'updatedAt'] as const
+  $columns = DiagramCodeLinkSchema.$columns
+  @column()
+  declare codeKey: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare diagramId: number
+  @column()
+  declare elementId: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare status: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class DiagramSchema extends BaseModel {
   static $columns = ['architectureId', 'content', 'createdAt', 'format', 'id', 'kind', 'position', 'title', 'updatedAt', 'version'] as const
   $columns = DiagramSchema.$columns

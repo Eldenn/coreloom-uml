@@ -34,4 +34,12 @@ export default defineConfig({
   raw: {
     types: ['text/*'],
   },
+
+  /**
+   * Multipart parser. A code map upload may be up to 50 MB (`CODE_MAP_LIMITS.uploadSize`); each
+   * route still checks its own file's size and extension with `request.file`.
+   */
+  multipart: {
+    limit: '50mb',
+  },
 })
