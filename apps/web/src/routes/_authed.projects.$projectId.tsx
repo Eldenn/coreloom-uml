@@ -1,4 +1,5 @@
-// One project: its architectures as cards, its agent conventions in a second tab, and the
+// One project: its architectures as cards, its agent conventions in a second tab, its code (maps
+// of the repository, matched against the diagrams) in a third when `code-maps` is on, and the
 // project's own actions (rename, delete).
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
 import { PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
@@ -8,6 +9,7 @@ import { z } from 'zod'
 import { AgentConfigSetup } from '@/agent-configs/agent-config-setup'
 import { AgentConfigTab, type AgentConfigView } from '@/agent-configs/agent-config-tab'
 import { ArchitectureList, CreateArchitectureDialog } from '@/architectures/architecture-list'
+import { CodeTab } from '@/code-maps/code-tab'
 import { PageHeader } from '@/components/app-shell'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -17,7 +19,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAgentConfig, useAgentConfigs } from '@/lib/agent-configs'
 import { useArchitectures } from '@/lib/architectures'
+import { CODE_VIEWS, type CodeTabState } from '@/lib/code-maps'
 import { projectCrumbs } from '@/lib/crumbs'
+import { useFeature } from '@/lib/feature-flags'
 import { useT } from '@/lib/locale'
 import { type Project, projectQueryOptions, useProject } from '@/lib/projects'
 import { DeleteProjectDialog, EditProjectDialog } from '@/projects/project-dialogs'
@@ -28,12 +32,16 @@ export const Route = createFileRoute('/_authed/projects/$projectId')({
     stringify: ({ projectId }) => ({ projectId: String(projectId) }),
   },
   // `?new=true` opens the "New architecture" dialog; `?tab=agents` shows the agent conventions,
-  // with `step=questions` for the questionnaire and `generation=<id>` for generated files.
+  // with `step=questions` for the questionnaire and `generation=<id>` for generated files;
+  // `?tab=code` shows the code maps, with `view`, `map=<id>` and `diagram=<id>`.
   validateSearch: z.object({
     new: z.boolean().optional().catch(undefined),
-    tab: z.enum(['architectures', 'agents']).optional().catch(undefined),
+    tab: z.enum(['architectures', 'agents', 'code']).optional().catch(undefined),
     step: z.enum(['questions']).optional().catch(undefined),
     generation: z.coerce.number().int().positive().optional().catch(undefined),
+    view: z.enum(CODE_VIEWS).optional().catch(undefined),
+    map: z.coerce.number().int().positive().optional().catch(undefined),
+    diagram: z.coerce.number().int().positive().optional().catch(undefined),
   }),
   // The project's name, for the breadcrumbs; the page shows its own error if it can't load.
   loader: ({ context: { queryClient }, params: { projectId } }) =>
@@ -66,7 +74,18 @@ function ProjectView({ project }: { project: Project }) {
   const t = useT()
   const router = useRouter()
   const navigate = useNavigate({ from: Route.fullPath })
-  const { new: creating = false, tab = 'architectures', step, generation } = Route.useSearch()
+  const {
+    new: creating = false,
+    tab: requestedTab = 'architectures',
+    step,
+    generation,
+    view,
+    map,
+    diagram,
+  } = Route.useSearch()
+  const codeMaps = useFeature('code-maps')
+  // While the flag is off (or still loading), `?tab=code` falls back to the architectures.
+  const tab = requestedTab === 'code' && !codeMaps ? 'architectures' : requestedTab
   const [editing, setEditing] = React.useState(false)
   const [deleting, setDeleting] = React.useState(false)
   const [search, setSearch] = React.useState('')
@@ -83,7 +102,12 @@ function ProjectView({ project }: { project: Project }) {
   const setCreating = (open: boolean) =>
     void navigate({ search: open ? { new: true } : {}, replace: true })
   const setTab = (next: string) =>
-    void navigate({ search: next === 'agents' ? { tab: 'agents' } : {}, replace: true })
+    void navigate({
+      search: next === 'agents' || next === 'code' ? { tab: next } : {},
+      replace: true,
+    })
+  const setCodeState = (state: CodeTabState) =>
+    void navigate({ search: { tab: 'code', ...state }, replace: true })
   const setAgentView = (view: AgentConfigView) =>
     void navigate({ search: { tab: 'agents', ...view } })
 
@@ -127,6 +151,7 @@ function ProjectView({ project }: { project: Project }) {
             {t.agents.tab}
             <AgentConfigBadge project={project} />
           </TabsTrigger>
+          {codeMaps && <TabsTrigger value="code">{t.code.tab}</TabsTrigger>}
         </TabsList>
         <TabsContent value="architectures" className="flex flex-col gap-4">
           <Input
@@ -155,6 +180,15 @@ function ProjectView({ project }: { project: Project }) {
             onViewChange={setAgentView}
           />
         </TabsContent>
+        {codeMaps && (
+          <TabsContent value="code">
+            <CodeTab
+              projectId={project.id}
+              state={{ view, map, diagram }}
+              onStateChange={setCodeState}
+            />
+          </TabsContent>
+        )}
       </Tabs>
       <CreateArchitectureDialog projectId={project.id} open={creating} onOpenChange={setCreating} />
       <EditProjectDialog
