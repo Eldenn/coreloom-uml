@@ -2963,6 +2963,24 @@ const en = {
     ignored: (left: number) => `Suggestion ignored. ${left === 0 ? 'None left.' : `${left} left.`}`,
     failed: 'That didn’t go through. The suggestion is still here.',
   },
+  diagramAnnotations: {
+    status: { ok: 'No issue', warning: 'Warning', error: 'Error', unknown: 'Uncertain' },
+    withCount: (what: string, count: number) =>
+      `${what}, ${count} ${count === 1 ? 'finding' : 'findings'}`,
+    show: (name: string, what: string) => `Findings for ${name}: ${what}`,
+    described: (label: string, what: string) => `${label}. Finding: ${what}`,
+  },
+  findingCard: {
+    severity: { low: 'Low', medium: 'Medium', high: 'High' },
+    severityLabel: (level: string) => `Severity: ${level}`,
+    evidence: 'Evidence',
+    newTab: '(opens in a new tab)',
+    show: 'Show in diagram',
+    done: 'Mark as done',
+    dismiss: 'Ignore',
+    reopen: 'Reopen',
+    resolved: { done: 'Marked as done', dismissed: 'Ignored' },
+  },
   saveStatus: {
     saved: 'Saved',
     saving: 'Saving…',
@@ -6403,6 +6421,23 @@ const fr: Messages = {
     ignored: (left) =>
       `Suggestion ignorée. ${left === 0 ? 'Il n’en reste aucune.' : `Il en reste ${left}.`}`,
     failed: 'L’action n’a pas abouti : la suggestion est toujours là.',
+  },
+  diagramAnnotations: {
+    status: { ok: 'Conforme', warning: 'Avertissement', error: 'Erreur', unknown: 'Incertain' },
+    withCount: (what, count) => `${what}, ${count} ${count === 1 ? 'constat' : 'constats'}`,
+    show: (name, what) => `Constats pour ${name} : ${what}`,
+    described: (label, what) => `${label}. Constat : ${what}`,
+  },
+  findingCard: {
+    severity: { low: 'Faible', medium: 'Moyenne', high: 'Élevée' },
+    severityLabel: (level) => `Gravité : ${level}`,
+    evidence: 'Preuves',
+    newTab: '(s’ouvre dans un nouvel onglet)',
+    show: 'Voir dans le diagramme',
+    done: 'Marquer comme traité',
+    dismiss: 'Ignorer',
+    reopen: 'Rouvrir',
+    resolved: { done: 'Traité', dismissed: 'Ignoré' },
   },
   saveStatus: {
     saved: 'Enregistré',

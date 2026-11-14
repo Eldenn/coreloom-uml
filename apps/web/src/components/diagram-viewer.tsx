@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { UmlDiagram, type UmlDiagramHandle } from '@/components/ui/uml-diagram'
+import { type UmlAnnotation, UmlDiagram, type UmlDiagramHandle } from '@/components/ui/uml-diagram'
 import { useCoreloomI18n } from '@/lib/i18n'
 import type { UmlLayout, UmlSpec } from '@/lib/uml'
 import type { UmlImageFormat } from '@/lib/uml-image'
@@ -35,6 +35,8 @@ interface DiagramViewerItem {
   title: string
   diagram: UmlSpec
   layout?: UmlLayout
+  /** A status on some of this view's elements, by id: a ring and a badge on each. */
+  annotations?: readonly UmlAnnotation[]
 }
 
 interface DiagramViewerProps {
@@ -52,6 +54,8 @@ interface DiagramViewerProps {
   banner?: React.ReactNode
   /** Download names: "<fileName>-<view>.svg". Default: the view's name alone. */
   fileName?: string
+  /** Makes each badge a button: gets the element's id and the view it is in. */
+  onAnnotationSelect?: (element: string, viewId: string) => void
   className?: string
 }
 
@@ -235,6 +239,7 @@ function DiagramViewer({
   onActiveChange,
   banner,
   fileName,
+  onAnnotationSelect,
   className,
 }: DiagramViewerProps) {
   const t = useCoreloomI18n().messages.diagramViewer
@@ -324,6 +329,14 @@ function DiagramViewer({
               diagram={withLayout(item)}
               label={item.title}
               height="min(70svh, 640px)"
+              {...(item.annotations ? { annotations: item.annotations } : {})}
+              {...(onAnnotationSelect
+                ? {
+                    onAnnotationSelect: (element: string) => {
+                      onAnnotationSelect(element, item.id)
+                    },
+                  }
+                : {})}
             />
           </TabsContent>
         ))}

@@ -1,6 +1,11 @@
 import type { EdgeChange, NodeChange } from '@xyflow/react'
 
 import {
+  ANNOTATION_RING,
+  type AnnotationLayer,
+  annotationText,
+} from '@/components/ui/uml-diagram-annotations'
+import {
   type DiagramFlowEdge,
   type DiagramFlowNode,
   nodeLabel,
@@ -15,6 +20,7 @@ import {
   relationIndexOf,
 } from '@/lib/uml-graph'
 import { type LayoutBox, regionLines } from '@/lib/uml-layout'
+import { cn } from '@/lib/utils'
 
 type DiagramText = Messages['diagram']
 
@@ -61,13 +67,17 @@ function flowNodes(input: {
   selected: ReadonlySet<string>
   /** Boxes pointed out (see `UmlDiagramProps.highlighted`): an outline around the selection ring. */
   highlighted?: ReadonlySet<string> | undefined
+  /** The statuses laid over the elements; each is said after the element's own words. */
+  layer?: AnnotationLayer
   t: DiagramText
 }): DiagramFlowNode[] {
-  const { graph, boxes, editable, connectable, selected, highlighted, t } = input
+  const { graph, boxes, editable, connectable, selected, highlighted, layer, t } = input
   const lines = regionLines(graph.nodes, boxes, graph.direction)
   return byDepth(graph.nodes).map((node) => {
     const box = boxes.get(node.id) ?? { x: 0, y: 0, width: node.width, height: node.height }
     const regions = lines.get(node.id)
+    const annotation = layer?.marks.get(node.id)
+    const label = nodeLabel(node, t)
     return {
       id: node.id,
       type: NODE_TYPE[node.shape],
@@ -79,11 +89,16 @@ function flowNodes(input: {
       measured: { width: box.width, height: box.height },
       style: { width: box.width, height: box.height },
       ...(node.parent && boxes.has(node.parent) ? { parentId: node.parent } : {}),
-      data: { node, connectable, ...(regions ? { regions } : {}) },
-      ariaLabel: nodeLabel(node, t),
+      data: { node, connectable, annotation, ...(regions ? { regions } : {}) },
+      ariaLabel:
+        annotation && layer ? layer.t.described(label, annotationText(annotation, layer.t)) : label,
       draggable: editable,
       selected: selected.has(node.id),
-      className: `${highlighted?.has(node.id) ? 'highlighted ' : ''}rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring [&.highlighted]:outline-[3px] [&.highlighted]:outline-offset-4 [&.highlighted]:outline-success [&.highlighted]:outline-solid [&.selected]:ring-2 [&.selected]:ring-primary`,
+      className: cn(
+        'rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring [&.highlighted]:outline-[3px] [&.highlighted]:outline-offset-4 [&.highlighted]:outline-success [&.highlighted]:outline-solid [&.selected]:ring-2 [&.selected]:ring-primary',
+        highlighted?.has(node.id) && 'highlighted',
+        annotation && ANNOTATION_RING[annotation.status],
+      ),
     }
   })
 }
