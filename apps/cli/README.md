@@ -3,7 +3,8 @@
 Writes [Coreloom UML](https://github.com/Eldenn/coreloom-uml) agent conventions into a
 repository: the `AGENTS.md` that coding assistants read, plus a short pointer file for each tool
 that does not read `AGENTS.md` natively. The conventions are written and generated in the
-Coreloom UML app; this CLI only pulls the latest generation.
+Coreloom UML app; this CLI only pulls the latest generation. It also sends a map of the
+repository's code to a project, without the code itself (`map push`, below).
 
 Only a **managed block** is written, between these markers:
 
@@ -151,6 +152,72 @@ that runs it, then your own checks: `.github/workflows/agent-conventions.yml`, w
 It reads the key from the `CORELOOM_UML_API_KEY` repository secret. In another CI, run
 `npx @coreloom-uml/cli@<version> check` with that variable set (pin the version you use).
 
+### `map push [--api-url <url>] [--project <id>] [--graph <path>] [--repository <url>] [--branch <name>] [--commit <sha>] [--dry-run]`
+
+Sends a **map of the repository's code** to a project, so that the app can match its diagrams
+against the code. Run it at the repository root. The map is read on your machine by
+[graphify](https://github.com/Graphify-Labs/graphify), which parses the code with tree-sitter;
+the CLI then turns graphify's graph into a Coreloom UML code map and sends that, gzipped. **The
+code itself never leaves the machine**: a map holds file paths, the names of classes, functions
+and methods, their line numbers and the links between them (imports, calls, inheritance), never
+a line of source.
+
+```sh
+uv tool install graphifyy==0.9.108     # once (or pipx install graphifyy==0.9.108); Python 3.10+
+npx @coreloom-uml/cli map push --api-url https://coreloom.example.com/api --project 7
+```
+
+The project id is in the URL of the project page (`/projects/7`). The key needs the **`write`**
+ability, and code maps must be turned on for your account.
+
+- graphify runs with `GRAPHIFY_BACKEND=none` and its query log off, so no model is called and
+  no key is needed; no variable whose name ends in `API_KEY`, `_TOKEN` or `_SECRET` is passed to
+  it. It writes `graphify-out/` (add it to `.gitignore`) and reads `.gitignore`. When there is no
+  `.graphifyignore`, the CLI writes one that leaves out dependencies and build output.
+- Without graphify, the CLI sends the `graphify-out/graph.json` an earlier run left, and warns
+  that it may be older than the code. `--graph <path>` sends a given `graph.json` and does not run
+  graphify. Only graphify 0.9.108's format is read (`schema_version` 1); another version is
+  used with a warning, and a graph the CLI cannot read is refused before anything is sent.
+- The map is labelled with the `origin` remote as a web address (`git@github.com:acme/app.git`
+  becomes `https://github.com/acme/app`; a user name or token in the URL is dropped), the branch
+  and the commit. `--repository`, `--branch` and `--commit` set them instead. In a detached
+  checkout, the branch comes from `GITHUB_HEAD_REF` or `GITHUB_REF_NAME`. When the working tree
+  has uncommitted changes, the CLI warns that the map holds them but names the last commit.
+- `--project` can be left out when `.coreloom-uml.json` names a project (`pull --project`).
+- `--dry-run` reads the code and prints the map's size, and needs neither a key nor a project.
+- A project keeps its five newest maps.
+
+To send a new map on every push to `main`, add a workflow such as this one, with an API key that
+has the `write` ability in the `CORELOOM_UML_API_KEY` secret and the API URL in the
+`CORELOOM_UML_API_URL` variable (pin the CLI version you use):
+
+```yaml
+name: Code map
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  code-map:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: pipx install graphifyy==0.9.108
+      - run: npx --yes @coreloom-uml/cli@<version> map push --project 7
+        env:
+          CORELOOM_UML_API_URL: ${{ vars.CORELOOM_UML_API_URL }}
+          CORELOOM_UML_API_KEY: ${{ secrets.CORELOOM_UML_API_KEY }}
+```
+
 ### `config set-key`
 
 Reads an API key (hidden in a terminal, or from standard input) and stores it in
@@ -164,6 +231,7 @@ readable by you only. `CORELOOM_UML_API_KEY` takes precedence over it.
 | API URL  | `--api-url`, `CORELOOM_UML_API_URL`, `.coreloom-uml.json`. No default.       |
 | API key  | `CORELOOM_UML_API_KEY`, then the config file. Never an argument.             |
 | Source   | `--config` or `--project`, then `.coreloom-uml.json`.                        |
+| Project  | `map push`: `--project`, then the project of `.coreloom-uml.json`, if any.   |
 
 `.coreloom-uml.json` holds the API URL, the conventions' id (or, for a manifest written by an
 older version, the project's), the pulled generation, the hash of
@@ -174,7 +242,7 @@ each block written and the entries merged into each JSON settings file. It holds
 | Code | Meaning                                                                       |
 | ---- | ----------------------------------------------------------------------------- |
 | 0    | Success                                                                       |
-| 1    | Error: network, refused key, unknown id, refused path, broken markers…        |
+| 1    | Error: network, refused key or map, unknown id, refused path, broken markers  |
 | 2    | A block edited by hand was left as it was (`pull`) or found (`check`)         |
 | 3    | `check`: a newer generation exists                                            |
 | 4    | `check`: a managed block, or its file, is missing                             |

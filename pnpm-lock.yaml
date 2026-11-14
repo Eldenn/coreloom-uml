@@ -175,6 +175,9 @@ importers:
       '@coreloom-uml/catalog':
         specifier: workspace:*
         version: link:../../packages/catalog
+      '@coreloom-uml/codemap':
+        specifier: workspace:*
+        version: link:../../packages/codemap
       '@coreloom-uml/config':
         specifier: workspace:*
         version: link:../../packages/config
