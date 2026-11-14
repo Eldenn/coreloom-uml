@@ -19,6 +19,7 @@
       "!**/playwright-report",
       "!**/packages/cli/templates",
       "!**/packages/catalog/e2e/schemas",
+      "!**/packages/codemap/fixtures",
       "!**/apps/web"
     ]
   },
