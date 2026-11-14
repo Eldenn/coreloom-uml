@@ -306,7 +306,7 @@ export const en = {
     addMap: 'Add a map',
     addTitle: 'Add a code map',
     addDescription: 'A new map replaces the shown one; the project keeps its five newest.',
-    version: 'Map',
+    version: 'Map version',
     versionLabel: (date: string, commit: string | null) =>
       commit ? `${date} · ${commit.slice(0, 7)}` : date,
     delete: 'Delete this map',
@@ -1136,7 +1136,7 @@ export const fr: Messages = {
     addTitle: 'Ajouter une carte du code',
     addDescription:
       'Une nouvelle carte remplace celle affichée ; le projet garde ses cinq plus récentes.',
-    version: 'Carte',
+    version: 'Version de la carte',
     versionLabel: (date: string, commit: string | null) =>
       commit ? `${date} · ${commit.slice(0, 7)}` : date,
     delete: 'Supprimer cette carte',

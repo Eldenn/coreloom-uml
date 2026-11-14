@@ -272,7 +272,7 @@ function MatchDiagram({
           <UmlDiagram
             diagram={diagram.content}
             label={diagram.title}
-            height={520}
+            height={460}
             annotations={annotations}
             onAnnotationSelect={onSelect}
           />
@@ -352,7 +352,7 @@ function LinkSuggestions({
           suggestions={suggestions}
           editable
           renderText={(text) => <code className="font-mono text-[12.5px] break-all">{text}</code>}
-          empty={<p className="m-0 text-[13px] text-muted-foreground">{t.code.noSuggestions}</p>}
+          empty={t.code.noSuggestions}
           onAccept={(suggestion, text) =>
             store({
               elementId: elementOf(suggestion),
