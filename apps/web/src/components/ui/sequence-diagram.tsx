@@ -1,5 +1,13 @@
 import * as React from 'react'
 
+import {
+  ANNOTATION_STROKE,
+  AnnotationContext,
+  annotationMap,
+  SequenceAnnotations,
+  type UmlAnnotation,
+  type UmlAnnotationStatus,
+} from '@/components/ui/uml-diagram-annotations'
 import { type Messages, useCoreloomI18n } from '@/lib/i18n'
 import type { SequenceArrow, SequenceDiagram, SequenceStep } from '@/lib/uml'
 import {
@@ -20,6 +28,10 @@ interface SequenceDiagramViewProps {
   selected?: readonly string[]
   /** A click on a participant or a step (null: on nothing); `additive` with Ctrl, ⌘ or Shift. */
   onSelect?: (id: string | null, additive: boolean) => void
+  /** A status on participants and messages: their outline in its colour, and a badge. */
+  annotations?: readonly UmlAnnotation[] | undefined
+  /** Makes each badge a button that hands its participant or step id back. */
+  onAnnotationSelect?: ((element: string) => void) | undefined
   /**
    * A still picture scaled into its box (`maxHeight` is then its height): not focusable, one
    * accessible name, no step list. Default: false.
@@ -80,17 +92,27 @@ function Lines({
   )
 }
 
+/** The outline of an annotated participant or message; a selection's outline wins. */
+type Tones = ReadonlyMap<string, UmlAnnotationStatus>
+
+function toneStyle(tone: UmlAnnotationStatus | undefined, picked: boolean) {
+  return tone && !picked ? { stroke: ANNOTATION_STROKE[tone], strokeWidth: 2 } : undefined
+}
+
 function Participant({
   col,
   y,
   actor,
   picked,
+  tone,
 }: {
   col: SequenceColumn
   y: number
   actor: boolean
   picked: boolean
+  tone: UmlAnnotationStatus | undefined
 }) {
+  const toned = toneStyle(tone, picked)
   if (col.kind === 'actor') {
     const cx = col.x
     return (
@@ -99,6 +121,7 @@ function Participant({
         className={picked ? 'stroke-primary' : 'stroke-fg-secondary'}
         fill="none"
         strokeWidth={1.5}
+        style={toned}
       >
         <rect x={cx - 30} y={y} width={60} height={60} className="fill-transparent stroke-none" />
         <circle cx={cx} cy={y + 9} r={6} />
@@ -127,6 +150,7 @@ function Participant({
         height={40}
         rx={6}
         className={cn('fill-card stroke-border-strong', picked && PICKED)}
+        style={toned}
       />
       <text
         x={col.x}
@@ -144,15 +168,18 @@ function Message({
   item,
   markers,
   picked,
+  tone,
 }: {
   item: Extract<SequenceItem, { type: 'message' }>
   markers: string
   picked: boolean
+  tone: UmlAnnotationStatus | undefined
 }) {
   const head = HEAD[item.arrow]
   const style = {
     stroke: picked ? 'var(--color-primary)' : 'var(--diagram-edge)',
     strokeWidth: picked ? 2 : 1.25,
+    ...toneStyle(tone, picked),
     fill: 'none',
     ...(DASHED.has(item.arrow) ? { strokeDasharray: '5 4' } : {}),
   }
@@ -261,16 +288,18 @@ function Item({
   markers,
   t,
   selected,
+  tones,
 }: {
   item: SequenceItem
   markers: string
   t: SequenceText
   selected: ReadonlySet<string>
+  tones: Tones
 }) {
   const picked = 'id' in item && selected.has(item.id)
   switch (item.type) {
     case 'message':
-      return <Message item={item} markers={markers} picked={picked} />
+      return <Message item={item} markers={markers} picked={picked} tone={tones.get(item.id)} />
     case 'note':
       return (
         <g data-id={item.id}>
@@ -429,12 +458,14 @@ function SequenceSvg({
   onSelect,
   fit,
   t,
+  tones,
 }: {
   layout: SequenceLayout
   selected: readonly string[]
   onSelect: SequenceDiagramViewProps['onSelect']
   fit: boolean
   t: SequenceText
+  tones: Tones
 }) {
   const markers = `seq${React.useId().replace(/[^a-zA-Z0-9]/g, '')}`
   const actor = layout.columns.some((c) => c.kind === 'actor')
@@ -474,12 +505,20 @@ function SequenceSvg({
       ))}
       {layout.items.map((item, i) => (
         // eslint-disable-next-line @eslint-react/no-array-index-key -- drawn in order; no ids
-        <Item key={i} item={item} markers={markers} t={t} selected={picked} />
+        <Item key={i} item={item} markers={markers} t={t} selected={picked} tones={tones} />
       ))}
       {layout.columns.map((c) => (
         <React.Fragment key={c.id}>
-          <Participant col={c} y={0} actor={actor} picked={picked.has(c.id)} />
-          <Participant col={c} y={layout.bottom} actor={actor} picked={picked.has(c.id)} />
+          {[0, layout.bottom].map((y) => (
+            <Participant
+              key={y}
+              col={c}
+              y={y}
+              actor={actor}
+              picked={picked.has(c.id)}
+              tone={tones.get(c.id)}
+            />
+          ))}
         </React.Fragment>
       ))}
     </svg>
@@ -492,6 +531,8 @@ function SequenceDiagramView({
   label,
   selected = [],
   onSelect,
+  annotations,
+  onAnnotationSelect,
   fit = false,
   ref,
   className,
@@ -502,6 +543,8 @@ function SequenceDiagramView({
   const names = new Map(layout.columns.map((c) => [c.id, c.label]))
   const name = label ?? messages.kinds.sequence
   const drawn = layout.columns.length > 0
+  const marks = annotationMap(annotations)
+  const tones: Tones = new Map([...marks].map(([id, a]) => [id, a.status]))
   const style = { maxHeight, '--diagram-edge': 'var(--color-muted-foreground)' }
   if (fit)
     return (
@@ -516,7 +559,9 @@ function SequenceDiagramView({
         )}
         style={{ ...style, height: maxHeight }}
       >
-        {drawn && <SequenceSvg layout={layout} selected={[]} onSelect={undefined} fit t={t} />}
+        {drawn && (
+          <SequenceSvg layout={layout} selected={[]} onSelect={undefined} fit t={t} tones={tones} />
+        )}
       </div>
     )
   return (
@@ -538,7 +583,20 @@ function SequenceDiagramView({
         <p className="px-4 pt-3 text-[13px] font-semibold text-foreground">{diagram.title}</p>
       )}
       {drawn ? (
-        <SequenceSvg layout={layout} selected={selected} onSelect={onSelect} fit={false} t={t} />
+        // The badges sit over the drawing, at the drawing's own coordinates.
+        <div className="relative w-fit">
+          <SequenceSvg
+            layout={layout}
+            selected={selected}
+            onSelect={onSelect}
+            fit={false}
+            t={t}
+            tones={tones}
+          />
+          <AnnotationContext value={{ onSelect: onAnnotationSelect }}>
+            <SequenceAnnotations layout={layout} annotations={marks} />
+          </AnnotationContext>
+        </div>
       ) : (
         <p className="p-6 text-center text-[13px] text-muted-foreground">{messages.empty}</p>
       )}

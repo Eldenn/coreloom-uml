@@ -125,10 +125,13 @@ router
 |
 | A map belongs to one of the owner's projects; the graph is a gzipped file in Drive. Uploading
 | one is a write (an API token needs `write`). `links` read and replace one diagram's links,
-| `?diagramId=` naming a diagram of the map's project. No model is called.
+| `?diagramId=` naming a diagram of the map's project. `processes` lists the flows from the entry
+| points that no diagram documents. No model is called.
 */
 const codeMapsController = () => import('#app/code-maps/controllers/code-maps-controller')
 const codeMapLinksController = () => import('#app/code-maps/controllers/code-map-links-controller')
+const codeMapProcessesController = () =>
+  import('#app/code-maps/controllers/code-map-processes-controller')
 router
   .group(() => {
     router
@@ -143,6 +146,9 @@ router
     router
       .put('/code-maps/:id/links', [codeMapLinksController, 'update'])
       .as('code_maps.links.update')
+    router
+      .get('/code-maps/:id/processes', [codeMapProcessesController, 'index'])
+      .as('code_maps.processes.index')
   })
   .where('id', router.matchers.number())
   .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])

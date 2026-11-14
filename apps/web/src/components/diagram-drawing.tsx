@@ -3,7 +3,11 @@ import * as React from 'react'
 import { DiagramProperties } from '@/components/diagram-properties'
 import { SequenceOutline } from '@/components/diagram-sequence'
 import { DiagramTools } from '@/components/diagram-tools'
-import { UmlDiagram, type UmlDiagramHandle } from '@/components/ui/uml-diagram'
+import {
+  UmlDiagram,
+  type UmlDiagramHandle,
+  type UmlDiagramProps,
+} from '@/components/ui/uml-diagram'
 import type { useDiagramEditing } from '@/components/use-diagram-editing'
 import { useCoreloomI18n } from '@/lib/i18n'
 import type { UmlDirection, UmlLayout, UmlSpec } from '@/lib/uml'
@@ -104,6 +108,7 @@ function Drawing({
   highlighted,
   imageRef,
   onLayoutChange,
+  review = {},
 }: {
   diagram: UmlSpec | null
   label: string
@@ -121,6 +126,8 @@ function Drawing({
   /** Element ids to point out on the drawing, beside the selection. */
   highlighted?: readonly string[] | undefined
   imageRef: React.Ref<UmlDiagramHandle>
+  /** The app's annotations on the elements, and what a badge does. */
+  review?: Pick<UmlDiagramProps, 'annotations' | 'onAnnotationSelect'>
 }) {
   const empty = useCoreloomI18n().messages.diagram.empty
   const locked = problems || readOnly
@@ -189,6 +196,7 @@ function Drawing({
               onSelectionChange={editing.select}
               {...(highlighted ? { highlighted } : {})}
               {...editable}
+              {...review}
               height="100%"
               label={label}
               className="h-full"

@@ -144,6 +144,12 @@ const routes = {
     tokens: [{"old":"/code-maps/:id/links","type":0,"val":"code-maps","end":""},{"old":"/code-maps/:id/links","type":1,"val":"id","end":""},{"old":"/code-maps/:id/links","type":0,"val":"links","end":""}],
     types: placeholder as Registry['code_maps.links.update']['types'],
   },
+  'code_maps.processes.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/code-maps/:id/processes',
+    tokens: [{"old":"/code-maps/:id/processes","type":0,"val":"code-maps","end":""},{"old":"/code-maps/:id/processes","type":1,"val":"id","end":""},{"old":"/code-maps/:id/processes","type":0,"val":"processes","end":""}],
+    types: placeholder as Registry['code_maps.processes.index']['types'],
+  },
   'agent_configs.index': {
     methods: ["GET","HEAD"],
     pattern: '/agent-configs',

@@ -283,6 +283,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-links-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'code_maps.processes.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/code-maps/:id/processes'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-processes-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-processes-controller').default['index']>>>
+    }
+  }
   'agent_configs.index': {
     methods: ["GET","HEAD"]
     pattern: '/agent-configs'
