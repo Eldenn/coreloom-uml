@@ -120,6 +120,35 @@ router
 
 /*
 |--------------------------------------------------------------------------
+| Code maps: the structure of a project's code, and how its diagrams match it (behind `code-maps`)
+|--------------------------------------------------------------------------
+|
+| A map belongs to one of the owner's projects; the graph is a gzipped file in Drive. Uploading
+| one is a write (an API token needs `write`). `links` read and replace one diagram's links,
+| `?diagramId=` naming a diagram of the map's project. No model is called.
+*/
+const codeMapsController = () => import('#app/code-maps/controllers/code-maps-controller')
+const codeMapLinksController = () => import('#app/code-maps/controllers/code-map-links-controller')
+router
+  .group(() => {
+    router
+      .get('/projects/:id/code-maps', [codeMapsController, 'index'])
+      .as('projects.code_maps.index')
+    router
+      .post('/projects/:id/code-maps', [codeMapsController, 'store'])
+      .as('projects.code_maps.store')
+    router.get('/code-maps/:id', [codeMapsController, 'show']).as('code_maps.show')
+    router.delete('/code-maps/:id', [codeMapsController, 'destroy']).as('code_maps.destroy')
+    router.get('/code-maps/:id/links', [codeMapLinksController, 'show']).as('code_maps.links.show')
+    router
+      .put('/code-maps/:id/links', [codeMapLinksController, 'update'])
+      .as('code_maps.links.update')
+  })
+  .where('id', router.matchers.number())
+  .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
+
+/*
+|--------------------------------------------------------------------------
 | Agent conventions: what AGENTS.md and its pointer files are rendered from
 |--------------------------------------------------------------------------
 |

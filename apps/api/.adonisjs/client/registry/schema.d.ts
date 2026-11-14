@@ -211,6 +211,78 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-generations-controller').default['latestOfProject']>>>
     }
   }
+  'projects.code_maps.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/projects/:id/code-maps'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').listCodeMapsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'projects.code_maps.store': {
+    methods: ["POST"]
+    pattern: '/projects/:id/code-maps'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').createCodeMapInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').createCodeMapInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'code_maps.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/code-maps/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['show']>>>
+    }
+  }
+  'code_maps.destroy': {
+    methods: ["DELETE"]
+    pattern: '/code-maps/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['destroy']>>>
+    }
+  }
+  'code_maps.links.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/code-maps/:id/links'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').showCodeMapLinksInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-links-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-links-controller').default['show']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'code_maps.links.update': {
+    methods: ["PUT"]
+    pattern: '/code-maps/:id/links'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').updateCodeMapLinksInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').updateCodeMapLinksInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-links-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-links-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'agent_configs.index': {
     methods: ["GET","HEAD"]
     pattern: '/agent-configs'

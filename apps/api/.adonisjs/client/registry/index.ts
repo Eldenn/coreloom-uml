@@ -108,6 +108,42 @@ const routes = {
     tokens: [{"old":"/projects/:id/agent-config/generations/latest","type":0,"val":"projects","end":""},{"old":"/projects/:id/agent-config/generations/latest","type":1,"val":"id","end":""},{"old":"/projects/:id/agent-config/generations/latest","type":0,"val":"agent-config","end":""},{"old":"/projects/:id/agent-config/generations/latest","type":0,"val":"generations","end":""},{"old":"/projects/:id/agent-config/generations/latest","type":0,"val":"latest","end":""}],
     types: placeholder as Registry['projects.agent_config.generations.latest']['types'],
   },
+  'projects.code_maps.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/projects/:id/code-maps',
+    tokens: [{"old":"/projects/:id/code-maps","type":0,"val":"projects","end":""},{"old":"/projects/:id/code-maps","type":1,"val":"id","end":""},{"old":"/projects/:id/code-maps","type":0,"val":"code-maps","end":""}],
+    types: placeholder as Registry['projects.code_maps.index']['types'],
+  },
+  'projects.code_maps.store': {
+    methods: ["POST"],
+    pattern: '/projects/:id/code-maps',
+    tokens: [{"old":"/projects/:id/code-maps","type":0,"val":"projects","end":""},{"old":"/projects/:id/code-maps","type":1,"val":"id","end":""},{"old":"/projects/:id/code-maps","type":0,"val":"code-maps","end":""}],
+    types: placeholder as Registry['projects.code_maps.store']['types'],
+  },
+  'code_maps.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/code-maps/:id',
+    tokens: [{"old":"/code-maps/:id","type":0,"val":"code-maps","end":""},{"old":"/code-maps/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['code_maps.show']['types'],
+  },
+  'code_maps.destroy': {
+    methods: ["DELETE"],
+    pattern: '/code-maps/:id',
+    tokens: [{"old":"/code-maps/:id","type":0,"val":"code-maps","end":""},{"old":"/code-maps/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['code_maps.destroy']['types'],
+  },
+  'code_maps.links.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/code-maps/:id/links',
+    tokens: [{"old":"/code-maps/:id/links","type":0,"val":"code-maps","end":""},{"old":"/code-maps/:id/links","type":1,"val":"id","end":""},{"old":"/code-maps/:id/links","type":0,"val":"links","end":""}],
+    types: placeholder as Registry['code_maps.links.show']['types'],
+  },
+  'code_maps.links.update': {
+    methods: ["PUT"],
+    pattern: '/code-maps/:id/links',
+    tokens: [{"old":"/code-maps/:id/links","type":0,"val":"code-maps","end":""},{"old":"/code-maps/:id/links","type":1,"val":"id","end":""},{"old":"/code-maps/:id/links","type":0,"val":"links","end":""}],
+    types: placeholder as Registry['code_maps.links.update']['types'],
+  },
   'agent_configs.index': {
     methods: ["GET","HEAD"],
     pattern: '/agent-configs',

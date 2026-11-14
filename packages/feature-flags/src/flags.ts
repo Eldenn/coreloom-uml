@@ -8,6 +8,7 @@ export const FeatureFlagKey = {
   LlmSubscriptionClaude: 'llm-subscription-claude',
   DiagramAssistant: 'diagram-assistant',
   McpServer: 'mcp-server',
+  CodeMaps: 'code-maps',
 } as const
 
 export type FeatureFlagKey = (typeof FeatureFlagKey)[keyof typeof FeatureFlagKey]
@@ -53,6 +54,14 @@ export const FEATURE_FLAGS: readonly FeatureFlagDeclaration[] = [
     description:
       'Lets coding agents read projects, diagrams and agent conventions through MCP with an API key.',
     tags: ['agents'],
+    defaultState: OFF,
+  },
+  {
+    key: FeatureFlagKey.CodeMaps,
+    name: 'Code maps',
+    description:
+      'Lets people store maps of their code in a project and match its diagrams against them.',
+    tags: ['code'],
     defaultState: OFF,
   },
 ]
