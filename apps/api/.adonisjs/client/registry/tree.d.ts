@@ -40,6 +40,9 @@ export interface ApiDefinition {
       show: typeof routes['code_maps.links.show']
       update: typeof routes['code_maps.links.update']
     }
+    processes: {
+      index: typeof routes['code_maps.processes.index']
+    }
   }
   agentConfigs: {
     index: typeof routes['agent_configs.index']

@@ -1,4 +1,4 @@
-import type { CodeMapSummary, DiagramMatch } from '@coreloom-uml/codemap'
+import type { CodeMapSummary, DiagramMatch, EntryKind } from '@coreloom-uml/codemap'
 import type {
   CodeMapSource,
   CodeMapStatus,
@@ -46,4 +46,27 @@ export type CodeMapLinksOutput = {
   links: DiagramCodeLinkOutput[]
   /** Elements and relations of the diagram against the map; confirmed links win. */
   match: DiagramMatch
+}
+
+/** A process no diagram documents: the calls followed from one entry point. */
+export type CodeMapProcessOutput = {
+  /** The entry point's node key. */
+  entry: string
+  entryKind: EntryKind
+  /** Nodes the flow reaches, the entry included. */
+  size: number
+  /** Levels of calls the flow goes down. */
+  depth: number
+  /** Folders the flow goes through. */
+  folders: string[]
+  /** The first nodes of the flow (node keys), in the order the calls reach them. */
+  nodes: string[]
+}
+
+/** `GET /code-maps/:id/processes`: the largest undocumented processes first. */
+export type CodeMapProcessesOutput = {
+  codeMapId: number
+  /** How many processes are undocumented; only the largest are listed. */
+  total: number
+  processes: CodeMapProcessOutput[]
 }

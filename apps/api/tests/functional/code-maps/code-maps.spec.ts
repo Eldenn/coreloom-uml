@@ -16,6 +16,7 @@ import type {
   CodeMapDetailOutput,
   CodeMapLinksOutput,
   CodeMapOutput,
+  CodeMapProcessesOutput,
   CodeMapsListOutput,
 } from '#app/code-maps/validators/code-maps-output'
 import Diagram from '#app/diagrams/models/diagram'
@@ -160,6 +161,9 @@ test.group('Code maps', (group) => {
         .qs({ diagramId: 1 })
         .headers(json)
         .loginAs(user)
+    ).assertStatus(404)
+    ;(
+      await client.get(`/code-maps/${codeMap.id}/processes`).headers(json).loginAs(user)
     ).assertStatus(404)
     ;(await client.delete(`/code-maps/${codeMap.id}`).headers(json).loginAs(user)).assertStatus(404)
   })
@@ -462,5 +466,66 @@ test.group('Code maps - diagram links', (group) => {
       relations: [],
       findings: [],
     })
+  })
+})
+
+test.group('Code maps - undocumented processes', (group) => {
+  group.each.setup(() => withDefaultFlags())
+  group.each.setup(() => {
+    drive.fake()
+    return () => drive.restore()
+  })
+
+  const processes = async (client: Client, user: User, id: number) => {
+    const response = await client.get(`/code-maps/${id}/processes`).headers(json).loginAs(user)
+    response.assertStatus(200)
+    return response.body() as CodeMapProcessesOutput
+  }
+
+  test('lists the flows from entry points, and drops one once a diagram links it', async ({
+    client,
+    assert,
+  }) => {
+    const { user, project } = await setup()
+    const codeMap = await uploaded(client, user, project.id)
+
+    const before = await processes(client, user, codeMap.id)
+    assert.equal(before.codeMapId, codeMap.id)
+    assert.isAbove(before.total, 0)
+    assert.lengthOf(before.processes, Math.min(before.total, 50))
+    const first = before.processes[0]
+    assert.exists(first)
+    assert.isAtLeast(first?.size ?? 0, 2)
+    assert.equal(first?.nodes[0], first?.entry)
+    assert.include(['route', 'job', 'command', 'handler'], first?.entryKind)
+
+    const diagram = await packageDiagram(user, project)
+    ;(
+      await client
+        .put(`/code-maps/${codeMap.id}/links`)
+        .headers(json)
+        .loginAs(user)
+        .json({
+          diagramId: diagram.id,
+          links: [{ elementId: 'billing', codeKey: first?.entry, status: 'confirmed' }],
+        })
+    ).assertStatus(200)
+
+    const after = await processes(client, user, codeMap.id)
+    assert.notInclude(
+      after.processes.map((process) => process.entry),
+      first?.entry,
+    )
+    assert.isBelow(after.total, before.total)
+  })
+
+  test('another account’s map reads as 404', async ({ client }) => {
+    const { user, project } = await setup()
+    const codeMap = await uploaded(client, user, project.id)
+    const { user: other } = await setup()
+
+    ;(
+      await client.get(`/code-maps/${codeMap.id}/processes`).headers(json).loginAs(other)
+    ).assertStatus(404)
   })
 })
