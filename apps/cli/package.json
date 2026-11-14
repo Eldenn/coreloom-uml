@@ -1,7 +1,7 @@
 {
   "name": "@coreloom-uml/cli",
   "version": "0.0.0",
-  "description": "Writes a Coreloom UML project's agent conventions (AGENTS.md and pointer files) into a repository, in a managed block.",
+  "description": "Writes a Coreloom UML project's agent conventions (AGENTS.md and pointer files) into a repository, in a managed block, and sends a map of its code.",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -34,6 +34,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.16",
     "@coreloom-uml/catalog": "workspace:*",
+    "@coreloom-uml/codemap": "workspace:*",
     "@coreloom-uml/config": "workspace:*",
     "@types/node": "25.9.3",
     "tsup": "9.0.0",

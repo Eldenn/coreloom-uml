@@ -98,7 +98,7 @@ stripped down); the whole front end is built with [coreloom-ui](https://github.c
 | UI | coreloom-ui (Tailwind CSS v4, Radix, shadcn), installed into `apps/web/src/components` |
 | Diagrams | coreloom-ui's `DiagramEditor` / `UmlDiagram`; the UML model and its Mermaid, PlantUML and JSON conversion in `packages/uml`, shared by the web app and the API |
 | Agent conventions | `packages/catalog`: the questionnaires, slot registry and per-tool templates from which `renderAgentContext` deterministically renders an `AGENTS.md` (plus pointer files for tools that do not read it natively); `apps/cli` (`@coreloom-uml/cli`, published on npm) writes them into a repository |
-| Code maps | `packages/codemap`: the `CodeMap` format (files, symbols and the links between them, never source code), the importer of graphify's `graph.json`, entry point detection, and the deterministic matching of diagrams against a map |
+| Code maps | `packages/codemap`: the `CodeMap` format (files, symbols and the links between them, never source code), the importer of graphify's `graph.json`, entry point detection, and the deterministic matching of diagrams against a map; `coreloom-uml map push` (`apps/cli`) sends one from a repository |
 | LLM (bring your own key) | `packages/llm`: the Vercel AI SDK (`ai` 7, `@ai-sdk/*`) behind rule proposals and the connection test; Anthropic, OpenAI, Mistral, Ollama and OpenAI-compatible servers (allowlisted) |
 
 ## Repository Layout
@@ -109,7 +109,7 @@ coreloom-uml/
 │   ├── api/                  # AdonisJS v7 backend — same app/ domain layout as coreloom
 │   │                         #   app/architectures/ is the reference domain — copy it for new user-owned resources
 │   ├── web/                  # React 19 + Vite SPA built with coreloom-ui (sign-in, architectures, editor, settings)
-│   └── cli/                  # `@coreloom-uml/cli` (npm): pulls agent conventions into a repository
+│   └── cli/                  # `@coreloom-uml/cli` (npm): pulls agent conventions, sends code maps
 ├── packages/
 │   ├── config/               # Shared TypeScript config — copied from coreloom, unmodified
 │   ├── auth-policy/          # Password policy — copied from coreloom (consumed from source, no build step)
@@ -273,6 +273,11 @@ routes sit behind the `code-maps` feature flag, off by default, take the session
   (`matchDiagram`) with the owner's stored links; `PUT` replaces that diagram's links
   (`suggested`, `confirmed` or `ignored`) and answers with the new match. Links are keyed by code
   key, not by map, so they outlive the map they were made on.
+
+The CLI sends a map from a repository: `npx @coreloom-uml/cli map push --project <id>` runs
+graphify on the machine (no model), turns its graph into a `CodeMap` there and uploads it gzipped,
+labelled with the Git remote, branch and commit (see the [CLI README](apps/cli/README.md), which
+also has a GitHub Actions workflow that sends one on every push).
 
 ### Agent conventions
 

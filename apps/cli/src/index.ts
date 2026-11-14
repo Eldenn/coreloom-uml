@@ -1,6 +1,7 @@
 import { defineCommand, runMain } from 'citty'
 import { CliError, type ExitCode } from './errors.ts'
 import { terminalIo } from './io.ts'
+import { mapPush } from './map-push.ts'
 import { pull } from './pull.ts'
 import { setKey } from './set-key.ts'
 import { API_KEY_ENV, API_URL_ENV } from './settings.ts'
@@ -111,17 +112,67 @@ const configCommand = defineCommand({
   },
 })
 
+const mapCommand = defineCommand({
+  meta: { name: 'map', description: 'Send a map of the code to a project' },
+  subCommands: {
+    push: defineCommand({
+      meta: {
+        name: 'push',
+        description:
+          'Map this repository with graphify (or read a graph.json) and send the map, never the code',
+      },
+      args: {
+        'api-url': apiUrlArg,
+        project: {
+          type: 'string',
+          description:
+            "Id of the project, from its page URL (else the manifest's, when it names one)",
+          valueHint: 'id',
+        },
+        graph: {
+          type: 'string',
+          description: 'A graph.json graphify wrote, instead of running graphify',
+          valueHint: 'path',
+        },
+        repository: {
+          type: 'string',
+          description: "Repository web URL (default: the origin remote's, without credentials)",
+          valueHint: 'url',
+        },
+        branch: { type: 'string', description: 'Branch (default: the checked out one)' },
+        commit: { type: 'string', description: 'Commit SHA (default: HEAD)', valueHint: 'sha' },
+        'dry-run': { type: 'boolean', description: 'Build the map and print it, send nothing' },
+      },
+      run: ({ args }) =>
+        run(() =>
+          mapPush({
+            cwd: process.cwd(),
+            io: terminalIo(),
+            ...(args['api-url'] ? { apiUrl: args['api-url'] } : {}),
+            ...(args.project ? { project: args.project } : {}),
+            ...(args.graph ? { graph: args.graph } : {}),
+            ...(args.repository ? { repository: args.repository } : {}),
+            ...(args.branch ? { branch: args.branch } : {}),
+            ...(args.commit ? { commit: args.commit } : {}),
+            dryRun: args['dry-run'] === true,
+          }),
+        ),
+    }),
+  },
+})
+
 const main = defineCommand({
   meta: {
     name: 'coreloom-uml',
     version: __CLI_VERSION__,
-    description: 'Write Coreloom UML agent conventions into a repository',
+    description: 'Write Coreloom UML agent conventions into a repository and map its code',
   },
   subCommands: {
     pull: pullCommand,
     status: statusCommand,
     check: checkCommand,
     config: configCommand,
+    map: mapCommand,
   },
 })
 
