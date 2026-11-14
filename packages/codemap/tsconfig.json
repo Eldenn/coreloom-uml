@@ -1,0 +1,14 @@
+{
+  "extends": "@coreloom-uml/config/tsconfig/node",
+  "compilerOptions": {
+    "noEmit": true,
+    // The map's optional fields are read from zod, whose output types `?: T | undefined`.
+    "exactOptionalPropertyTypes": false,
+    // Consumed as TypeScript source, like packages/uml: relative imports name the `.ts` file,
+    // and only erasable syntax is allowed.
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}
