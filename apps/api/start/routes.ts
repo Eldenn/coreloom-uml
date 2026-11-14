@@ -194,6 +194,20 @@ router
   .use([middleware.auth(), llmThrottle])
 
 /*
+| A process no diagram documents, drawn by the user's own model (provider and key in the body,
+| never stored or logged) and proposed as a new view in a new assistant conversation of one of
+| the project's architectures. Also behind `diagram-assistant`. Session only.
+*/
+router
+  .post('/code-maps/:id/processes/propose', [
+    () => import('#app/code-maps/controllers/code-map-process-proposals-controller'),
+    'store',
+  ])
+  .as('code_maps.processes.propose')
+  .where('id', router.matchers.number())
+  .use([middleware.auth(), llmThrottle])
+
+/*
 |--------------------------------------------------------------------------
 | Agent conventions: what AGENTS.md and its pointer files are rendered from
 |--------------------------------------------------------------------------

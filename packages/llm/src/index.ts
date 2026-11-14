@@ -107,6 +107,24 @@ export {
   withoutManagedBlock,
 } from './import.ts'
 export {
+  cleanLinks,
+  diagramElementIds,
+  PROCESS_DIAGRAM_KINDS,
+  PROCESS_INSTRUCTIONS,
+  PROCESS_LINKS_PER_ELEMENT_MAX,
+  PROCESS_MAX_INPUT_TOKENS,
+  PROCESS_TIMEOUT_MS,
+  PROCESS_TITLE_MAX_LENGTH,
+  type ProcessDiagramKind,
+  type ProcessDiagramResult,
+  type ProcessLink,
+  type ProcessNode,
+  type ProcessSource,
+  processDiagramOutputSchema,
+  processPrompt,
+  proposeProcessDiagram,
+} from './process-diagram.ts'
+export {
   cleanProposals,
   cleanProposalText,
   PROPOSAL_TEXT_MAX_LENGTH,

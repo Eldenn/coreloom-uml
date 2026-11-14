@@ -1,4 +1,5 @@
 import type { CodeMapSummary, DiagramMatch, EntryKind } from '@coreloom-uml/codemap'
+import type { ConversationOutput, MessageOutput } from '#app/assistant/validators/assistant-output'
 import type {
   CodeMapSource,
   CodeMapStatus,
@@ -69,4 +70,14 @@ export type CodeMapProcessesOutput = {
   /** How many processes are undocumented; only the largest are listed. */
   total: number
   processes: CodeMapProcessOutput[]
+}
+
+/**
+ * `POST /code-maps/:id/processes/propose`: the conversation the proposal was put in, a new one in
+ * the chosen architecture, and its two messages; the view waits there to be accepted.
+ */
+export type ProposeProcessOutput = {
+  architectureId: number
+  conversation: ConversationOutput
+  messages: MessageOutput[]
 }

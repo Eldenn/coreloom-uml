@@ -1,9 +1,12 @@
+import { PROCESS_DIAGRAM_KINDS } from '@coreloom-uml/llm'
 import vine from '@vinejs/vine'
+import { ASSISTANT_LOCALES } from '#app/assistant/constants/assistant'
 import {
   CODE_MAP_LIMITS,
   CODE_MAP_UPLOAD_EXTENSIONS,
   DIAGRAM_CODE_LINK_STATUSES,
 } from '#app/code-maps/constants/code-map'
+import { llmCallFields } from '#app/llm/validators/llm-input'
 
 const idInput = () => vine.number().withoutDecimals().min(1)
 
@@ -64,5 +67,20 @@ export const updateCodeMapLinksInput = vine.create(
         }),
       )
       .maxLength(CODE_MAP_LIMITS.linksPerDiagram),
+  }),
+)
+
+/**
+ * `POST /code-maps/:id/processes/propose`: draw the process from one entry point as a new view
+ * of one of the project's architectures, with the user's own provider. The entry point is a node
+ * key, sent in the body: keys hold slashes and `#`.
+ */
+export const proposeProcessInput = vine.create(
+  vine.object({
+    ...llmCallFields(),
+    entry: vine.string().minLength(1).maxLength(CODE_MAP_LIMITS.codeKey),
+    architectureId: idInput(),
+    kind: vine.enum(PROCESS_DIAGRAM_KINDS),
+    locale: vine.enum(ASSISTANT_LOCALES),
   }),
 )

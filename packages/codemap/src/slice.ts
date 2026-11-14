@@ -66,7 +66,7 @@ const DEPENDENCY_KINDS: ReadonlySet<CodeEdgeKind> = new Set([
   'references',
 ])
 
-function sliceNode(node: CodeNode): CodeSliceNode {
+export function sliceNode(node: CodeNode): CodeSliceNode {
   return {
     key: node.key,
     name: node.name,
