@@ -511,6 +511,15 @@ export const en = {
       'join-without-fork': (states: string) => `This join isn’t closing a fork: ${states}.`,
     },
     simulate: 'Simulate',
+    findings: {
+      open: 'Findings',
+      openCount: (n: number) => `Findings, ${String(n)} open`,
+      title: 'Findings from the code review',
+      description: (when: string, model: string | null) =>
+        `Review of ${when}${model ? ` with ${model}` : ''}. Badges on the drawing mark the elements concerned: press one to see its findings. An element renamed since then loses its badge.`,
+      close: 'Close the findings',
+      openReview: 'Open the review in the Code tab',
+    },
     simulation: {
       title: 'Simulate the state machine',
       description:
@@ -1416,6 +1425,15 @@ export const fr: Messages = {
         `Cette jonction ne ferme aucune bifurcation : ${states}.`,
     },
     simulate: 'Simuler',
+    findings: {
+      open: 'Constats',
+      openCount: (n: number) => `Constats, ${String(n)} ${n === 1 ? 'ouvert' : 'ouverts'}`,
+      title: 'Constats de la revue du code',
+      description: (when: string, model: string | null) =>
+        `Revue du ${when}${model ? ` avec ${model}` : ''}. Les badges du dessin marquent les éléments concernés : appuyez sur l’un d’eux pour voir ses constats. Un élément renommé depuis perd son badge.`,
+      close: 'Fermer les constats',
+      openReview: 'Ouvrir la revue dans l’onglet Code',
+    },
     simulation: {
       title: 'Simuler la machine à états',
       description:
