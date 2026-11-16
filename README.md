@@ -109,7 +109,8 @@ coreloom-uml/
 │   ├── api/                  # AdonisJS v7 backend — same app/ domain layout as coreloom
 │   │                         #   app/architectures/ is the reference domain — copy it for new user-owned resources
 │   ├── web/                  # React 19 + Vite SPA built with coreloom-ui (sign-in, architectures, editor, settings)
-│   └── cli/                  # `@coreloom-uml/cli` (npm): pulls agent conventions, sends code maps
+│   ├── cli/                  # `@coreloom-uml/cli` (npm): pulls agent conventions, sends code maps
+│   └── analyzer/             # Python service: clones a public GitHub repository, maps it with graphify
 ├── packages/
 │   ├── config/               # Shared TypeScript config — copied from coreloom, unmodified
 │   ├── auth-policy/          # Password policy — copied from coreloom (consumed from source, no build step)
@@ -120,6 +121,7 @@ coreloom-uml/
 └── infra/
     ├── docker-compose.yml         # local dev: postgres (+ postgres-init, which creates the dev and
     │                              #   test databases on every `up`) + redis + mailpit + minio + bull-board
+    │                              #   + analyzer
     ├── docker-compose.staging.yml # Coolify staging stack
     └── .env.staging.example       # staging environment variables
 ```
@@ -278,6 +280,21 @@ The CLI sends a map from a repository: `npx @coreloom-uml/cli map push --project
 graphify on the machine (no model), turns its graph into a `CodeMap` there and uploads it gzipped,
 labelled with the Git remote, branch and commit (see the [CLI README](apps/cli/README.md), which
 also has a GitHub Actions workflow that sends one on every push).
+
+The server can also read a **public GitHub repository** itself:
+`POST /projects/:id/code-maps/github` `{ url, branch? }` (github.com only, the default branch when
+`branch` is left out) creates a `pending` map and answers 202; 409 while the project already has
+one being read, 503 when `ANALYZER_URL` is not set. `ImportGithubCodeMapJob` runs on its own queue
+(`code-maps`, one job at a time) and calls the analyzer service (`apps/analyzer`, a stdlib Python
+HTTP server in its own image with graphify pinned). The analyzer holds no secret and is never
+published: it clones the repository shallowly with no submodules, symlinks, hooks, LFS or
+credentials, refuses more than 200 MB, 20,000 files or 5 minutes, runs graphify with
+`GRAPHIFY_BACKEND=none`, answers the `graph.json` gzipped with the commit and branch, and deletes
+the clone. The worker checks and stores it like an upload (`ready`), or fails the map with a
+reason (`failed`); an analyzer that cannot be reached is tried 3 times. The web app polls a map
+while it is `pending` or `running`. Locally: `docker compose -f infra/docker-compose.yml up
+analyzer` and `ANALYZER_URL=http://localhost:8080`, or `python3 apps/analyzer/analyzer.py` with
+graphify installed; its tests run with `python3 -m unittest discover -s apps/analyzer`.
 
 ### Agent conventions
 

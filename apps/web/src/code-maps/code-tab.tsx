@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
+import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getErrorMessage } from '@/lib/client'
 import {
@@ -250,6 +251,7 @@ function ShownMap({
   if (map.data.status !== 'ready' || !map.data.summary)
     return (
       <Alert className="mt-2">
+        <Spinner />
         <AlertDescription>{t.code.notReady}</AlertDescription>
       </Alert>
     )
@@ -284,7 +286,7 @@ function MapPicker({
         <SelectContent>
           {maps.map((map) => (
             <SelectItem key={map.id} value={String(map.id)}>
-              {t.code.versionLabel(date.format(new Date(map.createdAt)), map.commitSha)}
+              {t.code.versionLabel(date.format(new Date(map.createdAt)), map.commitSha, map.status)}
             </SelectItem>
           ))}
         </SelectContent>

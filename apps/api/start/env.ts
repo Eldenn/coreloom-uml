@@ -169,4 +169,14 @@ export default await Env.create(new URL('../', import.meta.url), {
   | production. Defaults to `tmp/claude` inside the app.
   */
   CLAUDE_CODE_HOME: Env.schema.string.optional(),
+
+  /*
+  |--------------------------------------------------------------------------
+  | Code maps from GitHub
+  |--------------------------------------------------------------------------
+  | The analyzer service (apps/analyzer) clones a public GitHub repository and
+  | maps its code; the queue worker calls it. Unset: importing from GitHub
+  | answers 503 and the CLI or an upload remain. Example: http://analyzer:8080
+  */
+  ANALYZER_URL: Env.schema.string.optional(),
 })

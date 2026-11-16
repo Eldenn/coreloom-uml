@@ -1,6 +1,7 @@
 // The app's own copy, in English and French. The Coreloom components bring their own strings
 // (buttons, placeholders, screen-reader text…); these are the ones this app adds.
 // Add a language: copy `en`, translate it, and register it in src/lib/locale.tsx.
+import type { CodeMapStatus } from '@/lib/code-maps'
 
 export const en = {
   brand: 'Coreloom UML',
@@ -301,21 +302,36 @@ export const en = {
     uploaded: 'Code map added.',
     uploadFailed: 'The map could not be added.',
     githubTitle: 'From GitHub',
-    githubText: 'Coreloom reads a public repository itself, then follows its pushes.',
-    soon: 'Coming soon',
+    githubText:
+      'Coreloom clones a public repository and reads it with graphify, the code left unrun. For a private repository, use the CLI.',
+    githubUrl: 'Repository',
+    githubUrlInvalid: 'A public repository on github.com, like https://github.com/owner/name.',
+    githubBranch: 'Branch',
+    githubBranchHint: 'Leave empty for the default branch.',
+    githubBranchInvalid: 'This is not a branch name.',
+    githubSubmit: 'Read the repository',
+    githubStarted: 'The repository is being read. Its map shows here once it is ready.',
+    githubFailed: 'The repository could not be read.',
     addMap: 'Add a map',
     addTitle: 'Add a code map',
     addDescription: 'A new map replaces the shown one; the project keeps its five newest.',
     version: 'Map version',
-    versionLabel: (date: string, commit: string | null) =>
-      commit ? `${date} · ${commit.slice(0, 7)}` : date,
+    versionLabel: (date: string, commit: string | null, status: CodeMapStatus) =>
+      [
+        date,
+        commit?.slice(0, 7),
+        { pending: 'reading', running: 'reading', ready: undefined, failed: 'failed' }[status],
+      ]
+        .filter(Boolean)
+        .join(' · '),
     delete: 'Delete this map',
     deleteTitle: 'Delete this code map?',
     deleteText:
       'Its file is deleted. The links you reviewed stay on the diagrams and apply to the next map.',
     deleteConfirm: 'Delete',
     deleted: 'Code map deleted.',
-    notReady: 'This map is still being read.',
+    notReady:
+      'This map is still being read: a repository takes a minute or two. This page updates on its own.',
     failed: (reason: string | null) => `This map could not be read${reason ? `: ${reason}` : '.'}`,
     viewOverview: 'Map',
     viewDiagrams: 'Diagrams',
@@ -1207,22 +1223,43 @@ export const fr: Messages = {
     uploaded: 'Carte du code ajoutée.',
     uploadFailed: 'La carte n’a pas pu être ajoutée.',
     githubTitle: 'Depuis GitHub',
-    githubText: 'Coreloom lit lui-même un dépôt public, puis suit ses push.',
-    soon: 'Bientôt',
+    githubText:
+      'Coreloom clone un dépôt public et le lit avec graphify, sans exécuter le code. Pour un dépôt privé, passez par le CLI.',
+    githubUrl: 'Dépôt',
+    githubUrlInvalid: 'Un dépôt public sur github.com, comme https://github.com/proprietaire/nom.',
+    githubBranch: 'Branche',
+    githubBranchHint: 'Vide : la branche par défaut.',
+    githubBranchInvalid: 'Ce n’est pas un nom de branche.',
+    githubSubmit: 'Lire le dépôt',
+    githubStarted:
+      'Le dépôt est en cours de lecture. Sa carte s’affiche ici dès qu’elle est prête.',
+    githubFailed: 'Le dépôt n’a pas pu être lu.',
     addMap: 'Ajouter une carte',
     addTitle: 'Ajouter une carte du code',
     addDescription:
       'Une nouvelle carte remplace celle affichée ; le projet garde ses cinq plus récentes.',
     version: 'Version de la carte',
-    versionLabel: (date: string, commit: string | null) =>
-      commit ? `${date} · ${commit.slice(0, 7)}` : date,
+    versionLabel: (date: string, commit: string | null, status: CodeMapStatus) =>
+      [
+        date,
+        commit?.slice(0, 7),
+        {
+          pending: 'en lecture',
+          running: 'en lecture',
+          ready: undefined,
+          failed: 'échec',
+        }[status],
+      ]
+        .filter(Boolean)
+        .join(' · '),
     delete: 'Supprimer cette carte',
     deleteTitle: 'Supprimer cette carte du code ?',
     deleteText:
       'Son fichier est supprimé. Les liens que vous avez revus restent sur les diagrammes et valent pour la carte suivante.',
     deleteConfirm: 'Supprimer',
     deleted: 'Carte du code supprimée.',
-    notReady: 'Cette carte est encore en cours de lecture.',
+    notReady:
+      'Cette carte est encore en cours de lecture : un dépôt prend une minute ou deux. Cette page se met à jour toute seule.',
     failed: (reason: string | null) =>
       `Cette carte n’a pas pu être lue${reason ? ` : ${reason}` : '.'}`,
     viewOverview: 'Carte',

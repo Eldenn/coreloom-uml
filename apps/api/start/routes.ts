@@ -124,12 +124,15 @@ router
 |--------------------------------------------------------------------------
 |
 | A map belongs to one of the owner's projects; the graph is a gzipped file in Drive. Uploading
-| one is a write (an API token needs `write`). `links` read and replace one diagram's links,
-| `?diagramId=` naming a diagram of the map's project. `processes` lists the flows from the entry
-| points that no diagram documents. No model is called.
+| one is a write (an API token needs `write`); `github` has the server clone and map a public
+| GitHub repository in the background (the analyzer service, `ImportGithubCodeMapJob`). `links`
+| read and replace one diagram's links, `?diagramId=` naming a diagram of the map's project.
+| `processes` lists the flows from the entry points that no diagram documents. No model is called.
 */
 const codeMapsController = () => import('#app/code-maps/controllers/code-maps-controller')
 const codeMapLinksController = () => import('#app/code-maps/controllers/code-map-links-controller')
+const codeMapImportsController = () =>
+  import('#app/code-maps/controllers/code-map-imports-controller')
 const codeMapProcessesController = () =>
   import('#app/code-maps/controllers/code-map-processes-controller')
 router
@@ -140,6 +143,9 @@ router
     router
       .post('/projects/:id/code-maps', [codeMapsController, 'store'])
       .as('projects.code_maps.store')
+    router
+      .post('/projects/:id/code-maps/github', [codeMapImportsController, 'store'])
+      .as('projects.code_maps.github')
     router.get('/code-maps/:id', [codeMapsController, 'show']).as('code_maps.show')
     router.delete('/code-maps/:id', [codeMapsController, 'destroy']).as('code_maps.destroy')
     router.get('/code-maps/:id/links', [codeMapLinksController, 'show']).as('code_maps.links.show')

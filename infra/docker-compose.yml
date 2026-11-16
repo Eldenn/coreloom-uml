@@ -63,6 +63,19 @@ services:
       retries: 5
 
   # -----------------------------------------------
+  # analyzer — clones a public GitHub repository and maps its code with
+  # graphify (code maps "From GitHub"). Holds no secret. Set
+  # ANALYZER_URL=http://localhost:8080 in apps/api/.env to turn the import on.
+  # -----------------------------------------------
+  analyzer:
+    build:
+      context: ..
+      dockerfile: apps/analyzer/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  # -----------------------------------------------
   # bull-board — web UI to inspect / retry / promote / remove queue jobs
   # (dev only). Auto-discovers BullMQ queues under the `bull` prefix.
   # Web UI:  http://localhost:8082

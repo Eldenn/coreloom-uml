@@ -98,6 +98,7 @@ services:
       S3_PUBLIC_URL: '${S3_PUBLIC_URL:-}'
       # Observability — a SigNoz instance dedicated to production (below), not
       # shared with staging: an incident on one never blinds the other.
+      ANALYZER_URL: http://analyzer:8080
       OTEL_SERVICE_NAME: coreloom-uml-api-production
       OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
     volumes:
@@ -163,6 +164,7 @@ services:
       S3_ACCESS_KEY_ID: '${S3_ACCESS_KEY_ID}'
       S3_SECRET_ACCESS_KEY: '${S3_SECRET_ACCESS_KEY}'
       S3_PUBLIC_URL: '${S3_PUBLIC_URL:-}'
+      ANALYZER_URL: http://analyzer:8080
       OTEL_SERVICE_NAME: coreloom-uml-worker-production
       OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
     depends_on:
@@ -184,6 +186,23 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # analyzer — clones a public GitHub repository and maps its code with graphify
+  # for the queue worker (code maps "From GitHub"). No secret, no port published,
+  # no volume: only `api`/`queue-worker` reach it over the Compose network.
+  analyzer:
+    image: 'ghcr.io/${IMAGE_OWNER}/coreloom-uml-analyzer:${IMAGE_TAG:-production-latest}'
+    pull_policy: always
+    restart: unless-stopped
+    expose:
+      - '8080'
+    mem_limit: 2g
+    cpus: 1.5
+    pids_limit: 512
+    security_opt:
+      - 'no-new-privileges:true'
+    cap_drop:
+      - ALL
 
   # bull-board — queue dashboard (inspect / retry / remove jobs). Published on
   # its own subdomain by Coolify; drop this service if tunnel-only access is

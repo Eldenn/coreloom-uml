@@ -235,6 +235,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'projects.code_maps.github': {
+    methods: ["POST"]
+    pattern: '/projects/:id/code-maps/github'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').importGithubCodeMapInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').importGithubCodeMapInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-imports-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-imports-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'code_maps.show': {
     methods: ["GET","HEAD"]
     pattern: '/code-maps/:id'

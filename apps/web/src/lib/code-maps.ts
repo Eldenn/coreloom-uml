@@ -11,6 +11,7 @@ import { projectKeys } from '@/lib/projects'
 export type CodeMapSummary = Awaited<
   ReturnType<typeof client.api.projects.codeMaps.index>
 >['data'][number]
+export type CodeMapStatus = CodeMapSummary['status']
 export type CodeMapDetail = Awaited<ReturnType<typeof client.api.codeMaps.show>>['codeMap']
 export type CodeMapContents = NonNullable<CodeMapDetail['summary']>
 export type CodeMapLinks = Awaited<ReturnType<typeof client.api.codeMaps.links.show>>
@@ -33,12 +34,22 @@ export const codeMapKeys = {
   processes: (id: number) => ['code-maps', 'detail', id, 'processes'] as const,
 }
 
-/** The project's maps, newest first (the API keeps five). */
+/** How often a map the server is still reading is asked about again. */
+const READING_POLL_MS = 3000
+
+/** A GitHub import is read in the background: `pending`, then `running`, then ready or failed. */
+export function isReading(status: CodeMapStatus): boolean {
+  return status === 'pending' || status === 'running'
+}
+
+/** The project's maps, newest first (the API keeps five); polled while one is being read. */
 export function useCodeMaps(projectId: number) {
   return useQuery({
     queryKey: codeMapKeys.list(projectId),
     queryFn: async () =>
       (await client.api.projects.codeMaps.index({ params: { id: projectId }, query: {} })).data,
+    refetchInterval: (query) =>
+      query.state.data?.some((map) => isReading(map.status)) ? READING_POLL_MS : false,
   })
 }
 
@@ -47,8 +58,33 @@ export function useCodeMap(id: number | undefined) {
     queryKey: codeMapKeys.detail(id ?? 0),
     queryFn: async () => (await client.api.codeMaps.show({ params: { id: id ?? 0 } })).codeMap,
     enabled: id !== undefined,
+    refetchInterval: (query) =>
+      query.state.data && isReading(query.state.data.status) ? READING_POLL_MS : false,
   })
 }
+
+/**
+ * Has the server clone a public GitHub repository and read it: the new map comes back `pending`
+ * and the lists poll it until it is ready or failed.
+ */
+export function useImportGithubCodeMap(projectId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (body: { url: string; branch?: string }) =>
+      (await client.api.projects.codeMaps.github({ params: { id: projectId }, body })).codeMap,
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: codeMapKeys.list(projectId) }),
+        queryClient.invalidateQueries({ queryKey: projectKeys.all }),
+      ]),
+  })
+}
+
+/** The rules the API checks a repository with (`github-repository.ts`), for the form. */
+export const GITHUB_REPOSITORY_PATTERN =
+  /^(?:https?:\/\/)?(?:www\.)?github\.com\/[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9._-]{1,100}?(?:\.git)?\/?$/
+export const GIT_BRANCH_PATTERN =
+  /^(?![-/.])(?!.*(?:\.\.|\/\/|\/\.))[A-Za-z0-9._/-]{1,200}(?<![/.]|\.lock)$/
 
 type UploadBody = Parameters<typeof client.api.projects.codeMaps.store>[0]['body']
 
