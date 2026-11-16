@@ -30,12 +30,39 @@ export const codeReviewKeys = {
 }
 
 /** The project's reviews, newest first (the API keeps ten). */
-export function useCodeReviews(projectId: number) {
+export function useCodeReviews(projectId: number, enabled = true) {
   return useQuery({
     queryKey: codeReviewKeys.list(projectId),
     queryFn: async () =>
       (await client.api.projects.codeReviews.index({ params: { id: projectId }, query: {} })).data,
+    enabled,
   })
+}
+
+/**
+ * The newest review that has looked at a diagram, and that diagram's findings: what the
+ * architecture editor shows on it. Nothing when the diagram isn't in a project, or no finished
+ * review covers it.
+ */
+export interface DiagramFindings {
+  review: CodeReview
+  findings: CodeReviewFinding[]
+}
+
+export function useDiagramFindings(
+  projectId: number | null,
+  diagramId: number | undefined,
+): DiagramFindings | null {
+  const reviews = useCodeReviews(projectId ?? 0, projectId !== null && diagramId !== undefined)
+  const review = reviews.data?.find((item) =>
+    item.diagrams.some((entry) => entry.diagramId === diagramId && entry.status === 'done'),
+  )
+  const detail = useCodeReview(review?.id)
+  if (!review || !detail.data) return null
+  return {
+    review: detail.data.review,
+    findings: detail.data.findings.filter((finding) => finding.diagramId === diagramId),
+  }
 }
 
 export function useCodeReview(id: number | undefined) {
