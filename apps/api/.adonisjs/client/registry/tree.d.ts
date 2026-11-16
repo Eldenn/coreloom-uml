@@ -45,6 +45,7 @@ export interface ApiDefinition {
     }
     processes: {
       index: typeof routes['code_maps.processes.index']
+      propose: typeof routes['code_maps.processes.propose']
     }
   }
   codeReviews: {

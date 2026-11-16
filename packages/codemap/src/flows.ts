@@ -7,6 +7,7 @@ import {
   type EntryKind,
   isFolderKey,
 } from './code-map.ts'
+import { type CodeSliceNode, sliceNode } from './slice.ts'
 
 /**
  * Processes that no diagram documents: from each entry point, the calls followed a few levels
@@ -112,4 +113,71 @@ export function findUncoveredFlows(
     })
   }
   return flows.sort((a, b) => b.nodes.length - a.nodes.length || compare(a.entry, b.entry))
+}
+
+/** A node of a process: `owner` is the class or the file that holds it, when the map says. */
+export type ProcessNode = CodeSliceNode & { owner?: string }
+
+/** What a model reads to draw one process: the calls from an entry point and who holds them. */
+export type ProcessSlice = {
+  entry: string
+  entryKind: EntryKind
+  /** The flow's nodes in the order the calls reach them, then the owners not already listed. */
+  nodes: ProcessNode[]
+  /** The calls followed, between listed nodes, in the order they were found. */
+  calls: { from: string; to: string }[]
+  depth: number
+  /** Nodes of the flow were left out past `maxNodes`. */
+  truncated: boolean
+}
+
+export const PROCESS_SLICE_MAX_NODES = 60
+
+/**
+ * The flow from one entry point, ready for a model to draw: each node with the class or file
+ * that holds it (a method's class, a function's file), so the drawing's participants are places
+ * of the code. Null when `entryKey` is not an entry point of the map.
+ */
+export function processSlice(
+  map: CodeMap,
+  entryKey: string,
+  options: FlowOptions & { maxNodes?: number } = {},
+): ProcessSlice | null {
+  const graph = buildCodeGraph(map)
+  const entry = graph.byKey.get(entryKey)
+  if (entry?.entry === undefined) return null
+  const flow = trace(graph, entryKey, options.depth ?? DEFAULT_FLOW_DEPTH)
+  const maxNodes = options.maxNodes ?? PROCESS_SLICE_MAX_NODES
+  const keys = flow.nodes.slice(0, maxNodes)
+  const kept = new Set(keys)
+
+  const ownerOf = new Map<string, string>()
+  for (const edge of map.edges) {
+    if (edge.kind === 'contains' && kept.has(edge.to) && !ownerOf.has(edge.to)) {
+      ownerOf.set(edge.to, edge.from)
+    }
+  }
+  const nodes: ProcessNode[] = []
+  for (const key of keys) {
+    const node = graph.byKey.get(key)
+    if (!node) continue
+    const owner = ownerOf.get(key)
+    nodes.push({ ...sliceNode(node), ...(owner !== undefined ? { owner } : {}) })
+  }
+  const listed = new Set(nodes.map((node) => node.key))
+  for (const node of [...nodes]) {
+    if (node.owner === undefined || listed.has(node.owner)) continue
+    const owner = graph.byKey.get(node.owner)
+    if (!owner) continue
+    listed.add(owner.key)
+    nodes.push(sliceNode(owner))
+  }
+  return {
+    entry: entryKey,
+    entryKind: entry.entry,
+    nodes,
+    calls: flow.calls.filter((call) => kept.has(call.from) && kept.has(call.to)),
+    depth: flow.depth,
+    truncated: flow.nodes.length > keys.length,
+  }
 }

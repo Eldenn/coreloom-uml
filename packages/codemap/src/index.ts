@@ -29,6 +29,10 @@ export {
   DEFAULT_FLOW_DEPTH,
   type FlowOptions,
   findUncoveredFlows,
+  PROCESS_SLICE_MAX_NODES,
+  type ProcessNode,
+  type ProcessSlice,
+  processSlice,
   traceFlow,
 } from './flows.ts'
 export {

@@ -186,6 +186,12 @@ const routes = {
     tokens: [{"old":"/code-reviews/:id/diagrams/:diagramId","type":0,"val":"code-reviews","end":""},{"old":"/code-reviews/:id/diagrams/:diagramId","type":1,"val":"id","end":""},{"old":"/code-reviews/:id/diagrams/:diagramId","type":0,"val":"diagrams","end":""},{"old":"/code-reviews/:id/diagrams/:diagramId","type":1,"val":"diagramId","end":""}],
     types: placeholder as Registry['code_reviews.diagrams.store']['types'],
   },
+  'code_maps.processes.propose': {
+    methods: ["POST"],
+    pattern: '/code-maps/:id/processes/propose',
+    tokens: [{"old":"/code-maps/:id/processes/propose","type":0,"val":"code-maps","end":""},{"old":"/code-maps/:id/processes/propose","type":1,"val":"id","end":""},{"old":"/code-maps/:id/processes/propose","type":0,"val":"processes","end":""},{"old":"/code-maps/:id/processes/propose","type":0,"val":"propose","end":""}],
+    types: placeholder as Registry['code_maps.processes.propose']['types'],
+  },
   'agent_configs.index': {
     methods: ["GET","HEAD"],
     pattern: '/agent-configs',

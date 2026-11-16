@@ -367,6 +367,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-reviews/controllers/code-review-diagrams-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'code_maps.processes.propose': {
+    methods: ["POST"]
+    pattern: '/code-maps/:id/processes/propose'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').proposeProcessInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').proposeProcessInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-process-proposals-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-process-proposals-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'agent_configs.index': {
     methods: ["GET","HEAD"]
     pattern: '/agent-configs'

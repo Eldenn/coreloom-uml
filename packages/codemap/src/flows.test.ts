@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { findUncoveredFlows, traceFlow } from './flows.ts'
+import { findUncoveredFlows, processSlice, traceFlow } from './flows.ts'
 import { fixtureMap } from './test-fixtures.ts'
 
 const map = fixtureMap('adonis')
@@ -98,5 +98,40 @@ describe('traceFlow', () => {
       `${APP}/projects/services/owned-project.ts#findOwnedProject`,
       `${APP}/shared/authorization/assert-owner.ts#assertOwner`,
     ])
+  })
+})
+
+describe('processSlice', () => {
+  it('lists the flow in call order, each node with the class or file that holds it', () => {
+    const slice = processSlice(map, `${ARCHITECTURES}.update`)
+    expect(slice).not.toBeNull()
+    if (!slice) return
+    expect(slice.entryKind).toBe('route')
+    expect(slice.nodes[0]).toMatchObject({
+      key: `${ARCHITECTURES}.update`,
+      kind: 'method',
+      owner: ARCHITECTURES,
+    })
+    const flow = traceFlow(map, `${ARCHITECTURES}.update`)
+    expect(slice.nodes.slice(0, flow.nodes.length).map((node) => node.key)).toEqual(flow.nodes)
+    expect(slice.calls).toEqual(flow.calls)
+    // Every owner is listed, after the flow.
+    const keys = new Set(slice.nodes.map((node) => node.key))
+    for (const node of slice.nodes) if (node.owner) expect(keys.has(node.owner)).toBe(true)
+    expect(keys.has(ARCHITECTURES)).toBe(true)
+    expect(slice.truncated).toBe(false)
+  })
+
+  it('stops at maxNodes and keeps only the calls between listed nodes', () => {
+    const slice = processSlice(map, `${ARCHITECTURES}.update`, { maxNodes: 2 })
+    expect(slice?.truncated).toBe(true)
+    const flowKeys = slice?.nodes.filter((node) => node.kind !== 'class' && node.kind !== 'file')
+    expect(flowKeys).toHaveLength(2)
+    expect(slice?.calls).toHaveLength(1)
+  })
+
+  it('is null for a node that is not an entry point', () => {
+    expect(processSlice(map, ARCHITECTURES)).toBeNull()
+    expect(processSlice(map, 'nowhere.ts#Nothing')).toBeNull()
   })
 })

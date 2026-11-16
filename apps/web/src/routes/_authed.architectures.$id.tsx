@@ -57,7 +57,11 @@ export const Route = createFileRoute('/_authed/architectures/$id')({
     parse: ({ id }) => ({ id: z.coerce.number().int().positive().parse(id) }),
     stringify: ({ id }) => ({ id: String(id) }),
   },
-  validateSearch: z.object({ diagram: z.number().int().optional().catch(undefined) }),
+  validateSearch: z.object({
+    diagram: z.number().int().optional().catch(undefined),
+    /** A conversation to open the assistant on, such as one a code map's process started. */
+    assistant: z.number().int().optional().catch(undefined),
+  }),
   // Its project (if any) and title, for the breadcrumbs; the page shows its own error if it can't load.
   loader: async ({ context: { queryClient }, params: { id } }): Promise<CrumbData | null> => {
     try {
@@ -131,7 +135,9 @@ function isKind(kind: UmlDiagramKind): kind is DiagramKind {
  * the findings.
  */
 function useSidePanel(view: { id: number; kind: DiagramKind } | undefined) {
-  const [assisting, setAssisting] = React.useState(false)
+  // `?assistant=<conversation>` opens the assistant on that conversation.
+  const { assistant: conversationId } = Route.useSearch()
+  const [assisting, setAssisting] = React.useState(conversationId !== undefined)
   const [simulated, setSimulated] = React.useState<number | null>(null)
   const [reviewed, setReviewed] = React.useState<number | null>(null)
   const [focus, setFocus] = React.useState<string | null>(null)
@@ -144,8 +150,18 @@ function useSidePanel(view: { id: number; kind: DiagramKind } | undefined) {
     if (panel !== 'simulation') setSimulated(null)
     if (panel !== 'findings') setReviewed(null)
   }
+  const assist = (on: boolean) => {
+    setAssisting(on)
+    if (on) only('assistant')
+  }
   return {
     assisting,
+    /** What the assistant's layout takes from the side panel. */
+    assistantPanel: {
+      open: assisting,
+      onOpenChange: assist,
+      initialConversationId: conversationId ?? null,
+    },
     simulating: view?.kind === 'state' && simulated === view.id,
     reviewing: reviewed !== null && reviewed === view?.id,
     focus,
@@ -155,10 +171,7 @@ function useSidePanel(view: { id: number; kind: DiagramKind } | undefined) {
     simulateButton,
     findingsButton,
     focusRequest,
-    assist: (on: boolean) => {
-      setAssisting(on)
-      if (on) only('assistant')
-    },
+    assist,
     simulate: (on: boolean) => {
       setSimulated(on && view ? view.id : null)
       if (on) only('simulation')
@@ -223,8 +236,7 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
       <div className="flex flex-col gap-3 lg:flex-row">
         <div className="min-w-0 lg:flex-1">
           <AssistantLayout
-            open={side.assisting}
-            onOpenChange={side.assist}
+            {...side.assistantPanel}
             architecture={architecture}
             currentDiagramId={active?.id ?? null}
             autosave={autosave}

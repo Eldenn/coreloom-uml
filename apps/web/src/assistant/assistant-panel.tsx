@@ -172,16 +172,19 @@ export function AssistantPanel({
   architecture,
   currentDiagramId,
   autosave,
+  initialConversationId = null,
 }: {
   architecture: ArchitectureDetail
   currentDiagramId: number | null
   autosave: AutosaveControl
+  /** The conversation shown first, when it is one of the architecture's; else the newest. */
+  initialConversationId?: number | null
 }) {
   const t = useT().assistant
   const provider = useStoredProvider()
   const architectureId = architecture.id
   const list = useConversations(architectureId)
-  const [chosen, setChosen] = React.useState<number | null>(null)
+  const [chosen, setChosen] = React.useState<number | null>(initialConversationId)
   const conversations = list.data?.pages.flatMap((page) => page.data) ?? []
   const conversationId =
     conversations.find((c) => c.id === chosen)?.id ?? conversations.at(0)?.id ?? null
