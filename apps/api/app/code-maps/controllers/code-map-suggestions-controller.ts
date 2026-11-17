@@ -4,7 +4,6 @@ import db from '@adonisjs/lucid/services/db'
 import { outlineCodeMap } from '@coreloom-uml/codemap'
 import { LlmCallError, type SuggestionsResult, suggestDiagrams } from '@coreloom-uml/llm'
 import { DateTime } from 'luxon'
-import Architecture from '#app/architectures/models/architecture'
 import {
   CODE_MAP_SUGGESTION_LIMITS,
   CodeMapStatus,
@@ -18,6 +17,7 @@ import {
 } from '#app/code-maps/serializers/code-map-suggestion-serializer'
 import { readDetectedCodeMap } from '#app/code-maps/services/code-map-storage'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
+import { projectViews } from '#app/code-maps/services/drawing-source'
 import { CODE_MAP_NOT_FOUND, findOwnedCodeMap } from '#app/code-maps/services/owned-code-map'
 import { findOwnedSuggestion, SUGGESTION_NOT_FOUND } from '#app/code-maps/services/owned-suggestion'
 import {
@@ -26,7 +26,6 @@ import {
 } from '#app/code-maps/validators/code-maps-input'
 import { llmFailure, userLanguageModel } from '#app/llm/services/language-models'
 import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
-import type User from '#app/users/models/user'
 
 const NOT_READY = { error: { message: 'This code map is not ready' } } as const
 
@@ -80,7 +79,7 @@ export default class CodeMapSuggestionsController {
 
     const map = await readDetectedCodeMap(codeMap.storageKey)
     const outline = outlineCodeMap(map)
-    const views = await projectViews(codeMap, user)
+    const views = await projectViews(codeMap.projectId, user)
     const started = performance.now()
     let result: SuggestionsResult
     try {
@@ -152,15 +151,4 @@ export default class CodeMapSuggestionsController {
     await suggestion.save()
     return response.ok(serializeSuggestion(suggestion))
   }
-}
-
-/** Every view of the project's architectures, so that the model proposes none of them again. */
-async function projectViews(codeMap: CodeMap, user: User) {
-  const architectures = await Architecture.query()
-    .where('projectId', codeMap.projectId)
-    .where('userId', user.id)
-    .preload('diagrams')
-  return architectures.flatMap((architecture) =>
-    architecture.diagrams.map((diagram) => ({ title: diagram.title, kind: diagram.kind })),
-  )
 }

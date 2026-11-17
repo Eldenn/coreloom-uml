@@ -325,6 +325,17 @@ view) as a new view in a new assistant conversation of one of the project's arch
 accepting it stores its links to the code as confirmed. The web app asks for the list once, by
 itself, the first time a ready map without proposals is shown with a provider set.
 
+**A diagram on request.** The architecture's assistant draws from the code map too:
+`POST /architectures/:id/assistant/conversations/:conversationId/messages` with `codeMapId` (a
+ready map of the architecture's project, behind `code-maps` as well) reads the message as a
+request for one diagram. The model first names the code the request is about
+(`resolveDiagramRequest`: the same outline, plus the folders, classes, functions and methods
+whose name holds a word of the request, and the conversation so far), then draws that part of the
+map as for a proposal. The view is stored in the conversation as a pending change with its links
+to the code; when nothing matches, the answer is a sentence and nothing is drawn. Without
+`codeMapId` the route is the assistant's own. In the web app, "Ask the assistant" on the Code tab
+opens an architecture's assistant with "Draw from the code" switched on.
+
 #### GitHub App (private repositories, pushes)
 
 With a GitHub App set up, the server also reads the **private repositories** a user installed the

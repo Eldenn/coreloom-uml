@@ -511,7 +511,7 @@ function DraftDialog({
 }
 
 /** The architecture field, a placeholder while loading, or why there is none to pick. */
-function ArchitectureChoice({
+export function ArchitectureChoice({
   architectures,
   architectureId,
   onChange,

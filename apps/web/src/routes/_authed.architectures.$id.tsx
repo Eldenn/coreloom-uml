@@ -61,6 +61,8 @@ export const Route = createFileRoute('/_authed/architectures/$id')({
     diagram: z.number().int().optional().catch(undefined),
     /** A conversation to open the assistant on, such as one a code map's process started. */
     assistant: z.number().int().optional().catch(undefined),
+    /** A code map the assistant draws from: opens it with "Draw from the code" switched on. */
+    code: z.number().int().optional().catch(undefined),
   }),
   // Its project (if any) and title, for the breadcrumbs; the page shows its own error if it can't load.
   loader: async ({ context: { queryClient }, params: { id } }): Promise<CrumbData | null> => {
@@ -136,7 +138,7 @@ function isKind(kind: UmlDiagramKind): kind is DiagramKind {
  */
 function useSidePanel(view: { id: number; kind: DiagramKind } | undefined) {
   // `?assistant=<conversation>` opens the assistant on that conversation.
-  const { assistant: conversationId } = Route.useSearch()
+  const { assistant: conversationId, code: codeMapId } = Route.useSearch()
   const [assisting, setAssisting] = React.useState(conversationId !== undefined)
   const [simulated, setSimulated] = React.useState<number | null>(null)
   const [reviewed, setReviewed] = React.useState<number | null>(null)
@@ -161,6 +163,7 @@ function useSidePanel(view: { id: number; kind: DiagramKind } | undefined) {
       open: assisting,
       onOpenChange: assist,
       initialConversationId: conversationId ?? null,
+      ...(codeMapId === undefined ? {} : { codeMapId }),
     },
     simulating: view?.kind === 'state' && simulated === view.id,
     reviewing: reviewed !== null && reviewed === view?.id,

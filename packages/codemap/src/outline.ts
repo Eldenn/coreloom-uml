@@ -48,8 +48,11 @@ export type OutlineStart = {
   key: string
   name: string
   path: string
-  /** An entry point the map found, or `root`: called by nothing in the repository. */
-  kind: EntryKind | 'root'
+  /**
+   * An entry point the map found, `root`: called by nothing in the repository, or `function`:
+   * a function or method other code calls, listed because a request names it.
+   */
+  kind: EntryKind | 'root' | 'function'
   /** Nodes the calls from it reach, a few levels deep. */
   reach: number
 }
@@ -72,6 +75,142 @@ export type OutlineOptions = {
   maxClasses?: number
   maxStarts?: number
   maxModules?: number
+  /**
+   * What the user asked for, in their words: the folders, classes, functions and methods whose
+   * name or path holds one of its words are added after the lists above, so that a request can
+   * be about code the outline would leave out.
+   */
+  query?: string
+  /**
+   * The requests made before `query` in the same conversation, the latest first: their words
+   * fill what `query` leaves free, so that "the same as an activity diagram" still finds the code.
+   */
+  earlier?: readonly string[]
+}
+
+/** How much of a request is read, and how much it may add to each list. */
+export const OUTLINE_QUERY_LIMITS = {
+  /** Words compared with the names: the rarest in the map, a request's own before earlier ones. */
+  words: 8,
+  /** Words of one request considered before the rarest are kept. */
+  candidates: 40,
+  minWordLength: 3,
+  folders: 10,
+  classes: 20,
+  starts: 20,
+} as const
+
+/** Words that ask for a diagram or name its kind, not the code it is about (English, French). */
+const REQUEST_WORDS = new Set(
+  (
+    'draw show shows diagram diagrams view sequence activity class classes package packages ' +
+    'component components uml please ' +
+    'dessine dessiner montre montrer diagramme diagrammes vue séquence sequence activité activite ' +
+    'classe paquetage paquetages composant composants'
+  ).split(' '),
+)
+
+/** The words of a request that may name code, in the order they come. */
+export function queryWords(query: string): string[] {
+  const words = query
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((word) => word.length >= OUTLINE_QUERY_LIMITS.minWordLength && !REQUEST_WORDS.has(word))
+  return [...new Set(words)].slice(0, OUTLINE_QUERY_LIMITS.candidates)
+}
+
+/**
+ * The words names are compared with: of each request, those that name something in the map, the
+ * rarest first, so that "the" or "how" never push out the one word that names the code. An
+ * earlier request only fills what the later ones leave free.
+ */
+function chosenWords(map: CodeMap, requests: readonly string[]): string[] {
+  const chosen: string[] = []
+  for (const request of requests) {
+    const words = queryWords(request).filter((word) => !chosen.includes(word))
+    const counts = new Map(words.map((word) => [word, 0]))
+    for (const node of map.nodes) {
+      if (node.path === undefined || isTestPath(node.path)) continue
+      const text = `${node.key}\n${node.name}`.toLowerCase()
+      for (const word of words) {
+        if (text.includes(word)) counts.set(word, (counts.get(word) ?? 0) + 1)
+      }
+    }
+    const found = words
+      .filter((word) => (counts.get(word) ?? 0) > 0)
+      .sort((a, b) => (counts.get(a) ?? 0) - (counts.get(b) ?? 0))
+    chosen.push(...found.slice(0, OUTLINE_QUERY_LIMITS.words - chosen.length))
+    if (chosen.length >= OUTLINE_QUERY_LIMITS.words) break
+  }
+  return chosen
+}
+
+/** How many of `words` the text holds. */
+function matched(words: readonly string[], ...texts: string[]): number {
+  // ponytail: plain substring match, no stemming; rank by embedding or an index if requests
+  // miss their target.
+  const text = texts.join('\n').toLowerCase()
+  return words.filter((word) => text.includes(word)).length
+}
+
+/** The items a request names, those holding the most words first, then as `order` says. */
+function bestMatches<T>(
+  items: readonly T[],
+  score: (item: T) => number,
+  order: (a: T, b: T) => number,
+  limit: number,
+): T[] {
+  return items
+    .map((item) => ({ item, score: score(item) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score || order(a.item, b.item))
+    .slice(0, limit)
+    .map((entry) => entry.item)
+}
+
+const START_RANK = { function: 2, root: 1 } as const
+const startRank = (kind: OutlineStart['kind']) =>
+  kind === 'function' || kind === 'root' ? START_RANK[kind] : 0
+
+/** Functions, methods and entry points a request names, whatever calls them. */
+function matchingStarts(
+  map: CodeMap,
+  graph: CodeGraph,
+  words: readonly string[],
+  taken: ReadonlySet<string>,
+): OutlineStart[] {
+  const called = new Set<string>()
+  for (const edge of map.edges) if (edge.kind === 'calls') called.add(edge.to)
+  const candidates: (Omit<OutlineStart, 'reach'> & { score: number })[] = []
+  for (const node of map.nodes) {
+    if (node.path === undefined || isTestPath(node.path) || taken.has(node.key)) continue
+    const callable = node.kind === 'function' || node.kind === 'method'
+    if (node.entry === undefined && !callable) continue
+    const score = matched(words, node.key, node.name, node.path)
+    if (score === 0) continue
+    const kind = node.entry ?? (called.has(node.key) ? 'function' : 'root')
+    candidates.push({ key: node.key, name: node.name, path: node.path, kind, score })
+  }
+  // Tracing every match of a large map would be slow: only the best ranked are traced.
+  const shortlist = candidates
+    .sort(
+      (a, b) => b.score - a.score || startRank(a.kind) - startRank(b.kind) || compare(a.key, b.key),
+    )
+    .slice(0, OUTLINE_QUERY_LIMITS.starts * 5)
+    .map(({ score, ...start }) => ({
+      score,
+      start: { ...start, reach: trace(graph, start.key, DEFAULT_FLOW_DEPTH).nodes.length },
+    }))
+  return shortlist
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        startRank(a.start.kind) - startRank(b.start.kind) ||
+        b.start.reach - a.start.reach ||
+        compare(a.start.key, b.start.key),
+    )
+    .slice(0, OUTLINE_QUERY_LIMITS.starts)
+    .map((entry) => entry.start)
 }
 
 export const OUTLINE_DEFAULTS = {
@@ -242,14 +381,40 @@ export function outlineCodeMap(map: CodeMap, options: OutlineOptions = {}): Code
     else if (SYMBOL_KINDS.has(node.kind)) counts.symbols += 1
     if (node.entry !== undefined) counts.entries += 1
   }
-  return {
+  const allClasses = classes(graph)
+  const outline: CodeMapOutline = {
     folders: keptFolders.map(([path, entry]) => ({ key: folderKey(path), path, ...entry })),
     dependencies: dependencies(graph, kept)
       .sort((a, b) => b.imports - a.imports || compare(a.from, b.from) || compare(a.to, b.to))
       .slice(0, limits.maxDependencies),
-    classes: classes(graph).slice(0, limits.maxClasses),
+    classes: allClasses.slice(0, limits.maxClasses),
     starts: starts(map, graph, limits.maxStarts),
     modules: modules(graph).slice(0, limits.maxModules),
     counts,
   }
+  const words = chosenWords(map, [options.query ?? '', ...(options.earlier ?? [])])
+  if (words.length === 0) return outline
+
+  const listed = new Set(outline.classes.map((item) => item.key))
+  outline.classes.push(
+    ...bestMatches(
+      allClasses.filter((item) => !listed.has(item.key)),
+      (item) => matched(words, item.name, item.path),
+      // `allClasses` is sorted by links already, and the sort is stable.
+      () => 0,
+      OUTLINE_QUERY_LIMITS.classes,
+    ),
+  )
+  outline.starts.push(
+    ...matchingStarts(map, graph, words, new Set(outline.starts.map((start) => start.key))),
+  )
+  outline.folders.push(
+    ...bestMatches(
+      [...all].filter(([path]) => !kept.has(path)),
+      ([path]) => matched(words, path),
+      (a, b) => b[1].files - a[1].files || compare(a[0], b[0]),
+      OUTLINE_QUERY_LIMITS.folders,
+    ).map(([path, entry]) => ({ key: folderKey(path), path, ...entry })),
+  )
+  return outline
 }

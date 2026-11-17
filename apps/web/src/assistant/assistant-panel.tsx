@@ -5,8 +5,10 @@ import { Link } from '@tanstack/react-router'
 import { PlusIcon, Trash2Icon, XIcon } from 'lucide-react'
 import * as React from 'react'
 
+import { CodeSwitch } from '@/assistant/assistant-code'
 import { MessageList } from '@/assistant/assistant-messages'
 import { useChangeActions } from '@/assistant/use-change-actions'
+import { useCodeMode } from '@/assistant/use-code-mode'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { ContextMeter } from '@/components/ui/context-meter'
@@ -173,12 +175,15 @@ export function AssistantPanel({
   currentDiagramId,
   autosave,
   initialConversationId = null,
+  codeMapId,
 }: {
   architecture: ArchitectureDetail
   currentDiagramId: number | null
   autosave: AutosaveControl
   /** The conversation shown first, when it is one of the architecture's; else the newest. */
   initialConversationId?: number | null
+  /** The code map `?code=` named: "Draw from the code" starts on when it is the project's. */
+  codeMapId?: number
 }) {
   const t = useT().assistant
   const provider = useStoredProvider()
@@ -189,6 +194,8 @@ export function AssistantPanel({
   const conversationId =
     conversations.find((c) => c.id === chosen)?.id ?? conversations.at(0)?.id ?? null
   const create = useCreateConversation(architectureId)
+  // Held here, not in a conversation: switching it off holds when another conversation opens.
+  const code = useCodeMode(architecture.projectId, codeMapId)
   const current = conversations.find((c) => c.id === conversationId)
   const startConversation = () => {
     create.mutate(undefined, {
@@ -236,6 +243,7 @@ export function AssistantPanel({
           autosave={autosave}
           provider={provider}
           onContinued={setChosen}
+          code={code}
         />
       )}
     </div>
@@ -373,6 +381,7 @@ function Conversation({
   autosave,
   provider,
   onContinued,
+  code,
 }: {
   architecture: ArchitectureDetail
   conversationId: number
@@ -380,6 +389,7 @@ function Conversation({
   autosave: AutosaveControl
   provider: StoredProvider | null
   onContinued: (conversationId: number) => void
+  code: ReturnType<typeof useCodeMode>
 }) {
   const t = useT().assistant
   const architectureId = architecture.id
@@ -398,15 +408,16 @@ function Conversation({
   const deleteSummary = useDeleteSummary(architectureId, conversationId)
   const changes = useChangeActions(architectureId, conversationId, autosave)
   const [draft, setDraft] = React.useState('')
+  const fromCode = code.sent !== undefined
 
   const messages = detail.data?.messages ?? []
-  const budget = context.data ?? detail.data?.budget
-  const { full, tooLarge } = fullness(budget, messages.length, ask.error)
+  const { budget, askError } = watched(fromCode, context.data ?? detail.data?.budget, ask.error)
+  const { full, tooLarge } = fullness(budget, messages.length, askError)
 
   const send = (text: string) => {
     if (!provider) return
     ask.mutate(
-      { provider, message: text, ...selection },
+      { provider, message: text, ...selection, ...code.sent },
       {
         onError: () => {
           // The field cleared itself on submit: the text comes back so nothing is lost.
@@ -418,7 +429,8 @@ function Conversation({
 
   return (
     <>
-      <ViewsAndBudget
+      <WhatIsSent
+        code={code}
         diagrams={architecture.diagrams}
         currentDiagramId={currentDiagramId}
         picked={picked}
@@ -465,7 +477,7 @@ function Conversation({
             // A refused message is forgotten once edited, so the shortened one can be sent.
             if (ask.isError) ask.reset()
           }}
-          placeholder={t.placeholder}
+          placeholder={fromCode ? t.codePlaceholder : t.placeholder}
           status={ask.isPending ? 'submitted' : 'ready'}
           disabled={!provider || full || proceed.isPending}
           onSubmit={({ text }) => {
@@ -473,6 +485,28 @@ function Conversation({
           }}
         />
       </div>
+    </>
+  )
+}
+
+/**
+ * What the conversation watches before a message: nothing while it draws from the code, since
+ * such a request sends an outline of the map, not the views.
+ */
+function watched(fromCode: boolean, budget: ContextBudget | undefined, askError: unknown) {
+  return fromCode ? { budget: undefined, askError: null } : { budget, askError }
+}
+
+/** Above the messages: the switch to the code when it is offered, else the views and their cost. */
+function WhatIsSent({
+  code,
+  ...views
+}: React.ComponentProps<typeof ViewsAndBudget> & { code: ReturnType<typeof useCodeMode> }) {
+  const fromCode = code.sent !== undefined
+  return (
+    <>
+      {code.offered && <CodeSwitch checked={fromCode} onCheckedChange={code.set} />}
+      {!fromCode && <ViewsAndBudget {...views} />}
     </>
   )
 }

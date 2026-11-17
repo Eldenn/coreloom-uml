@@ -1,8 +1,6 @@
 ---
 "@coreloom-uml/api": minor
 "@coreloom-uml/web": minor
-"@coreloom-uml/codemap": minor
-"@coreloom-uml/llm": minor
 ---
 
 Proposed diagrams for a code map, behind the `code-maps` flag (drawing also behind

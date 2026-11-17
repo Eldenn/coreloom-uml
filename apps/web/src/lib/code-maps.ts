@@ -10,6 +10,7 @@ import {
 
 import { assistantKeys } from '@/lib/assistant'
 import { apiBaseUrl, client } from '@/lib/client'
+import { useFeature } from '@/lib/feature-flags'
 import { githubKeys } from '@/lib/github'
 import { MODEL_CALL, type StoredProvider } from '@/lib/llm-provider'
 import { callBody } from '@/lib/llm-provider-body'
@@ -62,6 +63,28 @@ export function useCodeMaps(projectId: number) {
     refetchInterval: (query) =>
       query.state.data?.some((map) => isReading(map.status)) ? READING_POLL_MS : false,
   })
+}
+
+/**
+ * The ready map the assistant draws from in a project: the one `named` when it is a ready map of
+ * that project, else the newest ready one. `id` is null when there is none, when the architecture
+ * is outside any project, or while code maps are off.
+ */
+export function useDrawableCodeMap(
+  projectId: number | null,
+  named?: number,
+): { id: number | null; isNamed: boolean } {
+  const enabled = useFeature('code-maps') && projectId !== null
+  const maps = useQuery({
+    queryKey: codeMapKeys.list(projectId ?? 0),
+    queryFn: async () =>
+      (await client.api.projects.codeMaps.index({ params: { id: projectId ?? 0 }, query: {} }))
+        .data,
+    enabled,
+  })
+  const ready = (enabled ? (maps.data ?? []) : []).filter((map) => map.status === 'ready')
+  const found = ready.find((map) => map.id === named)
+  return { id: (found ?? ready.at(0))?.id ?? null, isNamed: found !== undefined }
 }
 
 export function useCodeMap(id: number | undefined) {

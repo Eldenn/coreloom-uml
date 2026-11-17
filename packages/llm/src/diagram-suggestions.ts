@@ -149,7 +149,7 @@ export function suggestionsPrompt(source: SuggestionSource): { prompt: string; i
     ),
     '</classes>',
     '',
-    'Where processes start (id | kind | name | path | nodes reached):',
+    'Functions and where processes start (id | kind | name | path | nodes reached):',
     '<starts>',
     ...outline.starts.map((start, index) =>
       [
@@ -177,8 +177,11 @@ export function suggestionsPrompt(source: SuggestionSource): { prompt: string; i
   }
 }
 
-/** Cuts the longest lists of the outline, from their end, until the prompt fits. */
-function fitBudget(source: SuggestionSource, maxTokens: number) {
+/**
+ * Cuts the longest lists of the outline, from their end, until the prompt fits. `extraChars` is
+ * what the caller sends besides the outline and these instructions.
+ */
+export function fitBudget(source: SuggestionSource, maxTokens: number, extraChars = 0) {
   const outline = {
     ...source.outline,
     folders: [...source.outline.folders],
@@ -189,7 +192,9 @@ function fitBudget(source: SuggestionSource, maxTokens: number) {
   }
   const estimate = () =>
     Math.ceil(
-      (SUGGESTIONS_INSTRUCTIONS.length + suggestionsPrompt({ ...source, outline }).prompt.length) /
+      (SUGGESTIONS_INSTRUCTIONS.length +
+        extraChars +
+        suggestionsPrompt({ ...source, outline }).prompt.length) /
         CHARS_PER_TOKEN,
     )
   let truncated = false
@@ -209,7 +214,8 @@ function fitBudget(source: SuggestionSource, maxTokens: number) {
   return { source: { ...source, outline }, truncated }
 }
 
-function cleanText(text: string, max: number): string {
+/** One line without tags, cut to `max` characters. */
+export function cleanText(text: string, max: number): string {
   const line = text
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')

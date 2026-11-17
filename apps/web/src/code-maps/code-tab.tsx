@@ -5,6 +5,7 @@
 import { PlusIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 
+import { OpenAssistantButton } from '@/code-maps/code-assistant'
 import { CodeDiagramLinks } from '@/code-maps/code-diagram-links'
 import { CodeMapOverview } from '@/code-maps/code-map-overview'
 import { CodeMapSources } from '@/code-maps/code-map-sources'
@@ -146,6 +147,7 @@ function CodeMapPanel({
               <Trash2Icon /> {t.code.delete}
             </Button>
           </Popconfirm>
+          <OpenAssistantButton map={shown} />
           <Button
             variant="outline"
             onClick={() => {
