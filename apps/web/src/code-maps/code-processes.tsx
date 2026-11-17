@@ -2,7 +2,7 @@
 // down that touch no code linked to a diagram. Largest first; each opens to show the calls, and
 // the user's own model can draw one as a new view, proposed in an architecture's assistant.
 import { Link, useNavigate } from '@tanstack/react-router'
-import { SparklesIcon, WorkflowIcon } from 'lucide-react'
+import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon, WorkflowIcon } from 'lucide-react'
 import * as React from 'react'
 
 import {
@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Select,
@@ -96,15 +97,78 @@ export function CodeProcesses({
             <p className="m-0 text-[13px] text-fg-secondary">
               {t.code.processesCount(list.length, total)}
             </p>
-            <Accordion type="multiple" className="rounded-md border">
-              {list.map((process) => (
-                <ProcessItem key={process.entry} map={map} process={process} />
-              ))}
-            </Accordion>
+            <ProcessList map={map} list={list} />
           </>
         )}
       </CardContent>
     </Card>
+  )
+}
+
+const PAGE_SIZE = 10
+
+/** The processes, searched by entry point and shown a page at a time: they all come at once. */
+function ProcessList({ map, list }: { map: CodeMapDetail; list: CodeMapProcess[] }) {
+  const t = useT()
+  const { messages: ui, formatNumber } = useCoreloomI18n()
+  const [search, setSearch] = React.useState('')
+  const [requested, setRequested] = React.useState(0)
+  const needle = search.trim().toLowerCase()
+  const found = needle ? list.filter((p) => p.entry.toLowerCase().includes(needle)) : list
+  const pages = Math.max(Math.ceil(found.length / PAGE_SIZE), 1)
+  const page = Math.min(requested, pages - 1)
+  return (
+    <>
+      <Input
+        type="search"
+        className="sm:w-72"
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value)
+          setRequested(0)
+        }}
+        placeholder={t.code.searchProcesses}
+        aria-label={t.code.searchProcesses}
+      />
+      {found.length === 0 ? (
+        <p className="m-0 text-[13px] text-muted-foreground">{ui.dataTable.empty}</p>
+      ) : (
+        <Accordion type="multiple" className="rounded-md border">
+          {found.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((process) => (
+            <ProcessItem key={process.entry} map={map} process={process} />
+          ))}
+        </Accordion>
+      )}
+      {pages > 1 && (
+        <div className="flex items-center justify-end gap-3 text-muted-foreground">
+          <span className="font-mono text-[12px]" aria-live="polite">
+            {ui.dataTable.pageOf(formatNumber(page + 1), formatNumber(pages))}
+          </span>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            disabled={page === 0}
+            aria-label={ui.dataTable.previousPage}
+            onClick={() => {
+              setRequested(page - 1)
+            }}
+          >
+            <ChevronLeftIcon />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            disabled={page >= pages - 1}
+            aria-label={ui.dataTable.nextPage}
+            onClick={() => {
+              setRequested(page + 1)
+            }}
+          >
+            <ChevronRightIcon />
+          </Button>
+        </div>
+      )}
+    </>
   )
 }
 

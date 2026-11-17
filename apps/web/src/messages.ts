@@ -494,6 +494,7 @@ export const en = {
     name: 'Name',
     kind: 'Kind',
     place: 'Place',
+    searchEntries: 'Search entry points…',
     noDiagrams: 'This project has no diagram yet.',
     noDiagramsText: 'Draw one in an architecture, then come back to compare it with the code.',
     diagram: 'Diagram',
@@ -523,6 +524,9 @@ export const en = {
     onlyElement: (name: string) => `Showing ${name} only.`,
     reviewed: 'Reviewed links',
     reviewedEmpty: 'No link reviewed yet.',
+    searchLinks: 'Search reviewed links…',
+    linkElement: 'Element',
+    linkCode: 'Code',
     linkConfirmed: 'Linked',
     linkIgnored: 'Ignored',
     undo: 'Undo',
@@ -540,6 +544,7 @@ export const en = {
         `${from} depends on ${to} in the code (${String(count)} ${count === 1 ? 'link' : 'links'}), but the diagram doesn’t show it`,
     },
     processesFailed: 'The undocumented processes could not be listed.',
+    searchProcesses: 'Search processes…',
     processesHint:
       'The calls followed from each entry point, four levels deep, that touch no code linked to a diagram. The largest come first.',
     processesCount: (shown: number, total: number) =>
@@ -1639,6 +1644,7 @@ export const fr: Messages = {
     name: 'Nom',
     kind: 'Type',
     place: 'Emplacement',
+    searchEntries: 'Rechercher un point d’entrée…',
     noDiagrams: 'Ce projet n’a pas encore de diagramme.',
     noDiagramsText: 'Dessinez-en un dans une architecture, puis revenez le comparer au code.',
     diagram: 'Diagramme',
@@ -1668,6 +1674,9 @@ export const fr: Messages = {
     onlyElement: (name: string) => `Seul ${name} est affiché.`,
     reviewed: 'Liens revus',
     reviewedEmpty: 'Aucun lien revu pour l’instant.',
+    searchLinks: 'Rechercher un lien revu…',
+    linkElement: 'Élément',
+    linkCode: 'Code',
     linkConfirmed: 'Relié',
     linkIgnored: 'Écarté',
     undo: 'Annuler',
@@ -1685,6 +1694,7 @@ export const fr: Messages = {
         `${from} dépend de ${to} dans le code (${String(count)} lien${count > 1 ? 's' : ''}), mais le diagramme ne le montre pas`,
     },
     processesFailed: 'Les processus non documentés n’ont pas pu être listés.',
+    searchProcesses: 'Rechercher un processus…',
     processesHint:
       'Les appels suivis depuis chaque point d’entrée, sur quatre niveaux, qui ne touchent aucun code relié à un diagramme. Les plus grands d’abord.',
     processesCount: (shown: number, total: number) =>

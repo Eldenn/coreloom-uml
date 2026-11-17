@@ -7,15 +7,8 @@ import { StatCard } from '@/components/stat-card'
 import { Badge } from '@/components/ui/badge'
 import { BarList } from '@/components/ui/bar-list'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table'
 import { DescriptionList } from '@/components/ui/description-list'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { codeHref, type CodeMapContents, type CodeMapDetail } from '@/lib/code-maps'
 import { useLocale, useT } from '@/lib/locale'
 
@@ -137,6 +130,13 @@ function CodeMapHeader({ map }: { map: CodeMapDetail }) {
   )
 }
 
+type Entry = CodeMapContents['entries'][number]
+
+function placeOf(entry: Entry): string {
+  return entry.line === undefined ? entry.path : `${entry.path}:${String(entry.line)}`
+}
+
+/** Searched, sorted and paged in the browser: every entry point comes with the map. */
 function EntryPoints({
   map,
   entries,
@@ -155,26 +155,44 @@ function EntryPoints({
         {entries.length === 0 ? (
           <p className="m-0 text-[13px] text-muted-foreground">{t.code.noEntries}</p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t.code.kind}</TableHead>
-                <TableHead>{t.code.name}</TableHead>
-                <TableHead>{t.code.place}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {entries.map((entry) => {
-                const place =
-                  entry.line === undefined ? entry.path : `${entry.path}:${String(entry.line)}`
-                const href = codeHref(map, entry.key, entry.line)
-                return (
-                  <TableRow key={entry.key}>
-                    <TableCell>
-                      <Badge variant="secondary">{t.code.entryKinds[entry.kind]}</Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-[12.5px]">{entry.name}</TableCell>
-                    <TableCell className="font-mono text-[12.5px] break-all whitespace-normal">
+          <DataTable
+            data={entries}
+            getRowId={(entry) => entry.key}
+            filterColumn="name"
+            filterPlaceholder={t.code.searchEntries}
+            columns={[
+              {
+                id: 'kind',
+                accessorFn: (entry) => t.code.entryKinds[entry.kind],
+                header: ({ column }) => (
+                  <DataTableColumnHeader column={column} title={t.code.kind} />
+                ),
+                cell: ({ row }) => (
+                  <Badge variant="secondary">{t.code.entryKinds[row.original.kind]}</Badge>
+                ),
+              },
+              {
+                // The search box filters this column, so its value holds the place too.
+                id: 'name',
+                accessorFn: (entry) => `${entry.name} ${placeOf(entry)}`,
+                header: ({ column }) => (
+                  <DataTableColumnHeader column={column} title={t.code.name} />
+                ),
+                cell: ({ row }) => (
+                  <span className="font-mono text-[12.5px]">{row.original.name}</span>
+                ),
+              },
+              {
+                id: 'place',
+                accessorFn: placeOf,
+                header: ({ column }) => (
+                  <DataTableColumnHeader column={column} title={t.code.place} />
+                ),
+                cell: ({ row }) => {
+                  const place = placeOf(row.original)
+                  const href = codeHref(map, row.original.key, row.original.line)
+                  return (
+                    <span className="font-mono text-[12.5px] break-all whitespace-normal">
                       {href ? (
                         <a
                           href={href}
@@ -188,12 +206,12 @@ function EntryPoints({
                       ) : (
                         place
                       )}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+                    </span>
+                  )
+                },
+              },
+            ]}
+          />
         )}
       </CardContent>
     </Card>

@@ -8,15 +8,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemTitle,
-} from '@/components/ui/item'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -329,7 +322,8 @@ function ReviewedLinks({
 }) {
   const t = useT()
   const save = useSaveCodeMapLinks(map.id, diagramId)
-  const reviewed = links.filter((link) => link.status !== 'suggested')
+  // Kept across renders: a new array would send the table back to its first page.
+  const reviewed = React.useMemo(() => links.filter((link) => link.status !== 'suggested'), [links])
   const undo = async (link: DiagramCodeLink) => {
     try {
       await save.mutateAsync(links.filter((other) => other !== link))
@@ -346,38 +340,63 @@ function ReviewedLinks({
         {reviewed.length === 0 ? (
           <p className="m-0 text-[13px] text-muted-foreground">{t.code.reviewedEmpty}</p>
         ) : (
-          <ItemGroup className="gap-2">
-            {reviewed.map((link) => (
-              <Item
-                key={`${link.elementId}${SEPARATOR}${link.codeKey}`}
-                variant="outline"
-                size="sm"
-              >
-                <ItemContent className="min-w-0">
-                  <ItemTitle className="flex flex-wrap items-center gap-2">
-                    {nameOf(link.elementId)}
-                    <Badge variant={link.status === 'confirmed' ? 'success' : 'secondary'}>
-                      {link.status === 'confirmed' ? t.code.linkConfirmed : t.code.linkIgnored}
+          <DataTable
+            data={reviewed}
+            getRowId={(link) => `${link.elementId}${SEPARATOR}${link.codeKey}`}
+            filterColumn="element"
+            filterPlaceholder={t.code.searchLinks}
+            columns={[
+              {
+                // The search box filters this column, so its value holds the code key too.
+                id: 'element',
+                accessorFn: (link) => `${nameOf(link.elementId)} ${link.codeKey}`,
+                header: ({ column }) => (
+                  <DataTableColumnHeader column={column} title={t.code.linkElement} />
+                ),
+                cell: ({ row }) => (
+                  <span className="flex flex-wrap items-center gap-2">
+                    {nameOf(row.original.elementId)}
+                    <Badge variant={row.original.status === 'confirmed' ? 'success' : 'secondary'}>
+                      {row.original.status === 'confirmed'
+                        ? t.code.linkConfirmed
+                        : t.code.linkIgnored}
                     </Badge>
-                  </ItemTitle>
-                  <ItemDescription className="font-mono text-[12px] break-all">
-                    {link.codeKey}
-                  </ItemDescription>
-                </ItemContent>
-                <ItemActions>
+                  </span>
+                ),
+              },
+              {
+                id: 'code',
+                accessorFn: (link) => link.codeKey,
+                header: ({ column }) => (
+                  <DataTableColumnHeader column={column} title={t.code.linkCode} />
+                ),
+                cell: ({ row }) => (
+                  <span className="font-mono text-[12px] break-all whitespace-normal">
+                    {row.original.codeKey}
+                  </span>
+                ),
+              },
+              {
+                id: 'undo',
+                enableSorting: false,
+                header: () => <span className="sr-only">{t.code.undo}</span>,
+                cell: ({ row }) => (
                   <Button
                     variant="ghost"
                     size="sm"
                     disabled={save.isPending}
-                    aria-label={t.code.undoLabel(nameOf(link.elementId), link.codeKey)}
-                    onClick={() => void undo(link)}
+                    aria-label={t.code.undoLabel(
+                      nameOf(row.original.elementId),
+                      row.original.codeKey,
+                    )}
+                    onClick={() => void undo(row.original)}
                   >
                     <Undo2Icon /> {t.code.undo}
                   </Button>
-                </ItemActions>
-              </Item>
-            ))}
-          </ItemGroup>
+                ),
+              },
+            ]}
+          />
         )}
       </CardContent>
     </Card>
