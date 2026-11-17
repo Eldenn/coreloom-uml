@@ -173,7 +173,6 @@ test.group('MCP server', (group) => {
       .json({
         name: 'Storefront conventions',
         projectId: project.id,
-        questionnaires: ['frontend-react'],
         targets: ['claude-code'],
       })
     created.assertStatus(201)
@@ -200,7 +199,7 @@ test.group('MCP server', (group) => {
       .post('/agent-configs')
       .headers(json)
       .loginAs(user)
-      .json({ name: 'Loose conventions', questionnaires: ['frontend-react'], targets: ['codex'] })
+      .json({ name: 'Loose conventions', targets: ['codex'] })
     created.assertStatus(201)
     const configId = created.body().config.id
     const generated = await client
@@ -238,7 +237,7 @@ test.group('MCP server', (group) => {
       .post('/agent-configs')
       .headers(json)
       .loginAs(other.user)
-      .json({ name: 'Theirs', questionnaires: ['frontend-react'], targets: ['codex'] })
+      .json({ name: 'Theirs', targets: ['codex'] })
     const byId = await callTool(client, secret, McpTool.GetAgentConventions, {
       configId: otherConfig.body().config.id,
     })

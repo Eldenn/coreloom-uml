@@ -643,16 +643,16 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-controller').default['destroy']>>>
     }
   }
-  'agent_configs.answers.update': {
+  'agent_configs.ready_rules.update': {
     methods: ["PUT"]
-    pattern: '/agent-configs/:id/answers'
+    pattern: '/agent-configs/:id/ready-rules/:slot'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').updateAgentAnswersInput)>>
-      paramsTuple: [ParamValue]
-      params: { id: ParamValue }
-      query: ExtractQuery<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').updateAgentAnswersInput)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-answers-controller').default['update']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-answers-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+      body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').updateAgentReadyRulesInput)>>
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; slot: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').updateAgentReadyRulesInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-ready-rules-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-ready-rules-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'agent_configs.rules.store': {
@@ -895,28 +895,16 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/claude-code-connection-controller').default['destroy']>>>
     }
   }
-  'questionnaires.index': {
+  'rule_packs.index': {
     methods: ["GET","HEAD"]
-    pattern: '/questionnaires'
+    pattern: '/rule-packs'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/questionnaires-controller').default['index']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/questionnaires-controller').default['index']>>>
-    }
-  }
-  'questionnaires.show': {
-    methods: ["GET","HEAD"]
-    pattern: '/questionnaires/:questionnaireId'
-    types: {
-      body: {}
-      paramsTuple: [ParamValue]
-      params: { questionnaireId: ParamValue }
-      query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/questionnaires-controller').default['show']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/questionnaires-controller').default['show']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/rule-packs-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/rule-packs-controller').default['index']>>>
     }
   }
   'role_presets.index': {

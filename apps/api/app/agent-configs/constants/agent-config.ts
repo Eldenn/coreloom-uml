@@ -1,6 +1,6 @@
 export { AGENT_FILE_KINDS, AgentFileKind, TARGETS, Target } from '@coreloom-uml/catalog'
 
-/** Where an accepted rule comes from: written by hand, or a model's proposal the owner accepted. */
+/** Where one of the owner's rules comes from: written by hand, or a proposal they accepted. */
 export const AgentRuleSource = {
   Manual: 'manual',
   Llm: 'llm',
@@ -19,19 +19,13 @@ export const AGENT_ROLES_MAX = 20
 export const AGENT_RULE_TEXT_MAX_LENGTH = 300
 /** Longest project notes. */
 export const AGENT_NOTES_MAX_LENGTH = 10_000
-/** Longest "more details" text on one answer. */
-export const AGENT_ANSWER_DETAILS_MAX_LENGTH = 2000
-/** Answers one `PUT …/answers` can carry. */
-export const AGENT_ANSWERS_PER_REQUEST_MAX = 500
+/** Ready-made rules one `PUT …/ready-rules/:slot` can carry: more than any group holds. */
+export const AGENT_READY_RULES_PER_GROUP_MAX = 50
 /** Generations kept per configuration: past this, the oldest is deleted. */
 export const AGENT_GENERATIONS_KEPT = 50
 
-/**
- * What a proposal call reads: the notes under the answers, the project's diagrams, or review
- * feedback the owner pastes.
- */
+/** What a proposal call reads: the project's diagrams, or review feedback the owner pastes. */
 export const AgentProposalSource = {
-  Answers: 'answers',
   Diagrams: 'diagrams',
   Feedback: 'feedback',
 } as const

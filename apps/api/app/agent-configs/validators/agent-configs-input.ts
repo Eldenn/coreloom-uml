@@ -8,18 +8,18 @@ import {
   ROLE_NAME_MAX_LENGTH,
   ROLE_SLUG,
   ROLE_SLUG_MAX_LENGTH,
+  RULE_VALUE_MAX_LENGTH,
 } from '@coreloom-uml/catalog'
 import vine from '@vinejs/vine'
 import type { FieldContext } from '@vinejs/vine/types'
 import {
-  AGENT_ANSWER_DETAILS_MAX_LENGTH,
-  AGENT_ANSWERS_PER_REQUEST_MAX,
   AGENT_CONFIG_NAME_MAX_LENGTH,
   AGENT_IMPORT_MAX_LENGTH,
   AGENT_NOTES_MAX_LENGTH,
   AGENT_PROPOSAL_DIAGRAMS_MAX,
   AGENT_PROPOSAL_FEEDBACK_MAX_LENGTH,
   AGENT_PROPOSAL_SOURCES,
+  AGENT_READY_RULES_PER_GROUP_MAX,
   AGENT_RULE_SOURCES,
   AGENT_RULE_TEXT_MAX_LENGTH,
   AgentProposalSource,
@@ -27,10 +27,8 @@ import {
 } from '#app/agent-configs/constants/agent-config'
 import { llmCallFields } from '#app/llm/validators/llm-input'
 
-/** Longest questionnaire, question or section name accepted on the wire. */
+/** Longest rule, preset or section name accepted on the wire. */
 const CATALOG_ID_MAX_LENGTH = 64
-/** Questionnaires one configuration can combine. */
-const QUESTIONNAIRES_MAX = 10
 
 /** No input may contain a managed-block marker: it could open or close a block in a file. */
 const withoutMarkers = vine.createRule(
@@ -50,8 +48,6 @@ const catalogId = () => vine.string().trim().minLength(1).maxLength(CATALOG_ID_M
 const nameInput = () =>
   vine.string().trim().minLength(1).maxLength(AGENT_CONFIG_NAME_MAX_LENGTH).use(withoutMarkers())
 const projectIdInput = () => vine.number().withoutDecimals().min(1)
-const questionnairesInput = () =>
-  vine.array(catalogId()).minLength(1).maxLength(QUESTIONNAIRES_MAX).distinct()
 const targetsInput = () =>
   vine.array(vine.enum(TARGETS)).minLength(1).maxLength(TARGETS.length).distinct()
 const notesInput = () =>
@@ -65,7 +61,6 @@ export const createAgentConfigInput = vine.create(
   vine.object({
     name: nameInput(),
     projectId: projectIdInput().nullable().optional(),
-    questionnaires: questionnairesInput(),
     targets: targetsInput(),
     notes: notesInput().optional(),
   }),
@@ -79,7 +74,6 @@ export const updateAgentConfigInput = vine.create(
   vine.object({
     name: nameInput().optional(),
     projectId: projectIdInput().nullable().optional(),
-    questionnaires: questionnairesInput().optional(),
     targets: targetsInput().optional(),
     notes: notesInput().optional(),
   }),
@@ -96,28 +90,26 @@ export const listAgentConfigsInput = vine.create(
 )
 
 /**
- * `PUT /agent-configs/:id/answers`: a partial update. `value: null` removes the answer;
- * the value itself is checked against its question by the controller (`answerProblem`).
+ * `PUT /agent-configs/:id/ready-rules/:slot`: the rules held in that group, all of them (an
+ * empty list removes them). The controller checks them against the group (`acceptedProblem`).
  */
-export const updateAgentAnswersInput = vine.create(
+export const updateAgentReadyRulesInput = vine.create(
   vine.object({
-    answers: vine
+    rules: vine
       .array(
         vine.object({
-          questionnaireId: catalogId(),
-          questionId: catalogId(),
-          value: vine.any().nullable(),
-          /** Omitted: left as is. */
-          details: vine
+          rule: catalogId(),
+          /** The text of a rule that takes one. */
+          value: vine
             .string()
-            .maxLength(AGENT_ANSWER_DETAILS_MAX_LENGTH)
+            .trim()
+            .maxLength(RULE_VALUE_MAX_LENGTH)
             .use(withoutMarkers())
             .nullable()
             .optional(),
         }),
       )
-      .minLength(1)
-      .maxLength(AGENT_ANSWERS_PER_REQUEST_MAX),
+      .maxLength(AGENT_READY_RULES_PER_GROUP_MAX),
   }),
 )
 
@@ -192,15 +184,14 @@ export const updateAgentRoleInput = (() => {
 })()
 
 /**
- * `POST /agent-configs/:id/proposals`: the user's provider, and what the model reads —
- * the answers' notes (default), its diagrams (all of them when `diagramIds` is
- * omitted, in the given order otherwise), or the review `feedback` the owner pasted (required
- * with `from: 'feedback'`, never stored).
+ * `POST /agent-configs/:id/proposals`: the user's provider, and what the model reads (`from`):
+ * its diagrams (all of them when `diagramIds` is omitted, in the given order otherwise), or the
+ * review `feedback` the owner pasted (required with `from: 'feedback'`, never stored).
  */
 export const agentProposalsInput = vine.create(
   vine.object({
     ...llmCallFields(),
-    from: vine.enum(AGENT_PROPOSAL_SOURCES).optional(),
+    from: vine.enum(AGENT_PROPOSAL_SOURCES),
     diagramIds: vine
       .array(vine.number().withoutDecimals().min(1))
       .minLength(1)

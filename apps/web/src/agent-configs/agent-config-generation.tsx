@@ -1,5 +1,5 @@
 // One generation: its files (tree, read-only viewer, download), what changed since the previous
-// generation, the recommendations, the skills that fit or go against the answers, and how to
+// generation, the recommendations, the skills that fit or go against the rules held, and how to
 // install the files in a repository with the CLI.
 import { Link } from '@tanstack/react-router'
 import {

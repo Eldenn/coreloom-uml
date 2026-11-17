@@ -324,11 +324,11 @@ const routes = {
     tokens: [{"old":"/agent-configs/:id","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id","type":1,"val":"id","end":""}],
     types: placeholder as Registry['agent_configs.destroy']['types'],
   },
-  'agent_configs.answers.update': {
+  'agent_configs.ready_rules.update': {
     methods: ["PUT"],
-    pattern: '/agent-configs/:id/answers',
-    tokens: [{"old":"/agent-configs/:id/answers","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/answers","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/answers","type":0,"val":"answers","end":""}],
-    types: placeholder as Registry['agent_configs.answers.update']['types'],
+    pattern: '/agent-configs/:id/ready-rules/:slot',
+    tokens: [{"old":"/agent-configs/:id/ready-rules/:slot","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/ready-rules/:slot","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/ready-rules/:slot","type":0,"val":"ready-rules","end":""},{"old":"/agent-configs/:id/ready-rules/:slot","type":1,"val":"slot","end":""}],
+    types: placeholder as Registry['agent_configs.ready_rules.update']['types'],
   },
   'agent_configs.rules.store': {
     methods: ["POST"],
@@ -450,17 +450,11 @@ const routes = {
     tokens: [{"old":"/llm/connections/claude-code","type":0,"val":"llm","end":""},{"old":"/llm/connections/claude-code","type":0,"val":"connections","end":""},{"old":"/llm/connections/claude-code","type":0,"val":"claude-code","end":""}],
     types: placeholder as Registry['llm.connections.claude_code.destroy']['types'],
   },
-  'questionnaires.index': {
+  'rule_packs.index': {
     methods: ["GET","HEAD"],
-    pattern: '/questionnaires',
-    tokens: [{"old":"/questionnaires","type":0,"val":"questionnaires","end":""}],
-    types: placeholder as Registry['questionnaires.index']['types'],
-  },
-  'questionnaires.show': {
-    methods: ["GET","HEAD"],
-    pattern: '/questionnaires/:questionnaireId',
-    tokens: [{"old":"/questionnaires/:questionnaireId","type":0,"val":"questionnaires","end":""},{"old":"/questionnaires/:questionnaireId","type":1,"val":"questionnaireId","end":""}],
-    types: placeholder as Registry['questionnaires.show']['types'],
+    pattern: '/rule-packs',
+    tokens: [{"old":"/rule-packs","type":0,"val":"rule-packs","end":""}],
+    types: placeholder as Registry['rule_packs.index']['types'],
   },
   'role_presets.index': {
     methods: ["GET","HEAD"],

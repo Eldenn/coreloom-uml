@@ -1,4 +1,4 @@
-/** The answers the `tooling.package-manager` question offers. */
+/** The rules of the `tooling.package-manager` group. */
 export const PACKAGE_MANAGERS = ['pnpm', 'npm', 'yarn', 'bun'] as const
 
 /**
@@ -8,7 +8,7 @@ export const PACKAGE_MANAGERS = ['pnpm', 'npm', 'yarn', 'bun'] as const
  */
 const SAFE_COMMAND = /^[\w@./:=+-]+( [\w@./:=+-]+)*$/
 
-/** Splits a checks answer such as `pnpm lint && pnpm test` into its commands. */
+/** Splits the checks typed into the `tooling.checks` rule, such as `pnpm lint && pnpm test` into its commands. */
 export function splitCommands(checks: string): string[] {
   return [
     ...new Set(

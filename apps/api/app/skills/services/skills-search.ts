@@ -307,8 +307,14 @@ export function mergeAffinities(
   if (isSlotAffinity(next)) {
     const same = merged.find((item) => isSlotAffinity(item) && item.slot === next.slot)
     if (!same) merged.push(structuredClone(next))
-    else if (isSlotAffinity(same) && same.values && next.values) {
+    else if (isSlotAffinity(same)) {
       same.values = [...new Set([...same.values, ...next.values])]
+      // A rule one query fits is never one the skill goes against.
+      const against = [...new Set([...(same.against ?? []), ...(next.against ?? [])])].filter(
+        (rule) => !same.values.includes(rule),
+      )
+      if (against.length > 0) same.against = against
+      else delete same.against
     }
     return merged
   }

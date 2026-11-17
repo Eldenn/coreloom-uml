@@ -1,11 +1,11 @@
 // Query and mutation hooks for agent conventions, in a project or on their own (the pattern of
 // src/lib/query.ts).
-// The questionnaires come from the API (`GET /questionnaires`), never from the catalog package,
-// so the screen always shows the server's version of them.
+// The ready-made rules come from the API (`GET /rule-packs`), never from the catalog package, so
+// the screen always shows the server's version of them.
 import {
   queryOptions,
+  useIsMutating,
   useMutation,
-  useQueries,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
@@ -20,17 +20,13 @@ export type AgentConfigSummary = Awaited<
   ReturnType<typeof client.api.agentConfigs.index>
 >['data'][number]
 export type AgentImpact = ConfigBody['impact']
-export type AgentAnswer = AgentConfig['answers'][number]
 export type AgentRule = AgentConfig['rules'][number]
-export type Questionnaire = Awaited<
-  ReturnType<typeof client.api.questionnaires.show>
->['questionnaire']
-export type QuestionnaireSummary = Awaited<
-  ReturnType<typeof client.api.questionnaires.index>
->['questionnaires'][number]
-export type Question = Questionnaire['questions'][number]
-export type Localized = Question['label']
-export type AnswerValue = AgentAnswer['value']
+/** A ready-made rule a configuration holds: its group's slot, its id, its typed text if any. */
+export type HeldRule = AgentConfig['readyRules'][number]
+export type RulePack = Awaited<ReturnType<typeof client.api.rulePacks.index>>['packs'][number]
+export type RuleGroup = RulePack['groups'][number]
+export type ReadyRule = RuleGroup['rules'][number]
+export type Localized = RulePack['title']
 export type AgentGeneration = Awaited<
   ReturnType<typeof client.api.agentConfigs.generations.show>
 >['generation']
@@ -48,9 +44,7 @@ export const TARGETS = [
   'generic',
 ] as const satisfies readonly Target[]
 
-/** Longest "more details", free text and notes, as the API checks them. */
-export const ANSWER_TEXT_MAX_LENGTH = 500
-export const ANSWER_DETAILS_MAX_LENGTH = 2000
+/** Longest notes, name and rule, as the API checks them. */
 export const NOTES_MAX_LENGTH = 10_000
 export const NAME_MAX_LENGTH = 120
 export const RULE_TEXT_MAX_LENGTH = 300
@@ -61,39 +55,20 @@ export const agentConfigKeys = {
   lists: ['agent-configs', 'list'] as const,
   list: (projectId: number | undefined, search: string) =>
     ['agent-configs', 'list', projectId, search] as const,
-  questionnaires: ['questionnaires'] as const,
-  questionnaire: (id: string) => ['questionnaires', id] as const,
+  rulePacks: ['rule-packs'] as const,
+  readyRules: (id: number) => ['agent-configs', 'ready-rules', id] as const,
   detail: (id: number) => ['agent-configs', 'detail', id] as const,
   generations: (id: number) => ['agent-configs', 'detail', id, 'generations'] as const,
   generation: (id: number, generationId: number) =>
     ['agent-configs', 'detail', id, 'generations', generationId] as const,
 }
 
-export function useQuestionnaires() {
+/** The whole catalog of ready-made rules: it only changes with a deployment. */
+export function useRulePacks() {
   return useQuery({
-    queryKey: agentConfigKeys.questionnaires,
-    queryFn: async () => (await client.api.questionnaires.index({})).questionnaires,
+    queryKey: agentConfigKeys.rulePacks,
+    queryFn: async () => (await client.api.rulePacks.index({})).packs,
     staleTime: Infinity,
-  })
-}
-
-/** The full questionnaires a configuration uses, in its order. */
-export function useConfigQuestionnaires(ids: readonly string[]) {
-  return useQueries({
-    queries: ids.map((id) => ({
-      queryKey: agentConfigKeys.questionnaire(id),
-      queryFn: async () =>
-        (await client.api.questionnaires.show({ params: { questionnaireId: id } })).questionnaire,
-      staleTime: Infinity,
-    })),
-    combine: (results) => ({
-      data: results.every((result) => result.isSuccess)
-        ? results.map((result) => result.data)
-        : undefined,
-      isPending: results.some((result) => result.isPending),
-      isError: results.some((result) => result.isError),
-      refetch: () => Promise.all(results.map((result) => result.refetch())),
-    }),
   })
 }
 
@@ -118,7 +93,7 @@ export function useAgentConfigs({
   })
 }
 
-/** One configuration with its answers and rules; its page's loader reads it for the breadcrumbs. */
+/** One configuration with everything it holds; its page's loader reads it for the breadcrumbs. */
 export const agentConfigQueryOptions = (id: number) =>
   queryOptions({
     queryKey: agentConfigKeys.detail(id),
@@ -156,7 +131,6 @@ interface ConfigFields {
   name: string
   /** `null` outside any project. */
   projectId: number | null
-  questionnaires: string[]
   targets: Target[]
   notes?: string | null
 }
@@ -188,7 +162,7 @@ export function useUpdateAgentConfig(id: number) {
   })
 }
 
-/** Its answers, rules and generations go with it. The page showing it moves on by itself. */
+/** Its rules and generations go with it. The page showing it moves on by itself. */
 export function useDeleteAgentConfig(id: number) {
   const invalidate = useInvalidateSets()
   return useMutation({
@@ -197,24 +171,71 @@ export function useDeleteAgentConfig(id: number) {
   })
 }
 
-export interface AnswerChange {
-  questionnaireId: string
-  questionId: string
-  /** `null` removes the answer. */
-  value: AnswerValue | null
-  details?: string | null
+export interface ReadyRulesChange {
+  slot: string
+  /** Every rule held in that group afterwards; none removes them. */
+  rules: { rule: string; value?: string | null }[]
 }
 
-export function useSaveAnswers(configId: number) {
-  const setConfig = useSetConfig(configId)
+/**
+ * Replaces the ready-made rules held in one group. The change shows at once and is undone if the
+ * API refuses it (422 with a message). Saves of one configuration run one after the other, so two
+ * quick changes to the same group reach the API in order.
+ */
+export function useSaveReadyRules(configId: number) {
+  const queryClient = useQueryClient()
+  const key = agentConfigKeys.detail(configId)
+  const mutationKey = agentConfigKeys.readyRules(configId)
+  const replaceSlot = (slot: string, rules: HeldRule[]) => {
+    queryClient.setQueryData<ConfigBody>(key, (body) =>
+      body
+        ? {
+            ...body,
+            config: {
+              ...body.config,
+              readyRules: [
+                ...body.config.readyRules.filter((held) => held.slot !== slot),
+                ...rules,
+              ],
+            },
+          }
+        : body,
+    )
+  }
   return useMutation({
-    mutationFn: (answers: AnswerChange[]) =>
-      client.api.agentConfigs.answers.update({
-        params: { id: configId },
-        body: { answers },
+    mutationKey,
+    scope: { id: mutationKey.join('/') },
+    mutationFn: ({ slot, rules }: ReadyRulesChange) =>
+      client.api.agentConfigs.readyRules.update({
+        params: { id: configId, slot },
+        body: { rules },
       }),
-    onSuccess: setConfig,
+    onMutate: async ({ slot, rules }) => {
+      await queryClient.cancelQueries({ queryKey: key, exact: true })
+      const previous =
+        queryClient
+          .getQueryData<ConfigBody>(key)
+          ?.config.readyRules.filter((r) => r.slot === slot) ?? []
+      replaceSlot(
+        slot,
+        rules.map(({ rule, value }) => ({ slot, rule, value: value ?? null })),
+      )
+      return { previous }
+    },
+    onError: (_error, { slot }, context) => {
+      // A later save of the same group may already show; only the last one puts the old rules back.
+      if (context && queryClient.isMutating({ mutationKey }) === 1)
+        replaceSlot(slot, context.previous)
+    },
+    onSuccess: (body) => {
+      if (queryClient.isMutating({ mutationKey }) === 1) queryClient.setQueryData(key, body)
+    },
   })
+}
+
+/** How many saves of ready-made rules are running or waiting for this configuration. */
+export function useSavingReadyRules(configId: number) {
+  return useIsMutating({ mutationKey: agentConfigKeys.readyRules(configId) })
 }
 
 export function useCreateRule(configId: number) {
@@ -291,22 +312,4 @@ export function useGeneration(configId: number, id: number | null) {
     enabled: id !== null,
     staleTime: Infinity,
   })
-}
-
-/** `questionnaireId/questionId`: how answers, drafts and the impact name a question. */
-export function answerKey(questionnaireId: string, questionId: string) {
-  return `${questionnaireId}/${questionId}`
-}
-
-/** Whether a draft value is a complete answer to its question (the API checks it again). */
-export function isAnswered(question: Question, value: AnswerValue | null | undefined): boolean {
-  if (value === null || value === undefined) return false
-  switch (question.type) {
-    case 'scale':
-      return typeof value === 'number'
-    case 'multi':
-      return Array.isArray(value) && value.length > 0
-    default:
-      return typeof value === 'string' && value.trim() !== ''
-  }
 }

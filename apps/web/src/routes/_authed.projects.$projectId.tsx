@@ -33,12 +33,15 @@ export const Route = createFileRoute('/_authed/projects/$projectId')({
     stringify: ({ projectId }) => ({ projectId: String(projectId) }),
   },
   // `?new=true` opens the "New architecture" dialog; `?tab=agents` shows the agent conventions,
-  // with `step=questions` for the questionnaire and `generation=<id>` for generated files;
+  // with `step=rules` for the catalog of ready-made rules (and `pack=<id>`, `group=<slot>`) and
+  // `generation=<id>` for generated files;
   // `?tab=code` shows the code maps, with `view`, `map=<id>`, `diagram=<id>` and `review=<id>`.
   validateSearch: z.object({
     new: z.boolean().optional().catch(undefined),
     tab: z.enum(['architectures', 'agents', 'code']).optional().catch(undefined),
-    step: z.enum(['questions']).optional().catch(undefined),
+    step: z.enum(['rules']).optional().catch(undefined),
+    pack: z.string().optional().catch(undefined),
+    group: z.string().optional().catch(undefined),
     generation: z.coerce.number().int().positive().optional().catch(undefined),
     view: z.enum(CODE_VIEWS).optional().catch(undefined),
     map: z.coerce.number().int().positive().optional().catch(undefined),
@@ -80,6 +83,8 @@ function ProjectView({ project }: { project: Project }) {
     new: creating = false,
     tab: requestedTab = 'architectures',
     step,
+    pack,
+    group,
     generation,
     view,
     map,
@@ -184,7 +189,7 @@ function ProjectView({ project }: { project: Project }) {
         <TabsContent value="agents">
           <ProjectAgentConfig
             project={project}
-            view={{ step, generation }}
+            view={{ step, pack, group, generation }}
             onViewChange={setAgentView}
           />
         </TabsContent>
@@ -247,7 +252,7 @@ function ProjectAgentConfig({
         projectId={project.id}
         defaultName={project.name}
         onCreated={() => {
-          onViewChange({ step: 'questions' })
+          onViewChange({})
         }}
       />
     )

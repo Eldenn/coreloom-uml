@@ -38,10 +38,10 @@ import { Ajv2020 } from 'ajv/dist/2020.js'
 import { afterAll, describe, expect, it } from 'vitest'
 import { parse as parseYaml } from 'yaml'
 import {
+  type AcceptedRule,
   type AgentContextFile,
-  findQuestionnaire,
-  type Questionnaire,
   type Role,
+  RULE_PACKS,
   renderAgentContext,
 } from '../src/index.ts'
 
@@ -70,15 +70,12 @@ const schema = (name: string) => JSON.parse(readFileSync(join(here, 'schemas', n
 const tmp = mkdtempSync(join(realpathSync(tmpdir()), 'coreloom-uml-e2e-'))
 afterAll(() => rmSync(tmp, { recursive: true, force: true }))
 
-const frontendReact = findQuestionnaire('frontend-react') as Questionnaire
+/** A rule held: its slot, its id and, for a rule that takes one, the typed text. */
+const held = (slot: string, rule: string, value?: string): AcceptedRule =>
+  value === undefined ? { slot, rule } : { slot, rule, value }
 
-/** Renders for every tool with settings. */
-function render(autonomy: number, roles: Role[] = []) {
-  const answer = (questionId: string, value: number | string) => ({
-    questionnaireId: frontendReact.id,
-    questionId,
-    value,
-  })
+/** Renders for every tool with settings, with this `workflow.autonomy` rule held. */
+function render(autonomy: string, roles: Role[] = []) {
   return renderAgentContext({
     project: {
       name: 'Shop',
@@ -106,11 +103,11 @@ function render(autonomy: number, roles: Role[] = []) {
         },
       ],
     },
-    questionnaires: [frontendReact],
-    answers: [
-      answer('ask-before-act', autonomy),
-      answer('package-manager', 'pnpm'),
-      answer('checks', 'pnpm lint && pnpm test'),
+    packs: RULE_PACKS,
+    ready: [
+      held('workflow.autonomy', autonomy),
+      held('tooling.package-manager', 'pnpm'),
+      held('tooling.checks', 'run', 'pnpm lint && pnpm test'),
     ],
     rules: [],
     notes: null,
@@ -130,7 +127,7 @@ function write(name: string, files: AgentContextFile[]): string {
   return root
 }
 
-const project = (name: string, autonomy: number) => write(name, render(autonomy).files)
+const project = (name: string, autonomy = 'disagree') => write(name, render(autonomy).files)
 
 const read = (root: string, path: string) => readFileSync(join(root, path), 'utf8')
 
@@ -141,9 +138,9 @@ function corrupt(root: string, path: string, from: string, to: string) {
 }
 
 /** The assistant works alone in its sandbox and may run the checks. */
-const autonomous = project('autonomous', 3)
-/** The assistant asks before anything: read-only sandbox, no check allowed. */
-const asksFirst = project('asks-first', 5)
+const autonomous = project('autonomous')
+/** The assistant asks before writing anything: read-only sandbox, no check allowed. */
+const asksFirst = project('asks-first', 'ask-before-writing')
 
 /** Text a TOML or YAML string must escape, and text it must not. */
 const DESCRIPTION = 'Reviews a "change": never writes, é \\ ✓.'
@@ -160,7 +157,7 @@ const role = (slug: string, rights: Role['rights']): Role => ({
   source: null,
 })
 /** In a project whose own settings let the assistant write. */
-const staffed = render(3, [
+const staffed = render('disagree', [
   role('reviewer', ['read']),
   role('code-checker', ['read', 'run-checks']),
 ])
@@ -241,7 +238,7 @@ describe.skipIf(CODEX === null)('Codex', () => {
   })
 
   it('refuses a config with a value it does not know', () => {
-    const root = project('unknown-policy', 3)
+    const root = project('unknown-policy')
     trust(root)
     const path = join(root, '.codex/config.toml')
     writeFileSync(path, readFileSync(path, 'utf8').replace('"on-request"', '"sometimes"'))
@@ -361,7 +358,7 @@ describe('Claude Code', () => {
     })
 
     it('reports a rule it cannot read', () => {
-      const root = project('broken-rule', 3)
+      const root = project('broken-rule')
       const path = join(root, '.claude/settings.json')
       writeFileSync(path, readFileSync(path, 'utf8').replace('Bash(rm -rf *)', 'Bash(rm -rf *'))
       const { stdout, stderr } = doctor(root)
@@ -494,7 +491,7 @@ describe('Gemini CLI', () => {
 })
 
 describe('dependency-cruiser', () => {
-  const root = project('layers', 3)
+  const root = project('layers')
   const source = (path: string, content: string) => {
     mkdirSync(dirname(join(root, path)), { recursive: true })
     writeFileSync(join(root, path), content)
@@ -533,17 +530,11 @@ describe('Gates', () => {
   const WORKFLOW = '.github/workflows/agent-conventions.yml'
 
   /** Renders the hooks and the workflow, and writes them as the CLI does, in a Git repository. */
-  const gated = (name: string, answers: [string, string, number | string | string[]][]) => {
+  const gated = (name: string, ready: AcceptedRule[]) => {
     const { files } = renderAgentContext({
       project: { name: 'Shop', description: null, architectures: [] },
-      questionnaires: ['frontend-react', 'git-workflow', 'security'].map(
-        (id) => findQuestionnaire(id) as Questionnaire,
-      ),
-      answers: answers.map(([questionnaireId, questionId, value]) => ({
-        questionnaireId,
-        questionId,
-        value,
-      })),
+      packs: RULE_PACKS,
+      ready,
       rules: [],
       notes: null,
       targets: [],
@@ -563,12 +554,12 @@ describe('Gates', () => {
   }
 
   const root = gated('gates', [
-    ['frontend-react', 'package-manager', 'pnpm'],
-    ['frontend-react', 'checks', 'pnpm lint && pnpm test: unit'],
-    ['git-workflow', 'commit-messages', 'conventional'],
-    ['git-workflow', 'attribution', 5],
-    ['git-workflow', 'ci-workflow', 'github-actions'],
-    ['security', 'secrets', 5],
+    held('tooling.package-manager', 'pnpm'),
+    held('tooling.checks', 'run', 'pnpm lint && pnpm test: unit'),
+    held('git.commit-messages', 'conventional'),
+    held('git.attribution', 'agree'),
+    held('git.ci-workflow', 'github-actions'),
+    held('security.secrets', 'agree'),
   ])
 
   const fakeBin = join(tmp, 'gates-bin')
@@ -638,11 +629,11 @@ describe('Gates', () => {
     expect(commits()).toBe(2)
   })
 
-  it('renders no commit-msg hook and no workflow when no answer asks for one', () => {
+  it('renders no commit-msg hook and no workflow when no rule asks for one', () => {
     const plain = gated('gates-plain', [
-      ['frontend-react', 'checks', 'pnpm lint'],
-      ['git-workflow', 'commit-messages', 'imperative'],
-      ['git-workflow', 'attribution', 3],
+      held('tooling.checks', 'run', 'pnpm lint'),
+      held('git.commit-messages', 'imperative'),
+      held('git.attribution', 'disagree'),
     ])
     const tracked = execFileSync('git', ['ls-files', '--others'], { cwd: plain, encoding: 'utf8' })
     expect(tracked.trim().split('\n')).toEqual(['.githooks/pre-commit', 'AGENTS.md'])
@@ -678,7 +669,7 @@ describe('Gates', () => {
       for (const action of uses) expect(action).toMatch(/^[\w-]+\/[\w-]+@[0-9a-f]{40}$/)
     })
 
-    it('runs each check as it was answered, after the install', () => {
+    it('runs each check as it was typed, after the install', () => {
       const runs = steps.flatMap((item) => (item.run && !item.name ? [item.run] : []))
       expect(runs).toEqual([
         'corepack enable',
@@ -741,17 +732,14 @@ describe('Gates', () => {
 describe('Development container', () => {
   const DEVCONTAINER = '.devcontainer/devcontainer.json'
   const FIREWALL = '.devcontainer/init-firewall.sh'
-  const security = findQuestionnaire('security') as Questionnaire
   const render = (sandbox?: string) =>
     renderAgentContext({
       project: { name: 'Shop', description: null, architectures: [] },
-      questionnaires: [frontendReact, security],
-      answers: [
-        { questionnaireId: frontendReact.id, questionId: 'package-manager', value: 'pnpm' },
-        { questionnaireId: security.id, questionId: 'network-access', value: 'registry' },
-        ...(sandbox
-          ? [{ questionnaireId: security.id, questionId: 'sandbox', value: sandbox }]
-          : []),
+      packs: RULE_PACKS,
+      ready: [
+        held('tooling.package-manager', 'pnpm'),
+        held('security.network', 'registry'),
+        ...(sandbox ? [held('security.sandbox', sandbox)] : []),
       ],
       rules: [],
       notes: null,
@@ -760,8 +748,8 @@ describe('Development container', () => {
     }).files
   const content = (path: string) => render('container').find((file) => file.path === path)?.content
 
-  it.each([undefined, 'host'])('renders no container for the answer %s', (answer) => {
-    expect(render(answer).filter((file) => file.path.startsWith('.devcontainer'))).toEqual([])
+  it.each([undefined, 'host'])('renders no container for the rule %s', (rule) => {
+    expect(render(rule).filter((file) => file.path.startsWith('.devcontainer'))).toEqual([])
     expect(() => read(autonomous, DEVCONTAINER)).toThrow(/ENOENT/)
   })
 

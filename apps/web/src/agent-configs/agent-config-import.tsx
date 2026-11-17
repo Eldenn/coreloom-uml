@@ -1,12 +1,11 @@
-// Import: the user's own model reads a conventions file pasted here and proposes answers (applied
-// together; one that would replace the owner's starts unchecked) and rules (accepted one by one,
-// as proposals). Nothing is stored before that.
+// Import: the user's own model reads a conventions file pasted here and proposes ready-made rules
+// to hold (added together; one that would replace a rule already held starts unchecked) and rules
+// of the owner's own (accepted one by one, as proposals). Nothing is stored before that.
 import { FileInputIcon } from 'lucide-react'
 import * as React from 'react'
 
 import { ProposalsFailed, ProposalsReview } from '@/agent-configs/agent-config-proposals'
-import { CatalogText } from '@/agent-configs/answer-form'
-import { useFormatAnswer, useLocalized } from '@/agent-configs/catalog'
+import { AppliedBadge, RuleText } from '@/agent-configs/rule-text'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -22,30 +21,39 @@ import {
 import { toast } from '@/components/ui/sonner'
 import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
-import { type AgentConfig, type Questionnaire, useSaveAnswers } from '@/lib/agent-configs'
+import { type AgentConfig, type RulePack, useSaveReadyRules } from '@/lib/agent-configs'
 import { getErrorMessage } from '@/lib/client'
-import { type ImportedAnswer, useImportAgentFile, useStoredProvider } from '@/lib/llm-provider'
-import { useT } from '@/lib/locale'
+import { type ImportedReadyRule, useImportAgentFile, useStoredProvider } from '@/lib/llm-provider'
+import { useLocale, useT } from '@/lib/locale'
+import { type Choice, chooseRule, fillValue, heldBySlot } from '@/lib/ready-rules'
 
-/** `questionnaireId/questionId`, the key of an answer. */
-const answerKey = (answer: { questionnaireId: string; questionId: string }) =>
-  `${answer.questionnaireId}/${answer.questionId}`
+/** `slot/rule`, the key of a proposed ready-made rule. */
+const readyKey = (item: { slot: string; rule: string }) => `${item.slot}/${item.rule}`
 
 interface Result {
-  answers: ImportedAnswer[]
+  ready: ImportedReadyRule[]
   rules: { id: string; section: string; text: string; basedOn: null }[]
   truncated: boolean
+}
+
+/** The rules a group holds once a proposed one is added to them. */
+function withProposed(
+  group: RulePack['groups'][number],
+  held: readonly Choice[],
+  item: ImportedReadyRule,
+) {
+  return chooseRule(group, held, { rule: item.rule, chosen: true, value: item.value ?? '' })
 }
 
 /** "Import a file" and its panel; nothing at all while no provider is set in this browser. */
 export function AgentFileImport({
   configId,
   config,
-  questionnaires,
+  packs,
 }: {
   configId: number
   config: AgentConfig
-  questionnaires: Questionnaire[]
+  packs: RulePack[]
 }) {
   const t = useT()
   const provider = useStoredProvider()
@@ -54,6 +62,10 @@ export function AgentFileImport({
   const [result, setResult] = React.useState<Result | null>(null)
   const [checked, setChecked] = React.useState<Set<string>>(() => new Set())
   const read = useImportAgentFile(configId)
+  const groups = React.useMemo(
+    () => new Map(packs.flatMap((pack) => pack.groups).map((group) => [group.slot, group])),
+    [packs],
+  )
 
   if (!provider) return null
 
@@ -62,14 +74,16 @@ export function AgentFileImport({
       { provider, content },
       {
         onSuccess: (body) => {
-          const current = new Set(config.answers.map(answerKey))
-          setChecked(
-            new Set(
-              body.answers.filter((answer) => !current.has(answerKey(answer))).map(answerKey),
-            ),
-          )
+          const held = heldBySlot(config.readyRules)
+          // One that would push out a rule already held is left for the owner to check.
+          const safe = body.ready.filter((item) => {
+            const group = groups.get(item.slot)
+            const current = held.get(item.slot) ?? []
+            return group && withProposed(group, current, item).length > current.length
+          })
+          setChecked(new Set(safe.map(readyKey)))
           setResult({
-            answers: body.answers,
+            ready: body.ready,
             rules: body.rules.map((rule, index) => ({
               ...rule,
               id: `${String(Date.now())}-${String(index)}`,
@@ -133,20 +147,17 @@ export function AgentFileImport({
                     <AlertDescription>{t.llm.importTruncated}</AlertDescription>
                   </Alert>
                 )}
-                <ImportedAnswers
+                <ImportedReadyRules
                   configId={configId}
                   config={config}
-                  questionnaires={questionnaires}
-                  answers={result.answers}
+                  groups={groups}
+                  ready={result.ready}
                   checked={checked}
                   onCheckedChange={setChecked}
                   onApplied={(keys) => {
                     setResult((left) =>
                       left
-                        ? {
-                            ...left,
-                            answers: left.answers.filter((answer) => !keys.has(answerKey(answer))),
-                          }
+                        ? { ...left, ready: left.ready.filter((item) => !keys.has(readyKey(item))) }
                         : left,
                     )
                   }}
@@ -158,7 +169,6 @@ export function AgentFileImport({
                   <ProposalsReview
                     configId={configId}
                     config={config}
-                    questionnaires={questionnaires}
                     proposals={result.rules}
                     truncated={false}
                     skipped={[]}
@@ -192,50 +202,87 @@ export function AgentFileImport({
   )
 }
 
-/** The proposed answers, each with the words it comes from; the checked ones are applied at once. */
-function ImportedAnswers({
+/**
+ * The proposed ready-made rules, each with the words it comes from. The checked ones are added
+ * group by group, next to what a group already holds when it can hold several.
+ */
+function ImportedReadyRules({
   configId,
   config,
-  questionnaires,
-  answers,
+  groups,
+  ready,
   checked,
   onCheckedChange,
   onApplied,
 }: {
   configId: number
   config: AgentConfig
-  questionnaires: Questionnaire[]
-  answers: ImportedAnswer[]
+  groups: Map<string, RulePack['groups'][number]>
+  ready: ImportedReadyRule[]
   checked: Set<string>
   onCheckedChange: (checked: Set<string>) => void
   onApplied: (keys: Set<string>) => void
 }) {
   const t = useT()
-  const localized = useLocalized()
-  const format = useFormatAnswer()
-  const save = useSaveAnswers(configId)
-  const picked = answers.filter((answer) => checked.has(answerKey(answer)))
+  const { locale } = useLocale()
+  const save = useSaveReadyRules(configId)
+  const [applying, setApplying] = React.useState(false)
+  const held = heldBySlot(config.readyRules)
 
-  const rows = answers.flatMap((answer) => {
-    const questionnaire = questionnaires.find((item) => item.id === answer.questionnaireId)
-    const question = questionnaire?.questions.find((item) => item.id === answer.questionId)
-    if (!questionnaire || !question) return []
-    const current = config.answers.find((item) => answerKey(item) === answerKey(answer))
-    return [{ answer, questionnaire, question, current }]
+  const rows = ready.flatMap((item) => {
+    const group = groups.get(item.slot)
+    const rule = group?.rules.find((candidate) => candidate.id === item.rule)
+    if (!group || !rule) return []
+    const current = held.get(item.slot) ?? []
+    const kept = withProposed(group, current, item)
+    const replaced = group.rules.filter(
+      (candidate) =>
+        current.some((choice) => choice.rule === candidate.id) &&
+        !kept.some((choice) => choice.rule === candidate.id),
+    )
+    return [{ item, group, rule, replaced }]
   })
+  const picked = rows.filter(({ item }) => checked.has(readyKey(item)))
+
+  const apply = async () => {
+    setApplying(true)
+    const applied = new Set<string>()
+    try {
+      for (const slot of new Set(picked.map(({ item }) => item.slot))) {
+        const mine = picked.filter(({ item }) => item.slot === slot)
+        const group = mine.at(0)?.group
+        if (!group) continue
+        const rules = mine.reduce<Choice[]>(
+          (kept, { item }) => withProposed(group, kept, item),
+          held.get(slot) ?? [],
+        )
+        await save.mutateAsync({ slot, rules })
+        // Only the rules that made it: a later one of the group can push an earlier one out.
+        for (const { item } of mine) {
+          if (rules.some((choice) => choice.rule === item.rule)) applied.add(readyKey(item))
+        }
+      }
+      toast.success(t.llm.importApplied)
+    } catch (error) {
+      toast.error(getErrorMessage(error, t.llm.failed))
+    } finally {
+      setApplying(false)
+      onApplied(applied)
+    }
+  }
 
   return (
-    <section aria-labelledby="agent-import-answers" className="flex flex-col gap-3">
-      <h3 id="agent-import-answers" className="text-sm font-medium">
-        {t.llm.importAnswers}
+    <section aria-labelledby="agent-import-ready" className="flex flex-col gap-3">
+      <h3 id="agent-import-ready" className="text-sm font-medium">
+        {t.llm.importReady}
       </h3>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t.llm.importNoAnswers}</p>
+        <p className="text-sm text-muted-foreground">{t.llm.importNoReady}</p>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">{t.llm.importAnswersHint}</p>
-          {rows.map(({ answer, questionnaire, question, current }) => {
-            const key = answerKey(answer)
+          <p className="text-sm text-muted-foreground">{t.llm.importReadyHint}</p>
+          {rows.map(({ item, group, rule, replaced }) => {
+            const key = readyKey(item)
             const id = `agent-import-${key.replace('/', '-')}`
             return (
               <Field key={key} orientation="horizontal" className="items-start">
@@ -249,23 +296,29 @@ function ImportedAnswers({
                     onCheckedChange(next)
                   }}
                 />
-                <div className="flex flex-col gap-1">
-                  <FieldLabel htmlFor={id}>
-                    <CatalogText text={localized(question.label)} />
-                  </FieldLabel>
-                  <span className="text-sm">
-                    {format(question, questionnaire.scaleLabels, answer.value)}
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="text-[13px] text-muted-foreground">
+                    <RuleText text={group.label[locale]} />
                   </span>
-                  {current && (
+                  <span className="flex flex-wrap items-start gap-x-2 gap-y-1">
+                    <FieldLabel htmlFor={id} className="inline leading-[1.45] text-foreground">
+                      <RuleText text={fillValue(rule.title[locale], rule, item.value)} />
+                    </FieldLabel>
+                    {rule.applied && <AppliedBadge />}
+                  </span>
+                  {rule.input && item.value && (
+                    <span className="text-sm">{t.llm.importValue(item.value)}</span>
+                  )}
+                  {replaced.length > 0 && (
                     <FieldDescription>
                       {t.llm.importReplaces(
-                        format(question, questionnaire.scaleLabels, current.value),
+                        replaced.map((other) => other.title[locale]).join(', '),
                       )}
                     </FieldDescription>
                   )}
-                  {answer.evidence && (
+                  {item.evidence && (
                     <blockquote className="border-l-2 pl-2 text-xs text-muted-foreground">
-                      {answer.evidence}
+                      {item.evidence}
                     </blockquote>
                   )}
                 </div>
@@ -274,23 +327,8 @@ function ImportedAnswers({
           })}
           <Button
             className="self-start"
-            disabled={picked.length === 0 || save.isPending}
-            onClick={() => {
-              save.mutate(
-                picked.map(({ questionnaireId, questionId, value }) => ({
-                  questionnaireId,
-                  questionId,
-                  value,
-                })),
-                {
-                  onSuccess: () => {
-                    toast.success(t.llm.importApplied)
-                    onApplied(new Set(picked.map(answerKey)))
-                  },
-                  onError: (error) => toast.error(getErrorMessage(error, t.llm.failed)),
-                },
-              )
-            }}
+            disabled={picked.length === 0 || applying}
+            onClick={() => void apply()}
           >
             {t.llm.importApply(picked.length)}
           </Button>

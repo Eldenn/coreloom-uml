@@ -7,7 +7,7 @@ import { MCP_KEY_ENV, MCP_SERVER_NAME, MCP_SERVER_URL, mcpRecommendation } from 
 import type { RoleContext, RoleRender, TargetContext, TargetTemplate } from './types.ts'
 
 /**
- * Denied whatever the answers. Bash rules match the command as the model writes it, so they stop
+ * Denied whatever the rules held. Bash rules match the command as the model writes it, so they stop
  * the usual form and are not a security boundary (the tool's documentation says so).
  */
 const DEFAULT_DENY = [

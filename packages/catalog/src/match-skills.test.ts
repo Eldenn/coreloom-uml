@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { COMPATIBLE_SKILLS_MAX, CONFLICTING_SKILLS_MAX, matchSkills } from './match-skills.ts'
-import { findQuestionnaire } from './questionnaires/index.ts'
-import type { AnswerValue, Questionnaire, Skill } from './schemas.ts'
+import { findRuleGroup, RULE_PACKS } from './rule-packs/index.ts'
+import type { AcceptedRule, RulePack, Skill } from './schemas.ts'
 import { SKILLS } from './skills.ts'
 
-const frontendReact = findQuestionnaire('frontend-react') as Questionnaire
+const frontendReact = RULE_PACKS.find((pack) => pack.id === 'frontend-react') as RulePack
 
 /** A fixture skill on one slot; the real catalog is checked in catalog.test.ts. */
 function skill(id: string, overrides: Partial<Skill> = {}): Skill {
@@ -14,38 +14,37 @@ function skill(id: string, overrides: Partial<Skill> = {}): Skill {
     description: { en: `${id} (en)`, fr: `${id} (fr)` },
     url: `https://example.com/${id}`,
     targets: ['claude-code'],
-    affinities: [{ slot: 'typescript.any', scale: { min: 4, max: 5 } }],
+    affinities: [{ slot: 'typescript.any', values: ['agree'], against: ['disagree'] }],
     origin: 'manual',
     ...overrides,
   }
 }
 
+/** The rules held, by slot: one id, several, or one with its typed text. */
+type Held = Record<string, string | string[] | { rule: string; value: string }>
+
+function ready(held: Held): AcceptedRule[] {
+  return Object.entries(held).flatMap(([slot, rules]) =>
+    typeof rules === 'object' && !Array.isArray(rules)
+      ? [{ slot, ...rules }]
+      : [rules].flat().map((rule) => ({ slot, rule })),
+  )
+}
+
 function match(
-  answers: Record<string, AnswerValue>,
+  held: Held,
   skills: Skill[],
   targets: Skill['targets'] = ['claude-code'],
   diagramKinds: string[] = [],
 ) {
-  return matchSkills(
-    {
-      questionnaires: [frontendReact],
-      answers: Object.entries(answers).map(([questionId, value]) => ({
-        questionnaireId: 'frontend-react',
-        questionId,
-        value,
-      })),
-      targets,
-      diagramKinds,
-    },
-    skills,
-  )
+  return matchSkills({ packs: [frontendReact], ready: ready(held), targets, diagramKinds }, skills)
 }
 
 const strictTyping = skill('strict-typing')
 
 describe('matchSkills', () => {
-  it('counts +1 for a scale answer in the range: compatible', () => {
-    const result = match({ 'ts-any': 5 }, [strictTyping])
+  it('counts +1 for a held rule the skill fits: compatible', () => {
+    const result = match({ 'typescript.any': 'agree' }, [strictTyping])
     expect(result.compatible).toEqual([
       {
         id: 'strict-typing',
@@ -61,56 +60,94 @@ describe('matchSkills', () => {
     expect(result.conflicting).toEqual([])
   })
 
-  it('counts −1 for a scale answer 2 or more away from the range, with a readable reason', () => {
-    const result = match({ 'ts-any': 1 }, [strictTyping])
+  it('counts −1 for a held rule the skill goes against, with a readable reason', () => {
+    const result = match({ 'typescript.any': 'disagree' }, [strictTyping])
     expect(result.compatible).toEqual([])
     expect(result.conflicting).toHaveLength(1)
+    const group = findRuleGroup([frontendReact], 'typescript.any')
+    const [agree, disagree] = (group?.rules ?? []).map((rule) => rule.lines[0])
     expect(result.conflicting[0]?.reasons).toEqual([
       {
         slot: 'typescript.any',
-        questionLabel: frontendReact.questions[0]?.label,
-        yourAnswer: { en: '1 of 5', fr: '1 sur 5' },
-        skillExpects: { en: '4 to 5 of 5', fr: '4 à 5 sur 5' },
+        questionLabel: group?.label,
+        yourAnswer: { en: disagree, fr: disagree },
+        skillExpects: { en: agree, fr: agree },
       },
     ])
   })
 
-  it('counts 0 for a scale answer one step away: neither compatible nor conflicting', () => {
-    expect(match({ 'ts-any': 3 }, [strictTyping])).toEqual({ compatible: [], conflicting: [] })
-  })
-
-  it('ignores an affinity whose slot has no answer', () => {
-    expect(match({}, [strictTyping])).toEqual({ compatible: [], conflicting: [] })
-  })
-
-  it('counts +1 for a single choice among the values, 0 otherwise', () => {
-    const zustand = skill('zustand', {
-      affinities: [{ slot: 'react.state', values: ['zustand'] }],
+  it('names the rules a skill expects by their labels, in the group’s order', () => {
+    const state = skill('state', {
+      affinities: [{ slot: 'react.state', values: ['redux', 'zustand'], against: ['context'] }],
     })
-    expect(match({ 'state-management': 'zustand' }, [zustand]).compatible).toHaveLength(1)
-    expect(match({ 'state-management': 'redux' }, [zustand])).toEqual({
+    expect(match({ 'react.state': 'context' }, [state]).conflicting[0]?.reasons).toMatchObject([
+      {
+        yourAnswer: { en: 'React context', fr: 'Le contexte React' },
+        skillExpects: { en: 'Zustand / Redux', fr: 'Zustand / Redux' },
+      },
+    ])
+  })
+
+  it('counts 0 for a held rule the skill neither fits nor goes against', () => {
+    const asksFirst = skill('asks-first', {
+      affinities: [
+        { slot: 'workflow.autonomy', values: ['ask-before-writing'], against: ['disagree'] },
+      ],
+    })
+    expect(match({ 'workflow.autonomy': 'agree' }, [asksFirst])).toEqual({
       compatible: [],
       conflicting: [],
     })
-    // A free-text answer is never one of the values.
-    expect(match({ 'state-management': 'MobX' }, [zustand]).compatible).toEqual([])
   })
 
-  it('counts +1 for a multiple choice that includes one of the values', () => {
+  it('ignores an affinity whose slot holds no rule', () => {
+    expect(match({}, [strictTyping])).toEqual({ compatible: [], conflicting: [] })
+  })
+
+  it('counts +1 for the one rule of a group among the values, 0 otherwise', () => {
+    const zustand = skill('zustand', {
+      affinities: [{ slot: 'react.state', values: ['zustand'] }],
+    })
+    expect(match({ 'react.state': 'zustand' }, [zustand]).compatible).toHaveLength(1)
+    expect(match({ 'react.state': 'redux' }, [zustand])).toEqual({
+      compatible: [],
+      conflicting: [],
+    })
+    // A typed text is never one of the values, whatever it says.
+    const typed = { 'react.state': { rule: 'other', value: 'zustand' } }
+    expect(match(typed, [zustand]).compatible).toEqual([])
+  })
+
+  it('counts +1 when one of several rules held is among the values', () => {
     const e2e = skill('e2e', { affinities: [{ slot: 'testing.levels', values: ['e2e'] }] })
-    expect(match({ 'tests-level': ['unit', 'e2e'] }, [e2e]).compatible).toHaveLength(1)
-    expect(match({ 'tests-level': ['none'] }, [e2e]).compatible).toEqual([])
+    expect(match({ 'testing.levels': ['unit', 'e2e'] }, [e2e]).compatible).toHaveLength(1)
+    expect(match({ 'testing.levels': ['none'] }, [e2e]).compatible).toEqual([])
+  })
+
+  it('counts −1, not +1, when rules held are both fitted and gone against', () => {
+    const tested = skill('tested', {
+      affinities: [{ slot: 'testing.levels', values: ['unit'], against: ['e2e'] }],
+    })
+    const result = match({ 'testing.levels': ['unit', 'e2e'] }, [tested])
+    expect(result.compatible).toEqual([])
+    expect(result.conflicting[0]).toMatchObject({
+      score: -1,
+      reasons: [{ slot: 'testing.levels' }],
+    })
   })
 
   it('makes a skill conflicting as soon as one affinity is −1, whatever the others', () => {
     const mixed = skill('mixed', {
       affinities: [
-        { slot: 'typescript.any', scale: { min: 4, max: 5 } },
-        { slot: 'workflow.changes', scale: { min: 4, max: 5 } },
+        { slot: 'typescript.any', values: ['agree'], against: ['disagree'] },
+        { slot: 'workflow.changes', values: ['agree'], against: ['disagree'] },
         { slot: 'react.state', values: ['zustand'] },
       ],
     })
-    const result = match({ 'ts-any': 5, 'change-size': 1, 'state-management': 'zustand' }, [mixed])
+    const result = match(
+      { 'typescript.any': 'agree', 'workflow.changes': 'disagree', 'react.state': 'zustand' },
+      [mixed],
+    )
     expect(result.compatible).toEqual([])
     expect(result.conflicting[0]).toMatchObject({
       score: 1,
@@ -120,29 +157,42 @@ describe('matchSkills', () => {
 
   it('never suggests a skill for none of the configuration’s targets', () => {
     const cursorOnly = skill('cursor-only', { targets: ['cursor'] })
-    expect(match({ 'ts-any': 5 }, [cursorOnly], ['claude-code'])).toEqual({
+    const agree = { 'typescript.any': 'agree' }
+    expect(match(agree, [cursorOnly], ['claude-code'])).toEqual({
       compatible: [],
       conflicting: [],
     })
-    expect(match({ 'ts-any': 1 }, [cursorOnly], ['claude-code']).conflicting).toEqual([])
-    expect(match({ 'ts-any': 5 }, [cursorOnly], ['claude-code', 'cursor']).compatible).toHaveLength(
-      1,
-    )
+    expect(
+      match({ 'typescript.any': 'disagree' }, [cursorOnly], ['claude-code']).conflicting,
+    ).toEqual([])
+    expect(match(agree, [cursorOnly], ['claude-code', 'cursor']).compatible).toHaveLength(1)
   })
 
-  it('ignores an answer that does not fit its question', () => {
-    expect(match({ 'ts-any': 9 }, [strictTyping])).toEqual({ compatible: [], conflicting: [] })
+  it('ignores rules that cannot be held together, and rules of a pack it was not given', () => {
+    const none = { compatible: [], conflicting: [] }
+    expect(match({ 'typescript.any': ['agree', 'disagree'] }, [strictTyping])).toEqual(none)
+    expect(match({ 'typescript.any': 'maybe' }, [strictTyping])).toEqual(none)
+    const typed = { 'typescript.any': { rule: 'agree', value: 'typed' } }
+    expect(match(typed, [strictTyping])).toEqual(none)
+    const input = {
+      packs: [],
+      ready: ready({ 'typescript.any': 'agree' }),
+      targets: ['claude-code' as const],
+      diagramKinds: [],
+    }
+    expect(matchSkills(input, [strictTyping])).toEqual(none)
   })
 
   it('orders by score then catalog order, and keeps 5 compatible and 3 conflicting at most', () => {
     const twoPoints = skill('two-points', {
       affinities: [
-        { slot: 'typescript.any', scale: { min: 4, max: 5 } },
-        { slot: 'workflow.changes', scale: { min: 4, max: 5 } },
+        { slot: 'typescript.any', values: ['agree'], against: ['disagree'] },
+        { slot: 'workflow.changes', values: ['agree'], against: ['disagree'] },
       ],
     })
     const many = Array.from({ length: 7 }, (_, index) => skill(`skill-${index}`))
-    const compatible = match({ 'ts-any': 5, 'change-size': 5 }, [...many, twoPoints]).compatible
+    const agree = { 'typescript.any': 'agree', 'workflow.changes': 'agree' }
+    const compatible = match(agree, [...many, twoPoints]).compatible
     expect(compatible.map((item) => item.id)).toEqual([
       'two-points',
       'skill-0',
@@ -152,7 +202,9 @@ describe('matchSkills', () => {
     ])
     expect(compatible).toHaveLength(COMPATIBLE_SKILLS_MAX)
 
-    const conflicting = match({ 'ts-any': 1, 'change-size': 1 }, [...many, twoPoints]).conflicting
+    // Conflicting skills come by number of reasons.
+    const disagree = { 'typescript.any': 'disagree', 'workflow.changes': 'disagree' }
+    const conflicting = match(disagree, [...many, twoPoints]).conflicting
     expect(conflicting.map((item) => item.id)).toEqual(['two-points', 'skill-0', 'skill-1'])
     expect(conflicting).toHaveLength(CONFLICTING_SKILLS_MAX)
   })
@@ -181,36 +233,54 @@ describe('matchSkills', () => {
         contentSha: 'a'.repeat(40),
       },
     })
-    expect(match({ 'ts-any': 5 }, [found]).compatible[0]).toMatchObject({
+    expect(match({ 'typescript.any': 'agree' }, [found]).compatible[0]).toMatchObject({
       description: { en: 'Only English.', fr: 'Only English.' },
       audits: [{ provider: 'snyk', risk: 'low', analyzedAt: '2026-11-01T00:00:00.000Z' }],
     })
   })
 
-  it('is deterministic', () => {
-    const answers = { 'ts-any': 1, 'change-size': 5, 'tests-level': ['unit'] }
-    expect(JSON.stringify(match(answers, [strictTyping]))).toBe(
-      JSON.stringify(match(answers, [strictTyping])),
+  it('is deterministic, whatever the order the rules are given in', () => {
+    const held = {
+      'typescript.any': 'disagree',
+      'workflow.changes': 'agree',
+      'testing.levels': ['unit', 'e2e'],
+    }
+    const e2e = skill('e2e', { affinities: [{ slot: 'testing.levels', values: ['e2e'] }] })
+    const first = match(held, [strictTyping, e2e])
+    expect(JSON.stringify(match(held, [strictTyping, e2e]))).toBe(JSON.stringify(first))
+    const reversed = matchSkills(
+      {
+        packs: [frontendReact],
+        ready: ready(held).reverse(),
+        targets: ['claude-code'],
+        diagramKinds: [],
+      },
+      [strictTyping, e2e],
     )
+    expect(reversed).toEqual(first)
   })
 })
 
 describe('matchSkills with the real catalog', () => {
-  it('suggests skills for a configuration that asks for small changes and tests', () => {
-    const result = matchSkills(
-      {
-        questionnaires: [frontendReact],
-        answers: [
-          { questionnaireId: 'frontend-react', questionId: 'change-size', value: 5 },
-          { questionnaireId: 'frontend-react', questionId: 'tests-level', value: ['unit'] },
-          { questionnaireId: 'frontend-react', questionId: 'ask-before-act', value: 1 },
-        ],
-        targets: ['claude-code'],
-        diagramKinds: [],
-      },
+  const suggest = (held: Held) =>
+    matchSkills(
+      { packs: RULE_PACKS, ready: ready(held), targets: ['claude-code'], diagramKinds: [] },
       SKILLS,
     )
+
+  it('suggests skills for a configuration that asks for small changes and tests', () => {
+    const result = suggest({
+      'workflow.changes': 'agree',
+      'testing.levels': 'unit',
+      'workflow.autonomy': 'disagree',
+    })
     expect(result.compatible.map((item) => item.id)).toContain('test-driven-development')
     expect(result.conflicting.map((item) => item.id)).toEqual(['brainstorming', 'writing-plans'])
+  })
+
+  it('counts the rule that makes the assistant ask before writing as asking first', () => {
+    const result = suggest({ 'workflow.autonomy': 'ask-before-writing' })
+    expect(result.compatible.map((item) => item.id)).toContain('brainstorming')
+    expect(result.conflicting).toEqual([])
   })
 })

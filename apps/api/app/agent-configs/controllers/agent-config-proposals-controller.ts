@@ -1,22 +1,17 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
-import { migrateAnswers, ruleSections } from '@coreloom-uml/catalog'
+import { RULE_PACKS, ruleSections } from '@coreloom-uml/catalog'
 import {
   type ArchitectureDiagram,
   type LanguageModel,
   LlmCallError,
   proposeArchitectureRules,
   proposeFeedbackRules,
-  proposeRules,
 } from '@coreloom-uml/llm'
 import { AgentProposalSource } from '#app/agent-configs/constants/agent-config'
 import type AgentConfig from '#app/agent-configs/models/agent-config'
 import { readConfigDiagrams } from '#app/agent-configs/services/agent-config-diagrams'
-import {
-  currentInputs,
-  render,
-  resolveQuestionnaires,
-} from '#app/agent-configs/services/agent-context'
+import { currentInputs, render } from '#app/agent-configs/services/agent-context'
 import {
   AGENT_CONFIG_NOT_FOUND,
   findOwnedAgentConfig,
@@ -28,11 +23,11 @@ import type { AgentProposalsOutput } from '#app/llm/validators/llm-output'
 import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
 
 /**
- * `POST /agent-configs/:id/proposals`: the user's own model turns the notes under the
- * answers (`from: 'answers'`, the default), the project's diagrams (`from: 'diagrams'`, sent as
- * PlantUML without their layout) or pasted review feedback (`from: 'feedback'`, never stored or
- * logged) into proposed rules. Nothing is stored: the owner accepts a proposal (possibly edited)
- * with `POST …/rules` and `source: 'llm'`. Session only.
+ * `POST /agent-configs/:id/proposals`: the user's own model turns the project's diagrams
+ * (`from: 'diagrams'`, sent as PlantUML without their layout) or pasted review feedback
+ * (`from: 'feedback'`, never stored or logged) into proposed rules, knowing the lines the
+ * configuration already writes. Nothing is stored: the owner accepts a proposal (possibly
+ * edited) with `POST …/rules` and `source: 'llm'`. Session only.
  *
  * The key (or the user's connected subscription) is read here, handed to the provider's client and
  * dropped. A provider failure answers
@@ -56,12 +51,7 @@ export default class AgentConfigProposalsController {
       return response.unprocessableEntity({ error: { message: built.problem } })
     if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)
 
-    const log = {
-      agentConfigId: config.id,
-      kind: provider.kind,
-      model: provider.model,
-      from: from ?? AgentProposalSource.Answers,
-    }
+    const log = { agentConfigId: config.id, kind: provider.kind, model: provider.model, from }
     if ('reason' in built) {
       logger.warn({ ...log, reason: built.reason }, 'agent rule proposals failed')
       return response.badGateway(llmFailure(built.reason))
@@ -69,7 +59,7 @@ export default class AgentConfigProposalsController {
     const { model } = built
     const started = performance.now()
     try {
-      const result: AgentProposalsOutput = await propose(model, config, diagrams, from, feedback)
+      const result: AgentProposalsOutput = await propose(model, config, diagrams, feedback)
       logger.info(
         {
           ...log,
@@ -92,45 +82,15 @@ export default class AgentConfigProposalsController {
   }
 }
 
-/** The configuration's answers with their notes, migrated to the current questionnaires. */
-async function answersSource(config: AgentConfig) {
-  const inputs = await currentInputs(config)
-  const questionnaires = resolveQuestionnaires(inputs.questionnaires)
-  let answers = inputs.answers
-  for (const questionnaire of questionnaires) answers = migrateAnswers(questionnaire, answers)
-  const details = new Map(
-    config.answers.map((answer) => [
-      `${answer.questionnaireId}/${answer.questionId}`,
-      answer.details,
-    ]),
-  )
-  return {
-    questionnaires,
-    answers: answers.map((answer) => ({
-      ...answer,
-      details: details.get(`${answer.questionnaireId}/${answer.questionId}`) ?? null,
-    })),
-    rules: inputs.rules,
-    fragments: render(inputs).fragments,
-  }
-}
-
 async function propose(
   model: LanguageModel,
   config: AgentConfig,
   diagrams: ArchitectureDiagram[] | null,
-  from: AgentProposalSource | undefined,
   feedback: string | undefined,
 ): Promise<AgentProposalsOutput> {
-  if (diagrams)
-    return proposeArchitectureRules(model, { diagrams, ...(await existingSource(config)) })
-  const result =
-    from === AgentProposalSource.Feedback
-      ? await proposeFeedbackRules(model, {
-          feedback: feedback ?? '',
-          ...(await existingSource(config)),
-        })
-      : await proposeRules(model, await answersSource(config))
+  const existing = await existingSource(config)
+  if (diagrams) return proposeArchitectureRules(model, { diagrams, ...existing })
+  const result = await proposeFeedbackRules(model, { feedback: feedback ?? '', ...existing })
   return { ...result, skipped: [] }
 }
 
@@ -138,7 +98,7 @@ async function propose(
 async function existingSource(config: AgentConfig) {
   const inputs = await currentInputs(config)
   return {
-    sections: ruleSections(resolveQuestionnaires(inputs.questionnaires)),
+    sections: ruleSections(RULE_PACKS),
     existing: [...render(inputs).fragments, ...inputs.rules],
   }
 }

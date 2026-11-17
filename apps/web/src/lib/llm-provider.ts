@@ -109,32 +109,23 @@ export function useProposeRules(configId: number) {
   return useMutation({
     mutationFn: ({
       provider,
-      diagramIds,
-      feedback,
-    }: {
-      provider: StoredProvider
-      /** Reads these diagrams instead of the answers' notes. */
-      diagramIds?: number[]
-      /** Reads this pasted review feedback instead of the answers' notes. */
-      feedback?: string
-    }) =>
+      ...source
+    }: { provider: StoredProvider } & (
+      { from: 'diagrams'; diagramIds: number[] } | { from: 'feedback'; feedback: string }
+    )) =>
       client.api.agentConfigs.proposals.store({
         params: { id: configId },
-        body: {
-          ...callBody(provider),
-          ...(diagramIds ? { from: 'diagrams' as const, diagramIds } : {}),
-          ...(feedback ? { from: 'feedback' as const, feedback } : {}),
-        },
+        body: { ...callBody(provider), ...source },
         ...MODEL_CALL,
       }),
   })
 }
 
-export type ImportedAnswer = Awaited<
+export type ImportedReadyRule = Awaited<
   ReturnType<typeof client.api.agentConfigs.imports.store>
->['answers'][number]
+>['ready'][number]
 
-/** `POST /agent-configs/:id/imports`: answers and rules read from a conventions file, nothing stored. */
+/** `POST /agent-configs/:id/imports`: ready-made and own rules read from a conventions file, nothing stored. */
 export function useImportAgentFile(configId: number) {
   return useMutation({
     mutationFn: ({ provider, content }: { provider: StoredProvider; content: string }) =>

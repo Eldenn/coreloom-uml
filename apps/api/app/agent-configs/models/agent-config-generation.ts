@@ -6,7 +6,7 @@ import type {
   SkillSuggestions,
 } from '@coreloom-uml/catalog'
 import type { DateTime } from 'luxon'
-import type { AgentConfigInputs } from '#app/agent-configs/services/agent-context'
+import type { StoredAgentConfigInputs } from '#app/agent-configs/services/agent-context'
 
 /**
  * Skill suggestions of a generation, copied from the catalog when it was rendered. Generations
@@ -30,12 +30,12 @@ export default class AgentConfigGeneration extends BaseModel {
   @column()
   declare revision: number
 
-  /** The `@coreloom-uml/catalog` version whose questionnaires and templates rendered it. */
+  /** The `@coreloom-uml/catalog` version whose rule packs and templates rendered it. */
   @column()
   declare catalogVersion: string
 
   @column(json)
-  declare inputs: AgentConfigInputs
+  declare inputs: StoredAgentConfigInputs
 
   @column(json)
   declare files: AgentContextFile[]

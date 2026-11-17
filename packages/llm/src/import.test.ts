@@ -1,65 +1,81 @@
 import {
-  findQuestionnaire,
   MANAGED_BLOCK_BEGIN,
   MANAGED_BLOCK_END,
-  type Questionnaire,
+  RULE_PACKS,
+  ruleSections,
 } from '@coreloom-uml/catalog'
 import { APICallError } from 'ai'
 import { describe, expect, it } from 'vitest'
 import { LlmCallError } from './failure.ts'
-import { type ImportSource, importAgentFile, withoutManagedBlock } from './import.ts'
+import {
+  describeGroups,
+  IMPORT_INSTRUCTIONS,
+  IMPORT_MAX_INPUT_TOKENS,
+  type ImportSource,
+  importAgentFile,
+  importPrompt,
+  withoutManagedBlock,
+} from './import.ts'
 import { answeringModel, failingModel } from './testing/mock-model.ts'
 
-const questionnaire = findQuestionnaire('frontend-react') as Questionnaire
-const Q = 'frontend-react'
+/** Longest file the API sends (`AGENT_IMPORT_MAX_LENGTH`). */
+const LONGEST_FILE = 50_000
 
 function source(overrides: Partial<ImportSource> = {}): ImportSource {
   return {
-    questionnaires: [questionnaire],
-    answers: [{ questionnaireId: Q, questionId: 'styling', value: 'tailwind' }],
-    sections: ['Project', 'Architecture', 'Working style', 'TypeScript', 'React', 'Testing'],
+    packs: RULE_PACKS,
+    ready: [{ slot: 'react.styling', rule: 'tailwind' }],
+    sections: ruleSections(RULE_PACKS),
     existing: [{ section: 'React', text: 'Keep components under 200 lines.' }],
     content: '# Conventions\n\n- Never use any.\n- Use pnpm.\n- Deploy on Fridays only.',
     ...overrides,
   }
 }
 
-const reply = (answers: unknown[], rules: unknown[] = []) => JSON.stringify({ answers, rules })
+const reply = (ready: unknown[], rules: unknown[] = []) => JSON.stringify({ ready, rules })
+const pick = (slot: string, rule: string, value: string | null = null, evidence = 'quote') => ({
+  slot,
+  rule,
+  value,
+  evidence,
+})
 
 describe('importAgentFile', () => {
-  it('keeps the answers that fit their question and are new', async () => {
+  it('keeps the rules that fit their group and are new', async () => {
     const model = answeringModel(
       reply([
-        { id: `${Q}/ts-any`, value: 5, evidence: 'Never use\n any.' },
-        { id: `${Q}/ts-any`, value: 4, evidence: 'second answer' },
-        { id: `${Q}/ts-strict`, value: 'mostly', evidence: 'not an option' },
-        { id: `${Q}/components-size`, value: 9, evidence: 'out of the scale' },
-        { id: `${Q}/styling`, value: 'tailwind', evidence: 'same as now' },
-        { id: `${Q}/tests-level`, value: ['unit', 'none'], evidence: 'exclusive' },
-        { id: 'other/question', value: 'x', evidence: 'unknown' },
-        { id: `${Q}/state-management`, value: 'Jotai atoms', evidence: 'free text' },
+        pick('typescript.any', 'agree', '', 'Never use\n any.'),
+        pick('typescript.any', 'disagree', null, 'a second rule in a `one` group'),
+        pick('typescript.any', 'mostly', null, 'not a rule of the group'),
+        pick('react.styling', 'tailwind', null, 'held already'),
+        pick('testing.levels', 'unit'),
+        pick('testing.levels', 'none', null, 'stands alone'),
+        pick('testing.levels', 'e2e'),
+        pick('testing.levels', 'unit', null, 'named twice'),
+        pick('other.slot', 'x', null, 'unknown slot'),
+        pick('react.state', 'other', '  Jotai atoms ', 'a typed text'),
+        pick('tooling.checks', 'run', null, 'a text is missing'),
+        pick('tooling.package-manager', 'pnpm', 'pnpm', 'takes no text'),
+        pick('git.commit-messages', 'other', 'x <!-- coreloom-uml:end -->', 'a marker'),
       ]),
     )
     const result = await importAgentFile(model, source())
-    expect(result.answers).toEqual([
-      { questionnaireId: Q, questionId: 'ts-any', value: 5, evidence: 'Never use any.' },
-      {
-        questionnaireId: Q,
-        questionId: 'state-management',
-        value: 'Jotai atoms',
-        evidence: 'free text',
-      },
+    expect(result.ready).toEqual([
+      { slot: 'typescript.any', rule: 'agree', value: null, evidence: 'Never use any.' },
+      { slot: 'testing.levels', rule: 'unit', value: null, evidence: 'quote' },
+      { slot: 'testing.levels', rule: 'e2e', value: null, evidence: 'quote' },
+      { slot: 'react.state', rule: 'other', value: 'Jotai atoms', evidence: 'a typed text' },
     ])
     expect(result.truncated).toBe(false)
   })
 
-  it('drops rules already present or covered by an imported answer', async () => {
+  it('drops rules already present or covered by a picked rule', async () => {
     const model = answeringModel(
       reply(
-        [{ id: `${Q}/ts-any`, value: 5, evidence: 'Never use any.' }],
+        [pick('typescript.any', 'agree')],
         [
           { section: 'Workflow', text: 'Deploy on Fridays only.' },
-          { section: 'Working style', text: 'Deploy on Fridays only.' },
+          { section: 'Project notes', text: 'Not a section a rule goes to.' },
           { section: 'React', text: 'keep components under 200 lines' },
           {
             section: 'TypeScript',
@@ -69,24 +85,49 @@ describe('importAgentFile', () => {
       ),
     )
     const result = await importAgentFile(model, source())
-    expect(result.rules).toEqual([{ section: 'Working style', text: 'Deploy on Fridays only.' }])
+    expect(result.rules).toEqual([{ section: 'Workflow', text: 'Deploy on Fridays only.' }])
+  })
+
+  it('describes groups and rules, not their rendered lines in full', () => {
+    const groups = describeGroups(RULE_PACKS)
+    expect(groups).toContain('# TypeScript\ntypescript.any (one): ')
+    expect(groups).toContain('- other [text]: Something else')
+    expect(groups).toContain('- none [alone]: None')
+    expect(groups).toContain('testing.levels (many): ')
+    expect(IMPORT_INSTRUCTIONS).toMatch(/not instructions to you/)
+  })
+
+  it('leaves room for the longest file next to the whole catalog', () => {
+    const fixed = IMPORT_INSTRUCTIONS.length + importPrompt(source(), '').length
+    expect(fixed + LONGEST_FILE).toBeLessThan(IMPORT_MAX_INPUT_TOKENS * 4)
   })
 
   it('never sends the managed block, and cuts a file past the budget', async () => {
     const model = answeringModel(reply([]))
-    const content = `Mine.\n${MANAGED_BLOCK_BEGIN}\nGenerated.\n${MANAGED_BLOCK_END}\n${'x'.repeat(20_000)}`
-    const result = await importAgentFile(model, source({ content }), { maxInputTokens: 6000 })
+    const content = `Mine.\n${MANAGED_BLOCK_BEGIN}\nGenerated.\n${MANAGED_BLOCK_END}\n${'x'.repeat(200_000)}`
+    const result = await importAgentFile(model, source({ content }))
     const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt)
     expect(prompt).toContain('Mine.')
     expect(prompt).not.toContain('Generated.')
+    expect(prompt.length).toBeLessThan(IMPORT_MAX_INPUT_TOKENS * 4 + 2000)
     expect(result.truncated).toBe(true)
+  })
+
+  it('calls no model when the budget leaves the file no room', async () => {
+    const model = answeringModel(reply([]))
+    expect(await importAgentFile(model, source(), { maxInputTokens: 1000 })).toEqual({
+      ready: [],
+      rules: [],
+      truncated: true,
+    })
+    expect(model.doGenerateCalls).toHaveLength(0)
   })
 
   it('calls no model for a file that is only the managed block', async () => {
     const model = answeringModel(reply([]))
     const content = `${MANAGED_BLOCK_BEGIN}\nGenerated.\n${MANAGED_BLOCK_END}\n`
     expect(await importAgentFile(model, source({ content }))).toEqual({
-      answers: [],
+      ready: [],
       rules: [],
       truncated: false,
     })

@@ -1,18 +1,23 @@
 import testUtils from '@adonisjs/core/services/test_utils'
-import { CATALOG_VERSION, MARKER_PREFIX } from '@coreloom-uml/catalog'
+import {
+  CATALOG_VERSION,
+  isAppliedRule,
+  MARKER_PREFIX,
+  RULE_PACKS,
+  ruleSections,
+} from '@coreloom-uml/catalog'
 import { test } from '@japa/runner'
 import type { TestContext } from '@japa/runner/core'
 import { AGENT_GENERATIONS_KEPT, AGENT_RULES_MAX } from '#app/agent-configs/constants/agent-config'
 import AgentConfig from '#app/agent-configs/models/agent-config'
-import AgentConfigAnswer from '#app/agent-configs/models/agent-config-answer'
 import AgentConfigGeneration from '#app/agent-configs/models/agent-config-generation'
+import AgentConfigReadyRule from '#app/agent-configs/models/agent-config-ready-rule'
 import AgentConfigRule from '#app/agent-configs/models/agent-config-rule'
 import type { CreatedApiTokenOutput } from '#app/api-tokens/validators/api-tokens-output'
 import User from '#app/users/models/user'
 import { withEmptySkillsCatalog } from '#tests/helpers/skills'
 
 const json = { accept: 'application/json' }
-const Q = 'frontend-react'
 
 type Client = TestContext['client']
 
@@ -46,7 +51,6 @@ async function createConfig(
     .json({
       name: 'Storefront conventions',
       projectId,
-      questionnaires: [Q],
       targets: ['claude-code', 'cursor'],
       ...body,
     })
@@ -68,31 +72,34 @@ async function createArchitecture(
   return response.body().architecture as { id: number; projectId: number | null }
 }
 
-function answer(questionId: string, value: unknown, details?: string | null) {
-  return { questionnaireId: Q, questionId, value, ...(details === undefined ? {} : { details }) }
-}
+type Accepted = { rule: string; value?: string | null }
 
-/** An answer to each of the eleven questions of frontend-react. */
-const ALL_ANSWERS = [
-  answer('ts-any', 5),
-  answer('ts-strict', 'all'),
-  answer('components-size', 4),
-  answer('state-management', 'tanstack-query-only'),
-  answer('styling', 'tailwind'),
-  answer('tests-level', ['unit', 'e2e']),
-  answer('comments', 5),
-  answer('change-size', 5),
-  answer('ask-before-act', 4),
-  answer('package-manager', 'pnpm'),
-  answer('checks', 'pnpm lint && pnpm test'),
-]
-
-function putAnswers(client: Client, user: User, configId: number, answers: unknown[]) {
+function putReady(client: Client, user: User, configId: number, slot: string, rules: Accepted[]) {
   return client
-    .put(`/agent-configs/${configId}/answers`)
+    .put(`/agent-configs/${configId}/ready-rules/${slot}`)
     .headers(json)
     .loginAs(user)
-    .json({ answers })
+    .json({ rules })
+}
+
+/** Ready-made rules in ten groups of the front-end pack, as `[slot, rules]`. */
+const ALL_READY: [string, Accepted[]][] = [
+  ['typescript.any', [{ rule: 'agree' }]],
+  ['react.granularity', [{ rule: 'agree' }]],
+  ['react.state', [{ rule: 'tanstack-query-only' }]],
+  ['react.styling', [{ rule: 'tailwind' }]],
+  ['testing.levels', [{ rule: 'unit' }, { rule: 'e2e' }]],
+  ['style.comments', [{ rule: 'agree' }]],
+  ['workflow.changes', [{ rule: 'agree' }]],
+  ['workflow.autonomy', [{ rule: 'agree' }]],
+  ['tooling.package-manager', [{ rule: 'pnpm' }]],
+  ['tooling.checks', [{ rule: 'run', value: 'pnpm lint && pnpm test' }]],
+]
+
+async function acceptAll(client: Client, user: User, configId: number) {
+  for (const [slot, rules] of ALL_READY) {
+    ;(await putReady(client, user, configId, slot, rules)).assertStatus(200)
+  }
 }
 
 async function generate(client: Client, user: User, configId: number) {
@@ -128,26 +135,32 @@ function bearer(secret: string) {
   return { ...json, authorization: `Bearer ${secret}` }
 }
 
-test.group('Agent configs - questionnaires', (group) => {
+test.group('Agent configs - rule packs', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
 
-  test('lists the catalog questionnaires and shows one without its fragments', async ({
+  test('lists every rule pack of the catalog, each rule telling whether it is applied', async ({
     client,
     assert,
   }) => {
     const user = await makeUser()
 
-    const list = await client.get('/questionnaires').headers(json).loginAs(user)
+    const list = await client.get('/rule-packs').headers(json).loginAs(user)
     list.assertStatus(200)
-    assert.containsSubset(list.body().questionnaires, [
-      { id: Q, version: '1.1.0', questionCount: 50 },
-    ])
-
-    const shown = await client.get(`/questionnaires/${Q}`).headers(json).loginAs(user)
-    shown.assertStatus(200)
-    const { questionnaire } = shown.body()
-    assert.lengthOf(questionnaire.questions, 50)
-    assert.deepEqual(questionnaire.sections, [
+    type Rule = {
+      id: string
+      title: { en: string; fr: string }
+      lines: string[]
+      input: boolean
+      alone: boolean
+      applied: boolean
+    }
+    type Group = { slot: string; pick: string; lines: string[]; help: unknown; rules: Rule[] }
+    const packs = list.body().packs as { id: string; sections: string[]; groups: Group[] }[]
+    assert.deepEqual(
+      packs.map((pack) => pack.id),
+      RULE_PACKS.map((pack) => pack.id),
+    )
+    assert.deepEqual(packs[0].sections, [
       'TypeScript',
       'React',
       'HTML, CSS and accessibility',
@@ -155,42 +168,43 @@ test.group('Agent configs - questionnaires', (group) => {
       'Data and API',
       'Front-end security',
     ])
-    assert.properties(questionnaire.scaleLabels, ['min', 'max'])
-    for (const question of questionnaire.questions) assert.notProperty(question, 'fragments')
 
-    const missing = await client.get('/questionnaires/backend-go').headers(json).loginAs(user)
-    missing.assertStatus(404)
+    const groups = packs.flatMap((pack) => pack.groups)
+    const find = (slot: string) => groups.find((group) => group.slot === slot) as Group
+    const rule = (slot: string, id: string) =>
+      find(slot).rules.find((item) => item.id === id) as Rule
+    // A slot names one group across every pack.
+    assert.lengthOf(new Set(groups.map((group) => group.slot)), groups.length)
+    for (const group of groups) {
+      for (const item of group.rules) {
+        assert.equal(item.applied, isAppliedRule(group.slot, item.id))
+        assert.isNotEmpty(item.title.en)
+      }
+    }
+
+    assert.containsSubset(find('git.commit-messages'), { pick: 'one', lines: [] })
+    assert.isTrue(rule('git.commit-messages', 'conventional').applied)
+    assert.isFalse(rule('git.commit-messages', 'imperative').applied)
+    assert.containsSubset(rule('git.commit-messages', 'other'), { input: true, applied: false })
+    assert.containsSubset(rule('testing.levels', 'none'), { alone: true, input: false })
+    assert.equal(find('testing.levels').pick, 'many')
+    assert.isTrue(rule('tooling.checks', 'run').applied)
+    // A rule without a label is named after its first line; one without a line, after its group's.
+    assert.equal(rule('typescript.any', 'agree').title.en, rule('typescript.any', 'agree').lines[0])
+    assert.deepEqual(rule('tooling.package-manager', 'pnpm').lines, [])
+    assert.lengthOf(find('tooling.package-manager').lines, 1)
   })
 
-  test('lists the back-end, Git and security questionnaires, which combine with the first', async ({
+  test('requires a session or an API token, and no longer serves questionnaires', async ({
     client,
-    assert,
   }) => {
+    const anonymous = await client.get('/rule-packs').headers(json)
+    anonymous.assertStatus(401)
+
     const user = await makeUser()
-
-    const list = await client.get('/questionnaires').headers(json).loginAs(user)
-    list.assertStatus(200)
-    const ids = (list.body().questionnaires as { id: string }[]).map((item) => item.id)
-    assert.deepEqual(ids, [
-      Q,
-      'backend-node',
-      'git-workflow',
-      'security',
-      'system-design',
-      'software-design',
-      'ai-engineering',
-      'ai-agents',
-      'frontend-performance',
-    ])
-
-    const created = await createConfig(client, user, null, { questionnaires: ids })
-    assert.includeMembers(created.config.ruleSections, ['React', 'Database', 'Git', 'Agent loop'])
-    assert.notInclude(created.config.ruleSections, 'Project notes')
-  })
-
-  test('requires a session or an API token', async ({ client }) => {
-    const response = await client.get('/questionnaires').headers(json)
-    response.assertStatus(401)
+    const secret = await createToken(client, user, ['read'])
+    ;(await client.get('/rule-packs').headers(bearer(secret))).assertStatus(200)
+    ;(await client.get('/questionnaires').headers(json).loginAs(user)).assertStatus(404)
   })
 })
 
@@ -208,29 +222,20 @@ test.group('Agent configs - configuration', (group) => {
     assert.containsSubset(created.config, {
       projectId: project.id,
       name: 'Storefront conventions',
-      questionnaires: [{ id: Q, version: '1.1.0' }],
       targets: ['claude-code', 'cursor'],
       notes: 'Ship on Fridays.',
       revision: 1,
-      answers: [],
+      readyRules: [],
       rules: [],
       latestGeneration: null,
-      outdatedQuestionnaires: [],
     })
-    assert.deepEqual(created.config.ruleSections, [
-      'Project',
-      'Architecture',
-      'Working style',
-      'TypeScript',
-      'React',
-      'HTML, CSS and accessibility',
-      'Framework and rendering',
-      'Data and API',
-      'Front-end security',
-      'Testing',
-      'Workflow',
-      'Tooling',
-    ])
+    for (const gone of ['questionnaires', 'answers', 'outdatedQuestionnaires']) {
+      assert.notProperty(created.config, gone)
+    }
+    // Every pack is open to every configuration: the sections of all of them.
+    assert.deepEqual(created.config.ruleSections, ruleSections(RULE_PACKS))
+    assert.includeMembers(created.config.ruleSections, ['React', 'Database', 'Git', 'Agent loop'])
+    assert.notInclude(created.config.ruleSections, 'Project notes')
     assert.isNull(created.impact)
     const config = created.config as { id: number }
 
@@ -242,7 +247,6 @@ test.group('Agent configs - configuration', (group) => {
     updated.assertStatus(200)
     assert.containsSubset(updated.body().config, {
       id: config.id,
-      questionnaires: [{ id: Q, version: '1.1.0' }],
       targets: ['generic'],
       notes: 'Ship on Fridays.',
       revision: 2,
@@ -261,10 +265,7 @@ test.group('Agent configs - configuration', (group) => {
     assert.equal(shown.body().config.name, 'Shop rules')
   })
 
-  test('refuses unknown questionnaires and targets, and markers in the notes or name', async ({
-    client,
-    assert,
-  }) => {
+  test('refuses unknown targets, and markers in the notes or name', async ({ client, assert }) => {
     const user = await makeUser()
     const project = await createProject(client, user)
     const post = (body: Record<string, unknown>) =>
@@ -275,15 +276,10 @@ test.group('Agent configs - configuration', (group) => {
         .json({
           name: 'Rules',
           projectId: project.id,
-          questionnaires: [Q],
           targets: ['codex'],
           ...body,
         })
 
-    const unknown = await post({ questionnaires: ['backend-go'] })
-    unknown.assertStatus(422)
-    assert.include(unknown.body().error.message, 'backend-go')
-    ;(await post({ questionnaires: [] })).assertStatus(422)
     ;(await post({ targets: ['emacs'] })).assertStatus(422)
     ;(await post({ targets: [] })).assertStatus(422)
     ;(await post({ name: '' })).assertStatus(422)
@@ -332,7 +328,7 @@ test.group('Agent configs - configuration', (group) => {
       [inside.id, outside.id],
     )
     assert.containsSubset(all.body().meta, { page: 1, total: 2 })
-    assert.notProperty(all.body().data[0], 'answers')
+    assert.notProperty(all.body().data[0], 'readyRules')
 
     const inProject = await client
       .get(`/agent-configs?projectId=${project.id}`)
@@ -379,19 +375,21 @@ test.group('Agent configs - configuration', (group) => {
       .post('/agent-configs')
       .headers(json)
       .loginAs(user)
-      .json({ name: 'Again', projectId: project.id, questionnaires: [Q], targets: ['codex'] })
+      .json({ name: 'Again', projectId: project.id, targets: ['codex'] })
     second.assertStatus(409)
     assert.equal((await AgentConfig.findOrFail(taken.id)).projectId, project.id)
   })
 
-  test('deletes the configuration with its answers, rules and generations', async ({
+  test('deletes the configuration with its ready-made rules, rules and generations', async ({
     client,
     assert,
   }) => {
     const user = await makeUser()
     const project = await createProject(client, user)
     const { config } = await createConfig(client, user, project.id)
-    await putAnswers(client, user, config.id, [answer('ts-any', 5)])
+    ;(await putReady(client, user, config.id, 'typescript.any', [{ rule: 'agree' }])).assertStatus(
+      200,
+    )
     await client
       .post(`/agent-configs/${config.id}/rules`)
       .headers(json)
@@ -403,7 +401,7 @@ test.group('Agent configs - configuration', (group) => {
     deleted.assertStatus(204)
 
     assert.isNull(await AgentConfig.find(config.id))
-    assert.lengthOf(await AgentConfigAnswer.query().where('agentConfigId', config.id), 0)
+    assert.lengthOf(await AgentConfigReadyRule.query().where('agentConfigId', config.id), 0)
     assert.lengthOf(await AgentConfigRule.query().where('agentConfigId', config.id), 0)
     assert.lengthOf(await AgentConfigGeneration.query().where('agentConfigId', config.id), 0)
   })
@@ -450,7 +448,7 @@ test.group('Agent configs - configuration', (group) => {
       client.get(base),
       client.patch(base).json({ targets: ['codex'] }),
       client.delete(base),
-      client.put(`${base}/answers`).json({ answers: [answer('ts-any', 1)] }),
+      client.put(`${base}/ready-rules/typescript.any`).json({ rules: [{ rule: 'agree' }] }),
       client.post(`${base}/rules`).json({ section: 'React', text: 'Mine now.' }),
       client.patch(`${base}/rules/${ruleId}`).json({ text: 'Mine now.' }),
       client.delete(`${base}/rules/${ruleId}`),
@@ -465,96 +463,180 @@ test.group('Agent configs - configuration', (group) => {
   })
 })
 
-test.group('Agent configs - answers', (group) => {
+test.group('Agent configs - ready-made rules', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
 
-  test('saves answers partially, keeps details and removes with null', async ({
+  const held = (body: { config: { readyRules: unknown[] } }) => body.config.readyRules
+
+  test('a `one` group holds the last rule accepted, and an empty list removes it', async ({
     client,
     assert,
   }) => {
     const user = await makeUser()
-    const project = await createProject(client, user)
-    const { config } = await createConfig(client, user, project.id)
+    const { config } = await createConfig(client, user, null)
+    const put = (rules: Accepted[]) => putReady(client, user, config.id, 'typescript.any', rules)
 
-    const first = await putAnswers(client, user, config.id, [
-      answer('ts-any', 4, 'Sauf dans les tests.'),
-      answer('tests-level', ['unit']),
-    ])
+    const first = await put([{ rule: 'agree' }])
     first.assertStatus(200)
+    assert.deepEqual(held(first.body()), [{ slot: 'typescript.any', rule: 'agree', value: null }])
     assert.equal(first.body().config.revision, 2)
-    assert.lengthOf(first.body().config.answers, 2)
+    assert.isNull(first.body().impact)
 
-    const second = await putAnswers(client, user, config.id, [
-      answer('ts-any', 5),
-      answer('tests-level', null),
-    ])
+    const second = await put([{ rule: 'disagree' }])
     second.assertStatus(200)
+    assert.deepEqual(held(second.body()), [
+      { slot: 'typescript.any', rule: 'disagree', value: null },
+    ])
     assert.equal(second.body().config.revision, 3)
-    assert.deepEqual(
-      second
-        .body()
-        .config.answers.map(
-          (item: { questionId: string; value: unknown; details: string | null }) => [
-            item.questionId,
-            item.value,
-            item.details,
-          ],
-        ),
-      [['ts-any', 5, 'Sauf dans les tests.']],
-    )
 
-    const same = await putAnswers(client, user, config.id, [answer('ts-any', 5)])
-    assert.equal(same.body().config.revision, 3)
+    const both = await put([{ rule: 'agree' }, { rule: 'disagree' }])
+    both.assertStatus(422)
+    assert.equal(both.body().error.message, 'This group holds one rule')
+
+    const removed = await put([])
+    removed.assertStatus(200)
+    assert.deepEqual(held(removed.body()), [])
+    assert.equal(removed.body().config.revision, 4)
+    assert.lengthOf(await AgentConfigReadyRule.query().where('agentConfigId', config.id), 0)
   })
 
-  test('refuses answers that do not fit their question, and saves none of them', async ({
+  test('a `many` group holds several rules, in catalog order, and one that stands alone', async ({
     client,
     assert,
   }) => {
     const user = await makeUser()
-    const project = await createProject(client, user)
-    const { config } = await createConfig(client, user, project.id)
+    const { config } = await createConfig(client, user, null)
+    const put = (rules: Accepted[]) => putReady(client, user, config.id, 'testing.levels', rules)
 
-    const refused = await putAnswers(client, user, config.id, [
-      answer('ts-any', 5),
-      answer('components-size', 6),
-      answer('ts-strict', 'mostly'),
-      answer('tests-level', ['none', 'unit']),
-      answer('styling', `${MARKER_PREFIX}begin`),
-      answer('checks', 'x'.repeat(501)),
-      answer('no-such-question', 1),
-      answer('comments', { scale: 5 }),
+    ;(await put([{ rule: 'unit' }])).assertStatus(200)
+    const more = await put([{ rule: 'e2e' }, { rule: 'unit' }])
+    more.assertStatus(200)
+    assert.deepEqual(held(more.body()), [
+      { slot: 'testing.levels', rule: 'unit', value: null },
+      { slot: 'testing.levels', rule: 'e2e', value: null },
     ])
-    refused.assertStatus(422)
-    assert.deepEqual(
-      refused.body().error.problems.map((problem: { questionId: string }) => problem.questionId),
-      [
-        'components-size',
-        'ts-strict',
-        'tests-level',
-        'styling',
-        'checks',
-        'no-such-question',
-        'comments',
-      ],
+
+    const combined = await put([{ rule: 'none' }, { rule: 'unit' }])
+    combined.assertStatus(422)
+    assert.equal(combined.body().error.message, 'none cannot be combined')
+    const twice = await put([{ rule: 'unit' }, { rule: 'unit' }])
+    twice.assertStatus(422)
+    assert.lengthOf(
+      held((await client.get(`/agent-configs/${config.id}`).headers(json).loginAs(user)).body()),
+      2,
     )
-    assert.lengthOf(await AgentConfigAnswer.query().where('agentConfigId', config.id), 0)
 
-    const details = await putAnswers(client, user, config.id, [
-      answer('ts-any', 5, `${MARKER_PREFIX}end`),
-    ])
-    details.assertStatus(422)
+    const alone = await put([{ rule: 'none' }])
+    alone.assertStatus(200)
+    assert.deepEqual(held(alone.body()), [{ slot: 'testing.levels', rule: 'none', value: null }])
+
+    // Another group is left alone.
+    ;(await putReady(client, user, config.id, 'typescript.any', [{ rule: 'agree' }])).assertStatus(
+      200,
+    )
+    const cleared = await put([])
+    assert.deepEqual(held(cleared.body()), [{ slot: 'typescript.any', rule: 'agree', value: null }])
   })
 
-  test('accepts free text on an option that allows it', async ({ client }) => {
+  test('a rule that takes a text needs it, and only such a rule takes one', async ({
+    client,
+    assert,
+  }) => {
     const user = await makeUser()
-    const project = await createProject(client, user)
-    const { config } = await createConfig(client, user, project.id)
+    const { config } = await createConfig(client, user, null)
+    const put = (slot: string, rules: Accepted[]) => putReady(client, user, config.id, slot, rules)
 
-    const response = await putAnswers(client, user, config.id, [
-      answer('state-management', 'Jotai atoms'),
+    for (const rules of [
+      [{ rule: 'run' }],
+      [{ rule: 'run', value: null }],
+      [{ rule: 'run', value: '   ' }],
+    ]) {
+      const missing = await put('tooling.checks', rules)
+      missing.assertStatus(422)
+      assert.equal(missing.body().error.message, 'run needs a text')
+    }
+    ;(await put('tooling.checks', [{ rule: 'run', value: 'x'.repeat(501) }])).assertStatus(422)
+    const extra = await put('typescript.any', [{ rule: 'agree', value: 'because' }])
+    extra.assertStatus(422)
+    assert.equal(extra.body().error.message, 'agree takes no text')
+
+    const typed = await put('tooling.checks', [{ rule: 'run', value: '  pnpm lint && pnpm test ' }])
+    typed.assertStatus(200)
+    assert.deepEqual(held(typed.body()), [
+      { slot: 'tooling.checks', rule: 'run', value: 'pnpm lint && pnpm test' },
     ])
-    response.assertStatus(200)
+  })
+
+  test('refuses an unknown slot or rule, a marker and a malformed body, and saves nothing', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    const { config } = await createConfig(client, user, null)
+
+    const slot = await putReady(client, user, config.id, 'no.such-slot', [{ rule: 'agree' }])
+    slot.assertStatus(422)
+    assert.equal(slot.body().error.message, 'Unknown slot: no.such-slot')
+    const rule = await putReady(client, user, config.id, 'typescript.any', [{ rule: 'mostly' }])
+    rule.assertStatus(422)
+    assert.equal(rule.body().error.message, 'Unknown rule: mostly')
+    const marker = await putReady(client, user, config.id, 'tooling.checks', [
+      { rule: 'run', value: `pnpm test ${MARKER_PREFIX}end` },
+    ])
+    marker.assertStatus(422)
+    const malformed = await client
+      .put(`/agent-configs/${config.id}/ready-rules/typescript.any`)
+      .headers(json)
+      .loginAs(user)
+      .json({})
+    malformed.assertStatus(422)
+
+    assert.lengthOf(await AgentConfigReadyRule.query().where('agentConfigId', config.id), 0)
+    assert.equal((await AgentConfig.findOrFail(config.id)).revision, 1)
+  })
+
+  test('bumps the revision only when the rules of the group change', async ({ client, assert }) => {
+    const user = await makeUser()
+    const { config } = await createConfig(client, user, null)
+    const put = (slot: string, rules: Accepted[]) => putReady(client, user, config.id, slot, rules)
+    const revision = async (response: ReturnType<typeof put>) =>
+      (await response).body().config.revision as number
+
+    assert.equal(await revision(put('testing.levels', [])), 1)
+    assert.equal(await revision(put('testing.levels', [{ rule: 'unit' }, { rule: 'e2e' }])), 2)
+    assert.equal(await revision(put('testing.levels', [{ rule: 'e2e' }, { rule: 'unit' }])), 2)
+    assert.equal(await revision(put('tooling.checks', [{ rule: 'run', value: 'pnpm test' }])), 3)
+    assert.equal(await revision(put('tooling.checks', [{ rule: 'run', value: 'pnpm test' }])), 3)
+    assert.equal(await revision(put('tooling.checks', [{ rule: 'run', value: 'pnpm lint' }])), 4)
+  })
+
+  test('hides another account configuration behind a 404', async ({ client, assert }) => {
+    const owner = await makeUser()
+    const { config } = await createConfig(client, owner, null)
+
+    const response = await putReady(client, await makeUser(), config.id, 'typescript.any', [
+      { rule: 'agree' },
+    ])
+    response.assertStatus(404)
+    ;(await putReady(client, owner, 999_999, 'typescript.any', [{ rule: 'agree' }])).assertStatus(
+      404,
+    )
+    assert.lengthOf(await AgentConfigReadyRule.query().where('agentConfigId', config.id), 0)
+  })
+
+  test('leaves out a held rule the catalog no longer has', async ({ client, assert }) => {
+    const user = await makeUser()
+    const { config } = await createConfig(client, user, null)
+    await AgentConfigReadyRule.createMany([
+      { agentConfigId: config.id, slot: 'typescript.any', rule: 'agree', value: null },
+      { agentConfigId: config.id, slot: 'typescript.any', rule: 'retired-rule', value: null },
+      { agentConfigId: config.id, slot: 'retired.slot', rule: 'agree', value: null },
+    ])
+
+    const shown = await client.get(`/agent-configs/${config.id}`).headers(json).loginAs(user)
+    assert.deepEqual(held(shown.body()), [{ slot: 'typescript.any', rule: 'agree', value: null }])
+    const generation = await generate(client, user, config.id)
+    assert.include(generation.files[0].content, 'Never use `any`')
   })
 })
 
@@ -618,9 +700,7 @@ test.group('Agent configs - rules', (group) => {
     missing.assertStatus(404)
   })
 
-  test('refuses a rule outside the configuration sections, or past the limit', async ({
-    client,
-  }) => {
+  test('refuses a rule outside the catalog sections, or past the limit', async ({ client }) => {
     const user = await makeUser()
     const project = await createProject(client, user)
     const { config } = await createConfig(client, user, project.id)
@@ -667,13 +747,11 @@ test.group('Agent configs - generations', (group) => {
       response.assertStatus(201)
     }
     const { config } = await createConfig(client, user, project.id)
-    const answered = await putAnswers(client, user, config.id, ALL_ANSWERS)
-    answered.assertStatus(200)
-    assert.lengthOf(answered.body().config.answers, 11)
+    await acceptAll(client, user, config.id)
 
     const generation = await generate(client, user, config.id)
     assert.equal(generation.catalogVersion, CATALOG_VERSION)
-    assert.equal(generation.revision, 2)
+    assert.equal(generation.revision, 1 + ALL_READY.length)
     assert.deepEqual(
       generation.files.map((file) => [file.path, file.kind]),
       [
@@ -730,10 +808,10 @@ test.group('Agent configs - generations', (group) => {
 
     const detail = await client.get(`/agent-configs/${config.id}`).headers(json).loginAs(user)
     assert.equal(detail.body().config.latestGeneration.id, again.id)
-    assert.deepEqual(detail.body().impact, { stale: false, changedQuestions: [], files: [] })
+    assert.deepEqual(detail.body().impact, { stale: false, changedSlots: [], files: [] })
   })
 
-  test('suggests the catalog skills that fit the answers, and keeps them per generation', async ({
+  test('suggests the catalog skills that fit the rules held, and keeps them per generation', async ({
     client,
     assert,
   }) => {
@@ -744,7 +822,7 @@ test.group('Agent configs - generations', (group) => {
     const empty = await generate(client, user, config.id)
     assert.deepEqual(empty.skills, { compatible: [], conflicting: [] })
 
-    await putAnswers(client, user, config.id, ALL_ANSWERS)
+    await acceptAll(client, user, config.id)
     const fitting = await generate(client, user, config.id)
     assert.deepEqual(
       fitting.skills.compatible.map((skill) => [skill.id, skill.score]),
@@ -760,11 +838,19 @@ test.group('Agent configs - generations', (group) => {
     for (const skill of fitting.skills.compatible)
       assert.match(skill.url, /^https:\/\/github\.com\//)
 
-    await putAnswers(client, user, config.id, [
-      answer('ask-before-act', 1),
-      answer('components-size', 1),
-    ])
+    for (const slot of ['workflow.autonomy', 'react.granularity']) {
+      ;(await putReady(client, user, config.id, slot, [{ rule: 'disagree' }])).assertStatus(200)
+    }
     const conflicting = await generate(client, user, config.id)
+    // A rule without a label is named after its line.
+    const AUTONOMY = {
+      agree:
+        'Ask before any structural decision (new dependency, new pattern, data model or public API change).',
+      askBeforeWriting:
+        'Ask before writing to any file, and before any structural decision (new dependency, new pattern, data model or public API change).',
+      disagree:
+        'Make structural decisions yourself when needed, and explain them when handing back.',
+    }
     assert.deepEqual(
       conflicting.skills.conflicting.map((skill) => skill.id),
       ['brainstorming', 'writing-plans', 'react-composition-patterns'],
@@ -776,8 +862,11 @@ test.group('Agent configs - generations', (group) => {
           en: 'The assistant asks me before a structural decision rather than choosing alone.',
           fr: "L'assistant me pose une question avant une décision structurante plutôt que de choisir seul.",
         },
-        yourAnswer: { en: '1 of 5', fr: '1 sur 5' },
-        skillExpects: { en: '4 to 5 of 5', fr: '4 à 5 sur 5' },
+        yourAnswer: { en: AUTONOMY.disagree, fr: AUTONOMY.disagree },
+        skillExpects: {
+          en: `${AUTONOMY.agree} / ${AUTONOMY.askBeforeWriting}`,
+          fr: `${AUTONOMY.agree} / ${AUTONOMY.askBeforeWriting}`,
+        },
       },
     ])
 
@@ -868,19 +957,47 @@ test.group('Agent configs - generations', (group) => {
     latest.assertStatus(404)
   })
 
-  test('keeps the details out of the files until a rule is accepted', async ({
+  test('renders what an applied rule enforces: the commit-message hook', async ({
     client,
     assert,
   }) => {
     const user = await makeUser()
+    const { config } = await createConfig(client, user, null)
+    const paths = async () =>
+      (await generate(client, user, config.id)).files.map((file) => file.path)
+
+    assert.notInclude(await paths(), '.githooks/commit-msg')
+
+    const accepted = await putReady(client, user, config.id, 'git.commit-messages', [
+      { rule: 'conventional' },
+    ])
+    accepted.assertStatus(200)
+    assert.deepEqual(accepted.body().impact, {
+      stale: true,
+      changedSlots: ['git.commit-messages'],
+      files: [
+        { path: 'AGENTS.md', sections: ['Git'], change: 'modified' },
+        { path: '.githooks/commit-msg', sections: [], change: 'added' },
+      ],
+    })
+
+    const generation = await generate(client, user, config.id)
+    const hook = generation.files.find((file) => file.path === '.githooks/commit-msg')
+    assert.equal(hook?.kind, 'config')
+    assert.include(generation.files[0].content, 'Conventional Commits')
+
+    // A rule of the same group that only writes a line takes the hook away again.
+    ;(
+      await putReady(client, user, config.id, 'git.commit-messages', [{ rule: 'imperative' }])
+    ).assertStatus(200)
+    assert.notInclude(await paths(), '.githooks/commit-msg')
+  })
+
+  test('adds an accepted proposal to its section', async ({ client, assert }) => {
+    const user = await makeUser()
     const project = await createProject(client, user)
     const { config } = await createConfig(client, user, project.id)
-    await putAnswers(client, user, config.id, [
-      answer('ts-any', 5, 'Jamais de any, même dans les tests.'),
-    ])
-
-    const before = await generate(client, user, config.id)
-    for (const file of before.files) assert.notInclude(file.content, 'Jamais')
+    await generate(client, user, config.id)
 
     const rule = await client
       .post(`/agent-configs/${config.id}/rules`)
@@ -898,21 +1015,63 @@ test.group('Agent configs - generations', (group) => {
     assert.include(after.files[0].content, '- Never use any, not even in tests.')
   })
 
-  test('tells which files and sections a changed answer would alter', async ({
+  test('replays a generation stored before ready-made rules, whose files stay as they were', async ({
     client,
     assert,
   }) => {
     const user = await makeUser()
     const project = await createProject(client, user)
     const { config } = await createConfig(client, user, project.id)
-    await putAnswers(client, user, config.id, ALL_ANSWERS)
+    const first = await generate(client, user, config.id)
+    // The snapshot a generation held then: questionnaires and answers, no ready-made rules.
+    const row = await AgentConfigGeneration.findOrFail(first.id)
+    const { ready: _ready, ...inputs } = row.inputs
+    const stored = [{ ...first.files[0], content: 'Rendered from answers, long ago.\n' }]
+    await AgentConfigGeneration.query()
+      .where('id', first.id)
+      .update({
+        inputs: JSON.stringify({
+          ...inputs,
+          questionnaires: [{ id: 'frontend-react', version: '1.1.0' }],
+          answers: [{ questionnaireId: 'frontend-react', questionId: 'ts-any', value: 5 }],
+        }),
+        files: JSON.stringify(stored),
+      })
+
+    const detail = await client.get(`/agent-configs/${config.id}`).headers(json).loginAs(user)
+    detail.assertStatus(200)
+    assert.deepEqual(detail.body().impact, { stale: false, changedSlots: [], files: [] })
+
+    const accepted = await putReady(client, user, config.id, 'typescript.any', [{ rule: 'agree' }])
+    accepted.assertStatus(200)
+    assert.deepEqual(accepted.body().impact, {
+      stale: true,
+      changedSlots: ['typescript.any'],
+      files: [{ path: 'AGENTS.md', sections: ['TypeScript'], change: 'modified' }],
+    })
+
+    const shown = await client
+      .get(`/agent-configs/${config.id}/generations/${first.id}`)
+      .headers(json)
+      .loginAs(user)
+    shown.assertStatus(200)
+    assert.deepEqual(shown.body().generation.files, stored)
+  })
+
+  test('tells which files and sections a changed rule would alter', async ({ client, assert }) => {
+    const user = await makeUser()
+    const project = await createProject(client, user)
+    const { config } = await createConfig(client, user, project.id)
+    await acceptAll(client, user, config.id)
     await generate(client, user, config.id)
 
-    const changed = await putAnswers(client, user, config.id, [answer('ts-any', 1)])
+    const changed = await putReady(client, user, config.id, 'typescript.any', [
+      { rule: 'disagree' },
+    ])
     changed.assertStatus(200)
     assert.deepEqual(changed.body().impact, {
       stale: true,
-      changedQuestions: [`${Q}/ts-any`],
+      changedSlots: ['typescript.any'],
       files: [{ path: 'AGENTS.md', sections: ['TypeScript'], change: 'modified' }],
     })
 
@@ -920,7 +1079,7 @@ test.group('Agent configs - generations', (group) => {
       .patch(`/agent-configs/${config.id}`)
       .headers(json)
       .loginAs(user)
-      .json({ questionnaires: [Q], targets: ['cursor', 'gemini-cli'] })
+      .json({ targets: ['cursor', 'gemini-cli'] })
     retargeted.assertStatus(200)
     assert.deepEqual(retargeted.body().impact.files, [
       { path: 'AGENTS.md', sections: ['TypeScript'], change: 'modified' },
@@ -950,7 +1109,7 @@ test.group('Agent configs - generations', (group) => {
     const detail = await client.get(`/agent-configs/${config.id}`).headers(json).loginAs(user)
     assert.deepEqual(detail.body().impact, {
       stale: true,
-      changedQuestions: [],
+      changedSlots: [],
       files: [{ path: 'AGENTS.md', sections: ['Project'], change: 'modified' }],
     })
   })
@@ -987,44 +1146,10 @@ test.group('Agent configs - generations', (group) => {
   })
 })
 
-test.group('Agent configs - questionnaire versions', (group) => {
-  group.each.setup(() => testUtils.db().withGlobalTransaction())
-
-  test('flags a questionnaire answered against an older version and keeps its answers', async ({
-    client,
-    assert,
-  }) => {
-    const user = await makeUser()
-    const project = await createProject(client, user)
-    const { config } = await createConfig(client, user, project.id)
-    await putAnswers(client, user, config.id, [answer('ts-any', 5)])
-    await AgentConfig.query()
-      .where('id', config.id)
-      .update({ questionnaires: JSON.stringify([{ id: Q, version: '0.9.0' }]) })
-
-    const detail = await client.get(`/agent-configs/${config.id}`).headers(json).loginAs(user)
-    detail.assertStatus(200)
-    assert.deepEqual(detail.body().config.outdatedQuestionnaires, [
-      { id: Q, version: '0.9.0', currentVersion: '1.1.0' },
-    ])
-    assert.lengthOf(detail.body().config.answers, 1)
-
-    const upgraded = await client
-      .patch(`/agent-configs/${config.id}`)
-      .headers(json)
-      .loginAs(user)
-      .json({ questionnaires: [Q], targets: ['claude-code', 'cursor'] })
-    upgraded.assertStatus(200)
-    assert.deepEqual(upgraded.body().config.outdatedQuestionnaires, [])
-    assert.deepEqual(upgraded.body().config.questionnaires, [{ id: Q, version: '1.1.0' }])
-    assert.lengthOf(upgraded.body().config.answers, 1)
-  })
-})
-
 test.group('Agent configs - API tokens', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
 
-  test('a read-only key pulls the latest generation but cannot change answers', async ({
+  test('a read-only key pulls the latest generation but cannot change rules', async ({
     client,
     assert,
   }) => {
@@ -1041,9 +1166,9 @@ test.group('Agent configs - API tokens', (group) => {
     assert.equal(latest.body().generation.id, generation.id)
 
     const write = await client
-      .put(`/agent-configs/${config.id}/answers`)
+      .put(`/agent-configs/${config.id}/ready-rules/typescript.any`)
       .headers(bearer(secret))
-      .json({ answers: [answer('ts-any', 1)] })
+      .json({ rules: [{ rule: 'agree' }] })
     write.assertStatus(403)
 
     const regenerate = await client
@@ -1060,13 +1185,13 @@ test.group('Agent configs - API tokens', (group) => {
     const created = await client
       .post('/agent-configs')
       .headers(bearer(secret))
-      .json({ name: 'CLI', projectId: project.id, questionnaires: [Q], targets: ['codex'] })
+      .json({ name: 'CLI', projectId: project.id, targets: ['codex'] })
     created.assertStatus(201)
     const config = created.body().config as { id: number }
     const answered = await client
-      .put(`/agent-configs/${config.id}/answers`)
+      .put(`/agent-configs/${config.id}/ready-rules/typescript.any`)
       .headers(bearer(secret))
-      .json({ answers: [answer('ts-any', 1)] })
+      .json({ rules: [{ rule: 'disagree' }] })
     answered.assertStatus(200)
     const generated = await client
       .post(`/agent-configs/${config.id}/generations`)

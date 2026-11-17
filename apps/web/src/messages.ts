@@ -133,11 +133,7 @@ export const en = {
     failed: 'That didn’t work. Try again.',
     introTitle: 'Agent conventions',
     intro:
-      'Describe how you work, and Coreloom turns it into an AGENTS.md for your coding assistants. Nothing is sent to a model: the file is built from your answers.',
-    questionnaireLabel: 'Questionnaires',
-    questionnaireHint: 'What the questions are about: pick one or several.',
-    questionnaireRequired: 'Pick at least one questionnaire.',
-    questionCount: (count: number) => (count === 1 ? '1 question' : `${count} questions`),
+      'Pick the rules you work by, and Coreloom turns them into an AGENTS.md for your coding assistants. Nothing is sent to a model: the file is built from the rules you hold.',
     targetsLabel: 'Coding tools',
     targetsHint:
       'AGENTS.md holds everything. A tool that does not read it gets a short file pointing to it.',
@@ -158,47 +154,15 @@ export const en = {
       codex: 'AGENTS.md',
       generic: 'AGENTS.md only',
     },
-    start: 'Start',
-    questionsTitle: 'Questions',
-    questionOf: (index: number, total: number) => `Question ${index} of ${total}`,
-    sectionsLabel: 'Sections of the questionnaire',
-    previous: 'Previous',
-    next: 'Next',
-    skip: 'Skip',
-    finish: 'Save my answers',
-    saveAndExit: 'Save and leave',
-    answerRequired: 'Answer this question to go on.',
-    otherRequired: 'Say what you use.',
+    start: 'Create',
     textTooLong: (max: number) => `At most ${max} characters.`,
-    otherLabel: 'Which one?',
-    moreDetails: 'More details',
-    detailsValue: (details: string) => `More details: ${details}`,
-    moreDetailsHint:
-      'Never copied into the files as is. Turn it into a rule from the summary if it matters.',
-    draftRestored: 'Your unsaved answers were restored.',
-    answersSaved: 'Answers saved.',
-    summaryTitle: 'Your conventions',
-    answersTitle: 'Answers',
-    answersHint: 'Each answer adds lines to a section of AGENTS.md.',
-    editAnswers: 'Answer the questions',
-    edit: 'Edit',
-    editAnswer: (label: string) => `Edit the answer to “${label}”`,
     cancel: 'Cancel',
     save: 'Save',
     remove: 'Remove',
-    notAnswered: 'Not answered',
-    scaleValue: (value: number, min: string, max: string) =>
-      `${value} of 5 (1 = ${min}, 5 = ${max})`,
-    detailsToRule: 'Make it a rule',
-    outdatedTitle: 'The questionnaire has a new version',
-    outdatedText:
-      'Your answers are kept. Take the new version to see the questions that were added or changed.',
-    outdatedAction: 'Take the new version',
     rulesTitle: 'Rules',
-    rulesHint: (max: number) =>
-      `Lines you add to a section, in English, one instruction each. At most ${max}.`,
-    rulesEmpty: 'No rule yet. Add one when an answer does not say everything.',
-    addRule: 'Add a rule',
+    rulesHint:
+      'What AGENTS.md says: ready-made rules from the catalog, and the rules you write yourself.',
+    addRule: 'Write a rule',
     editRule: 'Edit the rule',
     ruleSection: 'Section',
     ruleText: 'Rule',
@@ -209,10 +173,59 @@ export const en = {
     ruleDeleted: 'Rule deleted.',
     ruleSourceManual: 'Written by hand',
     ruleSourceLlm: 'Proposed by a model',
-    moveUp: 'Move up',
-    moveDown: 'Move down',
-    ruleActions: (text: string) => `Actions for the rule “${text}”`,
     rulesFull: (max: number) => `This configuration already holds ${max} rules.`,
+    ownTitle: 'Your own rules',
+    ownHint: (max: number) =>
+      `Lines you add to a section, in English, one instruction each. At most ${max}.`,
+    ownEmpty: 'No rule of your own. Write one when no ready-made rule says it.',
+    ready: {
+      title: 'Ready-made rules',
+      intro: 'Tick the rules you work by. Every change is saved at once.',
+      browse: 'Browse ready-made rules',
+      count: (count: number) => {
+        if (count === 0) return 'No ready-made rule held'
+        return count === 1 ? '1 ready-made rule held' : `${count} ready-made rules held`
+      },
+      applied: 'Applied',
+      appliedHint:
+        'Also produces a generated file besides AGENTS.md: a Git hook, a tool’s settings file, the CI workflow or the development container.',
+      emptyTitle: 'No ready-made rule yet',
+      emptyText: (rules: number) =>
+        `The catalog holds ${rules} rules to add one by one. A good place to start: the ones that also produce a generated file, such as a Git hook or a tool’s settings.`,
+      startWith: 'Rules that also produce a generated file',
+      change: 'Change',
+      changeGroup: (label: string) => `Change in the catalog: ${label}`,
+      removeRule: (title: string) => `Remove the rule “${title}”`,
+      removed: 'Rule removed.',
+      valueLabel: 'Text',
+      checksLabel: 'Commands',
+      valueOf: (title: string) => `the text of “${title}”`,
+      valueHint: 'Takes the place of “…” in the line above.',
+      checksHint:
+        'The commands as you type them in a terminal. Join several with &&, for example: pnpm lint && pnpm test.',
+      valueWaiting: 'Not saved yet: type the text to hold this rule.',
+      alone: 'on its own',
+      alsoWritten: 'Also written with any of these:',
+      clear: 'Hold none',
+      clearGroup: (label: string) => `Hold none of: ${label}`,
+      notSaved: 'This change was not saved.',
+      packs: 'Rule packs',
+      all: 'All packs',
+      packHeld: (count: number) => `${count} held`,
+      packNoMatch: 'no match',
+      search: 'Search the rules',
+      filters: 'Show only',
+      filterApplied: 'Applied',
+      filterHeld: 'Held',
+      results: (count: number) => (count === 1 ? '1 group of rules' : `${count} groups of rules`),
+      noMatchTitle: 'No rule matches',
+      noMatchSearch: (query: string) => `Nothing matches “${query}”. Try fewer or other words.`,
+      noMatchFilters: 'No group of rules passes these filters.',
+      clearSearch: 'Clear the search',
+      clearFilters: 'Remove the filters',
+      searchAll: 'Look in all packs',
+      more: 'Show more rules',
+    },
     notesTitle: 'Project notes',
     notesHint:
       'Copied as is at the end of AGENTS.md, in Markdown, under a line saying you wrote them.',
@@ -224,10 +237,10 @@ export const en = {
     neverGenerated: 'No files generated yet.',
     upToDate: 'The latest files are up to date.',
     staleTitle: 'Needs regenerating',
-    staleText: (questions: number, files: string) =>
-      questions === 0
+    staleText: (groups: number, files: string) =>
+      groups === 0
         ? `Changes since the latest files: ${files}.`
-        : `${questions === 1 ? '1 answer changed' : `${questions} answers changed`}: ${files}.`,
+        : `Ready-made rules changed in ${groups === 1 ? '1 group' : `${groups} groups`}: ${files}.`,
     staleOnlyRevision: 'The source changed since the latest files, but they would be the same.',
     fileChange: {
       modified: (path: string, sections: string) =>
@@ -239,7 +252,7 @@ export const en = {
     deleteConfig: 'Delete the conventions',
     deleteTitle: 'Delete the agent conventions?',
     deleteText:
-      'The answers, rules, notes and every generation go with them. Files already written in a repository stay there.',
+      'The rules, notes and every generation go with them. Files already written in a repository stay there.',
     deleted: 'Agent conventions deleted.',
     generationTitle: (revision: number) => `Files of revision ${revision}`,
     generatedAt: 'Generated',
@@ -264,10 +277,10 @@ export const en = {
     skillsTitle: 'Skills',
     skillsThirdParty:
       'Third-party resources, not checked by Coreloom. Read a skill before adding it to your tools.',
-    skillsCompatible: 'Fit your answers',
-    skillsConflicting: 'Go against your answers',
-    skillReason: (question: string, answer: string, expects: string) =>
-      `“${question.replace(/[.:]\s*$/, '')}”: you answered ${answer}, this skill expects ${expects}.`,
+    skillsCompatible: 'Fit your rules',
+    skillsConflicting: 'Go against your rules',
+    skillReason: (group: string, held: string, expects: string) =>
+      `“${group.replace(/[.:]\s*$/, '')}”: you hold ${held}, this skill expects ${expects}.`,
     skillAudits: (audits: string) => `skills.sh security audits: ${audits}.`,
     auditRisks: {
       safe: 'safe',
@@ -1018,7 +1031,7 @@ export const en = {
   llm: {
     providerTitle: 'LLM provider',
     providerHint:
-      'Your own model proposes rules for the agent conventions from your notes. Stored only in this browser: the server never keeps the settings or the key.',
+      'Your own model proposes rules for the agent conventions from your diagrams or review feedback. Stored only in this browser: the server never keeps the settings or the key.',
     kind: 'Provider',
     kinds: {
       anthropic: 'Anthropic',
@@ -1093,20 +1106,15 @@ export const en = {
     failed: 'Something went wrong.',
     propose: 'Propose rules',
     proposalsTitle: 'Proposed rules',
-    proposalsHint: (model: string) =>
-      `${model} turned your notes into rules. Nothing is saved until you accept one.`,
     proposalsPlan: 'Proposing rules',
-    proposalsStepSend: 'Send the answers, notes and accepted rules',
     proposalsStepWait: (model: string) => `Wait for ${model}`,
     proposalsStepReview: 'Review the proposals',
-    proposalsTruncated: 'Some long notes were shortened to fit what the model can read.',
+    proposalsTruncated: 'Some of it was shortened to fit what the model can read.',
     proposalsEmpty: 'No rules left to review.',
-    proposalsNone: 'The model found nothing to add from your notes.',
     proposeAgain: 'Propose again',
     retry: 'Try again',
-    basedOn: (question: string) => `From: ${question}`,
+    basedOn: (diagram: string) => `From: ${diagram}`,
     proposalsFrom: 'Propose from',
-    fromAnswers: 'My notes',
     fromDiagrams: 'My diagrams',
     proposalsHintDiagrams: (model: string) =>
       `${model} turns your diagrams into architecture rules. The checked diagrams are sent to it as text; nothing is saved until you accept a rule.`,
@@ -1129,20 +1137,21 @@ export const en = {
     importFile: 'Import a file',
     importTitle: 'Import a conventions file',
     importHint: (model: string) =>
-      `Paste your AGENTS.md, CLAUDE.md or another conventions file: ${model} turns it into answers and rules. Nothing is saved until you apply or accept them.`,
+      `Paste your AGENTS.md, CLAUDE.md or another conventions file: ${model} finds the ready-made rules it matches and turns the rest into rules of your own. Nothing is saved until you add or accept them.`,
     importLabel: 'The file',
     importRun: 'Read the file',
     importAgain: 'Import another file',
     importReading: (model: string) => `${model} is reading the file…`,
     importTruncated: 'The file was too long for the model: its end was left out.',
-    importAnswers: 'Answers',
-    importAnswersHint:
-      'The checked answers are applied together. An answer that would replace yours starts unchecked.',
-    importNoAnswers: 'The file gives no answer you do not already have.',
+    importReady: 'Ready-made rules',
+    importReadyHint:
+      'The checked rules are added together. One that would replace a rule you hold starts unchecked.',
+    importNoReady: 'The file matches no ready-made rule you do not already hold.',
+    importValue: (value: string) => `Text: ${value}`,
     importReplaces: (current: string) => `Replaces: ${current}`,
-    importApply: (count: number) => `Apply the checked answers (${String(count)})`,
-    importApplied: 'Answers applied.',
-    importRules: 'Rules',
+    importApply: (count: number) => `Add the checked rules (${String(count)})`,
+    importApplied: 'Rules added.',
+    importRules: 'Rules of your own',
     importNoRules: 'Nothing else in the file to turn into rules.',
     rulesFull: 'The rule list is full: remove a rule before accepting another.',
   },
@@ -1285,11 +1294,7 @@ export const fr: Messages = {
     failed: 'Cela n’a pas fonctionné. Réessayez.',
     introTitle: 'Conventions d’agents',
     intro:
-      'Décrivez comment vous travaillez, Coreloom en fait un AGENTS.md pour vos assistants de code. Rien n’est envoyé à un modèle : le fichier est construit à partir de vos réponses.',
-    questionnaireLabel: 'Questionnaires',
-    questionnaireHint: 'Les thèmes des questions : choisissez-en un ou plusieurs.',
-    questionnaireRequired: 'Choisissez au moins un questionnaire.',
-    questionCount: (count: number) => (count <= 1 ? `${count} question` : `${count} questions`),
+      'Choisissez les règles que vous suivez, Coreloom en fait un AGENTS.md pour vos assistants de code. Rien n’est envoyé à un modèle : le fichier est construit à partir des règles que vous retenez.',
     targetsLabel: 'Outils de code',
     targetsHint:
       'AGENTS.md porte tout le contenu. Un outil qui ne le lit pas reçoit un court fichier qui y renvoie.',
@@ -1310,47 +1315,15 @@ export const fr: Messages = {
       codex: 'AGENTS.md',
       generic: 'AGENTS.md seulement',
     },
-    start: 'Commencer',
-    questionsTitle: 'Questions',
-    questionOf: (index: number, total: number) => `Question ${index} sur ${total}`,
-    sectionsLabel: 'Sections du questionnaire',
-    previous: 'Précédente',
-    next: 'Suivante',
-    skip: 'Passer',
-    finish: 'Enregistrer mes réponses',
-    saveAndExit: 'Enregistrer et quitter',
-    answerRequired: 'Répondez à cette question pour continuer.',
-    otherRequired: 'Précisez ce que vous utilisez.',
+    start: 'Créer',
     textTooLong: (max: number) => `${max} caractères au plus.`,
-    otherLabel: 'Lequel ?',
-    moreDetails: 'Plus de détails',
-    detailsValue: (details: string) => `Plus de détails : ${details}`,
-    moreDetailsHint:
-      'Jamais recopié tel quel dans les fichiers. Transformez-le en règle depuis le résumé s’il compte.',
-    draftRestored: 'Vos réponses non enregistrées ont été restaurées.',
-    answersSaved: 'Réponses enregistrées.',
-    summaryTitle: 'Vos conventions',
-    answersTitle: 'Réponses',
-    answersHint: 'Chaque réponse ajoute des lignes à une section d’AGENTS.md.',
-    editAnswers: 'Répondre aux questions',
-    edit: 'Modifier',
-    editAnswer: (label: string) => `Modifier la réponse à « ${label} »`,
     cancel: 'Annuler',
     save: 'Enregistrer',
     remove: 'Retirer',
-    notAnswered: 'Sans réponse',
-    scaleValue: (value: number, min: string, max: string) =>
-      `${value} sur 5 (1 = ${min}, 5 = ${max})`,
-    detailsToRule: 'En faire une règle',
-    outdatedTitle: 'Le questionnaire a une nouvelle version',
-    outdatedText:
-      'Vos réponses sont gardées. Passez à la nouvelle version pour voir les questions ajoutées ou modifiées.',
-    outdatedAction: 'Passer à la nouvelle version',
     rulesTitle: 'Règles',
-    rulesHint: (max: number) =>
-      `Des lignes que vous ajoutez à une section, en anglais, une consigne chacune. ${max} au plus.`,
-    rulesEmpty: 'Aucune règle. Ajoutez-en une quand une réponse ne dit pas tout.',
-    addRule: 'Ajouter une règle',
+    rulesHint:
+      'Ce que dit AGENTS.md : des règles prêtes à l’emploi du catalogue, et les règles que vous écrivez vous-même.',
+    addRule: 'Écrire une règle',
     editRule: 'Modifier la règle',
     ruleSection: 'Section',
     ruleText: 'Règle',
@@ -1361,10 +1334,63 @@ export const fr: Messages = {
     ruleDeleted: 'Règle supprimée.',
     ruleSourceManual: 'Écrite à la main',
     ruleSourceLlm: 'Proposée par un modèle',
-    moveUp: 'Monter',
-    moveDown: 'Descendre',
-    ruleActions: (text: string) => `Actions pour la règle « ${text} »`,
     rulesFull: (max: number) => `Cette configuration compte déjà ${max} règles.`,
+    ownTitle: 'Vos propres règles',
+    ownHint: (max: number) =>
+      `Des lignes que vous ajoutez à une section, en anglais, une consigne chacune. ${max} au plus.`,
+    ownEmpty: 'Aucune règle à vous. Écrivez-en une quand aucune règle prête à l’emploi ne le dit.',
+    ready: {
+      title: 'Règles prêtes à l’emploi',
+      intro: 'Cochez les règles que vous suivez. Chaque changement est enregistré aussitôt.',
+      browse: 'Parcourir les règles prêtes à l’emploi',
+      count: (count: number) => {
+        if (count === 0) return 'Aucune règle prête à l’emploi retenue'
+        return count === 1
+          ? '1 règle prête à l’emploi retenue'
+          : `${count} règles prêtes à l’emploi retenues`
+      },
+      applied: 'Appliquée',
+      appliedHint:
+        'Produit aussi un fichier généré en plus d’AGENTS.md : un hook Git, le fichier de réglages d’un outil, le workflow de CI ou le conteneur de développement.',
+      emptyTitle: 'Pas encore de règle prête à l’emploi',
+      emptyText: (rules: number) =>
+        `Le catalogue compte ${rules} règles, à ajouter une par une. Un bon point de départ : celles qui produisent aussi un fichier généré, comme un hook Git ou les réglages d’un outil.`,
+      startWith: 'Règles qui produisent aussi un fichier généré',
+      change: 'Changer',
+      changeGroup: (label: string) => `Changer dans le catalogue : ${label}`,
+      removeRule: (title: string) => `Retirer la règle « ${title} »`,
+      removed: 'Règle retirée.',
+      valueLabel: 'Texte',
+      checksLabel: 'Commandes',
+      valueOf: (title: string) => `le texte de « ${title} »`,
+      valueHint: 'Prend la place de « … » dans la ligne ci-dessus.',
+      checksHint:
+        'Les commandes telles que vous les tapez dans un terminal. Reliez-en plusieurs avec &&, par exemple : pnpm lint && pnpm test.',
+      valueWaiting: 'Pas encore enregistrée : saisissez le texte pour retenir cette règle.',
+      alone: 'seule',
+      alsoWritten: 'Écrit aussi avec n’importe laquelle :',
+      clear: 'N’en retenir aucune',
+      clearGroup: (label: string) => `N’en retenir aucune dans : ${label}`,
+      notSaved: 'Ce changement n’a pas été enregistré.',
+      packs: 'Packs de règles',
+      all: 'Tous les packs',
+      packHeld: (count: number) => (count <= 1 ? `${count} retenue` : `${count} retenues`),
+      packNoMatch: 'aucun résultat',
+      search: 'Rechercher dans les règles',
+      filters: 'N’afficher que',
+      filterApplied: 'Appliquées',
+      filterHeld: 'Retenues',
+      results: (count: number) =>
+        count <= 1 ? `${count} groupe de règles` : `${count} groupes de règles`,
+      noMatchTitle: 'Aucune règle ne correspond',
+      noMatchSearch: (query: string) =>
+        `Rien ne correspond à « ${query} ». Essayez moins de mots, ou d’autres.`,
+      noMatchFilters: 'Aucun groupe de règles ne passe ces filtres.',
+      clearSearch: 'Effacer la recherche',
+      clearFilters: 'Retirer les filtres',
+      searchAll: 'Chercher dans tous les packs',
+      more: 'Afficher plus de règles',
+    },
     notesTitle: 'Notes du projet',
     notesHint:
       'Recopiées telles quelles à la fin d’AGENTS.md, en Markdown, sous une phrase qui dit que vous les avez écrites.',
@@ -1376,10 +1402,10 @@ export const fr: Messages = {
     neverGenerated: 'Aucun fichier généré pour l’instant.',
     upToDate: 'Les derniers fichiers sont à jour.',
     staleTitle: 'À régénérer',
-    staleText: (questions: number, files: string) =>
-      questions === 0
+    staleText: (groups: number, files: string) =>
+      groups === 0
         ? `Changements depuis les derniers fichiers : ${files}.`
-        : `${questions === 1 ? '1 réponse modifiée' : `${questions} réponses modifiées`} : ${files}.`,
+        : `Règles prêtes à l’emploi modifiées dans ${groups === 1 ? '1 groupe' : `${groups} groupes`} : ${files}.`,
     staleOnlyRevision:
       'La source a changé depuis les derniers fichiers, mais ils resteraient identiques.',
     fileChange: {
@@ -1392,7 +1418,7 @@ export const fr: Messages = {
     deleteConfig: 'Supprimer les conventions',
     deleteTitle: 'Supprimer les conventions d’agents ?',
     deleteText:
-      'Les réponses, les règles, les notes et toutes les générations disparaissent avec elles. Les fichiers déjà écrits dans un dépôt y restent.',
+      'Les règles, les notes et toutes les générations disparaissent avec elles. Les fichiers déjà écrits dans un dépôt y restent.',
     deleted: 'Conventions d’agents supprimées.',
     generationTitle: (revision: number) => `Fichiers de la révision ${revision}`,
     generatedAt: 'Générés',
@@ -1417,10 +1443,10 @@ export const fr: Messages = {
     skillsTitle: 'Skills',
     skillsThirdParty:
       'Ressources tierces, non vérifiées par Coreloom. Lisez un skill avant de l’ajouter à vos outils.',
-    skillsCompatible: 'Compatibles avec vos réponses',
-    skillsConflicting: 'En contradiction avec vos réponses',
-    skillReason: (question: string, answer: string, expects: string) =>
-      `« ${question.replace(/[.:]\s*$/, '')} » : vous avez répondu ${answer}, ce skill attend ${expects}.`,
+    skillsCompatible: 'Compatibles avec vos règles',
+    skillsConflicting: 'En contradiction avec vos règles',
+    skillReason: (group: string, held: string, expects: string) =>
+      `« ${group.replace(/[.:]\s*$/, '')} » : vous retenez ${held}, ce skill attend ${expects}.`,
     skillAudits: (audits: string) => `Audits de sécurité skills.sh : ${audits}.`,
     auditRisks: {
       safe: 'sûr',
@@ -2199,7 +2225,7 @@ export const fr: Messages = {
   llm: {
     providerTitle: 'Fournisseur LLM',
     providerHint:
-      'Votre propre modèle propose des règles pour les conventions d’agents à partir de vos notes. Stocké uniquement dans ce navigateur : le serveur ne garde ni les réglages ni la clé.',
+      'Votre propre modèle propose des règles pour les conventions d’agents à partir de vos diagrammes ou de vos retours de revue. Stocké uniquement dans ce navigateur : le serveur ne garde ni les réglages ni la clé.',
     kind: 'Fournisseur',
     kinds: {
       anthropic: 'Anthropic',
@@ -2276,21 +2302,15 @@ export const fr: Messages = {
     failed: 'Une erreur est survenue.',
     propose: 'Proposer des règles',
     proposalsTitle: 'Règles proposées',
-    proposalsHint: (model: string) =>
-      `${model} a transformé vos notes en règles. Rien n’est enregistré tant que vous n’en acceptez pas une.`,
     proposalsPlan: 'Proposition de règles',
-    proposalsStepSend: 'Envoyer les réponses, les notes et les règles acceptées',
     proposalsStepWait: (model: string) => `Attendre ${model}`,
     proposalsStepReview: 'Relire les propositions',
-    proposalsTruncated:
-      'Certaines notes longues ont été raccourcies pour tenir dans ce que le modèle peut lire.',
+    proposalsTruncated: 'Une partie a été raccourcie pour tenir dans ce que le modèle peut lire.',
     proposalsEmpty: 'Plus aucune règle à relire.',
-    proposalsNone: 'Le modèle n’a rien trouvé à ajouter à partir de vos notes.',
     proposeAgain: 'Proposer à nouveau',
     retry: 'Réessayer',
-    basedOn: (question: string) => `D’après : ${question}`,
+    basedOn: (diagram: string) => `D’après : ${diagram}`,
     proposalsFrom: 'Proposer à partir de',
-    fromAnswers: 'Mes notes',
     fromDiagrams: 'Mes diagrammes',
     proposalsHintDiagrams: (model: string) =>
       `${model} transforme vos diagrammes en règles d’architecture. Les diagrammes cochés lui sont envoyés sous forme de texte ; rien n’est enregistré tant que vous n’acceptez pas une règle.`,
@@ -2313,20 +2333,22 @@ export const fr: Messages = {
     importFile: 'Importer un fichier',
     importTitle: 'Importer un fichier de conventions',
     importHint: (model: string) =>
-      `Collez votre AGENTS.md, CLAUDE.md ou un autre fichier de conventions : ${model} en tire des réponses et des règles. Rien n’est enregistré tant que vous ne les appliquez ou ne les acceptez pas.`,
+      `Collez votre AGENTS.md, CLAUDE.md ou un autre fichier de conventions : ${model} y retrouve les règles prêtes à l’emploi qui lui correspondent et fait du reste des règles à vous. Rien n’est enregistré tant que vous ne les ajoutez ou ne les acceptez pas.`,
     importLabel: 'Le fichier',
     importRun: 'Lire le fichier',
     importAgain: 'Importer un autre fichier',
     importReading: (model: string) => `${model} lit le fichier…`,
     importTruncated: 'Le fichier était trop long pour le modèle : sa fin a été laissée de côté.',
-    importAnswers: 'Réponses',
-    importAnswersHint:
-      'Les réponses cochées sont appliquées ensemble. Une réponse qui remplacerait la vôtre est décochée au départ.',
-    importNoAnswers: 'Le fichier ne donne aucune réponse que vous n’avez pas déjà.',
+    importReady: 'Règles prêtes à l’emploi',
+    importReadyHint:
+      'Les règles cochées sont ajoutées ensemble. Celle qui remplacerait une règle que vous retenez commence décochée.',
+    importNoReady:
+      'Le fichier ne correspond à aucune règle prête à l’emploi que vous ne reteniez déjà.',
+    importValue: (value: string) => `Texte : ${value}`,
     importReplaces: (current: string) => `Remplace : ${current}`,
-    importApply: (count: number) => `Appliquer les réponses cochées (${String(count)})`,
-    importApplied: 'Réponses appliquées.',
-    importRules: 'Règles',
+    importApply: (count: number) => `Ajouter les règles cochées (${String(count)})`,
+    importApplied: 'Règles ajoutées.',
+    importRules: 'Règles à vous',
     importNoRules: 'Rien d’autre à transformer en règles dans le fichier.',
     rulesFull: 'La liste des règles est pleine : retirez une règle avant d’en accepter une autre.',
   },

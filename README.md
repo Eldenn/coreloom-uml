@@ -100,7 +100,7 @@ stripped down); the whole front end is built with [coreloom-ui](https://github.c
 | Unit & integration tests | Japa (`apps/api`). `apps/web` screen tests (Playwright + axe, as in coreloom-ui) are not written yet — see [Not yet included](#not-yet-included). |
 | UI | coreloom-ui (Tailwind CSS v4, Radix, shadcn), installed into `apps/web/src/components` |
 | Diagrams | coreloom-ui's `DiagramEditor` / `UmlDiagram`; the UML model and its Mermaid, PlantUML and JSON conversion in `packages/uml`, shared by the web app and the API |
-| Agent conventions | `packages/catalog`: the questionnaires, slot registry and per-tool templates from which `renderAgentContext` deterministically renders an `AGENTS.md` (plus pointer files for tools that do not read it natively); `apps/cli` (`@coreloom-uml/cli`, published on npm) writes them into a repository |
+| Agent conventions | `packages/catalog`: the ready-made rule packs, slot registry and per-tool templates from which `renderAgentContext` deterministically renders an `AGENTS.md` (plus pointer files for tools that do not read it natively); `apps/cli` (`@coreloom-uml/cli`, published on npm) writes them into a repository |
 | Code maps | `packages/codemap`: the `CodeMap` format (files, symbols and the links between them, never source code), the importer of graphify's `graph.json`, entry point detection, and the deterministic matching of diagrams against a map; `coreloom-uml map push` (`apps/cli`) sends one from a repository |
 | LLM (bring your own key) | `packages/llm`: the Vercel AI SDK (`ai` 7, `@ai-sdk/*`) behind rule proposals and the connection test; Anthropic, OpenAI, Mistral, Ollama and OpenAI-compatible servers (allowlisted) |
 
@@ -118,7 +118,7 @@ coreloom-uml/
 │   ├── config/               # Shared TypeScript config — copied from coreloom, unmodified
 │   ├── auth-policy/          # Password policy — copied from coreloom (consumed from source, no build step)
 │   ├── uml/                  # UML model + Mermaid/PlantUML/JSON conversion, shared by web and api (zod only)
-│   ├── catalog/              # Agent conventions: questionnaires, slots, per-tool templates, renderAgentContext (zod only)
+│   ├── catalog/              # Agent conventions: rule packs, slots, per-tool templates, renderAgentContext (zod only)
 │   ├── llm/                  # Calls with the user's own LLM key: providers, allowlist, connection test, rule proposals
 │   └── feature-flags/        # Feature flag declarations and their evaluation, shared by web and api (zod only)
 └── infra/
@@ -240,7 +240,7 @@ hashed in `auth_access_tokens`; the secret is shown once, at creation.
 - Each key is named, has a `read` and/or `write` ability, and expires after
   1 to 365 days or never. `GET` needs `read`, every other method `write`
   (403 otherwise).
-- Only the `/projects`, `/agent-configs`, `/architectures` and `/questionnaires`
+- Only the `/projects`, `/agent-configs`, `/architectures` and `/rule-packs`
   routes accept a key (`middleware.auth({ guards: ['web', 'api'] })` + `middleware.tokenAbility()`).
 - A key cannot `force` a diagram save: on a version conflict it gets the 409
   and must reload the latest version.
@@ -398,22 +398,24 @@ can be read). The `installation`, `installation_repositories` and
 
 ### Agent conventions
 
-An agent configuration (`app/agent-configs/`, tables `agent_configs`, `agent_config_answers`,
+An agent configuration (`app/agent-configs/`, tables `agent_configs`, `agent_config_ready_rules`,
 `agent_config_rules`, `agent_config_generations`) sits in one of the owner's projects (at most one
-per project) or outside any, like an architecture. It has a name and holds the catalog
-questionnaires it uses, the answers, the accepted rules, the owner's notes and the target tools.
+per project) or outside any, like an architecture. It has a name and holds the ready-made
+rules accepted from the catalog, the owner's own rules, the owner's notes and the target tools.
 Those are the source of truth; files only exist in its generations, rendered by
 `renderAgentContext` from `packages/catalog`.
 
-- `GET /questionnaires` and `GET /questionnaires/:questionnaireId` serve the catalog (questions
-  without their fragments), so the web app always shows the server's version.
+- `GET /rule-packs` serves the catalog: every pack, its groups (one per slot, `pick` `one` or
+  `many`) and their ready-made rules with the lines they write, and `applied` on the rules that
+  also produce a generated file besides AGENTS.md. The web app always shows the server's version.
 - `GET /agent-configs` lists them (`?projectId=`, `?search=` on the name, paginated);
   `POST /agent-configs` creates one (`projectId` omitted or `null`: outside any project; 409 when
   the project already holds one); `GET|PATCH|DELETE /agent-configs/:id` reads, updates (omitted
   fields are left as is, `projectId` moves it, `null` takes it out of its project) and deletes it;
-  `PUT …/answers` sets or removes answers (checked against their question, 422 otherwise);
-  `POST|PATCH|DELETE …/rules[/:ruleId]` manage accepted rules (50 at most, in the configuration's
-  sections).
+  `PUT …/ready-rules/:slot` replaces the ready-made rules held for one group (`[]` removes
+  them; checked with the catalog's `acceptedProblem`, 422 otherwise);
+  `POST|PATCH|DELETE …/rules[/:ruleId]` manage the owner's own rules (50 at most, in any of the
+  catalog's sections).
 - `POST …/generations` renders the current state into an immutable generation (files with their
   managed block and `blockHash`, recommendations; the newest 50 are kept). `GET …/generations`
   lists them, `GET …/generations/latest` is what the CLI pulls. CLIs that name a configuration
@@ -423,19 +425,18 @@ Those are the source of truth; files only exist in its generations, rendered by
   with the configuration's name as the project's.
 - Every read and write of the configuration returns `impact`: the latest generation's inputs and
   the current state are both rendered with the current catalog and compared, giving `stale`, the
-  changed questions and, per file, the changed sections (`null` before the first generation).
-- `revision` goes up on every change to the answers, rules, notes, targets or questionnaires.
-  A questionnaire answered against an older catalog version is listed in
-  `outdatedQuestionnaires`; saving the configuration again moves it to the current version through
-  the questionnaire's migrations.
+  changed slots and, per file, the changed sections (`null` before the first generation).
+- `revision` goes up on every change to the ready-made rules held, the owner's rules, notes or
+  targets. A held rule the catalog no longer has is left out of every read and render.
 - No input may contain the `coreloom-uml:` marker prefix (422).
 
 On the web, the « Agent conventions » page (`/agent-configs`, in the sidebar and ⌘K) lists every
 configuration with the project that holds it, if any, and creates one with or without a project;
 each has its own page (`/agent-configs/:id`), where it can be renamed or moved to another project
 or out of any. A project page's « Agent conventions » tab shows that project's configuration, or
-creates one in it. Both (`apps/web/src/agent-configs/`) walk through it: choose one or several questionnaires and the target tools, answer section by section (the draft is
-kept in the browser until saved), accept rules one by one, generate, then read the files, their
+creates one in it. Both (`apps/web/src/agent-configs/`) walk through it: choose the target tools, browse the ready-made rules by pack (search, « Applied »
+and « Held » filters) and accept them one by one, each change saved at once, write or accept
+other rules, generate, then read the files, their
 changes since the previous generation and the recommendations, and copy the CLI command that
 installs them. When `impact.stale` is true the tab shows a « To regenerate » badge and lists what a
 new generation would change.
@@ -452,11 +453,11 @@ tsup with the catalog inside; its tests (Vitest) run against a fixture HTTP serv
 #### Skills
 
 Every generation also lists third-party skills (Agent Skills `SKILL.md` folders) that fit the
-answers and the project, or go against the answers. Suggestions draw from the hand-picked skills of
+rules held and the project, or go against those rules. Suggestions draw from the hand-picked skills of
 `packages/catalog/src/skills-data.ts` and the eligible skills of the API's `skills` table (below);
 all are links only, each pinned to a tag or a commit, and generating fetches nothing.
-`matchSkills` is deterministic: for each affinity whose slot is answered, +1 when the answer is in
-the skill's range or among its values, −1 when a scale answer is 2 or more away from the range; a
+`matchSkills` is deterministic: for each affinity whose slot holds a rule, −1 when one is among the
+rules the skill goes against, +1 when one is among the rules it fits; a
 diagram affinity counts +1 when the project holds a diagram of one of its kinds (C4, sequence…). A
 skill is compatible with a score of at least 1 and no −1 (5 at most), conflicting as soon as it has
 a −1 (3 at most, each with its reasons), and only suggested for one of the configuration's targets.
@@ -518,13 +519,12 @@ minute per user (`llmThrottle`).
 - `POST /llm/test` makes one tiny call ("Reply with OK.", 5 output tokens, 15 s) and answers
   `{ ok: true, latencyMs }` or `{ ok: false, reason }`, with `reason` one of `unauthorized`,
   `model_not_found`, `unreachable`, `timeout`, `rate_limited`, `subscription_expired`, `unknown`.
-- `POST /agent-configs/:id/proposals` sends the answers, their "more details", the
-  free-text answers, the sections and the rules already rendered or accepted to the model (one
-  call, temperature 0.2, 2,000 output tokens, 60 s; input past ~8,000 tokens is cut, longest
-  notes first, and `truncated` says so). It answers `{ proposals: [{ section, text, basedOn }],
-  truncated }` after dropping unknown sections and duplicates and cleaning the text (one line,
-  no HTML, no marker). Nothing is stored: the owner accepts a proposal with
-  `POST …/rules` and `source: 'llm'`. Without notes, the model is not called.
+- `POST /agent-configs/:id/proposals` (`from: 'diagrams' | 'feedback'`, required) sends the
+  project's diagrams or the pasted review feedback, the sections and the lines already rendered
+  or accepted to the model (`truncated` says when the input was cut). It answers
+  `{ proposals: [{ section, text, basedOn }], truncated }` after dropping unknown sections and
+  duplicates and cleaning the text (one line, no HTML, no marker). Nothing is stored: the owner
+  accepts a proposal with `POST …/rules` and `source: 'llm'`.
 - A provider failure answers 502 `{ error, reason }`, never the provider's own error. Everything
   else (manual rules, generations) works without a provider.
 - Providers: `anthropic`, `openai`, `mistral` (fixed URLs, a key is required, a `baseUrl` is

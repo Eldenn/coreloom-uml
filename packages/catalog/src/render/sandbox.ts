@@ -45,22 +45,22 @@ const INSTALLED_SCRIPT = '/usr/local/sbin/init-firewall.sh'
 const RUN_FIREWALL = `/usr/bin/bash ${INSTALLED_SCRIPT}`
 
 const NPM_REGISTRY = 'registry.npmjs.org'
-/** The registries a package manager installs from; any other answer installs from npm's. */
+/** The registries a package manager installs from; any other rule installs from npm's. */
 const REGISTRIES: Readonly<Record<string, readonly string[]>> = {
   yarn: [NPM_REGISTRY, 'registry.yarnpkg.com'],
 }
 
 export type SandboxInput = {
   targets: readonly Target[]
-  /** The `tooling.package-manager` answer, if any. */
+  /** The `tooling.package-manager` rule held, if any. */
   packageManager?: string
-  /** The `security.network` answer, if any. */
+  /** The `security.network` rule held, if any. */
   network?: string
 }
 
 /**
  * The hosts the firewall lets through, by name: the tools' own, then the package registry unless
- * the assistant may never use the network. No answer opens the firewall: `open` gets the same
+ * the assistant may never use the network. No rule opens the firewall: `open` gets the same
  * list as `registry`, and more hosts are added by hand in the script.
  */
 export function sandboxHosts({ targets, packageManager, network }: SandboxInput) {
@@ -122,7 +122,7 @@ function devcontainer(input: SandboxInput): string {
 }
 
 /**
- * The firewall script, in a managed block. Only names from fixed lists go in, never an answer's
+ * The firewall script, in a managed block. Only names from fixed lists go in, never a rule's typed
  * text. It has no `#!` line (the block's marker comes first): it is always run with bash.
  */
 function firewall(input: SandboxInput): string {
@@ -244,7 +244,7 @@ function recommendation(input: SandboxInput): Recommendation {
     [
       '**What it stops.**',
       '- Reading or changing files outside the repository: the workspace is the only folder of your machine in the container, and `.devcontainer` is read-only inside it.',
-      `- Reaching hosts that are not listed: outgoing traffic is refused except DNS and ${reachable.length > 0 ? reachable.join(', ') : 'nothing else'}. The start fails if a blocked host answers.${input.network === 'open' ? ' You answered that the assistant may use the network freely: the container still starts closed, and you add the hosts it needs.' : ''}`,
+      `- Reaching hosts that are not listed: outgoing traffic is refused except DNS and ${reachable.length > 0 ? reachable.join(', ') : 'nothing else'}. The start fails if a blocked host answers.${input.network === 'open' ? ' Your rules let the assistant use the network freely: the container still starts closed, and you add the hosts it needs.' : ''}`,
       '- Removing the firewall: once it is up, the container user has no root access left, except to run the firewall script again. Installing a system package therefore takes a rebuild.',
     ].join('\n'),
     [

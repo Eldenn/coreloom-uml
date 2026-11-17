@@ -122,11 +122,13 @@ export {
   proposeFeedbackRules,
 } from './feedback.ts'
 export {
-  cleanImportedAnswers,
+  cleanImportedRules,
+  describeGroups,
   IMPORT_EVIDENCE_MAX_LENGTH,
   IMPORT_INSTRUCTIONS,
   IMPORT_MAX_INPUT_TOKENS,
-  type ImportedAnswer,
+  IMPORT_RULE_TITLE_MAX_LENGTH,
+  type ImportedRule,
   type ImportResult,
   type ImportSource,
   importAgentFile,
@@ -156,17 +158,12 @@ export {
   cleanProposals,
   cleanProposalText,
   PROPOSAL_TEXT_MAX_LENGTH,
-  PROPOSALS_INSTRUCTIONS,
   PROPOSALS_MAX,
   PROPOSALS_MAX_INPUT_TOKENS,
   PROPOSALS_MAX_OUTPUT_TOKENS,
   PROPOSALS_TEMPERATURE,
   PROPOSALS_TIMEOUT_MS,
-  type ProposalSource,
   type ProposalsResult,
-  proposalEntries,
-  proposalsOutputSchema,
-  proposeRules,
   type RuleProposal,
 } from './proposals.ts'
 export {

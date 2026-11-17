@@ -1,12 +1,8 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
-import { migrateAnswers, ruleSections } from '@coreloom-uml/catalog'
+import { RULE_PACKS, ruleSections } from '@coreloom-uml/catalog'
 import { importAgentFile, LlmCallError } from '@coreloom-uml/llm'
-import {
-  currentInputs,
-  render,
-  resolveQuestionnaires,
-} from '#app/agent-configs/services/agent-context'
+import { currentInputs, render } from '#app/agent-configs/services/agent-context'
 import {
   AGENT_CONFIG_NOT_FOUND,
   findOwnedAgentConfig,
@@ -18,9 +14,10 @@ import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-conne
 
 /**
  * `POST /agent-configs/:id/imports`: the user's own model reads an existing conventions
- * file (AGENTS.md, CLAUDE.md…) and proposes answers to the configured questionnaires and rules
- * for the rest. Nothing is stored: the owner applies the answers they keep with `PUT …/answers`
- * and accepts rules with `POST …/rules`. The file is never logged, only counts. Session only.
+ * file (AGENTS.md, CLAUDE.md…) and proposes the catalog's ready-made rules it states, and rules
+ * for the rest. Nothing is stored: the owner accepts the ready-made rules they keep with
+ * `PUT …/ready-rules/:slot` and the others with `POST …/rules`. The file is never logged, only
+ * counts. Session only.
  */
 export default class AgentConfigImportsController {
   async store({ params, request, auth, response }: HttpContext) {
@@ -41,16 +38,13 @@ export default class AgentConfigImportsController {
     }
 
     const inputs = await currentInputs(config)
-    const questionnaires = resolveQuestionnaires(inputs.questionnaires)
-    let answers = inputs.answers
-    for (const questionnaire of questionnaires) answers = migrateAnswers(questionnaire, answers)
 
     const started = performance.now()
     try {
       const result: AgentImportOutput = await importAgentFile(built.model, {
-        questionnaires,
-        answers,
-        sections: ruleSections(questionnaires),
+        packs: RULE_PACKS,
+        ready: inputs.ready,
+        sections: ruleSections(RULE_PACKS),
         existing: [...render(inputs).fragments, ...inputs.rules],
         content,
       })
@@ -59,7 +53,7 @@ export default class AgentConfigImportsController {
           ...log,
           durationMs: Math.round(performance.now() - started),
           length: content.length,
-          answers: result.answers.length,
+          ready: result.ready.length,
           rules: result.rules.length,
           truncated: result.truncated,
         },

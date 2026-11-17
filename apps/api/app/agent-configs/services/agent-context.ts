@@ -1,48 +1,50 @@
 import {
+  type AcceptedRule,
   type AgentContextFile,
   type AgentContextOutput,
   type AgentContextProject,
   CATALOG_VERSION,
-  findQuestionnaire,
   MANAGED_BLOCK_BEGIN,
   MANAGED_BLOCK_END,
   matchSkills,
-  migrateAnswers,
   type PackageDiagramShape,
-  type Questionnaire,
   type Role,
+  RULE_PACKS,
   renderAgentContext,
   repositoryChecks,
   Section,
   type Skill,
   type SkillSuggestions,
-  type StoredAnswer,
   sectionOrder,
 } from '@coreloom-uml/catalog'
 import type { PackageDiagram } from '@coreloom-uml/uml'
 import type { Target } from '#app/agent-configs/constants/agent-config'
 import type AgentConfig from '#app/agent-configs/models/agent-config'
-import type { AgentConfigQuestionnaire } from '#app/agent-configs/models/agent-config'
 import type AgentConfigGeneration from '#app/agent-configs/models/agent-config-generation'
+import { heldReadyRules } from '#app/agent-configs/serializers/agent-config-serializer'
 import { whereConfigArchitecture } from '#app/agent-configs/services/agent-config-diagrams'
 import Architecture from '#app/architectures/models/architecture'
 import Project from '#app/projects/models/project'
 
-/**
- * Everything a configuration's files are rendered from, as stored on each generation: replaying
- * it with the current catalog tells what changed since.
- */
+/** Everything a configuration's files are rendered from. */
 export type AgentConfigInputs = {
   project: AgentContextProject
-  questionnaires: AgentConfigQuestionnaire[]
-  answers: StoredAnswer[]
-  /** In position order. */
+  /** The ready-made rules held, in catalog order. */
+  ready: AcceptedRule[]
+  /** The owner's own rules, in position order. */
   rules: { section: string; text: string }[]
   notes: string | null
   targets: Target[]
   /** In id order; generations stored before roles hold none. */
   roles?: Role[]
 }
+
+/**
+ * The inputs as a generation stores them, so its render can be replayed with the current
+ * catalog to tell what changed since. A generation stored before ready-made rules holds none
+ * (it held questionnaires and answers, which are no longer read): it replays without them.
+ */
+export type StoredAgentConfigInputs = Omit<AgentConfigInputs, 'ready'> & { ready?: AcceptedRule[] }
 
 export const FileChange = {
   Modified: 'modified',
@@ -55,28 +57,9 @@ export type FileChange = (typeof FileChange)[keyof typeof FileChange]
 export type AgentConfigImpact = {
   /** The source, the catalog or the project changed since the latest generation. */
   stale: boolean
-  /** `questionnaireId/questionId` of the answers whose fragments differ. */
-  changedQuestions: string[]
+  /** The slots of the groups whose ready-made rules write different lines. */
+  changedSlots: string[]
   files: { path: string; sections: string[]; change: FileChange }[]
-}
-
-/** The questionnaires of the catalog a configuration names, at their current version. */
-export function resolveQuestionnaires(
-  questionnaires: readonly AgentConfigQuestionnaire[],
-): Questionnaire[] {
-  return questionnaires
-    .map((item) => findQuestionnaire(item.id))
-    .filter((item): item is Questionnaire => item !== undefined)
-}
-
-/** Configured questionnaires answered against an older version than the catalog's. */
-export function outdatedQuestionnaires(config: AgentConfig) {
-  return config.questionnaires.flatMap((item) => {
-    const current = findQuestionnaire(item.id)
-    return current && current.version !== item.version
-      ? [{ id: item.id, version: item.version, currentVersion: current.version }]
-      : []
-  })
 }
 
 function packageShape(diagram: PackageDiagram): PackageDiagramShape {
@@ -120,16 +103,12 @@ export async function projectContext(config: AgentConfig): Promise<AgentContextP
 
 /** The configuration's current state, ready to render or to store on a generation. */
 export async function currentInputs(config: AgentConfig): Promise<AgentConfigInputs> {
-  await config.load('answers', (query) => query.orderBy('id', 'asc'))
+  await config.load('readyRules', (query) => query.orderBy('id', 'asc'))
   await config.load('rules', (query) => query.orderBy('position', 'asc').orderBy('id', 'asc'))
   await config.load('roles', (query) => query.orderBy('id', 'asc'))
-  const configured = new Set(config.questionnaires.map((item) => item.id))
   return {
     project: await projectContext(config),
-    questionnaires: config.questionnaires.map(({ id, version }) => ({ id, version })),
-    answers: config.answers
-      .filter((answer) => configured.has(answer.questionnaireId))
-      .map(({ questionnaireId, questionId, value }) => ({ questionnaireId, questionId, value })),
+    ready: heldReadyRules(config.readyRules),
     rules: config.rules.map(({ section, text }) => ({ section, text })),
     notes: config.notes,
     targets: [...config.targets],
@@ -137,29 +116,17 @@ export async function currentInputs(config: AgentConfig): Promise<AgentConfigInp
   }
 }
 
-/** The questionnaires of the inputs at their current version, and the answers migrated to it. */
-function resolveInputs(inputs: Pick<AgentConfigInputs, 'questionnaires' | 'answers'>) {
-  const questionnaires = resolveQuestionnaires(inputs.questionnaires)
-  let answers: StoredAnswer[] = inputs.answers
-  for (const questionnaire of questionnaires) answers = migrateAnswers(questionnaire, answers)
-  return { questionnaires, answers }
+/** The repository's checks as the inputs' ready-made rules state them. */
+export function inputsChecks(inputs: Pick<StoredAgentConfigInputs, 'ready'>) {
+  return repositoryChecks({ packs: RULE_PACKS, ready: inputs.ready ?? [] })
 }
 
-/** The repository's checks as the inputs answer them (answers read like `render` reads them). */
-export function inputsChecks(inputs: Pick<AgentConfigInputs, 'questionnaires' | 'answers'>) {
-  return repositoryChecks(resolveInputs(inputs))
-}
-
-/**
- * Renders inputs with the current catalog: questionnaires are taken at their current version
- * and the answers go through its migrations first, so an older snapshot replays like a new one.
- */
-export function render(inputs: AgentConfigInputs): AgentContextOutput {
-  const { questionnaires, answers } = resolveInputs(inputs)
+/** Renders inputs with the current catalog, every rule pack of it. */
+export function render(inputs: StoredAgentConfigInputs): AgentContextOutput {
   return renderAgentContext({
     project: inputs.project,
-    questionnaires,
-    answers,
+    packs: RULE_PACKS,
+    ready: inputs.ready ?? [],
     rules: inputs.rules,
     notes: inputs.notes,
     targets: inputs.targets,
@@ -167,19 +134,18 @@ export function render(inputs: AgentConfigInputs): AgentContextOutput {
   })
 }
 
-/**
- * The catalog's skills that fit the inputs (answers read like `render` reads them, and the kinds
- * of the project's diagrams).
- */
+/** The skills that fit the inputs: their ready-made rules and the kinds of the project's diagrams. */
 export function suggestSkills(
-  inputs: AgentConfigInputs,
+  inputs: StoredAgentConfigInputs,
   skills: readonly Skill[],
 ): SkillSuggestions {
-  const { questionnaires, answers } = resolveInputs(inputs)
   const diagramKinds = inputs.project.architectures.flatMap((architecture) =>
     architecture.diagrams.map((diagram) => diagram.kind),
   )
-  return matchSkills({ questionnaires, answers, targets: inputs.targets, diagramKinds }, skills)
+  return matchSkills(
+    { packs: RULE_PACKS, ready: inputs.ready ?? [], targets: inputs.targets, diagramKinds },
+    skills,
+  )
 }
 
 /**
@@ -194,38 +160,32 @@ export function computeImpact(
   if (!latest) return null
   const before = render(latest.inputs)
   const after = render(inputs)
-
-  const sections = [
-    ...new Set([
-      ...sectionOrder(resolveQuestionnaires(latest.inputs.questionnaires)),
-      ...sectionOrder(resolveQuestionnaires(inputs.questionnaires)),
-    ]),
-  ]
-  const files = compareFiles(before.files, after.files, sections)
+  const files = compareFiles(before.files, after.files, sectionOrder(RULE_PACKS))
 
   return {
     stale:
       config.revision > latest.revision ||
       latest.catalogVersion !== CATALOG_VERSION ||
       files.length > 0,
-    changedQuestions: changedQuestions(before, after),
+    changedSlots: changedSlots(before, after),
     files,
   }
 }
 
-function changedQuestions(before: AgentContextOutput, after: AgentContextOutput): string[] {
+function changedSlots(before: AgentContextOutput, after: AgentContextOutput): string[] {
   const group = (output: AgentContextOutput) => {
     const texts = new Map<string, string[]>()
     for (const fragment of output.fragments) {
-      const key = `${fragment.questionnaireId}/${fragment.questionId}`
-      texts.set(key, [...(texts.get(key) ?? []), fragment.text])
+      texts.set(fragment.slot, [...(texts.get(fragment.slot) ?? []), fragment.text])
     }
     return texts
   }
   const old = group(before)
   const now = group(after)
-  const keys = [...new Set([...old.keys(), ...now.keys()])]
-  return keys.filter((key) => (old.get(key) ?? []).join('\n') !== (now.get(key) ?? []).join('\n'))
+  const slots = [...new Set([...old.keys(), ...now.keys()])]
+  return slots.filter(
+    (slot) => (old.get(slot) ?? []).join('\n') !== (now.get(slot) ?? []).join('\n'),
+  )
 }
 
 function compareFiles(

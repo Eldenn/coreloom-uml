@@ -1,12 +1,11 @@
-// Proposed rules: the user's own model (set in Settings, kept in this browser) turns the notes
-// under the answers, the diagrams the owner checks, or the review feedback they paste, into rules,
-// shown in a side panel. Each one is accepted, edited then
-// accepted (`POST …/rules` with `source: 'llm'`), or ignored. Nothing is stored before that, and
-// the proposals stay in the panel until the page is left or the model is asked again.
+// Proposed rules: the user's own model (set in Settings, kept in this browser) turns the diagrams
+// the owner checks, or the review feedback they paste, into rules, shown in a side panel. Each one
+// is accepted, edited then accepted (`POST …/rules` with `source: 'llm'`), or ignored. Nothing is
+// stored before that, and the proposals stay in the panel until the page is left or the model is
+// asked again.
 import { WandSparklesIcon } from 'lucide-react'
 import * as React from 'react'
 
-import { useLocalized } from '@/agent-configs/catalog'
 import { AgentPlan } from '@/components/ui/agent-plan'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -25,7 +24,7 @@ import {
 import { toast } from '@/components/ui/sonner'
 import { type Suggestion, SuggestionList } from '@/components/ui/suggestion-list'
 import { Textarea } from '@/components/ui/textarea'
-import { type AgentConfig, type Questionnaire, RULES_MAX, useCreateRule } from '@/lib/agent-configs'
+import { type AgentConfig, RULES_MAX, useCreateRule } from '@/lib/agent-configs'
 import { getErrorMessage } from '@/lib/client'
 import { useCoreloomI18n } from '@/lib/i18n'
 import {
@@ -42,25 +41,20 @@ interface Proposal extends RuleProposal {
   id: string
 }
 
-type Source = 'answers' | 'diagrams' | 'feedback'
+type Source = 'diagrams' | 'feedback'
 
 /** Longest feedback the API reads (`AGENT_PROPOSAL_FEEDBACK_MAX_LENGTH`). */
 const FEEDBACK_MAX_LENGTH = 20_000
 
 /** "Propose rules" and its panel; nothing at all while no provider is set in this browser. */
-export function RuleProposals({
-  configId,
-  config,
-  questionnaires,
-}: {
-  configId: number
-  config: AgentConfig
-  questionnaires: Questionnaire[]
-}) {
+export function RuleProposals({ configId, config }: { configId: number; config: AgentConfig }) {
   const t = useT()
   const provider = useStoredProvider()
   const [open, setOpen] = React.useState(false)
-  const [source, setSource] = React.useState<Source>('answers')
+  const diagrams = config.diagrams
+  const [chosen, setChosen] = React.useState<Source>('diagrams')
+  // Diagrams only when the configuration reads some with content.
+  const source = diagrams.length > 0 ? chosen : 'feedback'
   /** The diagrams to read; `null` until the owner unchecks one, meaning all of them. */
   const [checked, setChecked] = React.useState<number[] | null>(null)
   const [feedback, setFeedback] = React.useState('')
@@ -71,7 +65,6 @@ export function RuleProposals({
     received: number
   } | null>(null)
   const propose = useProposeRules(configId)
-  const diagrams = config.diagrams
   const picked = diagrams
     .filter((diagram) => checked === null || checked.includes(diagram.id))
     .map((diagram) => diagram.id)
@@ -79,11 +72,9 @@ export function RuleProposals({
   const run = (current: StoredProvider, from: Source) => {
     setResult(null)
     propose.mutate(
-      {
-        provider: current,
-        ...(from === 'diagrams' ? { diagramIds: picked } : {}),
-        ...(from === 'feedback' ? { feedback } : {}),
-      },
+      from === 'diagrams'
+        ? { provider: current, from, diagramIds: picked }
+        : { provider: current, from, feedback },
       {
         onSuccess: (body) => {
           setResult({
@@ -101,8 +92,8 @@ export function RuleProposals({
   }
 
   if (!provider) return null
-  // Diagrams are picked and feedback pasted first; the notes are sent as soon as the panel opens.
-  const picking = source !== 'answers' && !propose.isPending && !propose.isError && !result
+  // Diagrams are picked and feedback pasted first.
+  const picking = !propose.isPending && !propose.isError && !result
   return (
     <>
       <Button
@@ -110,9 +101,6 @@ export function RuleProposals({
         size="sm"
         onClick={() => {
           setOpen(true)
-          // Reopening shows what is left to review; an empty panel asks the model again.
-          const reviewing = result !== null && result.proposals.length > 0
-          if (source === 'answers' && !propose.isPending && !reviewing) run(provider, 'answers')
         }}
       >
         <WandSparklesIcon /> {t.llm.propose}
@@ -123,22 +111,21 @@ export function RuleProposals({
             <SheetTitle>{t.llm.proposalsTitle}</SheetTitle>
             <SheetDescription>
               {{
-                answers: t.llm.proposalsHint,
                 diagrams: t.llm.proposalsHintDiagrams,
                 feedback: t.llm.proposalsHintFeedback,
               }[source](provider.model)}
             </SheetDescription>
-            <SourceSwitch
-              value={source}
-              withDiagrams={diagrams.length > 0}
-              disabled={propose.isPending}
-              onChange={(next) => {
-                setSource(next)
-                setResult(null)
-                propose.reset()
-                if (next === 'answers') run(provider, 'answers')
-              }}
-            />
+            {diagrams.length > 0 && (
+              <SourceSwitch
+                value={source}
+                disabled={propose.isPending}
+                onChange={(next) => {
+                  setChosen(next)
+                  setResult(null)
+                  propose.reset()
+                }}
+              />
+            )}
           </SheetHeader>
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4">
             {picking && (
@@ -157,7 +144,6 @@ export function RuleProposals({
               <ProposalsReview
                 configId={configId}
                 config={config}
-                questionnaires={questionnaires}
                 proposals={result.proposals}
                 truncated={result.truncated}
                 skipped={result.skipped}
@@ -189,13 +175,9 @@ export function RuleProposals({
               run(provider, source)
             }}
             onAgain={() => {
-              // "Again" goes back to the picker or the pasted text; the notes are sent at once.
-              if (source !== 'answers') {
-                setResult(null)
-                propose.reset()
-              } else {
-                run(provider, 'answers')
-              }
+              // "Again" goes back to the picker or the pasted text.
+              setResult(null)
+              propose.reset()
             }}
           />
         </SheetContent>
@@ -209,7 +191,6 @@ type Messages = ReturnType<typeof useT>
 function emptyText(t: Messages, source: Source, received: number): string {
   if (received > 0) return t.llm.proposalsEmpty
   return {
-    answers: t.llm.proposalsNone,
     diagrams: t.llm.proposalsNoneDiagrams,
     feedback: t.llm.proposalsNoneFeedback,
   }[source]
@@ -250,15 +231,13 @@ function ProposalsFooter({
   )
 }
 
-/** Where the rules come from; diagrams only when the project has some with content. */
+/** Where the rules come from. */
 function SourceSwitch({
   value,
-  withDiagrams,
   disabled,
   onChange,
 }: {
   value: Source
-  withDiagrams: boolean
   disabled: boolean
   onChange: (source: Source) => void
 }) {
@@ -270,12 +249,11 @@ function SourceSwitch({
       value={value}
       disabled={disabled}
       options={[
-        { value: 'answers', label: t.llm.fromAnswers },
-        ...(withDiagrams ? [{ value: 'diagrams', label: t.llm.fromDiagrams }] : []),
+        { value: 'diagrams', label: t.llm.fromDiagrams },
         { value: 'feedback', label: t.llm.fromFeedback },
       ]}
       onValueChange={(next) => {
-        onChange(next === 'diagrams' || next === 'feedback' ? next : 'answers')
+        onChange(next === 'feedback' ? 'feedback' : 'diagrams')
       }}
     />
   )
@@ -368,7 +346,6 @@ function ProposalsWaiting({ model, source }: { model: string; source: Source }) 
           {
             id: 'send',
             title: {
-              answers: t.llm.proposalsStepSend,
               diagrams: t.llm.proposalsStepSendDiagrams,
               feedback: t.llm.proposalsStepSendFeedback,
             }[source],
@@ -394,7 +371,6 @@ export function ProposalsFailed({ error }: { error: unknown }) {
 export function ProposalsReview({
   configId,
   config,
-  questionnaires,
   proposals,
   truncated,
   skipped,
@@ -404,45 +380,33 @@ export function ProposalsReview({
 }: {
   configId: number
   config: AgentConfig
-  questionnaires: Questionnaire[]
   proposals: Proposal[]
   truncated: boolean
   /** Diagrams left out to fit the model's budget. */
   skipped: number[]
-  /** Said when `truncated`; the notes' wording by default. */
+  /** Said when `truncated`; a general wording by default. */
   truncatedText?: string
   empty: string
   onHandled: (id: string) => void
 }) {
   const t = useT()
-  const localized = useLocalized()
   const create = useCreateRule(configId)
   const full = config.rules.length >= RULES_MAX
 
-  /**
-   * `questionnaireId/questionId` as the question's label, or `diagram:<id>` as the diagram's
-   * title, when the model named one we know.
-   */
-  const questionLabel = (basedOn: string | null) => {
-    if (!basedOn) return null
-    if (basedOn.startsWith('diagram:')) {
-      const id = Number(basedOn.slice('diagram:'.length))
-      return config.diagrams.find((diagram) => diagram.id === id)?.title ?? null
-    }
-    const [questionnaireId, questionId] = basedOn.split('/')
-    const question = questionnaires
-      .find((q) => q.id === questionnaireId)
-      ?.questions.find((q) => q.id === questionId)
-    return question ? localized(question.label) : null
+  /** `diagram:<id>` as the diagram's title, when the model named one we know. */
+  const diagramTitle = (basedOn: string | null) => {
+    if (!basedOn?.startsWith('diagram:')) return null
+    const id = Number(basedOn.slice('diagram:'.length))
+    return config.diagrams.find((diagram) => diagram.id === id)?.title ?? null
   }
 
   const suggestions: Suggestion[] = proposals.map((proposal) => {
-    const question = questionLabel(proposal.basedOn)
+    const diagram = diagramTitle(proposal.basedOn)
     return {
       id: proposal.id,
       text: proposal.text,
       label: proposal.section,
-      detail: question ? <Markdown inline>{t.llm.basedOn(question)}</Markdown> : undefined,
+      detail: diagram ? t.llm.basedOn(diagram) : undefined,
     }
   })
   const byId = new Map(proposals.map((proposal) => [proposal.id, proposal]))

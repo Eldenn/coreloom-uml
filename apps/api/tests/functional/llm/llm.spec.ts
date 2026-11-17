@@ -11,7 +11,6 @@ import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
 
 const json = { accept: 'application/json' }
-const Q = 'frontend-react'
 /** The fixture key: it must never show up in a response, a log line or the database. */
 const KEY = 'sk-fixture-4f1c2b9e-never-stored'
 const OLLAMA = 'http://localhost:11434'
@@ -62,41 +61,38 @@ async function createProject(client: Client, user: User) {
   return response.body().project as { id: number }
 }
 
-/**
- * A project with a frontend-react configuration (`configId`) and two answers, one with French
- * notes.
- */
+/** A project with a configuration (`configId`) that holds two ready-made rules. */
 async function configuredProject(client: Client, user: User) {
   const project = await createProject(client, user)
   const created = await client
     .post('/agent-configs')
     .headers(json)
     .loginAs(user)
-    .json({ name: 'Storefront', projectId: project.id, questionnaires: [Q], targets: ['generic'] })
+    .json({ name: 'Storefront', projectId: project.id, targets: ['generic'] })
   created.assertStatus(201)
   const configId = created.body().config.id as number
-  ;(
-    await client
-      .put(`/agent-configs/${configId}/answers`)
-      .headers(json)
-      .loginAs(user)
-      .json({
-        answers: [
-          {
-            questionnaireId: Q,
-            questionId: 'ts-any',
-            value: 5,
-            details: 'Sauf dans les tests, où any est toléré pour les mocks.',
-          },
-          { questionnaireId: Q, questionId: 'styling', value: 'tailwind' },
-        ],
-      })
-  ).assertStatus(200)
+  for (const [slot, rule] of [
+    ['typescript.any', 'agree'],
+    ['react.styling', 'tailwind'],
+  ]) {
+    ;(
+      await client
+        .put(`/agent-configs/${configId}/ready-rules/${slot}`)
+        .headers(json)
+        .loginAs(user)
+        .json({ rules: [{ rule }] })
+    ).assertStatus(200)
+  }
   return { ...project, configId }
 }
 
+/** Reads pasted feedback unless the body says otherwise. */
 function propose(client: Client, user: User, configId: number, body: Record<string, unknown>) {
-  return client.post(`/agent-configs/${configId}/proposals`).headers(json).loginAs(user).json(body)
+  return client
+    .post(`/agent-configs/${configId}/proposals`)
+    .headers(json)
+    .loginAs(user)
+    .json({ from: 'feedback', feedback: 'No raw fetch in a component.', ...body })
 }
 
 async function createToken(client: Client, user: User) {
@@ -114,13 +110,13 @@ const THREE_PROPOSALS = JSON.stringify({
     {
       section: 'TypeScript',
       text: '`any` is tolerated in test mocks only.',
-      basedOn: `${Q}/ts-any`,
+      basedOn: 'feedback',
     },
-    { section: 'Security', text: 'Never log secrets.', basedOn: `${Q}/ts-any` },
+    { section: 'Nowhere', text: 'Never log secrets.', basedOn: 'feedback' },
     {
       section: 'TypeScript',
       text: 'Never use `any`; prefer `unknown` with narrowing or an explicit type.',
-      basedOn: `${Q}/ts-any`,
+      basedOn: 'feedback',
     },
   ],
 })
@@ -337,73 +333,21 @@ test.group('LLM - rule proposals', (group) => {
   group.each.setup(() => withDefaultFlags())
   group.each.teardown(() => app.container.restore(LanguageModels))
 
-  test('keeps the one valid proposal; accepting it adds an llm rule to the next generation', async ({
-    client,
-    assert,
-  }) => {
+  test('needs to be told what the model reads', async ({ client, assert }) => {
     const user = await makeUser()
     const project = await configuredProject(client, user)
-    useModel(answeringModel(THREE_PROPOSALS))
-
-    const response = await propose(client, user, project.configId, {
-      provider: hosted,
-      apiKey: KEY,
-    })
-    response.assertStatus(200)
-    assert.deepEqual(response.body(), {
-      proposals: [
-        {
-          section: 'TypeScript',
-          text: '`any` is tolerated in test mocks only.',
-          basedOn: `${Q}/ts-any`,
-        },
-      ],
-      truncated: false,
-      skipped: [],
-    })
-
-    // Nothing stored by the proposal itself.
-    const config = await client
-      .get(`/agent-configs/${project.configId}`)
-      .headers(json)
-      .loginAs(user)
-    assert.lengthOf(config.body().config.rules, 0)
-
-    const [proposal] = response.body().proposals
-    const accepted = await client
-      .post(`/agent-configs/${project.configId}/rules`)
-      .headers(json)
-      .loginAs(user)
-      .json({ section: proposal.section, text: proposal.text, source: 'llm' })
-    accepted.assertStatus(201)
-    assert.equal(accepted.body().rule.source, 'llm')
-
-    const generation = await client
-      .post(`/agent-configs/${project.configId}/generations`)
-      .headers(json)
-      .loginAs(user)
-    generation.assertStatus(201)
-    const agents = generation
-      .body()
-      .generation.files.find((file: { path: string }) => file.path === 'AGENTS.md')
-    assert.include(agents.content, 'tolerated in test mocks only')
-    assert.notInclude(agents.content, 'Sauf dans les tests')
-  })
-
-  test('sends the notes, never the key, to the model', async ({ client, assert }) => {
-    const user = await makeUser()
-    const project = await configuredProject(client, user)
-    const model = answeringModel(JSON.stringify({ proposals: [] }))
+    const model = answeringModel(THREE_PROPOSALS)
     useModel(model)
 
-    ;(
-      await propose(client, user, project.configId, { provider: hosted, apiKey: KEY })
-    ).assertStatus(200)
-
-    assert.lengthOf(model.doGenerateCalls, 1)
-    const prompt = JSON.stringify(model.doGenerateCalls[0])
-    assert.include(prompt, 'Sauf dans les tests')
-    assert.notInclude(prompt, KEY)
+    for (const from of [undefined, 'answers']) {
+      const response = await client
+        .post(`/agent-configs/${project.configId}/proposals`)
+        .headers(json)
+        .loginAs(user)
+        .json({ provider: hosted, apiKey: KEY, from, feedback: 'Anything.' })
+      response.assertStatus(422)
+    }
+    assert.lengthOf(model.doGenerateCalls, 0)
   })
 
   test('a provider failure answers 502 with its reason only, and the key is nowhere', async ({
@@ -465,7 +409,7 @@ test.group('LLM - rule proposals', (group) => {
     const response = await client
       .post(`/agent-configs/${project.configId}/proposals`)
       .headers({ ...json, authorization: `Bearer ${secret}` })
-      .json({ provider: hosted, apiKey: KEY })
+      .json({ provider: hosted, apiKey: KEY, from: 'feedback', feedback: 'Anything.' })
     response.assertStatus(401)
   })
 
@@ -533,7 +477,8 @@ test.group('LLM - rule proposals from diagrams', (group) => {
     const prompt = JSON.stringify(model.doGenerateCalls[0])
     assert.include(prompt, '@startuml')
     assert.include(prompt, 'Customer')
-    assert.notInclude(prompt, 'Sauf dans les tests')
+    // What the ready-made rules already write is given as present.
+    assert.include(prompt, 'Never use `any`; prefer `unknown`')
     assert.notInclude(prompt, KEY)
   })
 
@@ -595,6 +540,10 @@ test.group('LLM - rule proposals from review feedback', (group) => {
         proposals: [
           { section: 'Workflow', text: 'Never call `fetch` in a component.' },
           { section: 'Testing', text: 'write a test for every bug fix' },
+          {
+            section: 'TypeScript',
+            text: 'Never use `any`; prefer `unknown` with narrowing or an explicit type.',
+          },
           { section: 'Nowhere', text: 'Dropped.' },
         ],
       }),
@@ -620,7 +569,7 @@ test.group('LLM - rule proposals from review feedback', (group) => {
     const prompt = JSON.stringify(model.doGenerateCalls[0])
     assert.include(prompt, FEEDBACK)
     assert.include(prompt, 'Write a test for every bug fix.')
-    assert.notInclude(prompt, 'Sauf dans les tests')
+    assert.include(prompt, 'Never use `any`; prefer `unknown`')
     assert.notInclude(prompt, KEY)
     // The pasted text is read once: neither logged nor stored.
     assert.notInclude(logs.lines.join('\n'), 'raw fetch')
@@ -668,15 +617,28 @@ function importFile(client: Client, user: User, configId: number, content: strin
     .json({ provider: hosted, apiKey: KEY, content })
 }
 
+const picked = (slot: string, rule: string, value: string | null, evidence: string) => ({
+  slot,
+  rule,
+  value,
+  evidence,
+})
+
 const IMPORTED = JSON.stringify({
-  answers: [
-    { id: `${Q}/tests-level`, value: ['unit', 'e2e'], evidence: 'Write unit and e2e tests.' },
-    { id: `${Q}/styling`, value: 'tailwind', evidence: 'Tailwind only.' },
-    { id: `${Q}/ts-strict`, value: 'sometimes', evidence: 'not an option' },
+  ready: [
+    picked('testing.levels', 'unit', null, 'Write unit and e2e tests.'),
+    picked('testing.levels', 'e2e', null, 'Write unit and e2e tests.'),
+    picked('react.styling', 'tailwind', null, 'Tailwind only: held already.'),
+    picked('typescript.any', 'sometimes', null, 'Not a rule of the group.'),
+    picked('typescript.any', 'disagree', null, 'any is fine at the edges.'),
+    picked('tooling.checks', 'run', 'pnpm lint && pnpm test', 'Run pnpm lint && pnpm test.'),
+    picked('tooling.package-manager', 'pnpm', 'pnpm', 'A text on a rule that takes none.'),
+    picked('no.such-slot', 'agree', null, 'Unknown group.'),
   ],
   rules: [
     { section: 'Workflow', text: 'Never push to main.' },
     { section: 'Nowhere', text: 'Dropped.' },
+    { section: 'Testing', text: 'Add or update unit tests for every change in logic.' },
   ],
 })
 
@@ -684,7 +646,7 @@ test.group('LLM - conventions file import', (group) => {
   group.each.setup(() => withDefaultFlags())
   group.each.teardown(() => app.container.restore(LanguageModels))
 
-  test('proposes the new answers that fit and the rules, and stores nothing', async ({
+  test('proposes the ready-made rules that fit and the other rules, and stores nothing', async ({
     client,
     assert,
   }) => {
@@ -696,33 +658,35 @@ test.group('LLM - conventions file import', (group) => {
     const response = await importFile(client, user, project.configId, '# Rules\n\nTailwind only.')
     response.assertStatus(200)
     assert.deepEqual(response.body(), {
-      answers: [
-        {
-          questionnaireId: Q,
-          questionId: 'tests-level',
-          value: ['unit', 'e2e'],
-          evidence: 'Write unit and e2e tests.',
-        },
+      ready: [
+        picked('testing.levels', 'unit', null, 'Write unit and e2e tests.'),
+        picked('testing.levels', 'e2e', null, 'Write unit and e2e tests.'),
+        picked('typescript.any', 'disagree', null, 'any is fine at the edges.'),
+        picked('tooling.checks', 'run', 'pnpm lint && pnpm test', 'Run pnpm lint && pnpm test.'),
       ],
       rules: [{ section: 'Workflow', text: 'Never push to main.' }],
       truncated: false,
     })
     const prompt = JSON.stringify(model.doGenerateCalls[0])
     assert.include(prompt, 'Tailwind only.')
+    // Groups and rules of every pack, and what the configuration already writes.
+    assert.include(prompt, 'testing.levels (many): ')
+    assert.include(prompt, 'git.commit-messages (one): ')
+    assert.include(prompt, 'Style with Tailwind utility classes')
     assert.notInclude(prompt, KEY)
 
     const config = await client
       .get(`/agent-configs/${project.configId}`)
       .headers(json)
       .loginAs(user)
-    assert.lengthOf(config.body().config.answers, 2)
+    assert.lengthOf(config.body().config.readyRules, 2)
     assert.lengthOf(config.body().config.rules, 0)
   })
 
   test('leaves the managed block out of what the model reads', async ({ client, assert }) => {
     const user = await makeUser()
     const project = await configuredProject(client, user)
-    const model = answeringModel(JSON.stringify({ answers: [], rules: [] }))
+    const model = answeringModel(JSON.stringify({ ready: [], rules: [] }))
     useModel(model)
 
     const content = [
@@ -764,6 +728,22 @@ test.group('LLM - conventions file import', (group) => {
     assert.equal(response.body().reason, 'unauthorized')
     assert.notInclude(logs.lines.join('\n'), 'Zephyr')
     assert.notInclude(logs.lines.join('\n'), KEY)
+  })
+
+  test('logs counts only, never the file or what was proposed', async ({ client, assert }) => {
+    const user = await makeUser()
+    const project = await configuredProject(client, user)
+    useModel(answeringModel(IMPORTED))
+    const logs = captureLogs()
+    ;(
+      await importFile(client, user, project.configId, 'Secret project codename Zephyr.')
+    ).assertStatus(200)
+    logs.restore()
+
+    const lines = logs.lines.join('\n')
+    assert.include(lines, '"ready":4')
+    assert.notInclude(lines, 'Zephyr')
+    assert.notInclude(lines, 'pnpm lint')
   })
 
   test('another account cannot import into a project', async ({ client }) => {

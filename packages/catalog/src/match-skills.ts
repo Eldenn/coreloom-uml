@@ -1,14 +1,12 @@
-import { answerProblem } from './answers.ts'
+import { acceptedProblem, ruleTitle } from './ready-rules.ts'
 import {
-  type AnswerValue,
+  type AcceptedRule,
   type AuditRisk,
   isSlotAffinity,
   type Localized,
-  type Question,
-  type Questionnaire,
-  SCALE_MAX,
+  type RuleGroup,
+  type RulePack,
   type Skill,
-  type SlotAffinity,
 } from './schemas.ts'
 import type { Slot } from './slots.ts'
 import type { Target } from './targets.ts'
@@ -17,7 +15,7 @@ import type { Target } from './targets.ts'
 export const COMPATIBLE_SKILLS_MAX = 5
 export const CONFLICTING_SKILLS_MAX = 3
 
-/** Why a skill goes against an answer. */
+/** Why a skill goes against a rule the configuration holds. */
 export type SkillReason = {
   slot: Slot
   questionLabel: Localized
@@ -47,29 +45,26 @@ export type SkillSuggestions = {
 }
 
 export type SkillMatchInput = {
-  /** Resolved from the catalog, in the configuration's order. */
-  questionnaires: readonly Questionnaire[]
-  /** Already migrated to the questionnaires' current version. */
-  answers: readonly { questionnaireId: string; questionId: string; value: AnswerValue }[]
+  /** The catalog's rule packs. */
+  packs: readonly RulePack[]
+  /** The ready-made rules the configuration holds. */
+  ready: readonly AcceptedRule[]
   targets: readonly Target[]
   /** The kinds of the project's diagrams, in any order, repeats allowed. */
   diagramKinds: readonly string[]
 }
 
-/** A gap of this much between a scale answer and a skill's range is a contradiction. */
-const CONFLICT_GAP = 2
-
 /**
- * Suggests skills from the answers, deterministically. For each affinity whose slot has an
- * answer: +1 when the answer is in the range or among the values; −1 when the question is a
- * scale and the answer is 2 or more away from the range; 0 otherwise. A diagram affinity counts
- * +1 when the project holds a diagram of one of its kinds, 0 otherwise. A skill is compatible
- * with a score of 1 or more and no −1, and conflicting as soon as it has a −1. Only skills that
- * load in one of the configuration's targets are suggested. Compatible skills come by score,
- * conflicting ones by number of reasons, then both in catalog order.
+ * Suggests skills from the ready-made rules held, deterministically. For each affinity whose
+ * slot holds a rule: −1 when one of them is among the rules the skill goes against, +1 when one
+ * is among the rules it fits, 0 otherwise. A diagram affinity counts +1 when the project holds a
+ * diagram of one of its kinds, 0 otherwise. A skill is compatible with a score of 1 or more and
+ * no −1, and conflicting as soon as it has a −1. Only skills that load in one of the
+ * configuration's targets are suggested. Compatible skills come by score, conflicting ones by
+ * number of reasons, then both in catalog order.
  */
 export function matchSkills(input: SkillMatchInput, skills: readonly Skill[]): SkillSuggestions {
-  const bySlot = answeredSlots(input)
+  const bySlot = heldSlots(input)
   const compatible: SkillSuggestion[] = []
   const conflicting: SkillSuggestion[] = []
 
@@ -82,17 +77,20 @@ export function matchSkills(input: SkillMatchInput, skills: readonly Skill[]): S
         if (affinity.diagramKinds.some((kind) => input.diagramKinds.includes(kind))) score += 1
         continue
       }
-      const answered = bySlot.get(affinity.slot)
-      if (!answered) continue
-      const points = affinityScore(affinity, answered.value)
-      score += points
-      if (points < 0 && affinity.scale && typeof answered.value === 'number') {
+      const slot = bySlot.get(affinity.slot)
+      if (!slot) continue
+      const { group, held } = slot
+      const opposed = held.find((id) => affinity.against?.includes(id))
+      if (opposed !== undefined) {
+        score -= 1
         reasons.push({
           slot: affinity.slot as Slot,
-          questionLabel: answered.question.label,
-          yourAnswer: scaleText(answered.value, answered.value),
-          skillExpects: scaleText(affinity.scale.min, affinity.scale.max),
+          questionLabel: group.label,
+          yourAnswer: titleOf(group, [opposed]),
+          skillExpects: titleOf(group, affinity.values),
         })
+      } else if (held.some((id) => affinity.values.includes(id))) {
+        score += 1
       }
     }
     const suggestion: SkillSuggestion = {
@@ -118,34 +116,28 @@ export function matchSkills(input: SkillMatchInput, skills: readonly Skill[]): S
   }
 }
 
-type AnsweredSlot = { question: Question; value: AnswerValue }
+type HeldSlot = { group: RuleGroup; held: string[] }
 
-/** Each slot's question and answer; answers that do not fit their question are left out. */
-function answeredSlots(input: SkillMatchInput): Map<string, AnsweredSlot> {
-  const slots = new Map<string, AnsweredSlot>()
-  for (const answer of input.answers) {
-    const questionnaire = input.questionnaires.find((item) => item.id === answer.questionnaireId)
-    const question = questionnaire?.questions.find((item) => item.id === answer.questionId)
-    if (!question || answerProblem(question, answer.value) !== null) continue
-    slots.set(question.slot, { question, value: answer.value })
+/** Each slot's group and the ids of its rules held; rules that cannot be held together are left out. */
+function heldSlots(input: SkillMatchInput): Map<string, HeldSlot> {
+  const slots = new Map<string, HeldSlot>()
+  for (const pack of input.packs) {
+    for (const group of pack.groups) {
+      const accepted = input.ready.filter((item) => item.slot === group.slot)
+      if (accepted.length === 0 || acceptedProblem(group, accepted) !== null) continue
+      slots.set(group.slot, { group, held: accepted.map((item) => item.rule) })
+    }
   }
   return slots
 }
 
-function affinityScore(affinity: SlotAffinity, value: AnswerValue): number {
-  if (affinity.scale) {
-    if (typeof value !== 'number') return 0
-    const { min, max } = affinity.scale
-    if (value >= min && value <= max) return 1
-    const gap = value < min ? min - value : value - max
-    return gap >= CONFLICT_GAP ? -1 : 0
+/** The names of these rules of the group, in the group's order. */
+function titleOf(group: RuleGroup, ids: readonly string[]): Localized {
+  const titles = group.rules
+    .filter((rule) => ids.includes(rule.id))
+    .map((rule) => ruleTitle(group, rule))
+  return {
+    en: titles.map((title) => title.en).join(' / '),
+    fr: titles.map((title) => title.fr).join(' / '),
   }
-  const picked = Array.isArray(value) ? value : [value]
-  return picked.some((item) => typeof item === 'string' && affinity.values?.includes(item)) ? 1 : 0
-}
-
-function scaleText(min: number, max: number): Localized {
-  return min === max
-    ? { en: `${min} of ${SCALE_MAX}`, fr: `${min} sur ${SCALE_MAX}` }
-    : { en: `${min} to ${max} of ${SCALE_MAX}`, fr: `${min} à ${max} sur ${SCALE_MAX}` }
 }

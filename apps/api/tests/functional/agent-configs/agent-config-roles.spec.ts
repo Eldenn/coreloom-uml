@@ -33,7 +33,6 @@ async function makeConfig() {
     userId: user.id,
     projectId: null,
     name: 'Storefront',
-    questionnaires: [],
     targets: [],
     revision: 1,
   })
@@ -95,31 +94,18 @@ async function setup(
     password: 'a-very-strong-passphrase',
   })
   if (flag) await updateFlag(FeatureFlagKey.AgentRoles, FLAG_ON, user)
-  const created = await client
-    .post('/agent-configs')
-    .headers(json)
-    .loginAs(user)
-    .json({
-      name: 'Storefront',
-      projectId: null,
-      questionnaires: ['frontend-react'],
-      targets,
-    })
+  const created = await client.post('/agent-configs').headers(json).loginAs(user).json({
+    name: 'Storefront',
+    projectId: null,
+    targets,
+  })
   created.assertStatus(201)
   const configId = created.body().config.id as number
   const answered = await client
-    .put(`/agent-configs/${configId}/answers`)
+    .put(`/agent-configs/${configId}/ready-rules/tooling.checks`)
     .headers(json)
     .loginAs(user)
-    .json({
-      answers: [
-        {
-          questionnaireId: 'frontend-react',
-          questionId: 'checks',
-          value: 'pnpm lint && pnpm test',
-        },
-      ],
-    })
+    .json({ rules: [{ rule: 'run', value: 'pnpm lint && pnpm test' }] })
   answered.assertStatus(200)
   return { user, configId }
 }

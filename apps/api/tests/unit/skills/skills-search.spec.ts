@@ -337,6 +337,14 @@ test.group('skills search helpers', () => {
       }),
       [{ slot: 'testing.levels', values: ['e2e', 'unit'] }, { diagramKinds: ['c4'] }],
     )
+    // A rule one query fits is no longer one the skill goes against.
+    assert.deepEqual(
+      mergeAffinities(
+        [{ slot: 'workflow.autonomy', values: ['agree'], against: ['disagree', 'other'] }],
+        { slot: 'workflow.autonomy', values: ['disagree'], against: ['agree'] },
+      ),
+      [{ slot: 'workflow.autonomy', values: ['agree', 'disagree'], against: ['other'] }],
+    )
     assert.deepEqual(
       mergeAffinities([{ diagramKinds: ['c4'] }], { diagramKinds: ['class', 'c4'] }),
       [{ diagramKinds: ['c4', 'class'] }],

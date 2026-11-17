@@ -1,7 +1,7 @@
 /**
- * The slot registry: one stable identifier per aspect of the work. Every question feeds exactly
- * one slot, and skills match answers through slots, so a slot is declared once here and never
- * renamed or reused. Two questionnaires combined in one configuration may not feed the same slot.
+ * The slot registry: one stable identifier per aspect of the work. One group of ready-made rules
+ * feeds each slot, and skills match the rules held through slots, so a slot is declared once
+ * here and never renamed or reused.
  */
 export const SLOTS = {
   'typescript.any': 'Use of `any` and explicit typing',
