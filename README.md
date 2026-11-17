@@ -288,7 +288,9 @@ one being read, 503 when `ANALYZER_URL` is not set. `ImportGithubCodeMapJob` run
 (`code-maps`, one job at a time) and calls the analyzer service (`apps/analyzer`, a stdlib Python
 HTTP server in its own image with graphify pinned). The analyzer holds no secret and is never
 published: it clones the repository shallowly with no submodules, symlinks, hooks, LFS or
-credentials, refuses more than 200 MB, 20,000 files or 5 minutes, runs graphify with
+credentials, refuses more than 200 MB, 20,000 files or 5 minutes, drops any committed
+`graphify-out/` (never reused: the map is always extracted again; the repository's own
+`.graphifyignore` is kept and wins over the default one), runs graphify with
 `GRAPHIFY_BACKEND=none`, answers the `graph.json` gzipped with the commit and branch, and deletes
 the clone. The worker checks and stores it like an upload (`ready`), or fails the map with a
 reason (`failed`); an analyzer that cannot be reached is tried 3 times. The web app polls a map

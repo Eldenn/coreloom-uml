@@ -312,10 +312,22 @@ def analyze(request: Request, clone_url: str | None = None) -> Analysis:
             raise AnalysisError("too_many_files")
         # graphify has no use for the history, and the ignore file leaves `.git/` out anyway.
         shutil.rmtree(os.path.join(repo, ".git"), ignore_errors=True)
+        # A graphify-out/ committed in the repository (an older graph, its cache and manifest) is
+        # not trusted nor reused: the map is always extracted again from the code. The
+        # repository's own .graphifyignore, when it has one, is kept and wins over ours.
+        remove(os.path.join(repo, os.path.dirname(GRAPH_FILE)))
         graph = extract(repo, work, deadline, request.ignore)
         return Analysis(graph=graph, commit=commit, branch=request.branch or branch)
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+def remove(path: str) -> None:
+    """Deletes a folder or a file, whichever it is (symlinks were checked out as files)."""
+    if os.path.isdir(path) and not os.path.islink(path):
+        shutil.rmtree(path, ignore_errors=True)
+    elif os.path.lexists(path):
+        os.remove(path)
 
 
 def graphify_version() -> str:

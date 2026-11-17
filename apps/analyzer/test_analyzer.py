@@ -50,6 +50,11 @@ class Fixture(unittest.TestCase):
         with open(os.path.join(self.origin, "src", "a.py"), "w") as file:
             file.write("def a():\n    return 1\n")
         os.symlink("/etc/passwd", os.path.join(self.origin, "link"))
+        os.makedirs(os.path.join(self.origin, "graphify-out", "cache"))
+        with open(os.path.join(self.origin, "graphify-out", "graph.json"), "w") as file:
+            file.write('{"nodes": [{"id": "stale"}], "links": []}')
+        with open(os.path.join(self.origin, analyzer.IGNORE_FILE), "w") as file:
+            file.write("docs/\n")
         git(self.origin, "init", "-q", "-b", "main")
         git(self.origin, "add", "-A")
         git(self.origin, "commit", "-q", "-m", "first")
@@ -130,11 +135,14 @@ class AnalyzeTest(Fixture):
         def spy(repo: str, work: str, deadline: float, ignore: str | None) -> bytes:
             seen["link"] = os.path.islink(os.path.join(repo, "link"))
             seen["git"] = os.path.exists(os.path.join(repo, ".git"))
+            seen["graphify-out"] = os.path.exists(os.path.join(repo, "graphify-out"))
+            with open(os.path.join(repo, analyzer.IGNORE_FILE)) as file:
+                seen["ignore"] = file.read()
             return real_extract(repo, work, deadline, ignore)
 
         with mock.patch.object(analyzer, "extract", spy):
             analyzer.analyze(self.request(ignore="dist/\n"), clone_url=self.origin)
-        self.assertEqual(seen, {"link": False, "git": False})
+        self.assertEqual(seen, {"link": False, "git": False, "graphify-out": False, "ignore": "docs/\n"})
 
     def test_file_limit(self) -> None:
         with mock.patch.object(analyzer, "MAX_FILES", 1):
