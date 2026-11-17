@@ -1,15 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
-import { flowSlice, structureSlice } from '@coreloom-uml/codemap'
-import {
-  type DrawingResult,
-  type LanguageModel,
-  LlmCallError,
-  proposeProcessDiagram,
-  proposeStructureDiagram,
-  type SuggestedDiagramKind,
-} from '@coreloom-uml/llm'
-import type Architecture from '#app/architectures/models/architecture'
+import { type DrawingResult, LlmCallError } from '@coreloom-uml/llm'
 import {
   ARCHITECTURE_NOT_FOUND,
   findOwnedArchitecture,
@@ -21,10 +12,10 @@ import {
 } from '#app/assistant/serializers/assistant-serializer'
 import { ASSISTANT_NOT_FOUND, assistantEnabled } from '#app/assistant/services/assistant-flag'
 import { CodeMapStatus, CodeMapSuggestionStatus } from '#app/code-maps/constants/code-map'
-import type CodeMapSuggestion from '#app/code-maps/models/code-map-suggestion'
 import { serializeSuggestion } from '#app/code-maps/serializers/code-map-suggestion-serializer'
 import { readDetectedCodeMap } from '#app/code-maps/services/code-map-storage'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
+import { drawingSource } from '#app/code-maps/services/drawing-source'
 import { findOwnedSuggestion, SUGGESTION_NOT_FOUND } from '#app/code-maps/services/owned-suggestion'
 import {
   createProposalConversation,
@@ -158,47 +149,5 @@ export default class CodeMapSuggestionDraftsController {
       messages: messages.map(serializeMessage),
       suggestion: serializeSuggestion(suggestion),
     } satisfies DraftSuggestionOutput)
-  }
-}
-
-type Locale = keyof typeof REQUEST
-
-/** What the model reads for this proposal, or null when its code is no longer in the map. */
-function drawingSource(
-  map: Awaited<ReturnType<typeof readDetectedCodeMap>>,
-  suggestion: CodeMapSuggestion,
-  architecture: Architecture,
-  locale: Locale,
-): { nodes: number; draw: (model: LanguageModel) => Promise<DrawingResult> } | null {
-  const common = {
-    architecture: architecture.title,
-    titles: architecture.diagrams.map((diagram) => diagram.title),
-    request: { title: suggestion.title, reason: suggestion.reason },
-    locale,
-  }
-  const kind: SuggestedDiagramKind = suggestion.kind
-  if (kind === 'sequence' || kind === 'activity') {
-    const [start] = suggestion.focus
-    const slice = start === undefined ? null : flowSlice(map, start)
-    if (!slice) return null
-    return {
-      nodes: slice.nodes.length,
-      draw: (model) =>
-        proposeProcessDiagram(model, {
-          ...common,
-          entry: slice.entry,
-          entryKind: slice.entryKind,
-          kind,
-          nodes: slice.nodes,
-          calls: slice.calls,
-        }),
-    }
-  }
-  const slice = structureSlice(map, suggestion.focus, kind)
-  if (slice.nodes.length === 0) return null
-  return {
-    nodes: slice.nodes.length,
-    draw: (model) =>
-      proposeStructureDiagram(model, { ...common, kind, nodes: slice.nodes, edges: slice.edges }),
   }
 }
