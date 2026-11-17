@@ -122,6 +122,101 @@ router
 
 /*
 |--------------------------------------------------------------------------
+| Code maps: the structure of a project's code, and how its diagrams match it (behind `code-maps`)
+|--------------------------------------------------------------------------
+|
+| A map belongs to one of the owner's projects; the graph is a gzipped file in Drive. Uploading
+| one is a write (an API token needs `write`); `github` has the server clone and map a public
+| GitHub repository in the background (the analyzer service, `ImportGithubCodeMapJob`). `links`
+| read and replace one diagram's links, `?diagramId=` naming a diagram of the map's project.
+| `processes` lists the flows from the entry points that no diagram documents. No model is called.
+*/
+const codeMapsController = () => import('#app/code-maps/controllers/code-maps-controller')
+const codeMapLinksController = () => import('#app/code-maps/controllers/code-map-links-controller')
+const codeMapImportsController = () =>
+  import('#app/code-maps/controllers/code-map-imports-controller')
+const codeMapProcessesController = () =>
+  import('#app/code-maps/controllers/code-map-processes-controller')
+router
+  .group(() => {
+    router
+      .get('/projects/:id/code-maps', [codeMapsController, 'index'])
+      .as('projects.code_maps.index')
+    router
+      .post('/projects/:id/code-maps', [codeMapsController, 'store'])
+      .as('projects.code_maps.store')
+    router
+      .post('/projects/:id/code-maps/github', [codeMapImportsController, 'store'])
+      .as('projects.code_maps.github')
+    router.get('/code-maps/:id', [codeMapsController, 'show']).as('code_maps.show')
+    router.delete('/code-maps/:id', [codeMapsController, 'destroy']).as('code_maps.destroy')
+    router.get('/code-maps/:id/links', [codeMapLinksController, 'show']).as('code_maps.links.show')
+    router
+      .put('/code-maps/:id/links', [codeMapLinksController, 'update'])
+      .as('code_maps.links.update')
+    router
+      .get('/code-maps/:id/processes', [codeMapProcessesController, 'index'])
+      .as('code_maps.processes.index')
+  })
+  .where('id', router.matchers.number())
+  .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
+
+/*
+|--------------------------------------------------------------------------
+| Conformance reviews: diagrams checked against a code map by the user's own model (`code-maps`)
+|--------------------------------------------------------------------------
+|
+| Starting a review calls no model. Each diagram is then one call, made by the browser in turn,
+| with the provider and its key in the body (never stored or logged): it counts against the LLM
+| limit. The findings are stored with the review; the project keeps its ten newest reviews.
+| Session only.
+*/
+const codeReviewsController = () => import('#app/code-reviews/controllers/code-reviews-controller')
+router
+  .group(() => {
+    router
+      .get('/projects/:id/code-reviews', [codeReviewsController, 'index'])
+      .as('projects.code_reviews.index')
+    router.post('/code-reviews', [codeReviewsController, 'store']).as('code_reviews.store')
+    router.get('/code-reviews/:id', [codeReviewsController, 'show']).as('code_reviews.show')
+    router
+      .delete('/code-reviews/:id', [codeReviewsController, 'destroy'])
+      .as('code_reviews.destroy')
+    router
+      .patch('/code-review-findings/:id', [
+        () => import('#app/code-reviews/controllers/code-review-findings-controller'),
+        'update',
+      ])
+      .as('code_review_findings.update')
+  })
+  .where('id', router.matchers.number())
+  .use(middleware.auth())
+router
+  .post('/code-reviews/:id/diagrams/:diagramId', [
+    () => import('#app/code-reviews/controllers/code-review-diagrams-controller'),
+    'store',
+  ])
+  .as('code_reviews.diagrams.store')
+  .where('id', router.matchers.number())
+  .where('diagramId', router.matchers.number())
+  .use([middleware.auth(), llmThrottle])
+
+/*
+| A process no diagram documents, drawn by the user's own model (provider and key in the body,
+| never stored or logged) and proposed as a new view in a new assistant conversation of one of
+| the project's architectures. Also behind `diagram-assistant`. Session only.
+*/
+router
+  .post('/code-maps/:id/processes/propose', [
+    () => import('#app/code-maps/controllers/code-map-process-proposals-controller'),
+    'store',
+  ])
+  .as('code_maps.processes.propose')
+  .where('id', router.matchers.number())
+  .use([middleware.auth(), llmThrottle])
+
+/*
+|--------------------------------------------------------------------------
 | Agent conventions: what AGENTS.md and its pointer files are rendered from
 |--------------------------------------------------------------------------
 |

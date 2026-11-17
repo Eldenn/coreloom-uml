@@ -18,6 +18,7 @@ export async function findOwnedProject(
     query
       .withCount('architectures')
       .withCount('agentConfig', (counted) => counted.as('agent_configs_count'))
+      .withCount('codeMaps', (counted) => counted.as('code_maps_count'))
   }
   const project = await query.first()
   if (!project || !assertOwner(project, user)) return null

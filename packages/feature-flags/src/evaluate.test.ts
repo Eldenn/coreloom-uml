@@ -99,6 +99,7 @@ describe('FEATURE_FLAGS', () => {
     )
     expect(isFeatureFlagKey('llm-subscription-chatgpt')).toBe(true)
     expect(isFeatureFlagKey('diagram-assistant')).toBe(true)
+    expect(isFeatureFlagKey('code-maps')).toBe(true)
     expect(isFeatureFlagKey('gone-flag')).toBe(false)
   })
 })

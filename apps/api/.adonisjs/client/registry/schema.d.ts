@@ -211,6 +211,186 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-generations-controller').default['latestOfProject']>>>
     }
   }
+  'projects.code_maps.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/projects/:id/code-maps'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').listCodeMapsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'projects.code_maps.store': {
+    methods: ["POST"]
+    pattern: '/projects/:id/code-maps'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').createCodeMapInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').createCodeMapInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'projects.code_maps.github': {
+    methods: ["POST"]
+    pattern: '/projects/:id/code-maps/github'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').importGithubCodeMapInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').importGithubCodeMapInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-imports-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-imports-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'code_maps.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/code-maps/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['show']>>>
+    }
+  }
+  'code_maps.destroy': {
+    methods: ["DELETE"]
+    pattern: '/code-maps/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-maps-controller').default['destroy']>>>
+    }
+  }
+  'code_maps.links.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/code-maps/:id/links'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').showCodeMapLinksInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-links-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-links-controller').default['show']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'code_maps.links.update': {
+    methods: ["PUT"]
+    pattern: '/code-maps/:id/links'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').updateCodeMapLinksInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').updateCodeMapLinksInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-links-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-links-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'code_maps.processes.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/code-maps/:id/processes'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-processes-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-processes-controller').default['index']>>>
+    }
+  }
+  'projects.code_reviews.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/projects/:id/code-reviews'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/code-reviews/validators/code-reviews-input').listCodeReviewsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-reviews/controllers/code-reviews-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-reviews/controllers/code-reviews-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'code_reviews.store': {
+    methods: ["POST"]
+    pattern: '/code-reviews'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-reviews/validators/code-reviews-input').createCodeReviewInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/code-reviews/validators/code-reviews-input').createCodeReviewInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-reviews/controllers/code-reviews-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-reviews/controllers/code-reviews-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'code_reviews.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/code-reviews/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-reviews/controllers/code-reviews-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-reviews/controllers/code-reviews-controller').default['show']>>>
+    }
+  }
+  'code_reviews.destroy': {
+    methods: ["DELETE"]
+    pattern: '/code-reviews/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-reviews/controllers/code-reviews-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-reviews/controllers/code-reviews-controller').default['destroy']>>>
+    }
+  }
+  'code_review_findings.update': {
+    methods: ["PATCH"]
+    pattern: '/code-review-findings/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-reviews/validators/code-reviews-input').updateCodeReviewFindingInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/code-reviews/validators/code-reviews-input').updateCodeReviewFindingInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-reviews/controllers/code-review-findings-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-reviews/controllers/code-review-findings-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'code_reviews.diagrams.store': {
+    methods: ["POST"]
+    pattern: '/code-reviews/:id/diagrams/:diagramId'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-reviews/validators/code-reviews-input').reviewDiagramInput)>>
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; diagramId: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/code-reviews/validators/code-reviews-input').reviewDiagramInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-reviews/controllers/code-review-diagrams-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-reviews/controllers/code-review-diagrams-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'code_maps.processes.propose': {
+    methods: ["POST"]
+    pattern: '/code-maps/:id/processes/propose'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').proposeProcessInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').proposeProcessInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-process-proposals-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-process-proposals-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'agent_configs.index': {
     methods: ["GET","HEAD"]
     pattern: '/agent-configs'

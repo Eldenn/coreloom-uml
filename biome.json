@@ -20,6 +20,7 @@
       "!**/packages/cli/templates",
       "!**/packages/catalog/e2e/schemas",
       "!**/packages/catalog/src/roles/presets/agency-agents.ts",
+      "!**/packages/codemap/fixtures",
       "!**/apps/web"
     ]
   },

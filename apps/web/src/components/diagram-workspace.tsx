@@ -21,6 +21,7 @@ import { Popconfirm } from '@/components/ui/popconfirm'
 import { type SaveState, SaveStatus } from '@/components/ui/save-status'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { SortableList } from '@/components/ui/sortable-list'
+import type { UmlAnnotation } from '@/components/ui/uml-diagram'
 import { type Messages, useCoreloomI18n } from '@/lib/i18n'
 import type { UmlDiagramKind, UmlParseResult } from '@/lib/uml'
 import { cn } from '@/lib/utils'
@@ -31,6 +32,8 @@ interface DiagramWorkspaceItem {
   title: string
   value: string
   format: DiagramFormat
+  /** Statuses on the view's elements (the findings of a review against the code, say). */
+  annotations?: readonly UmlAnnotation[]
 }
 
 interface DiagramWorkspaceProps {
@@ -70,6 +73,11 @@ interface DiagramWorkspaceProps {
   onRetrySave?: () => void
   /** The app's own buttons (Share, say), at the end of the top bar. */
   actions?: React.ReactNode
+  /**
+   * A badge on an annotated element was pressed in the open view: the element's id and the view's.
+   * Without it, annotations are marks only.
+   */
+  onAnnotationSelect?: (element: string, viewId: string) => void
   /**
    * CSS height of the whole workspace on wide screens: the editor takes what's left under the
    * top bar. `calc(100svh - 7.5rem)` fills the window in AppShell. Default: none, the editor's
@@ -495,6 +503,7 @@ function DiagramWorkspace({
   savedAt,
   onRetrySave,
   actions,
+  onAnnotationSelect,
   height,
   highlighted,
   className,
@@ -580,6 +589,14 @@ function DiagramWorkspace({
             onChange={reports.onChange}
             onFormatChange={reports.onFormatChange}
             fileName={downloadName(active.title)}
+            {...(active.annotations ? { annotations: active.annotations } : {})}
+            {...(onAnnotationSelect
+              ? {
+                  onAnnotationSelect: (element: string) => {
+                    onAnnotationSelect(element, active.id)
+                  },
+                }
+              : {})}
             height={height ? 'fill' : undefined}
             {...(highlighted ? { highlighted } : {})}
             className="min-w-0"

@@ -12,6 +12,7 @@ import { DownloadIcon, Share2Icon, SparklesIcon } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
+import { ReviewFindingsButton, ReviewFindingsPanel } from '@/architectures/review-findings-panel'
 import { StateSimulationButton, StateSimulationPanel } from '@/architectures/state-simulation-panel'
 import { AssistantLayout } from '@/assistant/assistant-panel'
 import type { DiagramFormat } from '@/components/diagram-editor'
@@ -37,6 +38,12 @@ import {
   useUpdateArchitecture,
 } from '@/lib/architectures'
 import { getErrorMessage } from '@/lib/client'
+import { annotationsOf } from '@/lib/code-review-findings'
+import {
+  type CodeReviewFinding,
+  type DiagramFindings,
+  useDiagramFindings,
+} from '@/lib/code-reviews'
 import { architectureCrumbs } from '@/lib/crumbs'
 import { downloadText } from '@/lib/download'
 import { useFeature } from '@/lib/feature-flags'
@@ -50,7 +57,11 @@ export const Route = createFileRoute('/_authed/architectures/$id')({
     parse: ({ id }) => ({ id: z.coerce.number().int().positive().parse(id) }),
     stringify: ({ id }) => ({ id: String(id) }),
   },
-  validateSearch: z.object({ diagram: z.number().int().optional().catch(undefined) }),
+  validateSearch: z.object({
+    diagram: z.number().int().optional().catch(undefined),
+    /** A conversation to open the assistant on, such as one a code map's process started. */
+    assistant: z.number().int().optional().catch(undefined),
+  }),
   // Its project (if any) and title, for the breadcrumbs; the page shows its own error if it can't load.
   loader: async ({ context: { queryClient }, params: { id } }): Promise<CrumbData | null> => {
     try {
@@ -118,35 +129,77 @@ function isKind(kind: UmlDiagramKind): kind is DiagramKind {
 }
 
 /**
- * What is docked beside the workspace: the assistant, or the simulation of one view with its
- * active states (pointed out on the drawing). One at a time; opening another view closes the
- * simulation.
+ * What is docked beside the workspace: the assistant, the simulation of one view with its active
+ * states (pointed out on the drawing), or the code review's findings on one view (narrowed to the
+ * element whose badge was pressed). One at a time; opening another view closes the simulation and
+ * the findings.
  */
 function useSidePanel(view: { id: number; kind: DiagramKind } | undefined) {
-  const [assisting, setAssisting] = React.useState(false)
+  // `?assistant=<conversation>` opens the assistant on that conversation.
+  const { assistant: conversationId } = Route.useSearch()
+  const [assisting, setAssisting] = React.useState(conversationId !== undefined)
   const [simulated, setSimulated] = React.useState<number | null>(null)
+  const [reviewed, setReviewed] = React.useState<number | null>(null)
+  const [focus, setFocus] = React.useState<string | null>(null)
+  const [focusRequest, setFocusRequest] = React.useState(0)
   const [activeStates, setActiveStates] = React.useState<readonly string[]>([])
   const simulateButton = React.useRef<HTMLButtonElement>(null)
+  const findingsButton = React.useRef<HTMLButtonElement>(null)
+  const only = (panel: 'assistant' | 'simulation' | 'findings') => {
+    if (panel !== 'assistant') setAssisting(false)
+    if (panel !== 'simulation') setSimulated(null)
+    if (panel !== 'findings') setReviewed(null)
+  }
+  const assist = (on: boolean) => {
+    setAssisting(on)
+    if (on) only('assistant')
+  }
   return {
     assisting,
+    /** What the assistant's layout takes from the side panel. */
+    assistantPanel: {
+      open: assisting,
+      onOpenChange: assist,
+      initialConversationId: conversationId ?? null,
+    },
     simulating: view?.kind === 'state' && simulated === view.id,
+    reviewing: reviewed !== null && reviewed === view?.id,
+    focus,
+    setFocus,
     activeStates,
     setActiveStates,
     simulateButton,
-    assist: (on: boolean) => {
-      setAssisting(on)
-      if (on) setSimulated(null)
-    },
+    findingsButton,
+    focusRequest,
+    assist,
     simulate: (on: boolean) => {
       setSimulated(on && view ? view.id : null)
-      if (on) setAssisting(false)
+      if (on) only('simulation')
+    },
+    /** The toggle opens every finding of the view; a badge opens those of its element. */
+    review: (on: boolean, element: string | null = null) => {
+      setReviewed(on && view ? view.id : null)
+      setFocus(element)
+      if (on) only('findings')
+      // A badge pressed while the panel is already open: the focus goes to its findings too.
+      if (on && element !== null) setFocusRequest((n) => n + 1)
     },
     /** Closed from the panel: the focus goes back to the toggle. */
     stopSimulating: () => {
       setSimulated(null)
       simulateButton.current?.focus()
     },
+    stopReviewing: () => {
+      setReviewed(null)
+      findingsButton.current?.focus()
+    },
   }
+}
+
+/** The findings of the newest code review on the open view, behind the code maps flag. */
+function useOpenViewFindings(projectId: number | null, diagramId: number | undefined) {
+  const codeMaps = useFeature('code-maps')
+  return useDiagramFindings(codeMaps ? projectId : null, diagramId)
 }
 
 function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
@@ -174,6 +227,7 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
   const failed = (error: unknown) => toast.error(getErrorMessage(error, t.editor.failed))
   const open = active && { ...active, ...autosave.draftOf(active) }
   const side = useSidePanel(open)
+  const reviewed = useOpenViewFindings(architecture.projectId, active?.id)
 
   return (
     <div className="flex flex-col gap-3">
@@ -182,8 +236,7 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
       <div className="flex flex-col gap-3 lg:flex-row">
         <div className="min-w-0 lg:flex-1">
           <AssistantLayout
-            open={side.assisting}
-            onOpenChange={side.assist}
+            {...side.assistantPanel}
             architecture={architecture}
             currentDiagramId={active?.id ?? null}
             autosave={autosave}
@@ -198,11 +251,10 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
                   { onSuccess: () => void router.invalidate(), onError: failed },
                 )
               }}
-              diagrams={diagrams.map((d) => ({
-                id: String(d.id),
-                title: d.title,
-                ...autosave.draftOf(d),
-              }))}
+              diagrams={workspaceViews({ diagrams, autosave, active: active?.id, reviewed, t })}
+              onAnnotationSelect={(element) => {
+                side.review(true, element)
+              }}
               activeId={active ? String(active.id) : ''}
               onActiveChange={(viewId) => {
                 select(Number(viewId))
@@ -272,7 +324,7 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
                 })
               }}
               height={WORKSPACE_HEIGHT}
-              highlighted={side.activeStates}
+              highlighted={side.reviewing && side.focus !== null ? [side.focus] : side.activeStates}
               saveState={autosave.state}
               savedAt={autosave.savedAt}
               onRetrySave={autosave.retry}
@@ -282,6 +334,10 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
                   simulating={side.simulating}
                   onSimulatingChange={side.simulate}
                   simulateButton={side.simulateButton}
+                  findings={reviewed?.findings}
+                  reviewing={side.reviewing}
+                  onReviewingChange={side.review}
+                  findingsButton={side.findingsButton}
                   assisting={side.assisting}
                   onAssistingChange={side.assist}
                   onSharingChange={setSharing}
@@ -290,18 +346,80 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
             />
           </AssistantLayout>
         </div>
-        {side.simulating && open && (
-          <StateSimulationPanel
-            value={open.value}
-            format={open.format}
-            height={WORKSPACE_HEIGHT}
-            onActiveChange={side.setActiveStates}
-            onClose={side.stopSimulating}
+        {open && (
+          <SidePanels
+            side={side}
+            open={open}
+            reviewed={reviewed}
+            projectId={architecture.projectId}
           />
         )}
       </div>
       <ShareArchitecture architecture={architecture} open={sharing} onOpenChange={setSharing} />
     </div>
+  )
+}
+
+/** The views as the workspace takes them: each one's draft, and the open one's findings. */
+function workspaceViews({
+  diagrams,
+  autosave,
+  active,
+  reviewed,
+  t,
+}: {
+  diagrams: ArchitectureDetail['diagrams']
+  autosave: ReturnType<typeof useDiagramAutosave>
+  active: number | undefined
+  reviewed: DiagramFindings | null
+  t: ReturnType<typeof useT>
+}) {
+  // Only the open view's review is fetched: the workspace draws no other view.
+  const annotations = reviewed && annotationsOf(reviewed.findings, t)
+  return diagrams.map((d) => ({
+    id: String(d.id),
+    title: d.title,
+    ...autosave.draftOf(d),
+    ...(annotations && d.id === active ? { annotations } : {}),
+  }))
+}
+
+/** What is docked beside the workspace, apart from the assistant (which wraps it). */
+function SidePanels({
+  side,
+  open,
+  reviewed,
+  projectId,
+}: {
+  side: ReturnType<typeof useSidePanel>
+  open: OpenDiagram
+  reviewed: DiagramFindings | null
+  projectId: number | null
+}) {
+  if (side.simulating)
+    return (
+      <StateSimulationPanel
+        value={open.value}
+        format={open.format}
+        height={WORKSPACE_HEIGHT}
+        onActiveChange={side.setActiveStates}
+        onClose={side.stopSimulating}
+      />
+    )
+  if (!side.reviewing || !reviewed || projectId === null) return null
+  return (
+    <ReviewFindingsPanel
+      projectId={projectId}
+      review={reviewed.review}
+      findings={reviewed.findings}
+      value={open.value}
+      format={open.format}
+      focus={side.focus}
+      onFocusChange={side.setFocus}
+      focusRequest={side.focusRequest}
+      height={WORKSPACE_HEIGHT}
+      onClose={side.stopReviewing}
+    />
   )
 }
 
@@ -395,14 +513,18 @@ interface OpenDiagram {
 }
 
 /**
- * The workspace toolbar: Simulate and the XState download (state diagrams), the assistant (behind
- * its flag), Share.
+ * The workspace toolbar: Simulate and the XState download (state diagrams), the code review's
+ * findings (when a review covers the open view), the assistant (behind its flag), Share.
  */
 function WorkspaceActions({
   diagram,
   simulating,
   onSimulatingChange,
   simulateButton,
+  findings,
+  reviewing,
+  onReviewingChange,
+  findingsButton,
   assisting,
   onAssistingChange,
   onSharingChange,
@@ -411,6 +533,11 @@ function WorkspaceActions({
   simulating: boolean
   onSimulatingChange: (open: boolean) => void
   simulateButton: React.Ref<HTMLButtonElement>
+  /** The open view's findings in the newest review that covers it; none without one. */
+  findings: readonly CodeReviewFinding[] | undefined
+  reviewing: boolean
+  onReviewingChange: (open: boolean) => void
+  findingsButton: React.Ref<HTMLButtonElement>
   assisting: boolean
   onAssistingChange: (open: boolean) => void
   onSharingChange: (open: boolean) => void
@@ -428,6 +555,14 @@ function WorkspaceActions({
           />
           <XStateDownload {...diagram} />
         </>
+      )}
+      {findings && (
+        <ReviewFindingsButton
+          ref={findingsButton}
+          findings={findings}
+          pressed={reviewing}
+          onPressedChange={onReviewingChange}
+        />
       )}
       {assistant && (
         <Button

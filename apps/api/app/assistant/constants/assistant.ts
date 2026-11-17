@@ -53,6 +53,11 @@ export type StoredChange = {
   baseKind?: DiagramKind
   /** Set when a delete is accepted: where the view stood, where an undo puts it back. */
   position?: number
+  /**
+   * On a view drawn from a code map's process: the places of the code each element stands for,
+   * stored as confirmed links of the new view when it is accepted.
+   */
+  codeLinks?: { elementId: string; codeKey: string }[]
 }
 
 /** The languages the assistant replies in: the interface's. */

@@ -9,6 +9,8 @@ import {
   type StoredChange,
 } from '#app/assistant/constants/assistant'
 import AssistantMessage from '#app/assistant/models/assistant-message'
+import { DiagramCodeLinkStatus } from '#app/code-maps/constants/code-map'
+import DiagramCodeLink from '#app/code-maps/models/diagram-code-link'
 import { DiagramFormat } from '#app/diagrams/constants/diagram'
 import Diagram from '#app/diagrams/models/diagram'
 import { checkDiagramValue } from '#app/diagrams/services/diagram-content'
@@ -125,6 +127,18 @@ const STEPS: Record<ApplyChangeAction, StepFn> = {
         },
         { client: trx },
       )
+      if (change.codeLinks?.length) {
+        // The view was drawn from these places of the code: the owner accepted it as is.
+        await DiagramCodeLink.createMany(
+          change.codeLinks.map((link) => ({
+            diagramId: diagram.id,
+            elementId: link.elementId,
+            codeKey: link.codeKey,
+            status: DiagramCodeLinkStatus.Confirmed,
+          })),
+          { client: trx },
+        )
+      }
       return {
         change: { ...accepted, diagramId: diagram.id, format, appliedVersion: 1 },
         diagram,

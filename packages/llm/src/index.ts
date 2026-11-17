@@ -52,6 +52,28 @@ export {
   requestDeviceCode,
 } from './codex.ts'
 export {
+  CONFORMANCE_COMMENT_MAX_LENGTH,
+  CONFORMANCE_EVIDENCE_MAX,
+  CONFORMANCE_FINDINGS_MAX,
+  CONFORMANCE_INSTRUCTIONS,
+  CONFORMANCE_MAX_INPUT_TOKENS,
+  CONFORMANCE_SEVERITIES,
+  CONFORMANCE_SNIPPET_MAX_LINES,
+  CONFORMANCE_STATUSES,
+  CONFORMANCE_TIMEOUT_MS,
+  type ConformanceFinding,
+  type ConformanceNode,
+  type ConformanceResult,
+  type ConformanceSeverity,
+  type ConformanceSource,
+  type ConformanceStatus,
+  cleanFindings,
+  cleanSnippet,
+  conformanceOutputSchema,
+  conformancePrompt,
+  reviewConformance,
+} from './conformance.ts'
+export {
   CONNECTION_TEST_MAX_OUTPUT_TOKENS,
   CONNECTION_TEST_PROMPT,
   CONNECTION_TEST_TIMEOUT_MS,
@@ -84,6 +106,24 @@ export {
   importPrompt,
   withoutManagedBlock,
 } from './import.ts'
+export {
+  cleanLinks,
+  diagramElementIds,
+  PROCESS_DIAGRAM_KINDS,
+  PROCESS_INSTRUCTIONS,
+  PROCESS_LINKS_PER_ELEMENT_MAX,
+  PROCESS_MAX_INPUT_TOKENS,
+  PROCESS_TIMEOUT_MS,
+  PROCESS_TITLE_MAX_LENGTH,
+  type ProcessDiagramKind,
+  type ProcessDiagramResult,
+  type ProcessLink,
+  type ProcessNode,
+  type ProcessSource,
+  processDiagramOutputSchema,
+  processPrompt,
+  proposeProcessDiagram,
+} from './process-diagram.ts'
 export {
   cleanProposals,
   cleanProposalText,

@@ -98,6 +98,7 @@ stripped down); the whole front end is built with [coreloom-ui](https://github.c
 | UI | coreloom-ui (Tailwind CSS v4, Radix, shadcn), installed into `apps/web/src/components` |
 | Diagrams | coreloom-ui's `DiagramEditor` / `UmlDiagram`; the UML model and its Mermaid, PlantUML and JSON conversion in `packages/uml`, shared by the web app and the API |
 | Agent conventions | `packages/catalog`: the questionnaires, slot registry and per-tool templates from which `renderAgentContext` deterministically renders an `AGENTS.md` (plus pointer files for tools that do not read it natively); `apps/cli` (`@coreloom-uml/cli`, published on npm) writes them into a repository |
+| Code maps | `packages/codemap`: the `CodeMap` format (files, symbols and the links between them, never source code), the importer of graphify's `graph.json`, entry point detection, and the deterministic matching of diagrams against a map; `coreloom-uml map push` (`apps/cli`) sends one from a repository |
 | LLM (bring your own key) | `packages/llm`: the Vercel AI SDK (`ai` 7, `@ai-sdk/*`) behind rule proposals and the connection test; Anthropic, OpenAI, Mistral, Ollama and OpenAI-compatible servers (allowlisted) |
 
 ## Repository Layout
@@ -108,7 +109,8 @@ coreloom-uml/
 │   ├── api/                  # AdonisJS v7 backend — same app/ domain layout as coreloom
 │   │                         #   app/architectures/ is the reference domain — copy it for new user-owned resources
 │   ├── web/                  # React 19 + Vite SPA built with coreloom-ui (sign-in, architectures, editor, settings)
-│   └── cli/                  # `@coreloom-uml/cli` (npm): pulls agent conventions into a repository
+│   ├── cli/                  # `@coreloom-uml/cli` (npm): pulls agent conventions, sends code maps
+│   └── analyzer/             # Python service: clones a public GitHub repository, maps it with graphify
 ├── packages/
 │   ├── config/               # Shared TypeScript config — copied from coreloom, unmodified
 │   ├── auth-policy/          # Password policy — copied from coreloom (consumed from source, no build step)
@@ -119,6 +121,7 @@ coreloom-uml/
 └── infra/
     ├── docker-compose.yml         # local dev: postgres (+ postgres-init, which creates the dev and
     │                              #   test databases on every `up`) + redis + mailpit + minio + bull-board
+    │                              #   + analyzer
     ├── docker-compose.staging.yml # Coolify staging stack
     └── .env.staging.example       # staging environment variables
 ```
@@ -249,6 +252,52 @@ flags** screen, where it turns a flag on or off, rolls it out to a share of acco
 accounts by email or id, and reads who changed what. The API enforces each flag (a route behind an
 off flag answers 404); everyone else reads their evaluated flags from `GET /features`. With no
 default account configured, nobody can change the flags and they keep their stored state.
+
+### Code maps
+
+A code map (`app/code-maps/`, tables `code_maps` and `diagram_code_links`) is the structure of a
+repository at one commit (files, symbols, the links between them, never source code) held by one
+of the owner's projects. The row is the header (source, repository, branch, commit, extractor,
+status, counts); the map itself is a gzipped `CodeMap` in Drive (`code-maps/<projectId>/…`). The
+routes sit behind the `code-maps` feature flag, off by default, take the session or an API key
+(`write` to upload), and never call a model.
+
+- `POST /projects/:id/code-maps` takes a multipart `file` (50 MB at most, `.json` or `.gz`):
+  graphify's `graph.json` (read by `importGraphify`) or a map the CLI already normalized (checked
+  by `parseCodeMap`), plain or gzipped. Inflating is capped, and anything that does not pass is a
+  422 with its problems. `repositoryUrl`, `branch` and `commitSha` fields win over the map's
+  header; a user name or token in the repository URL is dropped. A project keeps its 5 newest
+  maps: the older ones are deleted with their file. Projects report `codeMapCount`.
+- `GET /projects/:id/code-maps` lists them, newest first (paginated); `GET /code-maps/:id` adds
+  the summary (folders, communities, entry points detected again on each read, counts);
+  `DELETE /code-maps/:id` deletes it and its file.
+- `GET /code-maps/:id/links?diagramId=` matches a diagram of the map's project against it
+  (`matchDiagram`) with the owner's stored links; `PUT` replaces that diagram's links
+  (`suggested`, `confirmed` or `ignored`) and answers with the new match. Links are keyed by code
+  key, not by map, so they outlive the map they were made on.
+
+The CLI sends a map from a repository: `npx @coreloom-uml/cli map push --project <id>` runs
+graphify on the machine (no model), turns its graph into a `CodeMap` there and uploads it gzipped,
+labelled with the Git remote, branch and commit (see the [CLI README](apps/cli/README.md), which
+also has a GitHub Actions workflow that sends one on every push).
+
+The server can also read a **public GitHub repository** itself:
+`POST /projects/:id/code-maps/github` `{ url, branch? }` (github.com only, the default branch when
+`branch` is left out) creates a `pending` map and answers 202; 409 while the project already has
+one being read, 503 when `ANALYZER_URL` is not set. `ImportGithubCodeMapJob` runs on its own queue
+(`code-maps`, one job at a time) and calls the analyzer service (`apps/analyzer`, a stdlib Python
+HTTP server in its own image with graphify pinned). The analyzer holds no secret and is never
+published: it clones the repository shallowly with no submodules, symlinks, hooks, LFS or
+credentials, refuses more than 200 MB, 20,000 files or 5 minutes, drops any committed
+`graphify-out/` (never reused: the map is always extracted again; the repository's own
+`.graphifyignore` is kept and wins over the default one), runs graphify with
+`GRAPHIFY_BACKEND=none`, answers the `graph.json` gzipped with the commit and branch, and deletes
+the clone. The worker checks and stores it like an upload (`ready`), or fails the map with a
+reason (`failed`); an analyzer that cannot be reached is tried 3 times. The web app polls a map
+while it is `pending` or `running`. Locally the dev compose runs the analyzer on port 8080 and
+`.env.example` already points `ANALYZER_URL` at it (run the queue worker too); without Docker,
+run `python3 apps/analyzer/analyzer.py` with graphify installed. Its tests run with
+`python3 -m unittest discover -s apps/analyzer`.
 
 ### Agent conventions
 

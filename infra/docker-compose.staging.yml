@@ -130,6 +130,7 @@ services:
       # OTEL_EXPORTER_OTLP_ENDPOINT is set, so this is what turns tracing on.
       # No `depends_on: signoz-otel-collector`: the exporter retries/drops
       # silently, the API must not wait on (or fail with) SigNoz.
+      ANALYZER_URL: http://analyzer:8080
       OTEL_SERVICE_NAME: coreloom-uml-api-staging
       OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
     volumes:
@@ -199,6 +200,7 @@ services:
       S3_ACCESS_KEY_ID: '${S3_ACCESS_KEY_ID}'
       S3_SECRET_ACCESS_KEY: '${S3_SECRET_ACCESS_KEY}'
       S3_PUBLIC_URL: '${S3_PUBLIC_URL:-}'
+      ANALYZER_URL: http://analyzer:8080
       OTEL_SERVICE_NAME: coreloom-uml-worker-staging
       OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
     depends_on:
@@ -208,6 +210,24 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+
+  # analyzer — clones a public GitHub repository and maps its code with graphify
+  # for the queue worker (code maps "From GitHub"). No secret, no port published,
+  # no volume: only `api`/`queue-worker` reach it over the Compose network.
+  analyzer:
+    build:
+      context: .
+      dockerfile: apps/analyzer/Dockerfile
+    restart: unless-stopped
+    expose:
+      - '8080'
+    mem_limit: 2g
+    cpus: 1.5
+    pids_limit: 512
+    security_opt:
+      - 'no-new-privileges:true'
+    cap_drop:
+      - ALL
 
   # bull-board — queue dashboard (inspect / retry / remove jobs). Published on
   # its own subdomain by Coolify; drop this service if tunnel-only access is

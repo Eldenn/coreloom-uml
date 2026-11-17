@@ -13,7 +13,8 @@
     "@coreloom-uml/uml",
     "@coreloom-uml/catalog",
     "@coreloom-uml/llm",
-    "@coreloom-uml/feature-flags"
+    "@coreloom-uml/feature-flags",
+    "@coreloom-uml/codemap"
   ],
   "privatePackages": {
     "version": true,

@@ -7,13 +7,15 @@
 import { Handle, type Node, type NodeProps, Position, useConnection } from '@xyflow/react'
 import type * as React from 'react'
 
+import type { UmlAnnotation } from '@/components/ui/uml-diagram-annotations'
 import type { DiagramNode } from '@/lib/uml-graph'
 import { cn } from '@/lib/utils'
 
-/** `connectable`: the node shows a dot to drag a new line from. */
+/** `connectable`: the node shows a dot to drag a new line from; `annotation`: its badge. */
 interface NodeData extends Record<string, unknown> {
   node: DiagramNode
   connectable?: boolean
+  annotation?: UmlAnnotation | undefined
 }
 type ActorNodeType = Node<NodeData, 'actor'>
 type EllipseNodeType = Node<NodeData, 'ellipse'>

@@ -1,4 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import CodeMap from '#app/code-maps/models/code-map'
+import { deleteCodeMapFiles } from '#app/code-maps/services/code-map-storage'
 import Project from '#app/projects/models/project'
 import { serializeProject } from '#app/projects/serializers/project-serializer'
 import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
@@ -20,6 +22,7 @@ export default class ProjectsController {
       .where('userId', user.id)
       .withCount('architectures')
       .withCount('agentConfig', (query) => query.as('agent_configs_count'))
+      .withCount('codeMaps', (query) => query.as('code_maps_count'))
       .orderBy('updatedAt', 'desc')
       .orderBy('id', 'desc')
     if (search) query.whereILike('name', likePattern(search))
@@ -59,12 +62,17 @@ export default class ProjectsController {
     return response.ok({ project: serializeProject(project) })
   }
 
-  /** Its architectures go with it (cascade), and with them their diagrams and share links. */
+  /**
+   * Its architectures go with it (cascade), and with them their diagrams and share links; its
+   * code maps too, whose files the cascade cannot reach.
+   */
   async destroy({ params, auth, response }: HttpContext) {
     const project = await findOwnedProject(params.id, auth.getUserOrFail())
     if (!project) return response.notFound(PROJECT_NOT_FOUND)
 
+    const codeMaps = await CodeMap.query().where('projectId', project.id).select('storageKey')
     await project.delete()
+    await deleteCodeMapFiles(codeMaps.map((codeMap) => codeMap.storageKey))
 
     return response.noContent()
   }

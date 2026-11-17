@@ -31,7 +31,7 @@ export type Generation = {
 export type FetchLike = typeof fetch
 
 /** Longest wait for the API before giving up. */
-const REQUEST_TIMEOUT_MS = 30_000
+export const REQUEST_TIMEOUT_MS = 30_000
 
 function latestGenerationUrl(apiUrl: string, source: Source): string {
   return 'configId' in source
@@ -40,7 +40,7 @@ function latestGenerationUrl(apiUrl: string, source: Source): string {
 }
 
 /** The message of an `{ error: { message } }` body, if the API sent one. */
-function errorMessage(body: unknown): string | null {
+export function errorMessage(body: unknown): string | null {
   const message = (body as { error?: { message?: unknown } } | null)?.error?.message
   return typeof message === 'string' ? message : null
 }

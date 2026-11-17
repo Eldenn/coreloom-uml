@@ -9,6 +9,7 @@ export const FeatureFlagKey = {
   DiagramAssistant: 'diagram-assistant',
   McpServer: 'mcp-server',
   AgentRoles: 'agent-roles',
+  CodeMaps: 'code-maps',
 } as const
 
 export type FeatureFlagKey = (typeof FeatureFlagKey)[keyof typeof FeatureFlagKey]
@@ -62,6 +63,14 @@ export const FEATURE_FLAGS: readonly FeatureFlagDeclaration[] = [
     description:
       'Roles in agent conventions: framed agents rendered per tool. Keep off until the CLI writes role files whole (it appends them again on a second pull).',
     tags: ['agents'],
+    defaultState: OFF,
+  },
+  {
+    key: FeatureFlagKey.CodeMaps,
+    name: 'Code maps',
+    description:
+      'Lets people store maps of their code in a project and match its diagrams against them.',
+    tags: ['code'],
     defaultState: OFF,
   },
 ]

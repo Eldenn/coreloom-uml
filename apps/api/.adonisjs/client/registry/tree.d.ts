@@ -28,6 +28,37 @@ export interface ApiDefinition {
         latest: typeof routes['projects.agent_config.generations.latest']
       }
     }
+    codeMaps: {
+      index: typeof routes['projects.code_maps.index']
+      store: typeof routes['projects.code_maps.store']
+      github: typeof routes['projects.code_maps.github']
+    }
+    codeReviews: {
+      index: typeof routes['projects.code_reviews.index']
+    }
+  }
+  codeMaps: {
+    show: typeof routes['code_maps.show']
+    destroy: typeof routes['code_maps.destroy']
+    links: {
+      show: typeof routes['code_maps.links.show']
+      update: typeof routes['code_maps.links.update']
+    }
+    processes: {
+      index: typeof routes['code_maps.processes.index']
+      propose: typeof routes['code_maps.processes.propose']
+    }
+  }
+  codeReviews: {
+    store: typeof routes['code_reviews.store']
+    show: typeof routes['code_reviews.show']
+    destroy: typeof routes['code_reviews.destroy']
+    diagrams: {
+      store: typeof routes['code_reviews.diagrams.store']
+    }
+  }
+  codeReviewFindings: {
+    update: typeof routes['code_review_findings.update']
   }
   agentConfigs: {
     index: typeof routes['agent_configs.index']

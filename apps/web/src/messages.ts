@@ -1,6 +1,7 @@
 // The app's own copy, in English and French. The Coreloom components bring their own strings
 // (buttons, placeholders, screen-reader text…); these are the ones this app adds.
 // Add a language: copy `en`, translate it, and register it in src/lib/locale.tsx.
+import type { CodeMapStatus } from '@/lib/code-maps'
 
 export const en = {
   brand: 'Coreloom UML',
@@ -281,6 +282,212 @@ export const en = {
       'The CLI reads the key from CORELOOM_UML_API_KEY. A read-only key is enough. Never pass it as an argument.',
     generationNotFound: 'This generation could not be loaded.',
   },
+  code: {
+    tab: 'Code',
+    loadFailed: 'The code maps could not be loaded.',
+    retry: 'Retry',
+    introTitle: 'Compare the diagrams with the code',
+    intro:
+      'A code map is the structure of a repository: folders, classes, functions and the calls between them, read by graphify without running the code or calling a model. Your source code is never sent: only names, paths and links.',
+    cliTitle: 'From the CLI',
+    cliText:
+      'Run it at the root of the repository, with graphify installed. It sends the map, never the code.',
+    cliKeyText: 'The CLI reads an API key with write access from CORELOOM_UML_API_KEY.',
+    cliKey: 'Create an API key',
+    cliWorkflow: 'In GitHub Actions, on every push to the main branch:',
+    uploadTitle: 'Upload a graph.json',
+    uploadText: 'The graph.json graphify wrote in graphify-out/, plain or gzipped, up to 50 MB.',
+    uploadSubmit: 'Upload the map',
+    uploading: 'Reading the map…',
+    uploaded: 'Code map added.',
+    uploadFailed: 'The map could not be added.',
+    githubTitle: 'From GitHub',
+    githubText:
+      'Coreloom clones a public repository and reads it with graphify, the code left unrun. For a private repository, use the CLI.',
+    githubUrl: 'Repository',
+    githubUrlInvalid: 'A public repository on github.com, like https://github.com/owner/name.',
+    githubBranch: 'Branch',
+    githubBranchHint: 'Leave empty for the default branch.',
+    githubBranchInvalid: 'This is not a branch name.',
+    githubSubmit: 'Read the repository',
+    githubStarted: 'The repository is being read. Its map shows here once it is ready.',
+    githubFailed: 'The repository could not be read.',
+    addMap: 'Add a map',
+    addTitle: 'Add a code map',
+    addDescription: 'A new map replaces the shown one; the project keeps its five newest.',
+    version: 'Map version',
+    versionLabel: (date: string, commit: string | null, status: CodeMapStatus) =>
+      [
+        date,
+        commit?.slice(0, 7),
+        { pending: 'reading', running: 'reading', ready: undefined, failed: 'failed' }[status],
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    delete: 'Delete this map',
+    deleteTitle: 'Delete this code map?',
+    deleteText:
+      'Its file is deleted. The links you reviewed stay on the diagrams and apply to the next map.',
+    deleteConfirm: 'Delete',
+    deleted: 'Code map deleted.',
+    notReady:
+      'This map is still being read: a repository takes a minute or two. This page updates on its own.',
+    failed: (reason: string | null) => `This map could not be read${reason ? `: ${reason}` : '.'}`,
+    viewOverview: 'Map',
+    viewDiagrams: 'Diagrams',
+    viewProcesses: 'Undocumented processes',
+    repository: 'Repository',
+    branch: 'Branch',
+    commit: 'Commit',
+    extractor: 'Extractor',
+    added: 'Added',
+    source: 'Source',
+    sources: { cli: 'CLI', upload: 'Upload', github: 'GitHub' },
+    files: 'Files',
+    symbols: 'Symbols',
+    modules: 'External modules',
+    edges: 'Links',
+    folders: 'Folders',
+    foldersHint: 'Three levels deep, with the files each holds.',
+    folderFiles: (n: number) => `${String(n)} ${n === 1 ? 'file' : 'files'}`,
+    communities: 'Communities',
+    communitiesHint:
+      'Clusters of code that work together, named after the folder most of it is in.',
+    community: (folder: string) => folder || '(root)',
+    entries: 'Entry points',
+    entriesHint: 'Routes, jobs, commands and handlers found in the code.',
+    noEntries: 'No entry point was found in this map.',
+    entryKinds: { route: 'Route', job: 'Job', command: 'Command', handler: 'Handler' },
+    name: 'Name',
+    kind: 'Kind',
+    place: 'Place',
+    noDiagrams: 'This project has no diagram yet.',
+    noDiagramsText: 'Draw one in an architecture, then come back to compare it with the code.',
+    diagram: 'Diagram',
+    pickDiagram: 'Pick a diagram',
+    linksFailed: 'This diagram could not be compared with the map.',
+    noMatch:
+      'This kind of diagram has no counterpart in the code map (state, ER, use case, activity and deployment diagrams).',
+    matched: (n: number, total: number) =>
+      `${String(n)} of ${String(total)} elements found in the code`,
+    status: {
+      confirmed: 'Linked',
+      suggested: 'To confirm',
+      missing: 'Not found in the code',
+    },
+    suggestions: 'Links to confirm',
+    suggestionsHint:
+      'Accept a link, edit it to point elsewhere (a symbol path#Name or a folder path/), or dismiss it.',
+    noSuggestions: 'Nothing left to confirm.',
+    reasons: {
+      confirmed: 'Confirmed',
+      'folder-path': 'Folder at that path',
+      'folder-name': 'Folder of that name',
+      'class-name': 'Class of that name',
+      'file-name': 'File of that name',
+    },
+    showAll: 'Show every element',
+    onlyElement: (name: string) => `Showing ${name} only.`,
+    reviewed: 'Reviewed links',
+    reviewedEmpty: 'No link reviewed yet.',
+    linkConfirmed: 'Linked',
+    linkIgnored: 'Ignored',
+    undo: 'Undo',
+    undoLabel: (element: string, code: string) => `Undo the link from ${element} to ${code}`,
+    saveFailed: 'The links could not be saved.',
+    findings: 'What the code says',
+    noFindings: 'The diagram and the code agree on everything the map can check.',
+    findingKinds: {
+      'missing-in-code': (element: string) => `${element} is not in the code`,
+      'stale-link': (element: string, code: string) =>
+        `${element} is linked to ${code}, which is no longer in the code`,
+      'relation-not-in-code': (from: string, to: string) =>
+        `${from} → ${to} is drawn, but the code has no such dependency`,
+      'dependency-not-drawn': (from: string, to: string, count: number) =>
+        `${from} depends on ${to} in the code (${String(count)} ${count === 1 ? 'link' : 'links'}), but the diagram doesn’t show it`,
+    },
+    processesFailed: 'The undocumented processes could not be listed.',
+    processesHint:
+      'The calls followed from each entry point, four levels deep, that touch no code linked to a diagram. The largest come first.',
+    processesCount: (shown: number, total: number) =>
+      shown < total
+        ? `${String(total)} undocumented processes, the ${String(shown)} largest shown.`
+        : `${String(total)} undocumented ${total === 1 ? 'process' : 'processes'}.`,
+    noProcesses: 'Every process found in the code touches a diagram.',
+    processSize: (n: number) => `${String(n)} ${n === 1 ? 'step' : 'steps'}`,
+    processDepth: (n: number) => `${String(n)} ${n === 1 ? 'level' : 'levels'} deep`,
+    processFolders: 'Folders',
+    processCalls: 'Calls reached',
+    proposeDiagram: 'Propose a diagram',
+    proposeTitle: 'Draw this process as a new view',
+    proposeText: (entry: string, model: string) =>
+      `${model} receives the calls followed from ${entry}: names, paths and links only, never your code. The view it draws is proposed in the architecture’s assistant, where you accept or reject it.`,
+    proposeNoProvider:
+      'Set your LLM provider in Settings first: the diagram is drawn by your own model, with your key.',
+    proposeNoArchitecture: 'Add an architecture to this project first: the new view goes into one.',
+    proposeArchitecture: 'Architecture',
+    proposeKind: 'Diagram',
+    proposeRun: 'Propose',
+    proposing: 'Drawing…',
+    proposeFailed: 'The diagram could not be drawn',
+    openInRepository: (place: string) => `Open ${place} in the repository`,
+    viewReview: 'Conformance review',
+    reviewsFailed: 'The conformance reviews could not be loaded.',
+    reviewFailed: 'The review could not be loaded or started.',
+    reviewTitle: 'Conformance review',
+    reviewHint:
+      'Your own model checks each diagram against the code map: one call per diagram, with the provider set in this browser. It reads names, paths and links, never your code. The findings are kept with the review.',
+    reviewStart: 'New review',
+    reviewNothing:
+      'Only package, component, class, sequence and C4 diagrams can be compared with the code.',
+    reviewPick: 'Review',
+    reviewLabel: (date: string, diagrams: number, open: number) =>
+      `${date} · ${String(diagrams)} ${diagrams === 1 ? 'diagram' : 'diagrams'} · ${String(open)} open`,
+    reviewDelete: 'Delete this review',
+    reviewDeleteTitle: 'Delete this review?',
+    reviewDeleteText: 'Its findings are deleted with it.',
+    reviewEmpty: 'No review yet',
+    reviewEmptyText:
+      'Start one to have your model compare the diagrams with this map. The project keeps its ten newest reviews.',
+    reviewStartTitle: 'Review the diagrams against the code',
+    reviewStartText: (model: string) =>
+      `${model} receives each diagram, how it is linked to the code and the part of the map around it: names, paths and links only. One call per diagram.`,
+    reviewNoProvider:
+      'Set your LLM provider in Settings first: the review calls your own model, with your key.',
+    reviewOpenSettings: 'Open Settings',
+    reviewDiagrams: 'Diagrams to review',
+    cancel: 'Cancel',
+    reviewRun: (n: number) => `Review ${String(n)} ${n === 1 ? 'diagram' : 'diagrams'}`,
+    reviewPlan: (model: string | null) => (model ? `Review with ${model}` : 'Review'),
+    reviewFound: (n: number) => `${String(n)} ${n === 1 ? 'finding' : 'findings'}`,
+    reviewTruncated: 'part of the map left out to fit the model',
+    reviewDropped: (n: number) =>
+      `${String(n)} ${n === 1 ? 'finding' : 'findings'} without evidence set aside`,
+    reviewStop: 'Stop',
+    reviewResume: (n: number) => `Review the ${String(n)} remaining`,
+    reviewAgain: (title: string) => `Review “${title}” again`,
+    reviewMapGone: 'The map of this review was deleted: start a new review to go on.',
+    reviewDiagramGone: 'This diagram was deleted or emptied since the review.',
+    reviewFindings: 'Findings',
+    reviewFindingsHint:
+      'Mark a finding done once the diagram or the code is fixed, or dismiss it. Each one cites the places in the code it rests on.',
+    reviewNoFindings: 'Nothing to report on this diagram.',
+    reviewResolveFailed: 'The finding could not be updated.',
+    wholeDiagram: 'Whole diagram',
+    conformance: {
+      conforms: 'Matches the code',
+      deviates: 'Differs from the code',
+      'missing-in-code': 'Missing from the code',
+      'missing-in-diagram': 'Missing from the diagram',
+      uncertain: 'Uncertain',
+    },
+    annotation: {
+      ok: 'Matches the code',
+      warning: 'Differs from the code',
+      error: 'Missing from the code',
+      unknown: 'Uncertain',
+    },
+  },
   shared: {
     unavailableTitle: 'This link is not available',
     unavailableText:
@@ -320,6 +527,15 @@ export const en = {
       'join-without-fork': (states: string) => `This join isn’t closing a fork: ${states}.`,
     },
     simulate: 'Simulate',
+    findings: {
+      open: 'Findings',
+      openCount: (n: number) => `Findings, ${String(n)} open`,
+      title: 'Findings from the code review',
+      description: (when: string, model: string | null) =>
+        `Review of ${when}${model ? ` with ${model}` : ''}. Badges on the drawing mark the elements concerned: press one to see its findings. An element renamed since then loses its badge.`,
+      close: 'Close the findings',
+      openReview: 'Open the review in the Code tab',
+    },
     simulation: {
       title: 'Simulate the state machine',
       description:
@@ -986,6 +1202,224 @@ export const fr: Messages = {
       'Le CLI lit la clé dans CORELOOM_UML_API_KEY. Une clé en lecture seule suffit. Ne la passez jamais en argument.',
     generationNotFound: 'Cette génération n’a pas pu être chargée.',
   },
+  code: {
+    tab: 'Code',
+    loadFailed: 'Les cartes du code n’ont pas pu être chargées.',
+    retry: 'Réessayer',
+    introTitle: 'Comparer les diagrammes au code',
+    intro:
+      'Une carte du code est la structure d’un dépôt : dossiers, classes, fonctions et appels entre eux, lus par graphify sans exécuter le code ni appeler de modèle. Votre code source n’est jamais envoyé : seulement des noms, des chemins et des liens.',
+    cliTitle: 'Depuis le CLI',
+    cliText:
+      'À lancer à la racine du dépôt, avec graphify installé. Il envoie la carte, jamais le code.',
+    cliKeyText: 'Le CLI lit une clé d’API en écriture dans CORELOOM_UML_API_KEY.',
+    cliKey: 'Créer une clé d’API',
+    cliWorkflow: 'Dans GitHub Actions, à chaque push sur la branche principale :',
+    uploadTitle: 'Déposer un graph.json',
+    uploadText:
+      'Le graph.json que graphify écrit dans graphify-out/, brut ou compressé en gzip, 50 Mo au plus.',
+    uploadSubmit: 'Envoyer la carte',
+    uploading: 'Lecture de la carte…',
+    uploaded: 'Carte du code ajoutée.',
+    uploadFailed: 'La carte n’a pas pu être ajoutée.',
+    githubTitle: 'Depuis GitHub',
+    githubText:
+      'Coreloom clone un dépôt public et le lit avec graphify, sans exécuter le code. Pour un dépôt privé, passez par le CLI.',
+    githubUrl: 'Dépôt',
+    githubUrlInvalid: 'Un dépôt public sur github.com, comme https://github.com/proprietaire/nom.',
+    githubBranch: 'Branche',
+    githubBranchHint: 'Vide : la branche par défaut.',
+    githubBranchInvalid: 'Ce n’est pas un nom de branche.',
+    githubSubmit: 'Lire le dépôt',
+    githubStarted:
+      'Le dépôt est en cours de lecture. Sa carte s’affiche ici dès qu’elle est prête.',
+    githubFailed: 'Le dépôt n’a pas pu être lu.',
+    addMap: 'Ajouter une carte',
+    addTitle: 'Ajouter une carte du code',
+    addDescription:
+      'Une nouvelle carte remplace celle affichée ; le projet garde ses cinq plus récentes.',
+    version: 'Version de la carte',
+    versionLabel: (date: string, commit: string | null, status: CodeMapStatus) =>
+      [
+        date,
+        commit?.slice(0, 7),
+        {
+          pending: 'en lecture',
+          running: 'en lecture',
+          ready: undefined,
+          failed: 'échec',
+        }[status],
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    delete: 'Supprimer cette carte',
+    deleteTitle: 'Supprimer cette carte du code ?',
+    deleteText:
+      'Son fichier est supprimé. Les liens que vous avez revus restent sur les diagrammes et valent pour la carte suivante.',
+    deleteConfirm: 'Supprimer',
+    deleted: 'Carte du code supprimée.',
+    notReady:
+      'Cette carte est encore en cours de lecture : un dépôt prend une minute ou deux. Cette page se met à jour toute seule.',
+    failed: (reason: string | null) =>
+      `Cette carte n’a pas pu être lue${reason ? ` : ${reason}` : '.'}`,
+    viewOverview: 'Carte',
+    viewDiagrams: 'Diagrammes',
+    viewProcesses: 'Processus non documentés',
+    repository: 'Dépôt',
+    branch: 'Branche',
+    commit: 'Commit',
+    extractor: 'Extracteur',
+    added: 'Ajoutée',
+    source: 'Origine',
+    sources: { cli: 'CLI', upload: 'Dépôt de fichier', github: 'GitHub' },
+    files: 'Fichiers',
+    symbols: 'Symboles',
+    modules: 'Modules externes',
+    edges: 'Liens',
+    folders: 'Dossiers',
+    foldersHint: 'Sur trois niveaux, avec le nombre de fichiers de chacun.',
+    folderFiles: (n: number) => `${String(n)} ${n <= 1 ? 'fichier' : 'fichiers'}`,
+    communities: 'Communautés',
+    communitiesHint:
+      'Des groupes de code qui travaillent ensemble, nommés d’après le dossier où se trouve l’essentiel.',
+    community: (folder: string) => folder || '(racine)',
+    entries: 'Points d’entrée',
+    entriesHint: 'Routes, jobs, commandes et handlers trouvés dans le code.',
+    noEntries: 'Aucun point d’entrée trouvé dans cette carte.',
+    entryKinds: { route: 'Route', job: 'Job', command: 'Commande', handler: 'Handler' },
+    name: 'Nom',
+    kind: 'Type',
+    place: 'Emplacement',
+    noDiagrams: 'Ce projet n’a pas encore de diagramme.',
+    noDiagramsText: 'Dessinez-en un dans une architecture, puis revenez le comparer au code.',
+    diagram: 'Diagramme',
+    pickDiagram: 'Choisir un diagramme',
+    linksFailed: 'Ce diagramme n’a pas pu être comparé à la carte.',
+    noMatch:
+      'Ce type de diagramme n’a pas d’équivalent dans la carte du code (diagrammes d’états, ER, de cas d’utilisation, d’activité et de déploiement).',
+    matched: (n: number, total: number) =>
+      `${String(n)} élément${n > 1 ? 's' : ''} sur ${String(total)} trouvé${n > 1 ? 's' : ''} dans le code`,
+    status: {
+      confirmed: 'Relié',
+      suggested: 'À confirmer',
+      missing: 'Introuvable dans le code',
+    },
+    suggestions: 'Liens à confirmer',
+    suggestionsHint:
+      'Acceptez un lien, modifiez-le pour viser autre chose (un symbole chemin#Nom ou un dossier chemin/), ou écartez-le.',
+    noSuggestions: 'Plus rien à confirmer.',
+    reasons: {
+      confirmed: 'Confirmé',
+      'folder-path': 'Dossier à ce chemin',
+      'folder-name': 'Dossier de ce nom',
+      'class-name': 'Classe de ce nom',
+      'file-name': 'Fichier de ce nom',
+    },
+    showAll: 'Afficher tous les éléments',
+    onlyElement: (name: string) => `Seul ${name} est affiché.`,
+    reviewed: 'Liens revus',
+    reviewedEmpty: 'Aucun lien revu pour l’instant.',
+    linkConfirmed: 'Relié',
+    linkIgnored: 'Écarté',
+    undo: 'Annuler',
+    undoLabel: (element: string, code: string) => `Annuler le lien de ${element} vers ${code}`,
+    saveFailed: 'Les liens n’ont pas pu être enregistrés.',
+    findings: 'Ce que dit le code',
+    noFindings: 'Le diagramme et le code s’accordent sur tout ce que la carte peut vérifier.',
+    findingKinds: {
+      'missing-in-code': (element: string) => `${element} n’est pas dans le code`,
+      'stale-link': (element: string, code: string) =>
+        `${element} est relié à ${code}, qui n’est plus dans le code`,
+      'relation-not-in-code': (from: string, to: string) =>
+        `${from} → ${to} est dessiné, mais le code n’a pas cette dépendance`,
+      'dependency-not-drawn': (from: string, to: string, count: number) =>
+        `${from} dépend de ${to} dans le code (${String(count)} lien${count > 1 ? 's' : ''}), mais le diagramme ne le montre pas`,
+    },
+    processesFailed: 'Les processus non documentés n’ont pas pu être listés.',
+    processesHint:
+      'Les appels suivis depuis chaque point d’entrée, sur quatre niveaux, qui ne touchent aucun code relié à un diagramme. Les plus grands d’abord.',
+    processesCount: (shown: number, total: number) =>
+      shown < total
+        ? `${String(total)} processus non documentés, les ${String(shown)} plus grands affichés.`
+        : `${String(total)} processus non documenté${total > 1 ? 's' : ''}.`,
+    noProcesses: 'Chaque processus trouvé dans le code touche un diagramme.',
+    processSize: (n: number) => `${String(n)} étape${n > 1 ? 's' : ''}`,
+    processDepth: (n: number) => `${String(n)} niveau${n > 1 ? 'x' : ''} de profondeur`,
+    processFolders: 'Dossiers',
+    processCalls: 'Appels atteints',
+    proposeDiagram: 'Proposer un diagramme',
+    proposeTitle: 'Dessiner ce processus dans une nouvelle vue',
+    proposeText: (entry: string, model: string) =>
+      `${model} reçoit les appels suivis depuis ${entry} : des noms, des chemins et des liens seulement, jamais votre code. La vue dessinée est proposée dans l’assistant de l’architecture, où vous l’acceptez ou la refusez.`,
+    proposeNoProvider:
+      'Réglez d’abord votre fournisseur LLM dans les Réglages : le diagramme est dessiné par votre propre modèle, avec votre clé.',
+    proposeNoArchitecture:
+      'Ajoutez d’abord une architecture à ce projet : la nouvelle vue y est rangée.',
+    proposeArchitecture: 'Architecture',
+    proposeKind: 'Diagramme',
+    proposeRun: 'Proposer',
+    proposing: 'Dessin en cours…',
+    proposeFailed: 'Le diagramme n’a pas pu être dessiné',
+    openInRepository: (place: string) => `Ouvrir ${place} dans le dépôt`,
+    viewReview: 'Revue de conformité',
+    reviewsFailed: 'Les revues de conformité n’ont pas pu être chargées.',
+    reviewFailed: 'La revue n’a pas pu être chargée ou lancée.',
+    reviewTitle: 'Revue de conformité',
+    reviewHint:
+      'Votre propre modèle compare chaque diagramme à la carte du code : un appel par diagramme, avec le fournisseur réglé dans ce navigateur. Il lit des noms, des chemins et des liens, jamais votre code. Les constats sont gardés avec la revue.',
+    reviewStart: 'Nouvelle revue',
+    reviewNothing:
+      'Seuls les diagrammes de paquets, de composants, de classes, de séquence et C4 se comparent au code.',
+    reviewPick: 'Revue',
+    reviewLabel: (date: string, diagrams: number, open: number) =>
+      `${date} · ${String(diagrams)} diagramme${diagrams > 1 ? 's' : ''} · ${String(open)} ouvert${open > 1 ? 's' : ''}`,
+    reviewDelete: 'Supprimer cette revue',
+    reviewDeleteTitle: 'Supprimer cette revue ?',
+    reviewDeleteText: 'Ses constats sont supprimés avec elle.',
+    reviewEmpty: 'Aucune revue pour l’instant',
+    reviewEmptyText:
+      'Lancez-en une pour que votre modèle compare les diagrammes à cette carte. Le projet garde ses dix revues les plus récentes.',
+    reviewStartTitle: 'Comparer les diagrammes au code',
+    reviewStartText: (model: string) =>
+      `${model} reçoit chaque diagramme, ses liens avec le code et la partie de la carte qui l’entoure : des noms, des chemins et des liens seulement. Un appel par diagramme.`,
+    reviewNoProvider:
+      'Réglez d’abord votre fournisseur LLM dans les Réglages : la revue appelle votre propre modèle, avec votre clé.',
+    reviewOpenSettings: 'Ouvrir les Réglages',
+    reviewDiagrams: 'Diagrammes à comparer',
+    cancel: 'Annuler',
+    reviewRun: (n: number) => `Comparer ${String(n)} diagramme${n > 1 ? 's' : ''}`,
+    reviewPlan: (model: string | null) => (model ? `Revue avec ${model}` : 'Revue'),
+    reviewFound: (n: number) => `${String(n)} constat${n > 1 ? 's' : ''}`,
+    reviewTruncated: 'une partie de la carte laissée de côté pour tenir dans le modèle',
+    reviewDropped: (n: number) =>
+      `${String(n)} constat${n > 1 ? 's' : ''} sans preuve écarté${n > 1 ? 's' : ''}`,
+    reviewStop: 'Arrêter',
+    reviewResume: (n: number) =>
+      `Comparer le${n > 1 ? 's' : ''} ${String(n)} restant${n > 1 ? 's' : ''}`,
+    reviewAgain: (title: string) => `Comparer « ${title} » à nouveau`,
+    reviewMapGone:
+      'La carte de cette revue a été supprimée : lancez une nouvelle revue pour continuer.',
+    reviewDiagramGone: 'Ce diagramme a été supprimé ou vidé depuis la revue.',
+    reviewFindings: 'Constats',
+    reviewFindingsHint:
+      'Marquez un constat traité une fois le diagramme ou le code corrigé, ou ignorez-le. Chacun cite les endroits du code sur lesquels il repose.',
+    reviewNoFindings: 'Rien à signaler sur ce diagramme.',
+    reviewResolveFailed: 'Le constat n’a pas pu être mis à jour.',
+    wholeDiagram: 'Diagramme entier',
+    conformance: {
+      conforms: 'Conforme au code',
+      deviates: 'Écart avec le code',
+      'missing-in-code': 'Absent du code',
+      'missing-in-diagram': 'Absent du diagramme',
+      uncertain: 'Incertain',
+    },
+    annotation: {
+      ok: 'Conforme au code',
+      warning: 'Écart avec le code',
+      error: 'Absent du code',
+      unknown: 'Incertain',
+    },
+  },
   shared: {
     unavailableTitle: 'Ce lien n’est pas disponible',
     unavailableText:
@@ -1028,6 +1462,15 @@ export const fr: Messages = {
         `Cette jonction ne ferme aucune bifurcation : ${states}.`,
     },
     simulate: 'Simuler',
+    findings: {
+      open: 'Constats',
+      openCount: (n: number) => `Constats, ${String(n)} ${n === 1 ? 'ouvert' : 'ouverts'}`,
+      title: 'Constats de la revue du code',
+      description: (when: string, model: string | null) =>
+        `Revue du ${when}${model ? ` avec ${model}` : ''}. Les badges du dessin marquent les éléments concernés : appuyez sur l’un d’eux pour voir ses constats. Un élément renommé depuis perd son badge.`,
+      close: 'Fermer les constats',
+      openReview: 'Ouvrir la revue dans l’onglet Code',
+    },
     simulation: {
       title: 'Simuler la machine à états',
       description:
