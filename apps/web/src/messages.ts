@@ -467,6 +467,14 @@ export const en = {
       'This map is still being read: a repository takes a minute or two. This page updates on its own.',
     failed: (reason: string | null) => `This map could not be read${reason ? `: ${reason}` : '.'}`,
     viewOverview: 'Map',
+    statusDiagrams: 'Diagrams compared with the code',
+    statusNotChecked: (n: number) =>
+      `${String(n)} more ${n === 1 ? 'has' : 'have'} nothing a map can check`,
+    statusErrors: 'Contradicted by the code',
+    statusWarnings: 'Behind the code',
+    statusFailed: 'The state of the diagrams against this map could not be loaded.',
+    findingsLabel: (errors: number, warnings: number) =>
+      `: ${String(errors)} contradicted by the code, ${String(warnings)} behind the code`,
     viewDiagrams: 'Diagrams',
     viewProcesses: 'Undocumented processes',
     repository: 'Repository',
@@ -1626,6 +1634,16 @@ export const fr: Messages = {
     failed: (reason: string | null) =>
       `Cette carte n’a pas pu être lue${reason ? ` : ${reason}` : '.'}`,
     viewOverview: 'Carte',
+    statusDiagrams: 'Diagrammes comparés au code',
+    statusNotChecked: (n: number) =>
+      n > 1
+        ? `${String(n)} autres n’ont rien qu’une carte puisse vérifier`
+        : '1 autre n’a rien qu’une carte puisse vérifier',
+    statusErrors: 'Contredit par le code',
+    statusWarnings: 'En retard sur le code',
+    statusFailed: 'L’état des diagrammes face à cette carte n’a pas pu être chargé.',
+    findingsLabel: (errors: number, warnings: number) =>
+      ` : ${String(errors)} contredit par le code, ${String(warnings)} en retard sur le code`,
     viewDiagrams: 'Diagrammes',
     viewProcesses: 'Processus non documentés',
     repository: 'Dépôt',
