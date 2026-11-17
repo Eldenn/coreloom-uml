@@ -294,9 +294,10 @@ credentials, refuses more than 200 MB, 20,000 files or 5 minutes, drops any comm
 `GRAPHIFY_BACKEND=none`, answers the `graph.json` gzipped with the commit and branch, and deletes
 the clone. The worker checks and stores it like an upload (`ready`), or fails the map with a
 reason (`failed`); an analyzer that cannot be reached is tried 3 times. The web app polls a map
-while it is `pending` or `running`. Locally: `docker compose -f infra/docker-compose.yml up
-analyzer` and `ANALYZER_URL=http://localhost:8080`, or `python3 apps/analyzer/analyzer.py` with
-graphify installed; its tests run with `python3 -m unittest discover -s apps/analyzer`.
+while it is `pending` or `running`. Locally the dev compose runs the analyzer on port 8080 and
+`.env.example` already points `ANALYZER_URL` at it (run the queue worker too); without Docker,
+run `python3 apps/analyzer/analyzer.py` with graphify installed. Its tests run with
+`python3 -m unittest discover -s apps/analyzer`.
 
 ### Agent conventions
 
