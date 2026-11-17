@@ -99,6 +99,13 @@ services:
       # Observability — a SigNoz instance dedicated to production (below), not
       # shared with staging: an incident on one never blinds the other.
       ANALYZER_URL: http://analyzer:8080
+      # GitHub App (private repositories, push webhook): all six or none; see the README.
+      GITHUB_APP_ID: '${GITHUB_APP_ID:-}'
+      GITHUB_APP_SLUG: '${GITHUB_APP_SLUG:-}'
+      GITHUB_APP_CLIENT_ID: '${GITHUB_APP_CLIENT_ID:-}'
+      GITHUB_APP_CLIENT_SECRET: '${GITHUB_APP_CLIENT_SECRET:-}'
+      GITHUB_APP_PRIVATE_KEY: '${GITHUB_APP_PRIVATE_KEY:-}'
+      GITHUB_APP_WEBHOOK_SECRET: '${GITHUB_APP_WEBHOOK_SECRET:-}'
       OTEL_SERVICE_NAME: coreloom-uml-api-production
       OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
     volumes:
@@ -165,6 +172,13 @@ services:
       S3_SECRET_ACCESS_KEY: '${S3_SECRET_ACCESS_KEY}'
       S3_PUBLIC_URL: '${S3_PUBLIC_URL:-}'
       ANALYZER_URL: http://analyzer:8080
+      # GitHub App (private repositories, push webhook): all six or none; see the README.
+      GITHUB_APP_ID: '${GITHUB_APP_ID:-}'
+      GITHUB_APP_SLUG: '${GITHUB_APP_SLUG:-}'
+      GITHUB_APP_CLIENT_ID: '${GITHUB_APP_CLIENT_ID:-}'
+      GITHUB_APP_CLIENT_SECRET: '${GITHUB_APP_CLIENT_SECRET:-}'
+      GITHUB_APP_PRIVATE_KEY: '${GITHUB_APP_PRIVATE_KEY:-}'
+      GITHUB_APP_WEBHOOK_SECRET: '${GITHUB_APP_WEBHOOK_SECRET:-}'
       OTEL_SERVICE_NAME: coreloom-uml-worker-production
       OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
     depends_on:

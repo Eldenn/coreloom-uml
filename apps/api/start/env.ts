@@ -179,4 +179,22 @@ export default await Env.create(new URL('../', import.meta.url), {
   | answers 503 and the CLI or an upload remain. Example: http://analyzer:8080
   */
   ANALYZER_URL: Env.schema.string.optional(),
+
+  /*
+  |--------------------------------------------------------------------------
+  | GitHub App (private repositories for code maps)
+  |--------------------------------------------------------------------------
+  | Users install the App on the repositories it may read, then connect it:
+  | the server reads those repositories with a token made for each clone, and
+  | a push on a followed branch reads it again. All six are needed; with one
+  | missing the App is off and only public repositories can be read.
+  | GITHUB_APP_PRIVATE_KEY is the App's PEM, with its line breaks written \n
+  | when the variable holds one line, or base64-encoded whole.
+  */
+  GITHUB_APP_ID: Env.schema.string.optional(),
+  GITHUB_APP_SLUG: Env.schema.string.optional(),
+  GITHUB_APP_CLIENT_ID: Env.schema.string.optional(),
+  GITHUB_APP_CLIENT_SECRET: Env.schema.string.optional(),
+  GITHUB_APP_PRIVATE_KEY: Env.schema.string.optional(),
+  GITHUB_APP_WEBHOOK_SECRET: Env.schema.string.optional(),
 })

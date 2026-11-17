@@ -24,6 +24,7 @@ import { Route as AuthedAgentConfigsIndexRouteImport } from './routes/_authed.ag
 import { Route as AuthedAgentConfigsIdRouteImport } from './routes/_authed.agent-configs.$id'
 import { Route as AuthedArchitecturesIndexRouteImport } from './routes/_authed.architectures.index'
 import { Route as AuthedArchitecturesIdRouteImport } from './routes/_authed.architectures.$id'
+import { Route as AuthedGithubCallbackRouteImport } from './routes/_authed.github.callback'
 import { Route as AuthedProjectsIndexRouteImport } from './routes/_authed.projects.index'
 import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed.projects.$projectId'
 
@@ -102,6 +103,11 @@ const AuthedArchitecturesIdRoute = AuthedArchitecturesIdRouteImport.update({
   path: '/architectures/$id',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedGithubCallbackRoute = AuthedGithubCallbackRouteImport.update({
+  id: '/github/callback',
+  path: '/github/callback',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedProjectsIndexRoute = AuthedProjectsIndexRouteImport.update({
   id: '/projects/',
   path: '/projects/',
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/s/$token': typeof STokenRoute
   '/agent-configs/$id': typeof AuthedAgentConfigsIdRoute
   '/architectures/$id': typeof AuthedArchitecturesIdRoute
+  '/github/callback': typeof AuthedGithubCallbackRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRoute
   '/agent-configs/': typeof AuthedAgentConfigsIndexRoute
   '/architectures/': typeof AuthedArchitecturesIndexRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByTo {
   '/s/$token': typeof STokenRoute
   '/agent-configs/$id': typeof AuthedAgentConfigsIdRoute
   '/architectures/$id': typeof AuthedArchitecturesIdRoute
+  '/github/callback': typeof AuthedGithubCallbackRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRoute
   '/agent-configs': typeof AuthedAgentConfigsIndexRoute
   '/architectures': typeof AuthedArchitecturesIndexRoute
@@ -164,6 +172,7 @@ export interface FileRoutesById {
   '/s/$token': typeof STokenRoute
   '/_authed/agent-configs/$id': typeof AuthedAgentConfigsIdRoute
   '/_authed/architectures/$id': typeof AuthedArchitecturesIdRoute
+  '/_authed/github/callback': typeof AuthedGithubCallbackRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRoute
   '/_authed/agent-configs/': typeof AuthedAgentConfigsIndexRoute
   '/_authed/architectures/': typeof AuthedArchitecturesIndexRoute
@@ -184,6 +193,7 @@ export interface FileRouteTypes {
     | '/s/$token'
     | '/agent-configs/$id'
     | '/architectures/$id'
+    | '/github/callback'
     | '/projects/$projectId'
     | '/agent-configs/'
     | '/architectures/'
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/s/$token'
     | '/agent-configs/$id'
     | '/architectures/$id'
+    | '/github/callback'
     | '/projects/$projectId'
     | '/agent-configs'
     | '/architectures'
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/s/$token'
     | '/_authed/agent-configs/$id'
     | '/_authed/architectures/$id'
+    | '/_authed/github/callback'
     | '/_authed/projects/$projectId'
     | '/_authed/agent-configs/'
     | '/_authed/architectures/'
@@ -345,6 +357,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedArchitecturesIdRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/github/callback': {
+      id: '/_authed/github/callback'
+      path: '/github/callback'
+      fullPath: '/github/callback'
+      preLoaderRoute: typeof AuthedGithubCallbackRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/projects/': {
       id: '/_authed/projects/'
       path: '/projects'
@@ -368,6 +387,7 @@ interface AuthedRouteChildren {
   AuthedSkillsRoute: typeof AuthedSkillsRoute
   AuthedAgentConfigsIdRoute: typeof AuthedAgentConfigsIdRoute
   AuthedArchitecturesIdRoute: typeof AuthedArchitecturesIdRoute
+  AuthedGithubCallbackRoute: typeof AuthedGithubCallbackRoute
   AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRoute
   AuthedAgentConfigsIndexRoute: typeof AuthedAgentConfigsIndexRoute
   AuthedArchitecturesIndexRoute: typeof AuthedArchitecturesIndexRoute
@@ -380,6 +400,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedSkillsRoute: AuthedSkillsRoute,
   AuthedAgentConfigsIdRoute: AuthedAgentConfigsIdRoute,
   AuthedArchitecturesIdRoute: AuthedArchitecturesIdRoute,
+  AuthedGithubCallbackRoute: AuthedGithubCallbackRoute,
   AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRoute,
   AuthedAgentConfigsIndexRoute: AuthedAgentConfigsIndexRoute,
   AuthedArchitecturesIndexRoute: AuthedArchitecturesIndexRoute,
