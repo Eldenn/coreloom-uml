@@ -8,6 +8,7 @@ import drive from '@adonisjs/drive/services/main'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import { test } from '@japa/runner'
 import queue from '@nemoventures/adonis-jobs/services/main'
+import { DateTime } from 'luxon'
 import {
   CODE_MAP_LIMITS,
   CODE_MAPS_QUEUE,
@@ -225,6 +226,28 @@ test.group('GitHub code maps: route', (group) => {
       .json({ url: 'https://github.com/acme/shop' })
 
     response.assertStatus(409)
+  })
+
+  test('a map left pending for too long no longer blocks the project', async ({
+    client,
+    assert,
+  }) => {
+    const { user, project } = await setup()
+    const stale = await pendingMap(user, project)
+    await CodeMap.query()
+      .where('id', stale.id)
+      .update({ updatedAt: DateTime.now().minus({ minutes: 31 }).toSQL() })
+
+    const response = await client
+      .post(`/projects/${project.id}/code-maps/github`)
+      .headers(json)
+      .loginAs(user)
+      .json({ url: 'https://github.com/acme/shop' })
+
+    response.assertStatus(202)
+    const row = await CodeMap.findOrFail(stale.id)
+    assert.equal(row.status, CodeMapStatus.Failed)
+    assert.equal(row.failureReason, GITHUB_IMPORT_FAILURES.stale)
   })
 
   test('503 when the server has no analyzer', async ({ client }) => {

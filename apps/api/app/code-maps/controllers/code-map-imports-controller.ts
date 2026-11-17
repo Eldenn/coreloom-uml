@@ -1,7 +1,14 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import db from '@adonisjs/lucid/services/db'
 import { GRAPHIFY_TESTED_VERSION } from '@coreloom-uml/codemap'
-import { CodeMapSource, CodeMapStatus, GITHUB_EXTRACTOR } from '#app/code-maps/constants/code-map'
+import { DateTime } from 'luxon'
+import {
+  CodeMapSource,
+  CodeMapStatus,
+  GITHUB_EXTRACTOR,
+  GITHUB_IMPORT_FAILURES,
+  GITHUB_IMPORT_LIMITS,
+} from '#app/code-maps/constants/code-map'
 import CodeMap from '#app/code-maps/models/code-map'
 import { serializeCodeMap } from '#app/code-maps/serializers/code-map-serializer'
 import { analyzerUrl } from '#app/code-maps/services/code-map-analyzer'
@@ -47,6 +54,21 @@ export default class CodeMapImportsController {
     const result = await db.transaction(async (trx) => {
       // One extraction at a time per project: the lock serializes two clicks.
       await trx.from('projects').where('id', project.id).forUpdate().first()
+      // A map still being read long after any job could have finished (no worker running, a
+      // queue lost with Redis) is failed, so that it does not block the project for good.
+      await CodeMap.query({ client: trx })
+        .where('projectId', project.id)
+        .whereIn('status', [CodeMapStatus.Pending, CodeMapStatus.Running])
+        .where(
+          'updatedAt',
+          '<',
+          DateTime.now().minus({ minutes: GITHUB_IMPORT_LIMITS.staleMinutes }).toSQL(),
+        )
+        .update({
+          status: CodeMapStatus.Failed,
+          failureReason: GITHUB_IMPORT_FAILURES.stale,
+          updatedAt: DateTime.now().toSQL(),
+        })
       const running = await CodeMap.query({ client: trx })
         .where('projectId', project.id)
         .whereIn('status', [CodeMapStatus.Pending, CodeMapStatus.Running])

@@ -85,11 +85,17 @@ export const GITHUB_IMPORT_FAILURES = {
   [AnalyzerError.ExtractionFailed]: 'graphify could not read the repository.',
   unreachable: 'The code analyzer could not be reached. Try again later.',
   refused: 'The map graphify wrote was refused',
+  stale: 'The repository was not read in time: no worker took the job. Try again.',
 } as const
 
 export const GITHUB_IMPORT_LIMITS = {
   /** How long the worker waits for the analyzer (it stops itself after 5 minutes). */
   analyzerTimeoutMs: 6 * 60 * 1000,
+  /**
+   * A map still `pending` or `running` after this long is failed when a new import starts: the
+   * job's attempts (5 minutes each, with retries) are long over, or no worker ever took it.
+   */
+  staleMinutes: 30,
   /** The analyzer's answer, gzipped. */
   responseBytes: 50 * 1024 * 1024,
 } as const
