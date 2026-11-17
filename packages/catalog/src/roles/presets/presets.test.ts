@@ -54,12 +54,25 @@ describe('role presets', () => {
     for (const slug of [
       'code-reviewer',
       'software-architect',
-      'backend-architect',
       'codebase-onboarding-engineer',
       'multi-agent-systems-architect',
     ]) {
       expect(READ_ONLY_PRESETS.has(slug), slug).toBe(true)
     }
+  })
+
+  it('lets the backend architect implement what it designs', () => {
+    // Its mission builds the schemas, APIs and pipelines it designs, unlike the software architect.
+    expect(READ_ONLY_PRESETS.has('backend-architect')).toBe(false)
+    const preset = ROLE_PRESETS.find((candidate) => candidate.slug === 'backend-architect')
+    if (!preset) throw new Error('No backend-architect preset')
+    expect(presetRole(preset, []).rights).toEqual([
+      'read',
+      'write',
+      'run-checks',
+      'shell',
+      'commit',
+    ])
   })
 
   it('pins a full commit', () => {
