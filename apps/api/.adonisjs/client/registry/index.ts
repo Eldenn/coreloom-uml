@@ -168,6 +168,18 @@ const routes = {
     tokens: [{"old":"/code-maps/:id/processes","type":0,"val":"code-maps","end":""},{"old":"/code-maps/:id/processes","type":1,"val":"id","end":""},{"old":"/code-maps/:id/processes","type":0,"val":"processes","end":""}],
     types: placeholder as Registry['code_maps.processes.index']['types'],
   },
+  'code_maps.suggestions.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/code-maps/:id/suggestions',
+    tokens: [{"old":"/code-maps/:id/suggestions","type":0,"val":"code-maps","end":""},{"old":"/code-maps/:id/suggestions","type":1,"val":"id","end":""},{"old":"/code-maps/:id/suggestions","type":0,"val":"suggestions","end":""}],
+    types: placeholder as Registry['code_maps.suggestions.index']['types'],
+  },
+  'code_map_suggestions.update': {
+    methods: ["PATCH"],
+    pattern: '/code-map-suggestions/:id',
+    tokens: [{"old":"/code-map-suggestions/:id","type":0,"val":"code-map-suggestions","end":""},{"old":"/code-map-suggestions/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['code_map_suggestions.update']['types'],
+  },
   'github.connection.show': {
     methods: ["GET","HEAD"],
     pattern: '/github/connection',
@@ -239,6 +251,18 @@ const routes = {
     pattern: '/code-maps/:id/processes/propose',
     tokens: [{"old":"/code-maps/:id/processes/propose","type":0,"val":"code-maps","end":""},{"old":"/code-maps/:id/processes/propose","type":1,"val":"id","end":""},{"old":"/code-maps/:id/processes/propose","type":0,"val":"processes","end":""},{"old":"/code-maps/:id/processes/propose","type":0,"val":"propose","end":""}],
     types: placeholder as Registry['code_maps.processes.propose']['types'],
+  },
+  'code_maps.suggestions.store': {
+    methods: ["POST"],
+    pattern: '/code-maps/:id/suggestions',
+    tokens: [{"old":"/code-maps/:id/suggestions","type":0,"val":"code-maps","end":""},{"old":"/code-maps/:id/suggestions","type":1,"val":"id","end":""},{"old":"/code-maps/:id/suggestions","type":0,"val":"suggestions","end":""}],
+    types: placeholder as Registry['code_maps.suggestions.store']['types'],
+  },
+  'code_map_suggestions.draft': {
+    methods: ["POST"],
+    pattern: '/code-map-suggestions/:id/draft',
+    tokens: [{"old":"/code-map-suggestions/:id/draft","type":0,"val":"code-map-suggestions","end":""},{"old":"/code-map-suggestions/:id/draft","type":1,"val":"id","end":""},{"old":"/code-map-suggestions/:id/draft","type":0,"val":"draft","end":""}],
+    types: placeholder as Registry['code_map_suggestions.draft']['types'],
   },
   'agent_configs.index': {
     methods: ["GET","HEAD"],

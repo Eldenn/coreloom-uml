@@ -138,6 +138,8 @@ const codeMapImportsController = () =>
   import('#app/code-maps/controllers/code-map-imports-controller')
 const codeMapProcessesController = () =>
   import('#app/code-maps/controllers/code-map-processes-controller')
+const codeMapSuggestionsController = () =>
+  import('#app/code-maps/controllers/code-map-suggestions-controller')
 router
   .group(() => {
     router
@@ -164,6 +166,12 @@ router
     router
       .get('/code-maps/:id/processes', [codeMapProcessesController, 'index'])
       .as('code_maps.processes.index')
+    router
+      .get('/code-maps/:id/suggestions', [codeMapSuggestionsController, 'index'])
+      .as('code_maps.suggestions.index')
+    router
+      .patch('/code-map-suggestions/:id', [codeMapSuggestionsController, 'update'])
+      .as('code_map_suggestions.update')
   })
   .where('id', router.matchers.number())
   .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
@@ -248,6 +256,25 @@ router
     'store',
   ])
   .as('code_maps.processes.propose')
+  .where('id', router.matchers.number())
+  .use([middleware.auth(), llmThrottle])
+
+/*
+| The diagrams worth drawing for a code map, proposed by the user's own model from an outline of
+| the map, then each drawn as a new view in a new assistant conversation (drafting is also behind
+| `diagram-assistant`). Provider and key in the body, never stored or logged. Session only.
+*/
+router
+  .post('/code-maps/:id/suggestions', [codeMapSuggestionsController, 'store'])
+  .as('code_maps.suggestions.store')
+  .where('id', router.matchers.number())
+  .use([middleware.auth(), llmThrottle])
+router
+  .post('/code-map-suggestions/:id/draft', [
+    () => import('#app/code-maps/controllers/code-map-suggestion-drafts-controller'),
+    'store',
+  ])
+  .as('code_map_suggestions.draft')
   .where('id', router.matchers.number())
   .use([middleware.auth(), llmThrottle])
 

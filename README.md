@@ -299,6 +299,21 @@ while it is `pending` or `running`. Locally the dev compose runs the analyzer on
 run `python3 apps/analyzer/analyzer.py` with graphify installed. Its tests run with
 `python3 -m unittest discover -s apps/analyzer`.
 
+**Proposed diagrams.** The owner's own model (provider and key in the body, used for that call
+only, counted against the LLM limit, session only) can propose the diagrams worth drawing for a
+ready map. `POST /code-maps/:id/suggestions` hands it an outline of the map (`outlineCodeMap`:
+folders and the imports between them, the most linked classes, where processes start — the entry
+points, or else the functions nothing in the repository calls — and the outside packages; never
+source code) with the titles of the project's views, and stores up to 8 proposals (table
+`code_map_suggestions`: kind, title, reason, the folder, class or start keys it covers) and
+`code_maps.suggested_at`. A new list replaces the proposals not drawn yet. `GET` lists them,
+`PATCH /code-map-suggestions/:id` sets one aside or brings it back, and
+`POST /code-map-suggestions/:id/draft` (also behind `diagram-assistant`) has the model draw it
+(`structureSlice` for a package, component or class view, `flowSlice` for a sequence or activity
+view) as a new view in a new assistant conversation of one of the project's architectures, where
+accepting it stores its links to the code as confirmed. The web app asks for the list once, by
+itself, the first time a ready map without proposals is shown with a provider set.
+
 #### GitHub App (private repositories, pushes)
 
 With a GitHub App set up, the server also reads the **private repositories** a user installed the

@@ -1,13 +1,13 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import db from '@adonisjs/lucid/services/db'
-import { detectEntryPoints, summarizeCodeMap } from '@coreloom-uml/codemap'
+import { summarizeCodeMap } from '@coreloom-uml/codemap'
 import { CODE_MAP_LIMITS, CodeMapSource, CodeMapStatus } from '#app/code-maps/constants/code-map'
 import CodeMap from '#app/code-maps/models/code-map'
 import { serializeCodeMap } from '#app/code-maps/serializers/code-map-serializer'
 import { pruneCodeMaps } from '#app/code-maps/services/code-map-pruning'
 import {
   deleteCodeMapFiles,
-  readCodeMapFile,
+  readDetectedCodeMap,
   storeCodeMapFile,
 } from '#app/code-maps/services/code-map-storage'
 import { readUploadedCodeMap } from '#app/code-maps/services/code-map-upload'
@@ -106,7 +106,7 @@ export default class CodeMapsController {
 
     const summary =
       codeMap.status === CodeMapStatus.Ready && codeMap.storageKey
-        ? summarizeCodeMap(detectEntryPoints(await readCodeMapFile(codeMap.storageKey)))
+        ? summarizeCodeMap(await readDetectedCodeMap(codeMap.storageKey))
         : null
 
     return response.ok({ codeMap: { ...serializeCodeMap(codeMap), summary } })

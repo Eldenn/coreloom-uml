@@ -54,6 +54,10 @@ export default class CodeMap extends BaseModel {
   @column({ serializeAs: null })
   declare storageKey: string | null
 
+  /** When the owner's model last proposed diagrams for it; null until it did. */
+  @column.dateTime()
+  declare suggestedAt: DateTime | null
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 

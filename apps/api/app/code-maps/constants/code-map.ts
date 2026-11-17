@@ -109,3 +109,20 @@ export const GITHUB_IMPORT_LIMITS = {
   /** The analyzer's answer, gzipped. */
   responseBytes: 50 * 1024 * 1024,
 } as const
+
+/** What the owner did with a diagram the model proposed for the map. */
+export const CodeMapSuggestionStatus = {
+  Open: 'open',
+  /** Drawn by the model as a new view, waiting in (or accepted from) an assistant conversation. */
+  Drafted: 'drafted',
+  Dismissed: 'dismissed',
+} as const
+export type CodeMapSuggestionStatus =
+  (typeof CodeMapSuggestionStatus)[keyof typeof CodeMapSuggestionStatus]
+export const CODE_MAP_SUGGESTION_STATUSES = Object.values(CodeMapSuggestionStatus)
+
+export const CODE_MAP_SUGGESTION_LIMITS = {
+  title: 200,
+  /** Keys kept per suggestion (`SUGGESTION_FOCUS_MAX` in `@coreloom-uml/llm`). */
+  focus: 12,
+} as const

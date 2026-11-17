@@ -58,7 +58,8 @@ export function traceFlow(map: CodeMap, entryKey: string, options: FlowOptions =
   return trace(buildCodeGraph(map), entryKey, options.depth ?? DEFAULT_FLOW_DEPTH)
 }
 
-function trace(graph: CodeGraph, entryKey: string, maxDepth: number) {
+/** `traceFlow` over a graph already built. */
+export function trace(graph: CodeGraph, entryKey: string, maxDepth: number) {
   const nodes = [entryKey]
   const depthOf = new Map([[entryKey, 0]])
   const calls: { from: string; to: string }[] = []
@@ -146,6 +147,38 @@ export function processSlice(
   const graph = buildCodeGraph(map)
   const entry = graph.byKey.get(entryKey)
   if (entry?.entry === undefined) return null
+  return sliceFrom(map, graph, entry, entry.entry, options)
+}
+
+/**
+ * Like `processSlice`, from any function or method: an entry point keeps its kind, any other
+ * start reads `root` (a function nothing in the repository calls, for one). Null when `startKey`
+ * is neither a function, a method nor an entry point.
+ */
+export function flowSlice(
+  map: CodeMap,
+  startKey: string,
+  options: FlowOptions & { maxNodes?: number } = {},
+): FlowSlice | null {
+  const graph = buildCodeGraph(map)
+  const start = graph.byKey.get(startKey)
+  if (!start) return null
+  if (start.entry !== undefined) return sliceFrom(map, graph, start, start.entry, options)
+  if (start.kind !== 'function' && start.kind !== 'method') return null
+  return sliceFrom(map, graph, start, 'root', options)
+}
+
+/** A flow from any start: `entryKind` is `root` when the start is not an entry point. */
+export type FlowSlice = Omit<ProcessSlice, 'entryKind'> & { entryKind: EntryKind | 'root' }
+
+function sliceFrom<K extends EntryKind | 'root'>(
+  map: CodeMap,
+  graph: CodeGraph,
+  entry: CodeNode,
+  entryKind: K,
+  options: FlowOptions & { maxNodes?: number },
+): Omit<ProcessSlice, 'entryKind'> & { entryKind: K } {
+  const entryKey = entry.key
   const flow = trace(graph, entryKey, options.depth ?? DEFAULT_FLOW_DEPTH)
   const maxNodes = options.maxNodes ?? PROCESS_SLICE_MAX_NODES
   const keys = flow.nodes.slice(0, maxNodes)
@@ -174,7 +207,7 @@ export function processSlice(
   }
   return {
     entry: entryKey,
-    entryKind: entry.entry,
+    entryKind,
     nodes,
     calls: flow.calls.filter((call) => kept.has(call.from) && kept.has(call.to)),
     depth: flow.depth,
