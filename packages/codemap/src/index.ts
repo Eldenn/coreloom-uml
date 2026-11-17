@@ -23,6 +23,14 @@ export {
   NODE_KINDS,
   parseCodeMap,
 } from './code-map.ts'
+export {
+  CONFORMANCE_LEVELS,
+  type ConformanceLevel,
+  describeMatchFinding,
+  diagramElementNames,
+  MATCH_FINDING_LEVELS,
+  reachesLevel,
+} from './conformance.ts'
 export { detectEntryPoints } from './entry-points.ts'
 export {
   type CodeFlow,

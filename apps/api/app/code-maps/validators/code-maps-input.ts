@@ -82,6 +82,16 @@ export const listCodeMapsInput = vine.create(
 )
 
 /** `GET /code-maps/:id/links?diagramId=` */
+/**
+ * `GET /projects/:id/code-maps/conformance?codeMapId=`: a map of the project; its newest ready
+ * one when left out.
+ */
+export const showCodeConformanceInput = vine.create(
+  vine.object({
+    codeMapId: idInput().optional(),
+  }),
+)
+
 export const showCodeMapLinksInput = vine.create(
   vine.object({
     diagramId: idInput(),

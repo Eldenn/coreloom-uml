@@ -35,7 +35,9 @@ export default class McpController {
     }
 
     // One server and one transport per request: nothing is kept between two calls.
-    const server = buildMcpServer(user)
+    const server = buildMcpServer(user, {
+      codeMaps: await isFeatureEnabled(FeatureFlagKey.CodeMaps, user),
+    })
     const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true })
     await server.connect(transport)
     try {

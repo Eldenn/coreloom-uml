@@ -1,4 +1,10 @@
-import type { CodeMapSummary, DiagramMatch, EntryKind } from '@coreloom-uml/codemap'
+import type {
+  CodeMapSummary,
+  ConformanceLevel,
+  DiagramMatch,
+  EntryKind,
+  MatchFinding,
+} from '@coreloom-uml/codemap'
 import type { ConversationOutput, MessageOutput } from '#app/assistant/validators/assistant-output'
 import type {
   CodeMapSource,
@@ -70,6 +76,46 @@ export type CodeMapProcessesOutput = {
   /** How many processes are undocumented; only the largest are listed. */
   total: number
   processes: CodeMapProcessOutput[]
+}
+
+/** Errors and warnings, counted. */
+export type ConformanceCounts = { error: number; warning: number }
+
+/** A finding of the matcher, weighed and said in one sentence (English). */
+export type CodeConformanceFindingOutput = MatchFinding & {
+  level: ConformanceLevel
+  message: string
+}
+
+/** One diagram the map can check (package, component, class, sequence, C4) and its findings. */
+export type CodeConformanceDiagramOutput = {
+  diagramId: number
+  title: string
+  kind: string
+  architectureId: number
+  architectureTitle: string
+  counts: ConformanceCounts
+  findings: CodeConformanceFindingOutput[]
+}
+
+/**
+ * `GET /projects/:id/code-maps/conformance`: how the project's diagrams line up with a map,
+ * deterministically. No model is called.
+ */
+export type CodeConformanceOutput = {
+  codeMap: {
+    id: number
+    repositoryUrl: string | null
+    branch: string | null
+    commitSha: string | null
+    createdAt: string
+  }
+  counts: ConformanceCounts
+  diagrams: CodeConformanceDiagramOutput[]
+  /** Diagrams left out: a kind the map has no counterpart for, or nothing drawn yet. */
+  notChecked: number
+  /** Processes no diagram documents (`GET /code-maps/:id/processes` lists them). */
+  undocumentedProcesses: number
 }
 
 /**

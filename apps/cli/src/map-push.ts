@@ -2,7 +2,7 @@ import { promisify } from 'node:util'
 import { gzip } from 'node:zlib'
 import { importGraphify } from '@coreloom-uml/codemap'
 import type { FetchLike } from './api.ts'
-import { uploadCodeMap } from './code-maps-api.ts'
+import { type StoredCodeMap, uploadCodeMap } from './code-maps-api.ts'
 import { CliError, ExitCode } from './errors.ts'
 import { readGitInfo } from './git.ts'
 import { obtainGraph, readGraphFile } from './graphify.ts'
@@ -40,7 +40,7 @@ export type MapPushOptions = {
   now?: () => Date
 }
 
-function parseProjectId(raw: string): number {
+export function parseProjectId(raw: string): number {
   const id = Number(raw)
   if (!Number.isInteger(id) || id < 1) throw new CliError(`Invalid project id: ${raw}`)
   return id
@@ -62,7 +62,7 @@ function parseRepositoryUrl(raw: string): string {
   return url.toString()
 }
 
-function plural(count: number, word: string): string {
+export function plural(count: number, word: string): string {
   return `${count.toLocaleString('en-US')} ${word}${count === 1 ? '' : 's'}`
 }
 
@@ -73,6 +73,12 @@ function plural(count: number, word: string): string {
  * `origin` remote unless told otherwise.
  */
 export async function mapPush(options: MapPushOptions): Promise<ExitCode> {
+  await pushCodeMap(options)
+  return ExitCode.Ok
+}
+
+/** What `map push` does, answering with the map stored (null on a dry run). */
+export async function pushCodeMap(options: MapPushOptions): Promise<StoredCodeMap | null> {
   const { cwd, io } = options
   const env = options.env ?? process.env
   const run = options.run ?? runCommand
@@ -165,7 +171,7 @@ export async function mapPush(options: MapPushOptions): Promise<ExitCode> {
 
   if (!target || projectId === null) {
     io.log(`Dry run: nothing sent (${(gzipped.byteLength / 1024).toFixed(0)} KB gzipped).`)
-    return ExitCode.Ok
+    return null
   }
 
   const stored = await uploadCodeMap({
@@ -181,5 +187,5 @@ export async function mapPush(options: MapPushOptions): Promise<ExitCode> {
     `Code map ${stored.id} stored in project ${stored.projectId}: ` +
       `${plural(stored.nodeCount, 'node')}, ${plural(stored.edgeCount, 'link')}.`,
   )
-  return ExitCode.Ok
+  return stored
 }

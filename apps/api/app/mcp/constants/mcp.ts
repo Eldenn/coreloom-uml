@@ -9,8 +9,18 @@ export const McpTool = {
   GetDiagram: 'get_diagram',
   ListAgentConventions: 'list_agent_conventions',
   GetAgentConventions: 'get_agent_conventions',
+  /** Behind the `code-maps` flag too. */
+  GetCodeConformance: 'get_code_conformance',
+  /** Behind the `code-maps` flag too. */
+  ListUndocumentedProcesses: 'list_undocumented_processes',
 } as const
 export type McpTool = (typeof McpTool)[keyof typeof McpTool]
+
+/** The tools only listed to an account with code maps turned on. */
+export const CODE_MAP_TOOLS: readonly McpTool[] = [
+  McpTool.GetCodeConformance,
+  McpTool.ListUndocumentedProcesses,
+]
 
 /** Projects, architectures or agent conventions listed by one call, newest first. */
 export const MCP_LIST_MAX = 200

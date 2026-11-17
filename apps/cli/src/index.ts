@@ -1,4 +1,5 @@
 import { defineCommand, runMain } from 'citty'
+import { checkConformance } from './check-conformance.ts'
 import { CliError, type ExitCode } from './errors.ts'
 import { terminalIo } from './io.ts'
 import { mapPush } from './map-push.ts'
@@ -78,25 +79,72 @@ const statusCommand = defineCommand({
     ),
 })
 
+const CONFORMANCE_ONLY = ['project', 'map', 'push', 'graph', 'fail-on'] as const
+
 const checkCommand = defineCommand({
   meta: {
     name: 'check',
-    description: 'For CI: exit with 0 only when every managed block matches the latest generation',
+    description:
+      'For CI: exit with 0 only when every managed block matches the latest generation ' +
+      '(or, with --conformance, when the diagrams match the code)',
   },
   args: {
     'api-url': apiUrlArg,
     json: { type: 'boolean', description: 'Print one JSON object instead of text' },
+    conformance: {
+      type: 'boolean',
+      description: "Check the project's diagrams against a map of the code instead (no model)",
+    },
+    project: {
+      type: 'string',
+      description: "--conformance: id of the project (else the manifest's, when it names one)",
+      valueHint: 'id',
+    },
+    map: {
+      type: 'string',
+      description: "--conformance: id of a code map (default: the project's newest ready one)",
+      valueHint: 'id',
+    },
+    push: {
+      type: 'boolean',
+      description: '--conformance: map this repository and send the map first, then check it',
+    },
+    graph: {
+      type: 'string',
+      description: '--conformance --push: a graph.json graphify wrote, instead of running it',
+      valueHint: 'path',
+    },
+    'fail-on': {
+      type: 'string',
+      description: '--conformance: error (default) or warning, the level that fails the check',
+      valueHint: 'level',
+    },
   },
   run: ({ args }) =>
-    run(() =>
-      status({
+    run(async () => {
+      if (!args.conformance) {
+        const stray = CONFORMANCE_ONLY.find((name) => args[name] !== undefined)
+        if (stray) throw new CliError(`--${stray} is only read with --conformance.`)
+        return status({
+          cwd: process.cwd(),
+          io: terminalIo(),
+          ...(args['api-url'] ? { apiUrl: args['api-url'] } : {}),
+          check: true,
+          json: args.json === true,
+        })
+      }
+      return checkConformance({
         cwd: process.cwd(),
         io: terminalIo(),
         ...(args['api-url'] ? { apiUrl: args['api-url'] } : {}),
-        check: true,
+        ...(args.project ? { project: args.project } : {}),
+        ...(args.map ? { map: args.map } : {}),
+        ...(args.graph ? { graph: args.graph } : {}),
+        ...(args['fail-on'] ? { failOn: args['fail-on'] } : {}),
+        push: args.push === true,
         json: args.json === true,
-      }),
-    ),
+      })
+    }),
 })
 
 const configCommand = defineCommand({
