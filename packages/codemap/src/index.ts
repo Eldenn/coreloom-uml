@@ -72,12 +72,14 @@ export {
 export {
   type CodeMapOutline,
   OUTLINE_DEFAULTS,
+  OUTLINE_QUERY_LIMITS,
   type OutlineClass,
   type OutlineDependency,
   type OutlineFolder,
   type OutlineOptions,
   type OutlineStart,
   outlineCodeMap,
+  queryWords,
 } from './outline.ts'
 export {
   CODE_SLICE_DEFAULTS,
