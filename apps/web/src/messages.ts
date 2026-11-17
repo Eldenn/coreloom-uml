@@ -404,6 +404,7 @@ export const en = {
     githubTitle: 'From GitHub',
     githubText:
       'Coreloom clones a public repository and reads it with graphify, the code left unrun. For a private repository, use the CLI.',
+    githubCreateApp: 'Create the GitHub App in the settings to read private ones.',
     githubUrl: 'Repository',
     githubUrlInvalid: 'A public repository on github.com, like https://github.com/owner/name.',
     githubBranch: 'Branch',
@@ -654,6 +655,49 @@ export const en = {
     callbackFailed: 'GitHub could not be connected',
     callbackEmpty: 'GitHub sent nothing back. Start again from the Code tab of a project.',
     backToProjects: 'Back to projects',
+  },
+  githubApp: {
+    title: 'GitHub App',
+    description:
+      'Lets the server read private repositories into code maps, and follow pushes. Shown to the admin only.',
+    loadFailed: 'The GitHub App could not be loaded.',
+    createText:
+      'Create it on GitHub in one step: GitHub opens with every setting filled in, you confirm its name, and it comes back here. Its secrets stay on the server, encrypted.',
+    organization: 'Organization',
+    organizationHint:
+      'The GitHub organization that will own the App. Leave empty for your own account.',
+    organizationInvalid: 'This is not a GitHub account name.',
+    public: 'Any GitHub account can install it',
+    publicHint:
+      'Off: only the owner can install it. On: your users can install it on their own accounts and organizations.',
+    create: 'Create on GitHub',
+    createFailed: 'The GitHub App could not be created',
+    webhookUnreachableTitle: 'Pushes will not be followed',
+    webhookUnreachable: (url: string) =>
+      `GitHub cannot reach ${url}, so the App will be created without a webhook: private repositories can be read, but pushes are not followed. Set API_URL to the API's public HTTPS address to follow them.`,
+    fromEnvironment:
+      'This App is set by the GITHUB_APP_* environment variables, which win over the settings. Change it there.',
+    name: 'App',
+    active: 'Active',
+    owner: 'Owner',
+    ownerOrganization: (login: string) => `${login} (organization)`,
+    appId: 'App ID',
+    webhook: 'Pushes',
+    webhookOn: 'Followed',
+    webhookOff: 'Not followed',
+    webhookOffHint: 'The App was created without a webhook.',
+    openPage: 'Open on GitHub',
+    openSettings: 'Settings on GitHub',
+    remove: 'Remove',
+    removeTitle: 'Remove the GitHub App?',
+    removeText:
+      'Coreloom forgets the App and every repository your users connected through it, and projects stop following pushes. Delete it on GitHub too, from its settings.',
+    removed: 'GitHub App removed. Delete it on GitHub too.',
+    removeFailed: 'The GitHub App could not be removed.',
+    saving: 'Saving the GitHub App…',
+    created: 'GitHub App created.',
+    nothingBack: 'GitHub sent nothing back. Start again from the settings.',
+    backToSettings: 'Back to settings',
   },
   shared: {
     unavailableTitle: 'This link is not available',
@@ -1496,6 +1540,7 @@ export const fr: Messages = {
     githubTitle: 'Depuis GitHub',
     githubText:
       'Coreloom clone un dépôt public et le lit avec graphify, sans exécuter le code. Pour un dépôt privé, passez par le CLI.',
+    githubCreateApp: 'Créez l’application GitHub dans les paramètres pour lire les dépôts privés.',
     githubUrl: 'Dépôt',
     githubUrlInvalid: 'Un dépôt public sur github.com, comme https://github.com/proprietaire/nom.',
     githubBranch: 'Branche',
@@ -1758,6 +1803,49 @@ export const fr: Messages = {
     callbackFailed: 'GitHub n’a pas pu être connecté',
     callbackEmpty: 'GitHub n’a rien renvoyé. Recommencez depuis l’onglet Code d’un projet.',
     backToProjects: 'Retour aux projets',
+  },
+  githubApp: {
+    title: 'Application GitHub',
+    description:
+      'Permet au serveur de lire des dépôts privés dans les cartes de code, et de suivre les push. Visible par l’administrateur seulement.',
+    loadFailed: 'L’application GitHub n’a pas pu être chargée.',
+    createText:
+      'Créez-la sur GitHub en une étape : GitHub s’ouvre avec tous les réglages remplis, vous confirmez son nom, puis vous revenez ici. Ses secrets restent sur le serveur, chiffrés.',
+    organization: 'Organisation',
+    organizationHint:
+      'L’organisation GitHub qui possédera l’application. Laissez vide pour votre propre compte.',
+    organizationInvalid: 'Ce n’est pas un nom de compte GitHub.',
+    public: 'Tout compte GitHub peut l’installer',
+    publicHint:
+      'Désactivé : seul le propriétaire peut l’installer. Activé : vos utilisateurs peuvent l’installer sur leurs comptes et organisations.',
+    create: 'Créer sur GitHub',
+    createFailed: 'L’application GitHub n’a pas pu être créée',
+    webhookUnreachableTitle: 'Les push ne seront pas suivis',
+    webhookUnreachable: (url: string) =>
+      `GitHub ne peut pas joindre ${url} : l’application sera créée sans webhook. Les dépôts privés pourront être lus, mais les push ne seront pas suivis. Renseignez API_URL avec l’adresse HTTPS publique de l’API pour les suivre.`,
+    fromEnvironment:
+      'Cette application est définie par les variables d’environnement GITHUB_APP_*, qui priment sur les paramètres. Modifiez-la là.',
+    name: 'Application',
+    active: 'Active',
+    owner: 'Propriétaire',
+    ownerOrganization: (login: string) => `${login} (organisation)`,
+    appId: 'ID de l’application',
+    webhook: 'Push',
+    webhookOn: 'Suivis',
+    webhookOff: 'Non suivis',
+    webhookOffHint: 'L’application a été créée sans webhook.',
+    openPage: 'Ouvrir sur GitHub',
+    openSettings: 'Réglages sur GitHub',
+    remove: 'Retirer',
+    removeTitle: 'Retirer l’application GitHub ?',
+    removeText:
+      'Coreloom oublie l’application et tous les dépôts que vos utilisateurs ont connectés par elle, et les projets ne suivent plus les push. Supprimez-la aussi sur GitHub, depuis ses réglages.',
+    removed: 'Application GitHub retirée. Supprimez-la aussi sur GitHub.',
+    removeFailed: 'L’application GitHub n’a pas pu être retirée.',
+    saving: 'Enregistrement de l’application GitHub…',
+    created: 'Application GitHub créée.',
+    nothingBack: 'GitHub n’a rien renvoyé. Recommencez depuis les paramètres.',
+    backToSettings: 'Retour aux paramètres',
   },
   shared: {
     unavailableTitle: 'Ce lien n’est pas disponible',

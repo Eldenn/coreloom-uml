@@ -55,7 +55,7 @@ export default class CodeMapImportsController {
     if (!repository)
       return response.unprocessableEntity({ error: { message: 'Not a GitHub repository' } })
 
-    const grant = githubAppConfig() ? await findGrant(user.id, repository.url) : null
+    const grant = (await githubAppConfig()) ? await findGrant(user.id, repository.url) : null
     if (follow === true && !grant) return response.unprocessableEntity(GITHUB_FOLLOW_REFUSED)
     // The name as GitHub spells it, when the App lists the repository.
     const repositoryUrl = grant?.url ?? repository.url
@@ -99,7 +99,7 @@ export default class CodeMapImportsController {
         branch: follow.branch,
         // False once the owner lost the repository on GitHub: pushes are then ignored.
         active:
-          githubAppConfig() !== null &&
+          (await githubAppConfig()) !== null &&
           (await findGrantById(user.id, follow.repositoryId)) !== null,
       }
     }

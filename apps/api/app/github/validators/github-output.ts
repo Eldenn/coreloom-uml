@@ -24,3 +24,38 @@ export type GithubConnectionStartOutput = { url: string }
 
 /** `POST /github/connection`: the connection, and the web app's page to go back to. */
 export type GithubConnectionCompleteOutput = GithubConnectionOutput & { returnTo: string }
+
+/** The GitHub App this server uses, as the admin sees it. No secret, ever. */
+export type GithubAppOutput = {
+  appId: number
+  slug: string
+  /** The App's name on GitHub; its slug when it comes from the environment. */
+  name: string
+  /** The account that owns it, null when it comes from the environment. */
+  owner: { login: string; type: 'User' | 'Organization' } | null
+  /** The App's public page, where users install it. */
+  pageUrl: string
+  /** The App's settings on GitHub (where it is deleted), null when the owner is unknown. */
+  settingsUrl: string | null
+  /** Whether GitHub delivers pushes here (an App made without a webhook follows none). */
+  webhook: boolean
+}
+
+/** `GET /admin/github-app` */
+export type GithubAppStatusOutput = {
+  /** Where the App comes from: the environment wins over the settings; null when there is none. */
+  source: 'environment' | 'settings' | null
+  app: GithubAppOutput | null
+  /** Where GitHub would deliver pushes, and whether it can reach it (public HTTPS address). */
+  webhookUrl: string
+  webhookReachable: boolean
+}
+
+/**
+ * `POST /admin/github-app/manifest`: the page the browser posts the manifest to (a form with one
+ * `manifest` field holding this JSON), on GitHub.
+ */
+export type GithubAppManifestOutput = {
+  url: string
+  manifest: Record<string, unknown>
+}

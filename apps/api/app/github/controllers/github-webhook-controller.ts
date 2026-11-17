@@ -16,8 +16,9 @@ export const GITHUB_SIGNATURE_REFUSED = {
  */
 export default class GithubWebhookController {
   async handle({ request, response }: HttpContext) {
-    const config = githubAppConfig()
-    if (!config) return response.notFound(GITHUB_APP_OFF)
+    const config = await githubAppConfig()
+    // An App made without a webhook has no secret: nothing is accepted.
+    if (!config?.webhookSecret) return response.notFound(GITHUB_APP_OFF)
     const raw = request.raw() ?? ''
     if (!verifyGithubSignature(raw, request.header(GithubHeader.Signature), config.webhookSecret))
       return response.unauthorized(GITHUB_SIGNATURE_REFUSED)

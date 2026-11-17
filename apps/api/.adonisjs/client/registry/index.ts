@@ -204,6 +204,30 @@ const routes = {
     tokens: [{"old":"/github/connection","type":0,"val":"github","end":""},{"old":"/github/connection","type":0,"val":"connection","end":""}],
     types: placeholder as Registry['github.connection.destroy']['types'],
   },
+  'admin.github_app.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/admin/github-app',
+    tokens: [{"old":"/admin/github-app","type":0,"val":"admin","end":""},{"old":"/admin/github-app","type":0,"val":"github-app","end":""}],
+    types: placeholder as Registry['admin.github_app.show']['types'],
+  },
+  'admin.github_app.start': {
+    methods: ["POST"],
+    pattern: '/admin/github-app/manifest',
+    tokens: [{"old":"/admin/github-app/manifest","type":0,"val":"admin","end":""},{"old":"/admin/github-app/manifest","type":0,"val":"github-app","end":""},{"old":"/admin/github-app/manifest","type":0,"val":"manifest","end":""}],
+    types: placeholder as Registry['admin.github_app.start']['types'],
+  },
+  'admin.github_app.store': {
+    methods: ["POST"],
+    pattern: '/admin/github-app',
+    tokens: [{"old":"/admin/github-app","type":0,"val":"admin","end":""},{"old":"/admin/github-app","type":0,"val":"github-app","end":""}],
+    types: placeholder as Registry['admin.github_app.store']['types'],
+  },
+  'admin.github_app.destroy': {
+    methods: ["DELETE"],
+    pattern: '/admin/github-app',
+    tokens: [{"old":"/admin/github-app","type":0,"val":"admin","end":""},{"old":"/admin/github-app","type":0,"val":"github-app","end":""}],
+    types: placeholder as Registry['admin.github_app.destroy']['types'],
+  },
   'github.webhook': {
     methods: ["POST"],
     pattern: '/github/webhook',

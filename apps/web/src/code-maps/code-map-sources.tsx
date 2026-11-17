@@ -18,6 +18,7 @@ import {
 import * as React from 'react'
 import { z } from 'zod'
 
+import { useAuth } from '@/auth/auth-context'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -148,6 +149,7 @@ function GithubCard({ projectId, onAdded }: { projectId: number; onAdded?: (id: 
   const connection = useGithubConnection()
   const repositories = connection.data?.repositories ?? []
   const app = connection.data?.available === true
+  const { user } = useAuth()
   const start = useImportGithubCodeMap(projectId)
   const form = useAppForm({
     defaultValues: { url: '', branch: '', follow: false },
@@ -206,7 +208,17 @@ function GithubCard({ projectId, onAdded }: { projectId: number; onAdded?: (id: 
           <GitBranchIcon className="size-4 text-muted-foreground" aria-hidden />
           {t.code.githubTitle}
         </CardTitle>
-        <CardDescription>{app ? t.code.githubTextApp : t.code.githubText}</CardDescription>
+        <CardDescription>
+          {app ? t.code.githubTextApp : t.code.githubText}
+          {!app && user?.isAdmin ? (
+            <>
+              {' '}
+              <Link to="/settings" className="underline underline-offset-2">
+                {t.code.githubCreateApp}
+              </Link>
+            </>
+          ) : null}
+        </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {app ? <GithubFollowStatus projectId={projectId} /> : null}

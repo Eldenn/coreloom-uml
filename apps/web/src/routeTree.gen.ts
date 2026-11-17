@@ -24,6 +24,7 @@ import { Route as AuthedAgentConfigsIndexRouteImport } from './routes/_authed.ag
 import { Route as AuthedAgentConfigsIdRouteImport } from './routes/_authed.agent-configs.$id'
 import { Route as AuthedArchitecturesIndexRouteImport } from './routes/_authed.architectures.index'
 import { Route as AuthedArchitecturesIdRouteImport } from './routes/_authed.architectures.$id'
+import { Route as AuthedGithubAppCreatedRouteImport } from './routes/_authed.github.app-created'
 import { Route as AuthedGithubCallbackRouteImport } from './routes/_authed.github.callback'
 import { Route as AuthedProjectsIndexRouteImport } from './routes/_authed.projects.index'
 import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed.projects.$projectId'
@@ -103,6 +104,11 @@ const AuthedArchitecturesIdRoute = AuthedArchitecturesIdRouteImport.update({
   path: '/architectures/$id',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedGithubAppCreatedRoute = AuthedGithubAppCreatedRouteImport.update({
+  id: '/github/app-created',
+  path: '/github/app-created',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedGithubCallbackRoute = AuthedGithubCallbackRouteImport.update({
   id: '/github/callback',
   path: '/github/callback',
@@ -132,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/s/$token': typeof STokenRoute
   '/agent-configs/$id': typeof AuthedAgentConfigsIdRoute
   '/architectures/$id': typeof AuthedArchitecturesIdRoute
+  '/github/app-created': typeof AuthedGithubAppCreatedRoute
   '/github/callback': typeof AuthedGithubCallbackRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRoute
   '/agent-configs/': typeof AuthedAgentConfigsIndexRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/s/$token': typeof STokenRoute
   '/agent-configs/$id': typeof AuthedAgentConfigsIdRoute
   '/architectures/$id': typeof AuthedArchitecturesIdRoute
+  '/github/app-created': typeof AuthedGithubAppCreatedRoute
   '/github/callback': typeof AuthedGithubCallbackRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRoute
   '/agent-configs': typeof AuthedAgentConfigsIndexRoute
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/s/$token': typeof STokenRoute
   '/_authed/agent-configs/$id': typeof AuthedAgentConfigsIdRoute
   '/_authed/architectures/$id': typeof AuthedArchitecturesIdRoute
+  '/_authed/github/app-created': typeof AuthedGithubAppCreatedRoute
   '/_authed/github/callback': typeof AuthedGithubCallbackRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRoute
   '/_authed/agent-configs/': typeof AuthedAgentConfigsIndexRoute
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/s/$token'
     | '/agent-configs/$id'
     | '/architectures/$id'
+    | '/github/app-created'
     | '/github/callback'
     | '/projects/$projectId'
     | '/agent-configs/'
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
     | '/s/$token'
     | '/agent-configs/$id'
     | '/architectures/$id'
+    | '/github/app-created'
     | '/github/callback'
     | '/projects/$projectId'
     | '/agent-configs'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/s/$token'
     | '/_authed/agent-configs/$id'
     | '/_authed/architectures/$id'
+    | '/_authed/github/app-created'
     | '/_authed/github/callback'
     | '/_authed/projects/$projectId'
     | '/_authed/agent-configs/'
@@ -357,6 +369,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedArchitecturesIdRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/github/app-created': {
+      id: '/_authed/github/app-created'
+      path: '/github/app-created'
+      fullPath: '/github/app-created'
+      preLoaderRoute: typeof AuthedGithubAppCreatedRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/github/callback': {
       id: '/_authed/github/callback'
       path: '/github/callback'
@@ -387,6 +406,7 @@ interface AuthedRouteChildren {
   AuthedSkillsRoute: typeof AuthedSkillsRoute
   AuthedAgentConfigsIdRoute: typeof AuthedAgentConfigsIdRoute
   AuthedArchitecturesIdRoute: typeof AuthedArchitecturesIdRoute
+  AuthedGithubAppCreatedRoute: typeof AuthedGithubAppCreatedRoute
   AuthedGithubCallbackRoute: typeof AuthedGithubCallbackRoute
   AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRoute
   AuthedAgentConfigsIndexRoute: typeof AuthedAgentConfigsIndexRoute
@@ -400,6 +420,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedSkillsRoute: AuthedSkillsRoute,
   AuthedAgentConfigsIdRoute: AuthedAgentConfigsIdRoute,
   AuthedArchitecturesIdRoute: AuthedArchitecturesIdRoute,
+  AuthedGithubAppCreatedRoute: AuthedGithubAppCreatedRoute,
   AuthedGithubCallbackRoute: AuthedGithubCallbackRoute,
   AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRoute,
   AuthedAgentConfigsIndexRoute: AuthedAgentConfigsIndexRoute,

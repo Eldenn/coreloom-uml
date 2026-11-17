@@ -403,6 +403,54 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['destroy']>>>
     }
   }
+  'admin.github_app.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/admin/github-app'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/github/controllers/admin-github-app-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/admin-github-app-controller').default['show']>>>
+    }
+  }
+  'admin.github_app.start': {
+    methods: ["POST"]
+    pattern: '/admin/github-app/manifest'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/github/validators/github-input').startGithubAppInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/github/validators/github-input').startGithubAppInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/github/controllers/admin-github-app-controller').default['start']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/admin-github-app-controller').default['start']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'admin.github_app.store': {
+    methods: ["POST"]
+    pattern: '/admin/github-app'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/github/validators/github-input').completeGithubAppInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/github/validators/github-input').completeGithubAppInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/github/controllers/admin-github-app-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/admin-github-app-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'admin.github_app.destroy': {
+    methods: ["DELETE"]
+    pattern: '/admin/github-app'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/github/controllers/admin-github-app-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/admin-github-app-controller').default['destroy']>>>
+    }
+  }
   'github.webhook': {
     methods: ["POST"]
     pattern: '/github/webhook'

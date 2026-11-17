@@ -14,7 +14,9 @@ import { AccentPicker, ThemeMenu } from '@/components/theme-toggle'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useAppForm } from '@/components/ui/form'
 import { toast } from '@/components/ui/sonner'
+import { GithubAppSection } from '@/github/github-app-section'
 import { client } from '@/lib/client'
+import { useFeature } from '@/lib/feature-flags'
 import { useT } from '@/lib/locale'
 import { LlmProviderSection } from '@/llm/llm-provider-section'
 
@@ -26,6 +28,7 @@ export const Route = createFileRoute('/_authed/settings')({
 function SettingsPage() {
   const t = useT()
   const { user } = useAuth()
+  const codeMaps = useFeature('code-maps')
   if (!user) return null
   return (
     <SettingsLayout
@@ -45,6 +48,7 @@ function SettingsPage() {
       )}
       <ApiTokensSection />
       <LlmProviderSection />
+      {user.isAdmin && codeMaps ? <GithubAppSection /> : null}
       <SettingsSection title={t.settings.appearance}>
         <SettingsRow label={t.settings.theme}>
           <ThemeMenu />

@@ -338,7 +338,20 @@ App on, and a project can **follow** one: each push on its branch reads it into 
   `installation` (deleted), `installation_repositories` (removed) and `github_app_authorization`
   (revoked) events delete the grants GitHub took away.
 
-To set it up, create a GitHub App (Settings → Developer settings → GitHub Apps → New):
+The simplest way to set it up is from the web app: **Settings → GitHub App → Create the GitHub
+App** (admin account only, `code-maps` flag on). The browser posts a manifest to GitHub (GitHub's
+"manifest flow": the settings below, filled in), the admin confirms the name there, and GitHub
+comes back to `/github/app-created` with a `code`, which `POST /admin/github-app` trades for the
+App's id, client id and secret, private key and webhook secret
+(`POST /app-manifests/{code}/conversions`). They are stored in `github_app_registrations`,
+encrypted with `APP_KEY`, and never answered or logged: `GET /admin/github-app` shows the App and a
+link to its GitHub page. `DELETE /admin/github-app` forgets it, with every user's repositories and
+follows read through it; delete it on GitHub as well (its settings link). The webhook URL is
+`<API_URL>/github/webhook` (set `API_URL` on the `api` service, the compose files do); when it is
+not a public HTTPS address, the App is created without a webhook: private repositories are read,
+but pushes are not followed. Changing `APP_KEY` makes the stored App unreadable: create it again.
+
+Or create a GitHub App yourself (Settings → Developer settings → GitHub Apps → New):
 
 | Setting | Value |
 | --- | --- |
@@ -356,8 +369,9 @@ Then set on the `api` and `queue-worker` services: `GITHUB_APP_ID` (App ID), `GI
 (the name in the App's public URL, `github.com/apps/<slug>`), `GITHUB_APP_CLIENT_ID`,
 `GITHUB_APP_CLIENT_SECRET` (generate one), `GITHUB_APP_PRIVATE_KEY` (generate one; the `.pem`
 content, its line breaks written `\n` on one line, or base64-encoded whole) and
-`GITHUB_APP_WEBHOOK_SECRET`. All six or none: with one missing the App is off and only public
-repositories can be read. The `installation`, `installation_repositories` and
+`GITHUB_APP_WEBHOOK_SECRET`. All six or none: when all six are set they win over the App created
+in the settings; with one missing, the settings decide (no App there: only public repositories
+can be read). The `installation`, `installation_repositories` and
 `github_app_authorization` events are sent to every App without subscribing.
 
 ### Agent conventions

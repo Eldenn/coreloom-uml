@@ -171,7 +171,7 @@ export default class ImportGithubCodeMapJob extends Job<ImportGithubCodeMapJobDa
     userId: number,
     repositoryUrl: string,
   ): Promise<{ github: GithubApi; token: string } | null | GithubFailure> {
-    const config = githubAppConfig()
+    const config = await githubAppConfig()
     if (!config) return null
     const grant = await findGrant(userId, repositoryUrl)
     if (!grant) return null
