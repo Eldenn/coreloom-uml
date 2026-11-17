@@ -186,11 +186,15 @@ export default await Env.create(new URL('../', import.meta.url), {
   |--------------------------------------------------------------------------
   | Users install the App on the repositories it may read, then connect it:
   | the server reads those repositories with a token made for each clone, and
-  | a push on a followed branch reads it again. All six are needed; with one
-  | missing the App is off and only public repositories can be read.
+  | a push on a followed branch reads it again. The admin can create the App
+  | from the settings instead (stored encrypted with APP_KEY); when all six
+  | variables are set, they win. With one missing, the settings decide.
+  | API_URL is the API's public address, for the App's webhook URL; without
+  | it, the address the admin's request came to is used.
   | GITHUB_APP_PRIVATE_KEY is the App's PEM, with its line breaks written \n
   | when the variable holds one line, or base64-encoded whole.
   */
+  API_URL: Env.schema.string.optional({ format: 'url', tld: false }),
   GITHUB_APP_ID: Env.schema.string.optional(),
   GITHUB_APP_SLUG: Env.schema.string.optional(),
   GITHUB_APP_CLIENT_ID: Env.schema.string.optional(),

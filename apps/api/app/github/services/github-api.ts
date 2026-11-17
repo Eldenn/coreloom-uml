@@ -4,8 +4,10 @@ import {
   GITHUB_LIMITS,
   GITHUB_URLS,
   GITHUB_USER_AGENT,
+  GithubAppOwnerType,
   GithubFailure,
 } from '#app/github/constants/github'
+import type { GithubAppCredentials } from '#app/github/models/github-app-registration'
 import type { GithubAppConfig } from '#app/github/services/github-app-config'
 
 /**
@@ -35,6 +37,16 @@ export type GithubConnection = {
   repositories: GithubRepositoryAccess[]
 }
 
+/** The App GitHub created from the manifest, with its secrets (stored encrypted, never shown). */
+export type GithubCreatedApp = {
+  appId: number
+  slug: string
+  name: string
+  clientId: string
+  owner: { login: string; type: GithubAppOwnerType }
+  credentials: GithubAppCredentials
+}
+
 type InstallationJson = {
   id: number
   account?: { login?: string } | null
@@ -50,10 +62,25 @@ type RepositoryJson = {
 }
 
 const OWNER = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/
+const SLUG = /^[a-z0-9-]{1,100}$/i
+const CLIENT_ID = /^[A-Za-z0-9._-]{1,100}$/
 const NAME = /^[A-Za-z0-9._-]{1,100}$/
 const BRANCH = /^[A-Za-z0-9._/-]{1,200}$/
 
 export default class GithubApi {
+  /**
+   * Trades the `code` GitHub sent back once the admin created the App from its manifest for the
+   * App's settings and secrets. Good once, within the hour; no authentication.
+   */
+  async convertManifest(code: string): Promise<GithubResult<GithubCreatedApp>> {
+    const answer = await this.#api(`/app-manifests/${encodeURIComponent(code)}/conversions`, {
+      method: 'POST',
+    })
+    if (!answer.ok) return answer
+    const created = toCreatedApp(answer.value)
+    return created ? { ok: true, value: created } : { ok: false, failure: GithubFailure.Denied }
+  }
+
   /** Trades the `code` GitHub sent back to the callback for a user token. */
   async exchangeCode(config: GithubAppConfig, code: string): Promise<GithubResult<string>> {
     const answer = await this.#call(`${GITHUB_URLS.web}/login/oauth/access_token`, {
@@ -197,6 +224,39 @@ export default class GithubApi {
     } catch {
       return { ok: false, failure: GithubFailure.Unreachable }
     }
+  }
+}
+
+function toCreatedApp(value: unknown): GithubCreatedApp | null {
+  if (!value || typeof value !== 'object') return null
+  const body = value as Record<string, unknown>
+  const owner = body.owner as { login?: unknown; type?: unknown } | null | undefined
+  const { id, slug, name, client_id: clientId, client_secret: clientSecret, pem } = body
+  const webhookSecret = body.webhook_secret
+  if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0) return null
+  if (typeof slug !== 'string' || !SLUG.test(slug)) return null
+  if (typeof clientId !== 'string' || !CLIENT_ID.test(clientId)) return null
+  if (typeof clientSecret !== 'string' || clientSecret === '') return null
+  if (typeof pem !== 'string' || !pem.startsWith('-----BEGIN')) return null
+  if (typeof owner?.login !== 'string' || !OWNER.test(owner.login)) return null
+  return {
+    appId: id,
+    slug,
+    name: typeof name === 'string' && name !== '' ? name.slice(0, 100) : slug,
+    clientId,
+    owner: {
+      login: owner.login,
+      type:
+        owner.type === GithubAppOwnerType.Organization
+          ? GithubAppOwnerType.Organization
+          : GithubAppOwnerType.User,
+    },
+    credentials: {
+      clientSecret,
+      privateKey: pem,
+      webhookSecret:
+        typeof webhookSecret === 'string' && webhookSecret !== '' ? webhookSecret : null,
+    },
   }
 }
 

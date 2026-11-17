@@ -39,7 +39,7 @@ export default class GithubConnectionController {
   async show({ auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
     if (!(await codeMapsEnabled(user))) return response.notFound(CODE_MAPS_NOT_FOUND)
-    const available = githubAppConfig() !== null
+    const available = (await githubAppConfig()) !== null
     return response.ok(
       serializeGithubConnection(available, available ? await listGrants(user.id) : []),
     )
@@ -53,7 +53,7 @@ export default class GithubConnectionController {
   async start({ auth, request, response }: HttpContext) {
     const user = auth.getUserOrFail()
     if (!(await codeMapsEnabled(user))) return response.notFound(CODE_MAPS_NOT_FOUND)
-    const config = githubAppConfig()
+    const config = await githubAppConfig()
     if (!config) return response.notFound(GITHUB_APP_OFF)
     const input = await request.validateUsing(startGithubConnectionInput)
     const carried = input.state ? readGithubState(input.state, user) : null
@@ -69,7 +69,7 @@ export default class GithubConnectionController {
   async store({ auth, request, response }: HttpContext) {
     const user = auth.getUserOrFail()
     if (!(await codeMapsEnabled(user))) return response.notFound(CODE_MAPS_NOT_FOUND)
-    const config = githubAppConfig()
+    const config = await githubAppConfig()
     if (!config) return response.notFound(GITHUB_APP_OFF)
     const { code, state } = await request.validateUsing(completeGithubConnectionInput)
     const returnTo = readGithubState(state, user)

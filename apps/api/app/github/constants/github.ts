@@ -1,7 +1,7 @@
 /**
  * The GitHub App that lets the server read the private repositories a user installed it on
- * (`app/github/`). Nothing here is a secret: the App's settings come from the environment
- * (`#app/github/services/github-app-config`).
+ * (`app/github/`). Nothing here is a secret: the App's settings come from the environment, or
+ * from the App the admin created in the settings (`#app/github/services/github-app-config`).
  */
 
 /** Where GitHub answers: the REST API, and the web host of the OAuth and installation pages. */
@@ -53,6 +53,41 @@ export const GITHUB_LIMITS = {
   /** Where the browser goes back to after GitHub, a path of the web app. */
   returnTo: 500,
 } as const
+
+/** Where the App's settings come from: the environment wins over the settings. */
+export const GithubAppSource = {
+  Environment: 'environment',
+  Settings: 'settings',
+} as const
+export type GithubAppSource = (typeof GithubAppSource)[keyof typeof GithubAppSource]
+
+/** The kind of GitHub account that owns the App. */
+export const GithubAppOwnerType = {
+  User: 'User',
+  Organization: 'Organization',
+} as const
+export type GithubAppOwnerType = (typeof GithubAppOwnerType)[keyof typeof GithubAppOwnerType]
+
+/** The App's creation from a manifest (GitHub's "manifest flow"). */
+export const GITHUB_APP_MANIFEST = {
+  /** GitHub's code is good for one hour; the state lives as long. */
+  stateTtl: '1 hour',
+  /** GitHub refuses an App name over 34 characters. */
+  nameLength: 34,
+  /** The name suggested on GitHub's page, where the admin can change it. */
+  name: 'Coreloom UML',
+  description: 'Reads the repositories it is installed on to map their code in Coreloom UML.',
+  /** Read only: the contents to clone, the metadata GitHub always grants. */
+  permissions: { contents: 'read', metadata: 'read' },
+  /** Installation events reach every App; push is the one it subscribes to. */
+  events: ['push'],
+} as const
+
+/** The web app's page GitHub comes back to once the App is created (`?code=…&state=…`). */
+export const GITHUB_APP_CREATED_PATH = '/github/app-created'
+
+/** The web app's page GitHub comes back to after an installation or an authorization. */
+export const GITHUB_CALLBACK_PATH = '/github/callback'
 
 /** Where the web app comes back when the `state` names no page. */
 export const GITHUB_DEFAULT_RETURN_TO = '/projects'

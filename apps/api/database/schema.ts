@@ -420,6 +420,33 @@ export class FeatureFlagSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
+export class GithubAppRegistrationSchema extends BaseModel {
+  static $columns = ['appId', 'clientId', 'createdAt', 'createdByUserId', 'credentials', 'id', 'name', 'ownerLogin', 'ownerType', 'slug', 'updatedAt'] as const
+  $columns = GithubAppRegistrationSchema.$columns
+  @column()
+  declare appId: bigint | number
+  @column()
+  declare clientId: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare createdByUserId: number | null
+  @column()
+  declare credentials: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column()
+  declare ownerLogin: string
+  @column()
+  declare ownerType: string
+  @column()
+  declare slug: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class GithubCodeMapFollowSchema extends BaseModel {
   static $columns = ['branch', 'createdAt', 'id', 'projectId', 'repositoryId', 'repositoryUrl', 'updatedAt', 'userId'] as const
   $columns = GithubCodeMapFollowSchema.$columns

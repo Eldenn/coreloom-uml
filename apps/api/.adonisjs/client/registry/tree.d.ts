@@ -71,6 +71,18 @@ export interface ApiDefinition {
     }
     webhook: typeof routes['github.webhook']
   }
+  admin: {
+    githubApp: {
+      show: typeof routes['admin.github_app.show']
+      start: typeof routes['admin.github_app.start']
+      store: typeof routes['admin.github_app.store']
+      destroy: typeof routes['admin.github_app.destroy']
+    }
+    featureFlags: {
+      index: typeof routes['admin.feature_flags.index']
+      update: typeof routes['admin.feature_flags.update']
+    }
+  }
   codeReviews: {
     store: typeof routes['code_reviews.store']
     show: typeof routes['code_reviews.show']
@@ -212,11 +224,5 @@ export interface ApiDefinition {
   }
   features: {
     index: typeof routes['features.index']
-  }
-  admin: {
-    featureFlags: {
-      index: typeof routes['admin.feature_flags.index']
-      update: typeof routes['admin.feature_flags.update']
-    }
   }
 }

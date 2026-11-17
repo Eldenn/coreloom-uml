@@ -99,7 +99,10 @@ services:
       # Observability — a SigNoz instance dedicated to production (below), not
       # shared with staging: an incident on one never blinds the other.
       ANALYZER_URL: http://analyzer:8080
-      # GitHub App (private repositories, push webhook): all six or none; see the README.
+      # The API's public address: the GitHub App's webhook URL when it is created from the settings.
+      API_URL: '${SERVICE_URL_API}'
+      # GitHub App (private repositories, push webhook): all six or none, or leave them empty and
+      # create the App from the settings; see the README.
       GITHUB_APP_ID: '${GITHUB_APP_ID:-}'
       GITHUB_APP_SLUG: '${GITHUB_APP_SLUG:-}'
       GITHUB_APP_CLIENT_ID: '${GITHUB_APP_CLIENT_ID:-}'

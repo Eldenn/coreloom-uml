@@ -36,7 +36,7 @@ export default class FollowGithubPushJob extends Job<FollowGithubPushJobData, vo
   }
 
   async process(): Promise<void> {
-    if (!githubAppConfig()) return
+    if (!(await githubAppConfig())) return
     const { repositoryId, branch, defaultBranch, commit } = this.data
     const follows = await GithubCodeMapFollow.query().where('repositoryId', repositoryId)
     for (const follow of follows) {

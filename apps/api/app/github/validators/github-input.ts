@@ -33,3 +33,30 @@ export const completeGithubConnectionInput = vine.create(
     state: vine.string().maxLength(GITHUB_LIMITS.state),
   }),
 )
+
+/**
+ * `POST /admin/github-app/manifest`: the organization to create the App under (the admin's own
+ * account when left out), and whether other GitHub accounts may install it.
+ */
+export const startGithubAppInput = vine.create(
+  vine.object({
+    organization: vine
+      .string()
+      .trim()
+      .maxLength(39)
+      .regex(/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/)
+      .optional(),
+    public: vine.boolean().optional(),
+  }),
+)
+
+/** `POST /admin/github-app`: what GitHub sent back once the App was created. */
+export const completeGithubAppInput = vine.create(
+  vine.object({
+    code: vine
+      .string()
+      .maxLength(GITHUB_LIMITS.code)
+      .regex(/^[A-Za-z0-9_-]+$/),
+    state: vine.string().maxLength(GITHUB_LIMITS.state),
+  }),
+)

@@ -8,4 +8,8 @@ export const TokenPurpose = {
   EmailVerification: 'email-verification',
   /** The `state` of a GitHub App connection (`app/github/services/github-state.ts`). */
   GithubConnection: 'github-connection',
+  /** The `state` of the GitHub App's creation from its manifest (`github-app-manifest.ts`). */
+  GithubAppManifest: 'github-app-manifest',
+  /** The GitHub App's secrets, stored in `github_app_registrations`. */
+  GithubAppCredentials: 'github-app-credentials',
 } as const

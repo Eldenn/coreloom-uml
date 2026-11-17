@@ -191,7 +191,9 @@ router
 | `connection` is the user's link to the App: `start` gives the GitHub page to open (install, or
 | authorize), the callback page posts GitHub's `code` back, and the repositories the user reaches
 | are kept (never a token). Session only. `webhook` takes the App's deliveries, signed with its
-| secret: no session, and the signature is checked before anything else.
+| secret: no session, and the signature is checked before anything else. `admin/github-app` is
+| where the admin creates the App on GitHub from a manifest (when the environment sets none),
+| sees it and removes it: its secrets are stored encrypted and never answered.
 */
 const githubConnectionController = () =>
   import('#app/github/controllers/github-connection-controller')
@@ -205,6 +207,17 @@ router
   .prefix('/github')
   .as('github')
   .use(middleware.auth())
+const adminGithubAppController = () => import('#app/github/controllers/admin-github-app-controller')
+router
+  .group(() => {
+    router.get('/', [adminGithubAppController, 'show']).as('show')
+    router.post('/manifest', [adminGithubAppController, 'start']).as('start')
+    router.post('/', [adminGithubAppController, 'store']).as('store')
+    router.delete('/', [adminGithubAppController, 'destroy']).as('destroy')
+  })
+  .prefix('/admin/github-app')
+  .as('admin.github_app')
+  .use([middleware.auth(), middleware.admin()])
 router
   .post('/github/webhook', [
     () => import('#app/github/controllers/github-webhook-controller'),

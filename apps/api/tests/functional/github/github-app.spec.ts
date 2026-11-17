@@ -209,22 +209,24 @@ async function runPush(data: Partial<FollowGithubPushJob['data']> = {}) {
 test.group('GitHub App: settings and signatures', (group) => {
   group.each.setup(() => withGithubApp())
 
-  test('reads the private key with its line breaks escaped, as is, or in base64', ({ assert }) => {
+  test('reads the private key with its line breaks escaped, as is, or in base64', async ({
+    assert,
+  }) => {
     assert.isNotNull(parsePrivateKey(PEM))
     assert.isNotNull(parsePrivateKey(PEM.replaceAll('\n', '\\n')))
     assert.isNotNull(parsePrivateKey(Buffer.from(PEM).toString('base64')))
     assert.isNull(parsePrivateKey('not a key'))
-    assert.isNotNull(githubAppConfig())
+    assert.isNotNull(await githubAppConfig())
   })
 
-  test('is off while one setting is missing', ({ assert }) => {
+  test('is off while one setting is missing', async ({ assert }) => {
     const restore = withGithubApp({ ...APP_ENV, GITHUB_APP_WEBHOOK_SECRET: '' })
-    assert.isNull(githubAppConfig())
+    assert.isNull(await githubAppConfig())
     restore()
   })
 
-  test("signs the App's token with its key, valid under ten minutes", ({ assert }) => {
-    const config = githubAppConfig()
+  test("signs the App's token with its key, valid under ten minutes", async ({ assert }) => {
+    const config = await githubAppConfig()
     if (!config) throw new Error('no config')
     const now = Date.UTC(2026, 10, 17, 12)
     const [header, payload, signature] = appJwt(config, now).split('.') as [string, string, string]
