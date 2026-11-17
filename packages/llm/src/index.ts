@@ -81,6 +81,16 @@ export {
   testConnection,
 } from './connection.ts'
 export {
+  type DiagramRequestResult,
+  type DiagramRequestSource,
+  diagramRequestOutputSchema,
+  diagramRequestPrompt,
+  REQUEST_HISTORY_MAX_TURNS,
+  REQUEST_INSTRUCTIONS,
+  REQUEST_MAX_INPUT_TOKENS,
+  resolveDiagramRequest,
+} from './diagram-request.ts'
+export {
   cleanSuggestions,
   type DiagramSuggestion,
   SUGGESTED_DIAGRAM_KINDS,
