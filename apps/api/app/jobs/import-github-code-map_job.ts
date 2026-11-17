@@ -21,6 +21,16 @@ import { readCodeMapValue } from '#app/code-maps/services/code-map-upload'
  * upload. A repository that cannot be mapped fails the map at once; an analyzer that cannot be
  * reached is tried again, and fails the map after the last attempt. No model is called.
  */
+/** A failed attempt worth retrying, with the reason the map gets after the last one. */
+class ImportAttemptError extends Error {
+  constructor(
+    message: string,
+    readonly reason: string,
+  ) {
+    super(message)
+  }
+}
+
 export type ImportGithubCodeMapJobData = {
   codeMapId: number
 }
@@ -53,7 +63,10 @@ export default class ImportGithubCodeMapJob extends Job<ImportGithubCodeMapJobDa
     if (!result.ok) {
       if (!result.retry) return this.markFailed(codeMap, GITHUB_IMPORT_FAILURES[result.code])
       // BullMQ tries again; `onFailed` fails the map after the last attempt.
-      throw new Error(`code map ${String(codeMap.id)}: ${result.detail}`)
+      throw new ImportAttemptError(
+        `code map ${String(codeMap.id)}: ${result.detail}`,
+        GITHUB_IMPORT_FAILURES.unreachable,
+      )
     }
 
     const branch = codeMap.branch ?? result.branch ?? undefined
@@ -69,7 +82,15 @@ export default class ImportGithubCodeMapJob extends Job<ImportGithubCodeMapJobDa
     }
 
     const { header } = read.map
-    const storageKey = await storeCodeMapFile(codeMap.projectId, read.map)
+    let storageKey: string
+    try {
+      storageKey = await storeCodeMapFile(codeMap.projectId, read.map)
+    } catch (error) {
+      throw new ImportAttemptError(
+        `code map ${String(codeMap.id)}: ${(error as Error).message}`,
+        GITHUB_IMPORT_FAILURES.storage,
+      )
+    }
     let dropped: (string | null)[] = []
     try {
       const stored = await db.transaction(async (trx) => {
@@ -108,7 +129,11 @@ export default class ImportGithubCodeMapJob extends Job<ImportGithubCodeMapJobDa
     if (!this.allAttemptsMade()) return
     const codeMap = await CodeMap.find(this.data.codeMapId)
     if (codeMap && codeMap.status !== CodeMapStatus.Ready) {
-      await this.markFailed(codeMap, GITHUB_IMPORT_FAILURES.unreachable)
+      const reason =
+        this.error instanceof ImportAttemptError
+          ? this.error.reason
+          : GITHUB_IMPORT_FAILURES.unexpected
+      await this.markFailed(codeMap, reason)
     }
   }
 

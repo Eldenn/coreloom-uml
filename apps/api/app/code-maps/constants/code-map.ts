@@ -84,6 +84,8 @@ export const GITHUB_IMPORT_FAILURES = {
   [AnalyzerError.Timeout]: 'Reading the repository took more than 5 minutes.',
   [AnalyzerError.ExtractionFailed]: 'graphify could not read the repository.',
   unreachable: 'The code analyzer could not be reached. Try again later.',
+  storage: 'The map was read but could not be stored (file storage unreachable). Try again later.',
+  unexpected: 'The map could not be stored. Try again later.',
   refused: 'The map graphify wrote was refused',
   stale: 'The repository was not read in time: no worker took the job. Try again.',
 } as const

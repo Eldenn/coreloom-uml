@@ -388,6 +388,24 @@ test.group('GitHub code maps: job', (group) => {
     assert.equal(row.failureReason, GITHUB_IMPORT_FAILURES.unreachable)
   })
 
+  test('storage that cannot be written fails the map with its own reason', async ({ assert }) => {
+    const { user, project } = await setup()
+    const pending = await pendingMap(user, project)
+    analyzer.answers.push(graphAnswer())
+    const put = drive.use().put
+    drive.use().put = () => Promise.reject(new Error('connect ETIMEDOUT 127.0.0.1:9000'))
+    try {
+      const error = await runJob(pending.id, 3)
+      assert.instanceOf(error, Error)
+    } finally {
+      drive.use().put = put
+    }
+
+    const row = await CodeMap.findOrFail(pending.id)
+    assert.equal(row.status, CodeMapStatus.Failed)
+    assert.equal(row.failureReason, GITHUB_IMPORT_FAILURES.storage)
+  })
+
   test('a map deleted meanwhile is left alone', async ({ assert }) => {
     const { user, project } = await setup()
     const pending = await pendingMap(user, project)
