@@ -35,6 +35,8 @@ export const askAssistantInput = vine.create(
     ...llmCallFields(),
     message: vine.string().trim().minLength(1).maxLength(ASSISTANT_MESSAGE_MAX_LENGTH),
     ...viewSelection(),
+    /** A ready code map of the architecture's project: the message asks for a diagram of it. */
+    codeMapId: vine.number().withoutDecimals().positive().optional(),
   }),
 )
 
