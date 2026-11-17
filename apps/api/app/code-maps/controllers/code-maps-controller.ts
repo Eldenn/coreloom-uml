@@ -4,6 +4,7 @@ import { detectEntryPoints, summarizeCodeMap } from '@coreloom-uml/codemap'
 import { CODE_MAP_LIMITS, CodeMapSource, CodeMapStatus } from '#app/code-maps/constants/code-map'
 import CodeMap from '#app/code-maps/models/code-map'
 import { serializeCodeMap } from '#app/code-maps/serializers/code-map-serializer'
+import { pruneCodeMaps } from '#app/code-maps/services/code-map-pruning'
 import {
   deleteCodeMapFiles,
   readCodeMapFile,
@@ -85,18 +86,7 @@ export default class CodeMapsController {
           },
           { client: trx },
         )
-        const older = await CodeMap.query({ client: trx })
-          .where('projectId', project.id)
-          .orderBy('createdAt', 'desc')
-          .orderBy('id', 'desc')
-          .offset(CODE_MAP_LIMITS.perProject)
-        await CodeMap.query({ client: trx })
-          .whereIn(
-            'id',
-            older.map((row) => row.id),
-          )
-          .delete()
-        return { codeMap: created, dropped: older.map((row) => row.storageKey) }
+        return { codeMap: created, dropped: await pruneCodeMaps(project.id, trx) }
       }))
     } catch (error) {
       await deleteCodeMapFiles([storageKey])

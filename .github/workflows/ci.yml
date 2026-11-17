@@ -77,6 +77,14 @@ jobs:
 
       - run: pnpm test
 
+      # The code map analyzer (apps/analyzer): stdlib Python, run against the graphify version its
+      # image pins, so a graphify change shows here first.
+      - name: Install graphify for the analyzer tests
+        run: pipx install graphifyy==0.9.108
+
+      - name: Test the code map analyzer
+        run: python3 -m unittest discover -s apps/analyzer -v
+
       # Not dependencies of the workspace: only this job needs them. Exact versions; Claude Code's
       # is the one the API image pins.
       - name: Install the coding tools the generated files are written for

@@ -120,6 +120,12 @@ const routes = {
     tokens: [{"old":"/projects/:id/code-maps","type":0,"val":"projects","end":""},{"old":"/projects/:id/code-maps","type":1,"val":"id","end":""},{"old":"/projects/:id/code-maps","type":0,"val":"code-maps","end":""}],
     types: placeholder as Registry['projects.code_maps.store']['types'],
   },
+  'projects.code_maps.github': {
+    methods: ["POST"],
+    pattern: '/projects/:id/code-maps/github',
+    tokens: [{"old":"/projects/:id/code-maps/github","type":0,"val":"projects","end":""},{"old":"/projects/:id/code-maps/github","type":1,"val":"id","end":""},{"old":"/projects/:id/code-maps/github","type":0,"val":"code-maps","end":""},{"old":"/projects/:id/code-maps/github","type":0,"val":"github","end":""}],
+    types: placeholder as Registry['projects.code_maps.github']['types'],
+  },
   'code_maps.show': {
     methods: ["GET","HEAD"],
     pattern: '/code-maps/:id',

@@ -1,5 +1,6 @@
 import { RedisCheck, RedisMemoryUsageCheck } from '@adonisjs/redis'
 import { defineConfig } from '@nemoventures/adonis-jobs'
+import { CODE_MAPS_QUEUE } from '#app/code-maps/constants/code-map'
 
 const queueConfig = defineConfig({
   /**
@@ -63,6 +64,12 @@ const queueConfig = defineConfig({
      * The default queue for processing jobs
      */
     default: {},
+
+    /**
+     * GitHub code map extractions (`ImportGithubCodeMapJob`): one at a time across workers, as
+     * the analyzer service maps one repository at a time.
+     */
+    [CODE_MAPS_QUEUE]: { globalConcurrency: 1 },
 
     /**
      * Example of a queue with specific connection and options

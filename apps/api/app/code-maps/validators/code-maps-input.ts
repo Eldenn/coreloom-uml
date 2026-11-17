@@ -1,11 +1,13 @@
 import { PROCESS_DIAGRAM_KINDS } from '@coreloom-uml/llm'
 import vine from '@vinejs/vine'
+import type { FieldContext } from '@vinejs/vine/types'
 import { ASSISTANT_LOCALES } from '#app/assistant/constants/assistant'
 import {
   CODE_MAP_LIMITS,
   CODE_MAP_UPLOAD_EXTENSIONS,
   DIAGRAM_CODE_LINK_STATUSES,
 } from '#app/code-maps/constants/code-map'
+import { isValidBranch, parseGithubRepository } from '#app/code-maps/services/github-repository'
 import { llmCallFields } from '#app/llm/validators/llm-input'
 
 const idInput = () => vine.number().withoutDecimals().min(1)
@@ -32,6 +34,41 @@ export const createCodeMapInput = vine.create(
       .string()
       .trim()
       .regex(/^[0-9a-f]{7,64}$/i)
+      .optional(),
+  }),
+)
+
+const githubRepository = vine.createRule(
+  (value: unknown, _options: undefined, field: FieldContext) => {
+    if (typeof value === 'string' && !parseGithubRepository(value)) {
+      field.report(
+        'The {{ field }} field must be a public GitHub repository, https://github.com/<owner>/<name>',
+        'githubRepository',
+        field,
+      )
+    }
+  },
+)
+
+const gitBranch = vine.createRule((value: unknown, _options: undefined, field: FieldContext) => {
+  if (typeof value === 'string' && !isValidBranch(value)) {
+    field.report('The {{ field }} field is not a branch name', 'gitBranch', field)
+  }
+})
+
+/**
+ * `POST /projects/:id/code-maps/github`: a public repository on github.com, and its branch (the
+ * default one when left out). The server clones and maps it in the background.
+ */
+export const importGithubCodeMapInput = vine.create(
+  vine.object({
+    url: vine.string().trim().maxLength(CODE_MAP_LIMITS.repositoryUrl).use(githubRepository()),
+    branch: vine
+      .string()
+      .trim()
+      .minLength(1)
+      .maxLength(CODE_MAP_LIMITS.branch)
+      .use(gitBranch())
       .optional(),
   }),
 )

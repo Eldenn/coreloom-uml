@@ -31,6 +31,7 @@ export interface ApiDefinition {
     codeMaps: {
       index: typeof routes['projects.code_maps.index']
       store: typeof routes['projects.code_maps.store']
+      github: typeof routes['projects.code_maps.github']
     }
     codeReviews: {
       index: typeof routes['projects.code_reviews.index']

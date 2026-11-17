@@ -1,15 +1,16 @@
 // The ways to give a project a code map: the CLI (a command to copy, and a CI workflow), a
-// graph.json to upload, and GitHub (not yet). Shown alone when the project has no map, and in a
-// dialog to add a newer one.
+// graph.json to upload, and a public GitHub repository the server reads itself. Shown alone when
+// the project has no map, and in a dialog to add a newer one.
 import { Link } from '@tanstack/react-router'
 import { GitBranchIcon, KeyRoundIcon, TerminalIcon, UploadIcon } from 'lucide-react'
 import * as React from 'react'
+import { z } from 'zod'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CodeViewer } from '@/components/ui/code-viewer'
 import { FileUpload } from '@/components/ui/file-upload'
+import { useAppForm } from '@/components/ui/form'
 import { CopyInput } from '@/components/ui/input-group'
 import { toast } from '@/components/ui/sonner'
 import { Spinner } from '@/components/ui/spinner'
@@ -18,6 +19,9 @@ import {
   CODE_MAP_MAX_BYTES,
   codeMapCommand,
   codeMapWorkflow,
+  GIT_BRANCH_PATTERN,
+  GITHUB_REPOSITORY_PATTERN,
+  useImportGithubCodeMap,
   useUploadCodeMap,
 } from '@/lib/code-maps'
 import { useT } from '@/lib/locale'
@@ -27,14 +31,14 @@ export function CodeMapSources({
   onAdded,
 }: {
   projectId: number
-  /** After an upload: the new map is the one to show. */
+  /** After an upload or a GitHub import: the new map is the one to show. */
   onAdded?: (id: number) => void
 }) {
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       <CliCard projectId={projectId} />
       <UploadCard projectId={projectId} {...(onAdded ? { onAdded } : {})} />
-      <GithubCard />
+      <GithubCard projectId={projectId} {...(onAdded ? { onAdded } : {})} />
     </div>
   )
 }
@@ -115,18 +119,82 @@ function UploadCard({ projectId, onAdded }: { projectId: number; onAdded?: (id: 
   )
 }
 
-function GithubCard() {
+function GithubCard({ projectId, onAdded }: { projectId: number; onAdded?: (id: number) => void }) {
   const t = useT()
+  const start = useImportGithubCodeMap(projectId)
+  const form = useAppForm({
+    defaultValues: { url: '', branch: '' },
+    validators: {
+      onSubmit: z.object({
+        url: z.string().trim().regex(GITHUB_REPOSITORY_PATTERN, t.code.githubUrlInvalid),
+        branch: z
+          .string()
+          .trim()
+          .refine(
+            (value) => value === '' || GIT_BRANCH_PATTERN.test(value),
+            t.code.githubBranchInvalid,
+          ),
+      }),
+    },
+    onSubmit: async ({ value }) => {
+      const branch = value.branch.trim()
+      try {
+        const codeMap = await start.mutateAsync({
+          url: value.url.trim(),
+          ...(branch ? { branch } : {}),
+        })
+        form.reset()
+        toast.success(t.code.githubStarted)
+        onAdded?.(codeMap.id)
+      } catch (error) {
+        toast.error(getErrorMessage(error, t.code.githubFailed))
+      }
+    },
+  })
   return (
-    <Card aria-disabled className="bg-inset">
+    <Card>
       <CardHeader>
-        <CardTitle className="flex flex-wrap items-center gap-2">
+        <CardTitle className="flex items-center gap-2">
           <GitBranchIcon className="size-4 text-muted-foreground" aria-hidden />
           {t.code.githubTitle}
-          <Badge variant="secondary">{t.code.soon}</Badge>
         </CardTitle>
         <CardDescription>{t.code.githubText}</CardDescription>
       </CardHeader>
+      <CardContent>
+        <form
+          noValidate
+          className="flex flex-col gap-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void form.handleSubmit()
+          }}
+        >
+          <form.AppForm>
+            <form.AppField name="url">
+              {(field) => (
+                <field.TextField
+                  label={t.code.githubUrl}
+                  placeholder="https://github.com/owner/name"
+                  inputMode="url"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="branch">
+              {(field) => (
+                <field.TextField
+                  label={t.code.githubBranch}
+                  description={t.code.githubBranchHint}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              )}
+            </form.AppField>
+            <form.SubmitButton className="w-fit">{t.code.githubSubmit}</form.SubmitButton>
+          </form.AppForm>
+        </form>
+      </CardContent>
     </Card>
   )
 }
