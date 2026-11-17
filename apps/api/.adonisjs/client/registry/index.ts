@@ -114,6 +114,12 @@ const routes = {
     tokens: [{"old":"/projects/:id/code-maps","type":0,"val":"projects","end":""},{"old":"/projects/:id/code-maps","type":1,"val":"id","end":""},{"old":"/projects/:id/code-maps","type":0,"val":"code-maps","end":""}],
     types: placeholder as Registry['projects.code_maps.index']['types'],
   },
+  'projects.code_maps.conformance': {
+    methods: ["GET","HEAD"],
+    pattern: '/projects/:id/code-maps/conformance',
+    tokens: [{"old":"/projects/:id/code-maps/conformance","type":0,"val":"projects","end":""},{"old":"/projects/:id/code-maps/conformance","type":1,"val":"id","end":""},{"old":"/projects/:id/code-maps/conformance","type":0,"val":"code-maps","end":""},{"old":"/projects/:id/code-maps/conformance","type":0,"val":"conformance","end":""}],
+    types: placeholder as Registry['projects.code_maps.conformance']['types'],
+  },
   'projects.code_maps.store': {
     methods: ["POST"],
     pattern: '/projects/:id/code-maps',

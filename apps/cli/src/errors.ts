@@ -9,6 +9,8 @@ export const ExitCode = {
   Stale: 3,
   /** `check`: a managed block, or its file, is missing. */
   BlockMissing: 4,
+  /** `check --conformance`: a diagram finding reaches the `--fail-on` level. */
+  Nonconformant: 5,
 } as const
 
 export type ExitCode = (typeof ExitCode)[keyof typeof ExitCode]

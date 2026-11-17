@@ -1,4 +1,5 @@
-import { errorMessage, type FetchLike } from './api.ts'
+import type { ConformanceLevel, MatchFinding } from '@coreloom-uml/codemap'
+import { errorMessage, type FetchLike, REQUEST_TIMEOUT_MS } from './api.ts'
 import { CliError } from './errors.ts'
 
 /** What the CLI reads of `POST /projects/:id/code-maps`'s answer. */
@@ -118,4 +119,122 @@ function problemsOf(body: unknown): string[] {
       .filter((message): message is string => typeof message === 'string')
   }
   return []
+}
+
+/** A finding of `GET /projects/:id/code-maps/conformance`, weighed and said in one sentence. */
+export type ConformanceFinding = MatchFinding & { level: ConformanceLevel; message: string }
+
+export type ConformanceCounts = { error: number; warning: number }
+
+/** What the CLI reads of `GET /projects/:id/code-maps/conformance`. */
+export type ConformanceReport = {
+  codeMap: {
+    id: number
+    repositoryUrl: string | null
+    branch: string | null
+    commitSha: string | null
+    createdAt: string
+  }
+  counts: ConformanceCounts
+  diagrams: {
+    diagramId: number
+    title: string
+    kind: string
+    architectureId: number
+    architectureTitle: string
+    counts: ConformanceCounts
+    findings: ConformanceFinding[]
+  }[]
+  notChecked: number
+  undocumentedProcesses: number
+}
+
+function isConformanceReport(value: unknown): value is ConformanceReport {
+  const report = value as ConformanceReport | null
+  return (
+    typeof report?.codeMap?.id === 'number' &&
+    typeof report.counts?.error === 'number' &&
+    typeof report.notChecked === 'number' &&
+    typeof report.undocumentedProcesses === 'number' &&
+    Array.isArray(report.diagrams) &&
+    report.diagrams.every(
+      (diagram) =>
+        typeof diagram?.diagramId === 'number' &&
+        typeof diagram.title === 'string' &&
+        Array.isArray(diagram.findings) &&
+        diagram.findings.every(
+          (finding) =>
+            (finding?.level === 'error' || finding?.level === 'warning') &&
+            typeof finding.message === 'string',
+        ),
+    )
+  )
+}
+
+/**
+ * `GET /projects/:id/code-maps/conformance`: how the project's diagrams match a map (`codeMapId`,
+ * else the project's newest ready one), decided by the server without any model. The key needs
+ * the `read` ability. Redirects are not followed, so the key is never sent to another host.
+ */
+export async function fetchConformance(options: {
+  apiUrl: string
+  apiKey: string
+  projectId: number
+  codeMapId?: number
+  fetch?: FetchLike
+}): Promise<ConformanceReport> {
+  const url = new URL(`${options.apiUrl}/projects/${options.projectId}/code-maps/conformance`)
+  if (options.codeMapId !== undefined) url.searchParams.set('codeMapId', String(options.codeMapId))
+
+  const doFetch = options.fetch ?? fetch
+  let response: Response
+  try {
+    response = await doFetch(url, {
+      headers: { Authorization: `Bearer ${options.apiKey}`, Accept: 'application/json' },
+      redirect: 'manual',
+      // Every diagram of the project is matched against the whole map.
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS * 4),
+    })
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    throw new CliError(`Could not reach ${options.apiUrl}: ${reason}`)
+  }
+
+  const body: unknown = await response.json().catch(() => null)
+  if (response.ok) {
+    if (!isConformanceReport(body)) {
+      throw new CliError(`Unexpected answer from ${options.apiUrl}: is it a Coreloom UML API?`)
+    }
+    return body
+  }
+
+  const message = errorMessage(body)
+  const map = options.codeMapId === undefined ? '' : `, code map ${options.codeMapId}`
+  switch (response.status) {
+    case 401:
+      throw new CliError('The API key was refused: it may be expired or revoked.')
+    case 403:
+      throw new CliError('The API key lacks the read ability.')
+    case 404:
+      throw new CliError(
+        `${message && message !== 'Not found' ? message : 'Not found'} (project ` +
+          `${options.projectId}${map}). Check the id, and that code maps are turned on for your account.`,
+      )
+    case 409:
+      throw new CliError(
+        options.codeMapId === undefined
+          ? `No code map is ready in project ${options.projectId}: run \`coreloom-uml map push\` ` +
+              'first, or pass --push.'
+          : `Code map ${options.codeMapId} is not ready yet.`,
+      )
+    case 422:
+      throw new CliError(`The request was refused${message ? `: ${message}` : ''}.`)
+    case 429:
+      throw new CliError('Too many requests: try again in a minute.')
+    default:
+      if (response.status >= 300 && response.status < 400) {
+        throw new CliError(`${options.apiUrl} answered with a redirect: pass the API's own URL.`)
+      }
+      throw new CliError(`The API answered ${response.status}${message ? `: ${message}` : ''}.`)
+  }
 }

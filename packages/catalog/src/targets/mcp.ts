@@ -8,7 +8,7 @@ export const MCP_SERVER_URL = 'https://<your-coreloom-uml-api>/mcp'
 /** The environment variable the CLI already reads the account API key from. */
 export const MCP_KEY_ENV = 'CORELOOM_UML_API_KEY'
 
-const INTRO = `AGENTS.md is a copy made when it was generated. If the MCP server is enabled on your Coreloom UML instance, your coding tool can read the current diagrams and conventions instead. Create an API key with the \`read\` ability on your account page, put it in \`${MCP_KEY_ENV}\`, and replace the address below with your instance's API.`
+const INTRO = `AGENTS.md is a copy made when it was generated. If the MCP server is enabled on your Coreloom UML instance, your coding tool can read the current diagrams and conventions instead and, when code maps are turned on, how the diagrams match the code (\`get_code_conformance\`) and which processes no diagram documents (\`list_undocumented_processes\`): check them before changing code a diagram describes. Create an API key with the \`read\` ability on your account page, put it in \`${MCP_KEY_ENV}\`, and replace the address below with your instance's API.`
 
 /** The recommendation of one tool: the shared introduction, then its own way to register. */
 export function mcpRecommendation(how: string, language: string, snippet: string) {

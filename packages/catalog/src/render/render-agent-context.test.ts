@@ -689,6 +689,7 @@ describe('renderAgentContext', () => {
     // biome-ignore lint/suspicious/noTemplateCurlyInString: Cursor's own variable syntax.
     expect(mcp[1]?.body).toContain('"Authorization": "Bearer ${env:CORELOOM_UML_API_KEY}"')
     for (const item of mcp) expect(item.body).not.toContain('clu_')
+    for (const item of mcp) expect(item.body).toContain('`get_code_conformance`')
     expect(mcp[4]?.body).toContain('gemini mcp add --scope user ')
     // A recommendation only: no MCP settings file is rendered.
     expect(files.some((file) => file.path.includes('mcp'))).toBe(false)

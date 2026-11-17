@@ -1,7 +1,7 @@
 {
   "name": "@coreloom-uml/cli",
   "version": "0.0.0",
-  "description": "Writes a Coreloom UML project's agent conventions (AGENTS.md and pointer files) into a repository, in a managed block, and sends a map of its code.",
+  "description": "Writes a Coreloom UML project's agent conventions (AGENTS.md and pointer files) into a repository, in a managed block, sends a map of its code and checks its diagrams against it.",
   "license": "MIT",
   "type": "module",
   "bin": {

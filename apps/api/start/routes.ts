@@ -130,7 +130,9 @@ router
 | GitHub repository in the background (the analyzer service, `ImportGithubCodeMapJob`), and
 | `github/follow` is the repository the project reads again on each push. `links`
 | read and replace one diagram's links, `?diagramId=` naming a diagram of the map's project.
-| `processes` lists the flows from the entry points that no diagram documents. No model is called.
+| `processes` lists the flows from the entry points that no diagram documents. `conformance`
+| weighs how every diagram of the project matches a map (its newest ready one by default), for
+| `coreloom-uml check --conformance` in CI. No model is called.
 */
 const codeMapsController = () => import('#app/code-maps/controllers/code-maps-controller')
 const codeMapLinksController = () => import('#app/code-maps/controllers/code-map-links-controller')
@@ -138,6 +140,8 @@ const codeMapImportsController = () =>
   import('#app/code-maps/controllers/code-map-imports-controller')
 const codeMapProcessesController = () =>
   import('#app/code-maps/controllers/code-map-processes-controller')
+const codeMapConformanceController = () =>
+  import('#app/code-maps/controllers/code-map-conformance-controller')
 const codeMapSuggestionsController = () =>
   import('#app/code-maps/controllers/code-map-suggestions-controller')
 router
@@ -145,6 +149,9 @@ router
     router
       .get('/projects/:id/code-maps', [codeMapsController, 'index'])
       .as('projects.code_maps.index')
+    router
+      .get('/projects/:id/code-maps/conformance', [codeMapConformanceController, 'show'])
+      .as('projects.code_maps.conformance')
     router
       .post('/projects/:id/code-maps', [codeMapsController, 'store'])
       .as('projects.code_maps.store')

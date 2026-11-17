@@ -5,7 +5,7 @@ import type { CreatedApiTokenOutput } from '#app/api-tokens/validators/api-token
 import Architecture from '#app/architectures/models/architecture'
 import Diagram from '#app/diagrams/models/diagram'
 import { updateFlag } from '#app/feature-flags/services/feature-flags'
-import { McpTool } from '#app/mcp/constants/mcp'
+import { CODE_MAP_TOOLS, McpTool } from '#app/mcp/constants/mcp'
 import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
@@ -111,8 +111,11 @@ test.group('MCP server', (group) => {
     response.assertStatus(405)
   })
 
-  test('initializes and lists its tools', async ({ client, assert }) => {
-    const { secret } = await setup(client)
+  test('initializes and lists its tools, the code map ones only with code maps on', async ({
+    client,
+    assert,
+  }) => {
+    const { user, secret } = await setup(client)
 
     const initialized = await rpc(client, secret, 'initialize', {
       protocolVersion: '2025-06-18',
@@ -120,14 +123,19 @@ test.group('MCP server', (group) => {
       clientInfo: { name: 'spec', version: '1.0.0' },
     })
     const listed = await rpc(client, secret, 'tools/list')
+    await updateFlag(FeatureFlagKey.CodeMaps, ON, user)
+    const withCodeMaps = await rpc(client, secret, 'tools/list')
 
     initialized.assertStatus(200)
     assert.equal(initialized.body().result.serverInfo.name, 'coreloom-uml')
     listed.assertStatus(200)
+    const names = (response: typeof listed) =>
+      response.body().result.tools.map((tool: { name: string }) => tool.name)
     assert.sameMembers(
-      listed.body().result.tools.map((tool: { name: string }) => tool.name),
-      Object.values(McpTool),
+      names(listed),
+      Object.values(McpTool).filter((tool) => !CODE_MAP_TOOLS.includes(tool)),
     )
+    assert.sameMembers(names(withCodeMaps), Object.values(McpTool))
   })
 
   test('lists projects and diagrams and returns a diagram as text', async ({ client, assert }) => {

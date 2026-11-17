@@ -27,3 +27,14 @@ export const getAgentConventionsInput = {
     .optional()
     .describe('A project id from list_projects, for the conventions of that project.'),
 }
+
+export const getCodeConformanceInput = {
+  projectId: id().describe('A project id from list_projects.'),
+  diagramId: id()
+    .optional()
+    .describe('A diagram id from list_diagrams, to read that diagram only. Leave out for all.'),
+}
+
+export const listUndocumentedProcessesInput = {
+  projectId: id().describe('A project id from list_projects.'),
+}

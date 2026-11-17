@@ -161,6 +161,63 @@ that runs it, then your own checks: `.github/workflows/agent-conventions.yml`, w
 It reads the key from the `CORELOOM_UML_API_KEY` repository secret. In another CI, run
 `npx @coreloom-uml/cli@<version> check` with that variable set (pin the version you use).
 
+### `check --conformance [--api-url <url>] [--project <id>] [--map <id> | --push [--graph <path>]] [--fail-on error|warning] [--json]`
+
+For CI: checks that the project's **diagrams still match the code**. The API matches every
+diagram the map can check (package, component, class, sequence, C4) against a code map, the
+project's newest ready one by default, and weighs each finding. No model is called and no code is
+sent: the match is deterministic, the same map and diagrams always give the same answer.
+
+| Level     | Finding                                                                          |
+| --------- | -------------------------------------------------------------------------------- |
+| `error`   | An element nothing in the code matches; a dependency drawn that the code lacks   |
+| `warning` | A link to code that is gone; a dependency the code has that the diagram omits    |
+
+It exits with 5 when a finding reaches `--fail-on` (`error` by default; `warning` counts errors
+too), 0 otherwise. Undocumented processes are counted, never failed on. Links you confirm or
+ignore in the app's Code tab are taken into account, so a false finding is fixed there once.
+
+- `--project` can be left out when `.coreloom-uml.json` names a project. The key needs `read`.
+- `--map <id>` checks a given map of the project.
+- `--push` first maps the repository and sends the map, as `map push` does (the key then needs
+  `write`, and graphify must be installed unless `--graph` names a `graph.json`), then checks
+  against that map: the check always reads the commit being built.
+- `--json` prints one object: `ok`, `exitCode`, `failOn`, `projectId`, `codeMap`, `counts`,
+  `diagrams` (each with its `findings`: `kind`, `level`, `message` and the elements or code keys
+  involved), `notChecked` and `undocumentedProcesses`. Everything else goes to stderr.
+
+A workflow that checks every pull request against a map of its own commit (pin the CLI version
+you use; `CORELOOM_UML_API_KEY` needs `write` because of `--push`):
+
+```yaml
+name: Diagram conformance
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: pipx install graphifyy==0.9.108
+      - run: npx --yes @coreloom-uml/cli@<version> check --conformance --push --project 7
+        env:
+          CORELOOM_UML_API_URL: ${{ vars.CORELOOM_UML_API_URL }}
+          CORELOOM_UML_API_KEY: ${{ secrets.CORELOOM_UML_API_KEY }}
+```
+
+Without `--push`, the check reads the newest map the project has (sent by `map push` on `main`,
+or read by the server from GitHub) and needs only `read`.
+
 ### `map push [--api-url <url>] [--project <id>] [--graph <path>] [--repository <url>] [--branch <name>] [--commit <sha>] [--dry-run]`
 
 Sends a **map of the repository's code** to a project, so that the app can match its diagrams
@@ -235,12 +292,12 @@ readable by you only. `CORELOOM_UML_API_KEY` takes precedence over it.
 
 ## Settings
 
-| Setting | Read from, in order                                                        |
-| ------- | -------------------------------------------------------------------------- |
-| API URL | `--api-url`, `CORELOOM_UML_API_URL`, `.coreloom-uml.json`. No default.     |
-| API key | `CORELOOM_UML_API_KEY`, then the config file. Never an argument.           |
-| Source  | `--config` or `--project`, then `.coreloom-uml.json`.                      |
-| Project | `map push`: `--project`, then the project of `.coreloom-uml.json`, if any. |
+| Setting  | Read from, in order                                                          |
+| -------- | ---------------------------------------------------------------------------- |
+| API URL  | `--api-url`, `CORELOOM_UML_API_URL`, `.coreloom-uml.json`. No default.       |
+| API key  | `CORELOOM_UML_API_KEY`, then the config file. Never an argument.             |
+| Source   | `--config` or `--project`, then `.coreloom-uml.json`.                        |
+| Project  | `map push`, `check --conformance`: `--project`, then the manifest's project. |
 
 `.coreloom-uml.json` holds the API URL, the conventions' id (or, for a manifest written by an
 older version, the project's), the pulled generation, the hash of
@@ -248,10 +305,11 @@ each block written and the entries merged into each JSON settings file. It holds
 
 ## Exit codes
 
-| Code | Meaning                                                                      |
-| ---- | ---------------------------------------------------------------------------- |
-| 0    | Success                                                                      |
-| 1    | Error: network, refused key or map, unknown id, refused path, broken markers |
-| 2    | A block edited by hand was left as it was (`pull`) or found (`check`)        |
-| 3    | `check`: a newer generation exists                                           |
-| 4    | `check`: a managed block, or its file, is missing                            |
+| Code | Meaning                                                                       |
+| ---- | ----------------------------------------------------------------------------- |
+| 0    | Success                                                                       |
+| 1    | Error: network, refused key or map, unknown id, refused path, broken markers  |
+| 2    | A block edited by hand was left as it was (`pull`) or found (`check`)         |
+| 3    | `check`: a newer generation exists                                            |
+| 4    | `check`: a managed block, or its file, is missing                             |
+| 5    | `check --conformance`: a finding reaches the `--fail-on` level                |

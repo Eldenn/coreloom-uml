@@ -10,9 +10,16 @@ import Architecture from '#app/architectures/models/architecture'
 import Diagram from '#app/diagrams/models/diagram'
 import { MCP_LIST_MAX, MCP_SERVER_NAME, MCP_SERVER_VERSION, McpTool } from '#app/mcp/constants/mcp'
 import {
+  getCodeConformance,
+  listUndocumentedProcesses,
+  NO_READY_MAP,
+} from '#app/mcp/services/mcp-code-conformance'
+import {
   getAgentConventionsInput,
+  getCodeConformanceInput,
   getDiagramInput,
   listDiagramsInput,
+  listUndocumentedProcessesInput,
 } from '#app/mcp/validators/mcp-input'
 import Project from '#app/projects/models/project'
 import { findOwnedProject } from '#app/projects/services/owned-project'
@@ -26,11 +33,17 @@ const json = (value: unknown) => text(JSON.stringify(value, null, 2))
 /** A tool error the agent reads. Something that isn't the caller's reads as not found. */
 const failure = (message: string) => ({ ...text(message), isError: true })
 
+/** What the account may read beyond diagrams and conventions. */
+export type McpServerOptions = {
+  /** The `code-maps` flag: lists the conformance tools. */
+  codeMaps: boolean
+}
+
 /**
  * The MCP server of one request, with the tools bound to the account the API token belongs to.
  * Every tool reads, and only what `user` owns.
  */
-export function buildMcpServer(user: User): McpServer {
+export function buildMcpServer(user: User, options: McpServerOptions): McpServer {
   const server = new McpServer({ name: MCP_SERVER_NAME, version: MCP_SERVER_VERSION })
 
   server.registerTool(
@@ -164,5 +177,49 @@ export function buildMcpServer(user: User): McpServer {
     },
   )
 
+  if (options.codeMaps) registerCodeMapTools(server, user)
+
   return server
+}
+
+/** Conformance of the diagrams to the code, read from stored reviews and maps: no model call. */
+function registerCodeMapTools(server: McpServer, user: User) {
+  server.registerTool(
+    McpTool.GetCodeConformance,
+    {
+      description:
+        'How the diagrams of a project match its code. For each diagram: the open findings of the ' +
+        'newest conformance review (status, severity, comment, evidence as code keys with ' +
+        'path:line), and the findings of the deterministic match against the newest code map ' +
+        '(level error or warning). Read before changing code a diagram describes.',
+      inputSchema: getCodeConformanceInput,
+      annotations: READ_ONLY,
+    },
+    async ({ projectId, diagramId }) => {
+      const project = await findOwnedProject(projectId, user)
+      if (!project) return failure('Project not found')
+      const result = await getCodeConformance(project, user, diagramId)
+      if (!result) return failure('Diagram not found')
+      return json(result)
+    },
+  )
+
+  server.registerTool(
+    McpTool.ListUndocumentedProcesses,
+    {
+      description:
+        "Lists the processes of a project's code that no diagram documents: the calls followed " +
+        'from each entry point (route, job, command, handler) through code no diagram element ' +
+        'is linked to, largest first, from the newest code map.',
+      inputSchema: listUndocumentedProcessesInput,
+      annotations: READ_ONLY,
+    },
+    async ({ projectId }) => {
+      const project = await findOwnedProject(projectId, user)
+      if (!project) return failure('Project not found')
+      const result = await listUndocumentedProcesses(project, user)
+      if (!result) return failure(NO_READY_MAP)
+      return json(result)
+    },
+  )
 }

@@ -63,7 +63,10 @@ silently.
 - **MCP server.** `POST /mcp` is a Model Context Protocol endpoint (Streamable HTTP, stateless)
   for coding agents: with an account API key (`Authorization: Bearer clu_…`, the `read` ability
   is enough) an agent lists the account's projects and their diagrams, reads a diagram as Mermaid,
-  PlantUML or JSON and reads a project's latest generated AGENTS.md. It only reads. It is behind
+  PlantUML or JSON and reads a project's latest generated AGENTS.md. With code maps turned on, it
+  also returns how a project's diagrams match the code (`get_code_conformance`: open review
+  findings and the deterministic match) and the processes no diagram documents
+  (`list_undocumented_processes`). It only reads, and never calls a model. It is behind
   the `mcp-server` feature flag, off by default; generated agent conventions say how to register
   it in each tool.
 
@@ -275,6 +278,14 @@ routes sit behind the `code-maps` feature flag, off by default, take the session
   (`matchDiagram`) with the owner's stored links; `PUT` replaces that diagram's links
   (`suggested`, `confirmed` or `ignored`) and answers with the new match. Links are keyed by code
   key, not by map, so they outlive the map they were made on.
+- `GET /code-maps/:id/processes` lists the flows from entry points that no diagram documents.
+- `GET /projects/:id/code-maps/conformance?codeMapId=` matches every diagram of the project the
+  map can check against it (the project's newest ready map when `codeMapId` is left out; 409 when
+  there is none) and weighs each finding: `error` when the code contradicts the diagram (an
+  element nothing matches, a drawn dependency the code lacks), `warning` when the diagram is
+  behind the code (a link to code that is gone, a dependency it does not draw). It also counts the
+  diagrams it cannot check and the undocumented processes, which never weigh. `read` is enough.
+  `coreloom-uml check --conformance` reads it in CI.
 
 The CLI sends a map from a repository: `npx @coreloom-uml/cli map push --project <id>` runs
 graphify on the machine (no model), turns its graph into a `CodeMap` there and uploads it gzipped,
