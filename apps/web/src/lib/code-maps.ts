@@ -43,6 +43,8 @@ export const codeMapKeys = {
     ['code-maps', 'detail', id, 'links', diagramId] as const,
   processes: (id: number) => ['code-maps', 'detail', id, 'processes'] as const,
   suggestions: (id: number) => ['code-maps', 'detail', id, 'suggestions'] as const,
+  /** Every conformance read: they change with the links and with the project's maps. */
+  conformance: ['code-maps', 'conformance'] as const,
 }
 
 /** How often a map the server is still reading is asked about again. */
@@ -166,8 +168,30 @@ export function useSaveCodeMapLinks(id: number, diagramId: number) {
       client.api.codeMaps.links.update({ params: { id }, body: { diagramId, links } }),
     onSuccess: (body) => {
       queryClient.setQueryData(codeMapKeys.links(id, diagramId), body)
-      return queryClient.invalidateQueries({ queryKey: codeMapKeys.processes(id) })
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: codeMapKeys.processes(id) }),
+        queryClient.invalidateQueries({ queryKey: codeMapKeys.conformance }),
+      ])
     },
+  })
+}
+
+export type CodeConformance = Awaited<ReturnType<typeof client.api.projects.codeMaps.conformance>>
+export type ConformanceCounts = CodeConformance['counts']
+
+/**
+ * `GET /projects/:id/code-maps/conformance`: how the project's diagrams line up with a map (the
+ * newest ready one when `mapId` is left out), counted. Deterministic: no model is called.
+ */
+export function useCodeConformance(projectId: number, mapId?: number, enabled = true) {
+  return useQuery({
+    queryKey: [...codeMapKeys.conformance, projectId, mapId ?? 'latest'] as const,
+    queryFn: () =>
+      client.api.projects.codeMaps.conformance({
+        params: { id: projectId },
+        query: mapId === undefined ? {} : { codeMapId: mapId },
+      }),
+    enabled,
   })
 }
 

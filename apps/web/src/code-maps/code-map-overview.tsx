@@ -9,7 +9,13 @@ import { BarList } from '@/components/ui/bar-list'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table'
 import { DescriptionList } from '@/components/ui/description-list'
-import { codeHref, type CodeMapContents, type CodeMapDetail } from '@/lib/code-maps'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  codeHref,
+  type CodeMapContents,
+  type CodeMapDetail,
+  useCodeConformance,
+} from '@/lib/code-maps'
 import { useLocale, useT } from '@/lib/locale'
 
 export function CodeMapOverview({
@@ -23,13 +29,8 @@ export function CodeMapOverview({
   const { counts } = contents
   return (
     <div className="flex flex-col gap-4">
+      <ConformanceStatus map={map} />
       <CodeMapHeader map={map} />
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label={t.code.files} value={counts.files} />
-        <StatCard label={t.code.symbols} value={counts.symbols} />
-        <StatCard label={t.code.modules} value={counts.modules} />
-        <StatCard label={t.code.edges} value={counts.edges} />
-      </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -72,6 +73,34 @@ export function CodeMapOverview({
         </Card>
       </div>
       <EntryPoints map={map} entries={contents.entries} />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard label={t.code.files} value={counts.files} />
+        <StatCard label={t.code.symbols} value={counts.symbols} />
+        <StatCard label={t.code.modules} value={counts.modules} />
+        <StatCard label={t.code.edges} value={counts.edges} />
+      </div>
+    </div>
+  )
+}
+
+/** Where the diagrams stand against this map, first on the page: the other views hold the detail. */
+function ConformanceStatus({ map }: { map: CodeMapDetail }) {
+  const t = useT()
+  const conformance = useCodeConformance(map.projectId, map.id)
+  if (conformance.isPending) return <Skeleton className="h-24 w-full" />
+  if (conformance.isError)
+    return <p className="m-0 text-[13px] text-muted-foreground">{t.code.statusFailed}</p>
+  const { counts, diagrams, notChecked, undocumentedProcesses } = conformance.data
+  return (
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <StatCard
+        label={t.code.statusDiagrams}
+        value={diagrams.length}
+        {...(notChecked > 0 ? { note: t.code.statusNotChecked(notChecked) } : {})}
+      />
+      <StatCard label={t.code.statusErrors} value={counts.error} />
+      <StatCard label={t.code.statusWarnings} value={counts.warning} />
+      <StatCard label={t.code.viewProcesses} value={undocumentedProcesses} />
     </div>
   )
 }

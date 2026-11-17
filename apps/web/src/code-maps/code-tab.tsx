@@ -11,7 +11,9 @@ import { CodeMapSources } from '@/code-maps/code-map-sources'
 import { CodeProcesses } from '@/code-maps/code-processes'
 import { CodeReviews } from '@/code-maps/code-reviews'
 import { AutoSuggest, CodeSuggestions, SuggestionsCount } from '@/code-maps/code-suggestions'
+import { ConformanceBadge } from '@/code-maps/conformance-badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -40,6 +42,7 @@ import {
   type CodeMapSummary,
   type CodeTabState,
   type CodeView,
+  useCodeConformance,
   useCodeMap,
   useCodeMaps,
   useDeleteCodeMap,
@@ -115,6 +118,7 @@ function CodeMapPanel({
   const [adding, setAdding] = React.useState(false)
   const remove = useDeleteCodeMap(projectId)
   const view = state.view ?? 'map'
+  const conformance = useCodeConformance(projectId, shown.id, shown.status === 'ready')
   const deleteShown = async () => {
     try {
       await remove.mutateAsync(shown.id)
@@ -168,9 +172,17 @@ function CodeMapPanel({
             {t.code.viewSuggestions}
             {shown.status === 'ready' && <SuggestionsCount mapId={shown.id} />}
           </TabsTrigger>
-          <TabsTrigger value="diagrams">{t.code.viewDiagrams}</TabsTrigger>
+          <TabsTrigger value="diagrams">
+            {t.code.viewDiagrams}
+            <ConformanceBadge counts={conformance.data?.counts} />
+          </TabsTrigger>
           <TabsTrigger value="review">{t.code.viewReview}</TabsTrigger>
-          <TabsTrigger value="processes">{t.code.viewProcesses}</TabsTrigger>
+          <TabsTrigger value="processes">
+            {t.code.viewProcesses}
+            {!!conformance.data?.undocumentedProcesses && (
+              <Badge variant="secondary">{conformance.data.undocumentedProcesses}</Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
         <ShownMap id={shown.id}>
           {(map) => (

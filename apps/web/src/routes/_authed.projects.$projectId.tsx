@@ -10,6 +10,7 @@ import { AgentConfigSetup } from '@/agent-configs/agent-config-setup'
 import { AgentConfigTab, type AgentConfigView } from '@/agent-configs/agent-config-tab'
 import { ArchitectureList, CreateArchitectureDialog } from '@/architectures/architecture-list'
 import { CodeTab } from '@/code-maps/code-tab'
+import { ConformanceBadge } from '@/code-maps/conformance-badge'
 import { PageHeader } from '@/components/app-shell'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -19,7 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAgentConfig, useAgentConfigs } from '@/lib/agent-configs'
 import { useArchitectures } from '@/lib/architectures'
-import { CODE_VIEWS, type CodeTabState } from '@/lib/code-maps'
+import { CODE_VIEWS, type CodeTabState, useCodeConformance } from '@/lib/code-maps'
 import { projectCrumbs } from '@/lib/crumbs'
 import { useFeature } from '@/lib/feature-flags'
 import { useT } from '@/lib/locale'
@@ -153,7 +154,12 @@ function ProjectView({ project }: { project: Project }) {
             {t.agents.tab}
             <AgentConfigBadge project={project} />
           </TabsTrigger>
-          {codeMaps && <TabsTrigger value="code">{t.code.tab}</TabsTrigger>}
+          {codeMaps && (
+            <TabsTrigger value="code">
+              {t.code.tab}
+              <CodeBadge project={project} />
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="architectures" className="flex flex-col gap-4">
           <Input
@@ -258,6 +264,12 @@ function ProjectAgentConfig({
 }
 
 /** "Needs regenerating" next to the tab's name, in words, when the latest files are stale. */
+/** What the newest ready map finds against the diagrams; nothing while the project has no map. */
+function CodeBadge({ project }: { project: Project }) {
+  const conformance = useCodeConformance(project.id, undefined, project.codeMapCount > 0)
+  return <ConformanceBadge counts={conformance.data?.counts} />
+}
+
 function AgentConfigBadge({ project }: { project: Project }) {
   const configs = useAgentConfigs({ projectId: project.id })
   const config = configs.data?.data.at(0)
