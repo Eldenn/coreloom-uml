@@ -203,7 +203,7 @@ export default class GithubApi {
     token?: string,
   ): Promise<GithubResult<string | null>> {
     const { owner, name } = repository
-    if (!OWNER.test(owner) || !NAME.test(name) || !isCommitId(commit) || !isRepositoryPath(path))
+    if (!isRepository(repository) || !isCommitId(commit) || !isRepositoryPath(path))
       return { ok: true, value: null }
     const encoded = path.split('/').map(encodeURIComponent).join('/')
     const response = await this.#send(
@@ -226,6 +226,11 @@ export default class GithubApi {
       if (response.status === 404) return { ok: true, value: null }
       return { ok: false, failure: failureOf(response.status) }
     }
+    // The contents API answers a folder with its listing: not a file.
+    if (response.headers.get('content-type')?.startsWith('application/json')) {
+      await response.body?.cancel()
+      return { ok: true, value: null }
+    }
     let bytes: Uint8Array | null
     try {
       bytes = await readCapped(response, GITHUB_SOURCE_LIMITS.fileBytes)
@@ -238,6 +243,40 @@ export default class GithubApi {
       return { ok: true, value: text.includes('\u0000') ? null : text }
     } catch {
       return { ok: true, value: null }
+    }
+  }
+
+  /**
+   * Whether this GitHub login still reads the repository, asked with an installation token. A
+   * grant is only what GitHub listed on the day of the connection: this is today's answer.
+   */
+  async canRead(
+    repository: { owner: string; name: string },
+    login: string,
+    token: string,
+  ): Promise<GithubResult<boolean>> {
+    if (!isRepository(repository) || !OWNER.test(login)) return { ok: true, value: false }
+    const response = await this.#send(
+      `${GITHUB_URLS.api}/repos/${repository.owner}/${repository.name}/collaborators/${login}/permission`,
+      {
+        headers: {
+          accept: 'application/vnd.github+json',
+          'x-github-api-version': GITHUB_API_VERSION,
+          authorization: `Bearer ${token}`,
+        },
+      },
+    )
+    if (!response) return { ok: false, failure: GithubFailure.Unreachable }
+    if (!response.ok) {
+      await response.body?.cancel()
+      const failure = failureOf(response.status)
+      return failure === GithubFailure.Denied ? { ok: true, value: false } : { ok: false, failure }
+    }
+    try {
+      const { permission } = (await response.json()) as { permission?: unknown }
+      return { ok: true, value: READ_PERMISSIONS.includes(permission as string) }
+    } catch {
+      return { ok: false, failure: GithubFailure.Unreachable }
     }
   }
 
@@ -282,6 +321,14 @@ export default class GithubApi {
   }
 }
 
+/** The base roles GitHub answers for someone who reads a repository. */
+const READ_PERMISSIONS: readonly string[] = ['admin', 'write', 'read']
+
+/** A repository GitHub can be asked about: its name cannot be read as a path step. */
+function isRepository({ owner, name }: { owner: string; name: string }): boolean {
+  return OWNER.test(owner) && NAME.test(name) && name !== '.' && name !== '..'
+}
+
 /** 401, 403, 404, 422: the code, token or installation is refused. 5xx and 429: try later. */
 function failureOf(status: number): GithubFailure {
   return status < 500 && status !== 429 ? GithubFailure.Denied : GithubFailure.Unreachable
@@ -312,6 +359,8 @@ async function readCapped(response: Response, limit: number): Promise<Uint8Array
 /** True for a relative path GitHub can be asked for: no `..`, `.` or empty segment, no leading `/`, no `\`, no control character, at most `GITHUB_SOURCE_LIMITS.pathLength` characters. */
 export function isRepositoryPath(path: string): boolean {
   if (path === '' || path.length > GITHUB_SOURCE_LIMITS.pathLength) return false
+  // A lone surrogate cannot be encoded in a URL.
+  if (/\p{Surrogate}/u.test(path)) return false
   // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it refuses.
   if (path.includes('\\') || /[\u0000-\u001f\u007f]/.test(path)) return false
   return path.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..')

@@ -64,6 +64,7 @@ test.group('GitHub - read one file at a commit', (group) => {
       'a\\b',
       'a\u0000b',
       'a\nb',
+      'a\ud800.ts',
       'x'.repeat(GITHUB_SOURCE_LIMITS.pathLength + 1),
     ]) {
       assert.isFalse(isRepositoryPath(path), JSON.stringify(path))
@@ -120,6 +121,8 @@ test.group('GitHub - read one file at a commit', (group) => {
       'over-streamed': () => streamed(over),
       binary: () => new Response(new Uint8Array([0xff, 0xfe, 0x00])),
       nul: () => new Response('abc\u0000def'),
+      // What the contents API answers for a folder: its listing, not a file.
+      listing: () => new Response('[]', { headers: { 'content-type': 'application/json' } }),
     }
     const calls = stubFetch((url) => answers[url.split('/').at(-1) ?? '']())
 
@@ -135,6 +138,10 @@ test.group('GitHub - read one file at a commit', (group) => {
     assert.deepEqual(await github.readFile(REPOSITORY, COMMIT, '../x'), { ok: true, value: null })
     assert.deepEqual(await github.readFile(REPOSITORY, 'main', 'a.ts'), { ok: true, value: null })
     assert.deepEqual(await github.readFile({ owner: 'ac/me', name: 'shop' }, COMMIT, 'a.ts'), {
+      ok: true,
+      value: null,
+    })
+    assert.deepEqual(await github.readFile({ owner: 'acme', name: '..' }, COMMIT, 'a.ts'), {
       ok: true,
       value: null,
     })
@@ -169,5 +176,30 @@ test.group('GitHub - read one file at a commit', (group) => {
       ok: false,
       failure: GithubFailure.Unreachable,
     })
+  })
+
+  test('canRead asks GitHub for the permission of one login on the repository', async ({
+    assert,
+  }) => {
+    const github = new GithubApi()
+    let answer = () => Response.json({ permission: 'read' })
+    const calls = stubFetch(() => answer())
+    assert.deepEqual(await github.canRead(REPOSITORY, 'octo', 'T'), { ok: true, value: true })
+    assert.equal(calls[0]?.url, `${GITHUB_URLS.api}/repos/acme/shop/collaborators/octo/permission`)
+    assert.equal(headersOf(calls[0] as Call).authorization, 'Bearer T')
+
+    answer = () => Response.json({ permission: 'none' })
+    assert.deepEqual(await github.canRead(REPOSITORY, 'octo', 'T'), { ok: true, value: false })
+    answer = () => new Response('Not Found', { status: 404 })
+    assert.deepEqual(await github.canRead(REPOSITORY, 'octo', 'T'), { ok: true, value: false })
+    answer = () => new Response('later', { status: 503 })
+    assert.deepEqual(await github.canRead(REPOSITORY, 'octo', 'T'), {
+      ok: false,
+      failure: GithubFailure.Unreachable,
+    })
+    // A login that is no GitHub login is never sent.
+    const before = calls.length
+    assert.deepEqual(await github.canRead(REPOSITORY, 'oc/to', 'T'), { ok: true, value: false })
+    assert.lengthOf(calls, before)
   })
 })

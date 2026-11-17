@@ -4,6 +4,7 @@ import { excerptSource, type SourceExcerpt, type SourceFile, sourcePaths } from 
 import type CodeMap from '#app/code-maps/models/code-map'
 import { parseGithubRepository } from '#app/code-maps/services/github-repository'
 import GithubApi, { isCommitId, isRepositoryPath } from '#app/github/services/github-api'
+import { findGrant } from '#app/github/services/github-grants'
 import { repositoryToken } from '#app/github/services/repository-token'
 import type User from '#app/users/models/user'
 
@@ -67,6 +68,7 @@ export async function readSource(
   const commit = codeMap.commitSha
   if (!commit || !isCommitId(commit)) return absent(SourceAbsence.NoCommit)
   const paths = listed.paths.filter(isRepositoryPath)
+  if (paths.length === 0) return absent(SourceAbsence.NotFound)
 
   let access: Awaited<ReturnType<typeof repositoryToken>>
   try {
@@ -77,11 +79,19 @@ export async function readSource(
   if (typeof access === 'string') return absent(SourceAbsence.Unreadable)
   const files: SourceFile[] = []
   try {
+    if (access && !(await stillGranted(access, user.id, repository))) {
+      return absent(SourceAbsence.Unreadable)
+    }
     const github = access?.github ?? (await app.container.make(GithubApi))
+    // One file GitHub fails on is left out like a missing one; none read at all is a refusal.
     const answers = await Promise.all(
-      paths.map((path) => github.readFile(repository, commit, path, access?.token)),
+      paths.map((path) =>
+        github
+          .readFile(repository, commit, path, access?.token)
+          .catch(() => ({ ok: false as const })),
+      ),
     )
-    if (answers.some((answer) => !answer.ok)) return absent(SourceAbsence.Unreadable)
+    if (answers.every((answer) => !answer.ok)) return absent(SourceAbsence.Unreadable)
     answers.forEach((answer, index) => {
       if (answer.ok && answer.value !== null) {
         files.push({ path: paths[index] as string, text: answer.value })
@@ -99,6 +109,23 @@ export async function readSource(
     omitted: listed.omitted + listed.paths.length - excerpts.length,
     absence: null,
   })
+}
+
+/**
+ * A grant is what GitHub listed when the user connected, and only some removals reach us by
+ * webhook: before any file is read with the App's token, GitHub says whether that login still
+ * reads the repository. A no drops the grant; no answer reads nothing and keeps it.
+ */
+async function stillGranted(
+  access: { github: GithubApi; token: string },
+  userId: number,
+  repository: { owner: string; name: string; url: string },
+): Promise<boolean> {
+  const grant = await findGrant(userId, repository.url)
+  if (!grant) return false
+  const allowed = await access.github.canRead(repository, grant.githubLogin, access.token)
+  if (allowed.ok && !allowed.value) await grant.delete()
+  return allowed.ok && allowed.value
 }
 
 const plural = (count: number, one: string, many: string) =>

@@ -401,7 +401,7 @@ export const en = {
     retry: 'Retry',
     introTitle: 'Compare the diagrams with the code',
     intro:
-      'A code map is the structure of a repository: folders, classes, functions and the calls between them, read by graphify without running the code or calling a model. Your source code is never sent: only names, paths and links.',
+      'A code map is the structure of a repository: folders, classes, functions and the calls between them, read by graphify without running the code or calling a model. The map holds only names, paths and links, never your code; drawing a diagram from it can read the files concerned on GitHub.',
     cliTitle: 'From the CLI',
     cliText:
       'Run it at the root of the repository, with graphify installed. It sends the map, never the code.',
@@ -1571,7 +1571,7 @@ export const fr: Messages = {
     retry: 'Réessayer',
     introTitle: 'Comparer les diagrammes au code',
     intro:
-      'Une carte du code est la structure d’un dépôt : dossiers, classes, fonctions et appels entre eux, lus par graphify sans exécuter le code ni appeler de modèle. Votre code source n’est jamais envoyé : seulement des noms, des chemins et des liens.',
+      'Une carte du code est la structure d’un dépôt : dossiers, classes, fonctions et appels entre eux, lus par graphify sans exécuter le code ni appeler de modèle. La carte ne contient que des noms, des chemins et des liens, jamais votre code ; dessiner un diagramme à partir d’elle peut lire les fichiers concernés sur GitHub.',
     cliTitle: 'Depuis le CLI',
     cliText:
       'À lancer à la racine du dépôt, avec graphify installé. Il envoie la carte, jamais le code.',

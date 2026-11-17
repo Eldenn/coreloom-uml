@@ -93,6 +93,14 @@ class FakeGithubApi extends GithubApi {
   override async revokeInstallationToken(token: string) {
     this.revoked.push(token)
   }
+
+  access: GithubResult<boolean> = { ok: true, value: true }
+  asked: string[] = []
+
+  override async canRead(repository: { owner: string; name: string }, login: string) {
+    this.asked.push(`${repository.owner}/${repository.name}:${login}`)
+    return this.access
+  }
 }
 
 function useFakeGithub() {
@@ -287,6 +295,51 @@ test.group('Code maps - source code read for a drawing', (group) => {
     assert.equal(github.tokens, 1)
     assert.isTrue(github.reads.every((read) => read.token === TOKEN))
     assert.deepEqual(github.revoked, [TOKEN])
+    assert.deepEqual(github.asked, ['acme/shop:octo'])
+  })
+
+  test('a grant GitHub no longer backs reads nothing and is dropped', async ({
+    client,
+    assert,
+  }) => {
+    const { codeMap, user } = await setup(client)
+    await grant(user)
+    const github = useFakeGithub()
+    github.access = { ok: true, value: false }
+    const reading = await readSource(codeMap, user, NODES)
+    assert.equal(reading?.absence, SourceAbsence.Unreadable)
+    assert.lengthOf(github.reads, 0)
+    assert.deepEqual(github.revoked, [TOKEN])
+    assert.isNull(await GithubRepositoryGrant.findBy('userId', user.id))
+
+    // GitHub not answering proves nothing: nothing is read, the grant stays.
+    await grant(user)
+    github.access = { ok: false, failure: GithubFailure.Unreachable }
+    assert.equal((await readSource(codeMap, user, NODES))?.absence, SourceAbsence.Unreadable)
+    assert.lengthOf(github.reads, 0)
+    assert.isNotNull(await GithubRepositoryGrant.findBy('userId', user.id))
+  })
+
+  test('one file GitHub fails on is left out, the others are read', async ({ client, assert }) => {
+    const { codeMap, user } = await setup(client)
+    const github = useFakeGithub()
+    github.answer = (path) =>
+      path === 'slow.ts'
+        ? { ok: false, failure: GithubFailure.Unreachable }
+        : { ok: true, value: SOURCE }
+    const reading = await readSource(codeMap, user, [{ kind: 'file', path: 'slow.ts' }, ...NODES])
+    assert.equal(reading?.absence, null)
+    assert.equal(reading?.omitted, 1)
+    assert.lengthOf(reading?.excerpts ?? [], 1)
+  })
+
+  test('no token is made when every path is refused', async ({ client, assert }) => {
+    const { codeMap, user } = await setup(client)
+    await grant(user)
+    const github = useFakeGithub()
+    const reading = await readSource(codeMap, user, [{ kind: 'function', path: '../secret' }])
+    assert.equal(reading?.absence, SourceAbsence.NotFound)
+    assert.equal(github.tokens, 0)
   })
 
   test('the token is revoked when a read throws, and the drawing goes on', async ({
