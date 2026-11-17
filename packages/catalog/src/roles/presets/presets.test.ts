@@ -10,6 +10,7 @@ import {
   ROLE_PRESETS,
   roleSchema,
 } from '../../index.ts'
+import { blockMarkdown } from '../../render/markdown.ts'
 import { AGENCY_AGENTS_FILE_COUNT } from './agency-agents.ts'
 
 describe('role presets', () => {
@@ -26,6 +27,13 @@ describe('role presets', () => {
       expect(roleSchema.parse(role), preset.slug).toEqual(role)
       expect(role.source).toEqual({ preset: preset.slug, commit: AGENCY_AGENTS_COMMIT })
       expect(role.done.commands).toEqual(['pnpm test'])
+    }
+  })
+
+  it('renders every example of a mission as written', () => {
+    // The presets write tags only as code, where an escaping backslash would show.
+    for (const preset of ROLE_PRESETS) {
+      expect(blockMarkdown(preset.mission), preset.slug).not.toContain('\\<')
     }
   })
 
