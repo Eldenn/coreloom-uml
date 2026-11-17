@@ -336,6 +336,19 @@ to the code; when nothing matches, the answer is a sentence and nothing is drawn
 `codeMapId` the route is the assistant's own. In the web app, "Ask the assistant" on the Code tab
 opens an architecture's assistant with "Draw from the code" switched on.
 
+**Source code.** A sequence, activity or class diagram drawn from a map (a message with
+`codeMapId`, a proposal's draft, a process proposal) also reads the source of the files it covers,
+for what a map cannot show: the order of the calls, conditions, loops, error paths, attributes.
+`readSource` reads them on GitHub at the map's commit, at most 8 files, 12,000 characters each and
+48,000 in all (a larger file is cut to 60 lines from each node), with an installation token made
+for that read and revoked at once when the owner reaches the repository through the GitHub App,
+anonymously otherwise. The code goes to the owner's model for that one call and is never stored,
+logged or returned; a map still holds none. The stored answer ends with what was read, or why
+nothing was: the map names no GitHub repository, it has no commit, the repository could not be
+read, or the files were not found at that commit (a map pushed from a subfolder, a commit never
+pushed). The view is then drawn from the structure only. Package and component diagrams read no
+source.
+
 #### GitHub App (private repositories, pushes)
 
 With a GitHub App set up, the server also reads the **private repositories** a user installed the

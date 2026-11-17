@@ -15,6 +15,7 @@ import { ASSISTANT_NOT_FOUND, assistantEnabled } from '#app/assistant/services/a
 import { CodeMapStatus } from '#app/code-maps/constants/code-map'
 import { readDetectedCodeMap } from '#app/code-maps/services/code-map-storage'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
+import { readSource, withSourceSentence } from '#app/code-maps/services/code-source'
 import { CODE_MAP_NOT_FOUND, findOwnedCodeMap } from '#app/code-maps/services/owned-code-map'
 import {
   createProposalConversation,
@@ -55,7 +56,8 @@ function entryName(key: string): string {
  * A process no diagram documents, drawn by the user's own model as a new view: the proposal lands
  * in a new conversation of the chosen architecture's assistant, where the owner accepts or rejects
  * it like any other. Accepting it links the view's elements to the code it was drawn from. The
- * key is used for this call only; the model reads names, paths and calls, never source code.
+ * key is used for this call only; the model reads names, paths and calls, and the
+ * source of the files concerned when the repository can be read on GitHub (`readSource`).
  * Session only, behind both `code-maps` and `diagram-assistant`.
  */
 export default class CodeMapProcessProposalsController {
@@ -96,6 +98,7 @@ export default class CodeMapProcessProposalsController {
     }
 
     const started = performance.now()
+    const reading = await readSource(codeMap, user, slice.nodes)
     let result: ProcessDiagramResult
     try {
       result = await proposeProcessDiagram(built.model, {
@@ -107,6 +110,7 @@ export default class CodeMapProcessProposalsController {
         architecture: architecture.title,
         titles: architecture.diagrams.map((diagram) => diagram.title),
         locale,
+        sources: reading?.excerpts,
       })
     } catch (error) {
       if (!(error instanceof LlmCallError)) throw error
@@ -134,7 +138,7 @@ export default class CodeMapProcessProposalsController {
       userId: user.id,
       title: result.title || name,
       request: words.text(name, words.entries[slice.entryKind], words.kinds[kind]),
-      summary: result.summary || words.noSummary,
+      summary: withSourceSentence(result.summary || words.noSummary, reading, locale),
       change,
     })
 

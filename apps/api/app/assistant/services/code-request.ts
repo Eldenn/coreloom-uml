@@ -6,6 +6,7 @@ import type AssistantConversation from '#app/assistant/models/assistant-conversa
 import { conversationHistory } from '#app/assistant/services/assistant-context'
 import type CodeMap from '#app/code-maps/models/code-map'
 import { readDetectedCodeMap } from '#app/code-maps/services/code-map-storage'
+import { readSource, withSourceSentence } from '#app/code-maps/services/code-source'
 import { drawingSource, projectViews } from '#app/code-maps/services/drawing-source'
 import { proposedChange } from '#app/code-maps/services/proposal-conversation'
 import type User from '#app/users/models/user'
@@ -37,7 +38,8 @@ export type CodeAnswer = {
 /**
  * Answers a message of the assistant from the project's code map: the owner's model first names
  * the code the request is about, from an outline of the map and the conversation so far, then
- * draws that part of the map as a new view. Names, paths and links only. Nothing is stored here.
+ * draws that part of the map as a new view, with the source of its files when the repository can
+ * be read on GitHub (`readSource`). Nothing is stored here.
  * Throws `LlmCallError` when a call fails.
  */
 export async function answerFromCode(input: {
@@ -78,9 +80,10 @@ export async function answerFromCode(input: {
   const source = drawingSource(map, resolved.target, architecture, locale)
   if (!source) return nothing()
 
-  const result = await source.draw(model)
+  const reading = await readSource(codeMap, input.user, source.sourceNodes)
+  const result = await source.draw(model, reading?.excerpts)
   return {
-    content: result.summary || words.noSummary,
+    content: withSourceSentence(result.summary || words.noSummary, reading, locale),
     change: proposedChange(result, resolved.target.kind, architecture.diagrams),
     log: { target: true, nodes: source.nodes, truncated: resolved.truncated },
   }
