@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import {
+  type AgentContextFile,
   findManagedBlock,
   HASH_MARKERS,
   HOOK_SHEBANG,
@@ -55,7 +56,15 @@ export type FileChange = {
   blockHash: string | null
   /** For a JSON settings file, the generation's object, which the manifest records too. */
   content?: string
+  /** A role file: managed whole, from its first line to its last, with no block markers. */
+  whole?: true
 }
+
+/** A file the CLI owns from its first line to its last: a role (see `planWhole`). */
+const isWhole = (file: Pick<AgentContextFile, 'kind'>) => file.kind === 'role'
+
+/** A whole file's text without its final line breaks, as its hash is taken. */
+const trimEnd = (text: string) => text.replace(/\n+$/, '')
 
 /** A JSON settings file: the CLI merges entries into it instead of writing a block. */
 export const isJson = (path: string) => path.endsWith('.json')
@@ -223,6 +232,32 @@ export function removeBlock(text: string, location: ManagedBlockLocation): strin
   return rest.trim() === '' ? null : rest
 }
 
+/**
+ * What writing a whole file (a role) does: it is created, replaced or left as it is, never
+ * appended to. A file the last pull did not write, or whose text changed since, counts as edited
+ * by hand, so it is only overwritten after a confirmation (or with `--force`).
+ */
+function planWhole(
+  base: Pick<FileChange, 'path' | 'target' | 'before' | 'newBlock' | 'blockHash'>,
+  content: string,
+  previousHash: string | undefined,
+): FileChange {
+  const { before } = base
+  const common = { ...base, whole: true as const, after: content }
+  if (before === null) {
+    return { ...common, action: ChangeAction.Create, edited: false, oldBlock: null }
+  }
+  const local = trimEnd(before)
+  return {
+    ...common,
+    action: local === base.newBlock ? ChangeAction.Unchanged : ChangeAction.Update,
+    edited: local !== base.newBlock && hashManagedBlock(local) !== previousHash,
+    // An unchanged file keeps its exact text, final line breaks included.
+    after: local === base.newBlock ? before : content,
+    oldBlock: local,
+  }
+}
+
 /** Works out, without writing anything, what pulling `generation` does to each file. */
 export async function planPull(
   root: string,
@@ -255,6 +290,10 @@ export async function planPull(
       continue
     }
     const base = { path: file.path, target, before, newBlock, blockHash }
+    if (isWhole(file)) {
+      changes.push(planWhole(base, content, known.get(file.path)?.blockHash))
+      continue
+    }
 
     if (before === null) {
       changes.push({
@@ -330,8 +369,27 @@ export async function planPull(
       })
       continue
     }
-    const location = before === null ? null : locateBlock(path, before)
-    if (before === null || !location) continue
+    if (before === null) continue
+    // A role file has no markers: it goes whole. A manifest written before roles were known does
+    // not say so, but such a file then still hashes, whole, to what the last pull wrote.
+    if (previous.kind === 'role' || hashManagedBlock(trimEnd(before)) === previous.blockHash) {
+      const local = trimEnd(before)
+      changes.push({
+        path,
+        target,
+        action: ChangeAction.Remove,
+        edited: hashManagedBlock(local) !== previous.blockHash,
+        before,
+        after: null,
+        oldBlock: local,
+        newBlock: null,
+        blockHash: null,
+        whole: true,
+      })
+      continue
+    }
+    const location = locateBlock(path, before)
+    if (!location) continue
     const rest = removeBlock(before, location)
     changes.push({
       path,

@@ -5,10 +5,12 @@ import type {
   EntryKind,
   MatchFinding,
 } from '@coreloom-uml/codemap'
+import type { SuggestedDiagramKind } from '@coreloom-uml/llm'
 import type { ConversationOutput, MessageOutput } from '#app/assistant/validators/assistant-output'
 import type {
   CodeMapSource,
   CodeMapStatus,
+  CodeMapSuggestionStatus,
   DiagramCodeLinkStatus,
 } from '#app/code-maps/constants/code-map'
 import type { Paginated } from '#app/shared/pagination/paginate'
@@ -29,6 +31,15 @@ export type CodeMapOutput = {
   edgeCount: number
   createdAt: string
   updatedAt: string
+}
+
+/** `GET /projects/:id/code-maps/github/follow`: the GitHub repository a project reads on each push. */
+export type GithubFollowOutput = {
+  repositoryUrl: string
+  /** Null: the repository's default branch. */
+  branch: string | null
+  /** False when the owner no longer reaches the repository through the GitHub App. */
+  active: boolean
 }
 
 /** `GET /code-maps/:id`: the header, and what the map holds when it is ready. */
@@ -126,4 +137,31 @@ export type ProposeProcessOutput = {
   architectureId: number
   conversation: ConversationOutput
   messages: MessageOutput[]
+}
+
+/** A diagram the owner's model proposed for the map. */
+export type CodeMapSuggestionOutput = {
+  id: number
+  codeMapId: number
+  kind: SuggestedDiagramKind
+  title: string
+  reason: string
+  /** Folder (`path/`) or class keys for a structural view; the one start for a process. */
+  focus: string[]
+  status: CodeMapSuggestionStatus
+  architectureId: number | null
+  conversationId: number | null
+}
+
+/** `GET|POST /code-maps/:id/suggestions`: the proposals in the model's order. */
+export type CodeMapSuggestionsOutput = {
+  codeMapId: number
+  /** When the list was made, ISO 8601; null until the owner's model was asked. */
+  suggestedAt: string | null
+  suggestions: CodeMapSuggestionOutput[]
+}
+
+/** `POST /code-map-suggestions/:id/draft`: the conversation the new view waits in. */
+export type DraftSuggestionOutput = ProposeProcessOutput & {
+  suggestion: CodeMapSuggestionOutput
 }

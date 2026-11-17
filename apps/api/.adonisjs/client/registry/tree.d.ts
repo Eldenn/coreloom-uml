@@ -33,6 +33,10 @@ export interface ApiDefinition {
       conformance: typeof routes['projects.code_maps.conformance']
       store: typeof routes['projects.code_maps.store']
       github: typeof routes['projects.code_maps.github']
+      follow: {
+        show: typeof routes['projects.code_maps.follow.show']
+        destroy: typeof routes['projects.code_maps.follow.destroy']
+      }
     }
     codeReviews: {
       index: typeof routes['projects.code_reviews.index']
@@ -49,6 +53,23 @@ export interface ApiDefinition {
       index: typeof routes['code_maps.processes.index']
       propose: typeof routes['code_maps.processes.propose']
     }
+    suggestions: {
+      index: typeof routes['code_maps.suggestions.index']
+      store: typeof routes['code_maps.suggestions.store']
+    }
+  }
+  codeMapSuggestions: {
+    update: typeof routes['code_map_suggestions.update']
+    draft: typeof routes['code_map_suggestions.draft']
+  }
+  github: {
+    connection: {
+      show: typeof routes['github.connection.show']
+      start: typeof routes['github.connection.start']
+      store: typeof routes['github.connection.store']
+      destroy: typeof routes['github.connection.destroy']
+    }
+    webhook: typeof routes['github.webhook']
   }
   codeReviews: {
     store: typeof routes['code_reviews.store']

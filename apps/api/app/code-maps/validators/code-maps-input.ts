@@ -5,6 +5,7 @@ import { ASSISTANT_LOCALES } from '#app/assistant/constants/assistant'
 import {
   CODE_MAP_LIMITS,
   CODE_MAP_UPLOAD_EXTENSIONS,
+  CodeMapSuggestionStatus,
   DIAGRAM_CODE_LINK_STATUSES,
 } from '#app/code-maps/constants/code-map'
 import { isValidBranch, parseGithubRepository } from '#app/code-maps/services/github-repository'
@@ -42,7 +43,7 @@ const githubRepository = vine.createRule(
   (value: unknown, _options: undefined, field: FieldContext) => {
     if (typeof value === 'string' && !parseGithubRepository(value)) {
       field.report(
-        'The {{ field }} field must be a public GitHub repository, https://github.com/<owner>/<name>',
+        'The {{ field }} field must be a GitHub repository, https://github.com/<owner>/<name>',
         'githubRepository',
         field,
       )
@@ -57,8 +58,10 @@ const gitBranch = vine.createRule((value: unknown, _options: undefined, field: F
 })
 
 /**
- * `POST /projects/:id/code-maps/github`: a public repository on github.com, and its branch (the
- * default one when left out). The server clones and maps it in the background.
+ * `POST /projects/:id/code-maps/github`: a repository on github.com (public, or one the user reads
+ * through the GitHub App), and its branch (the default one when left out). The server clones and
+ * maps it in the background. `follow` makes the project read it again on each push (true), or
+ * stop (false).
  */
 export const importGithubCodeMapInput = vine.create(
   vine.object({
@@ -70,6 +73,7 @@ export const importGithubCodeMapInput = vine.create(
       .maxLength(CODE_MAP_LIMITS.branch)
       .use(gitBranch())
       .optional(),
+    follow: vine.boolean().optional(),
   }),
 )
 
@@ -128,6 +132,36 @@ export const proposeProcessInput = vine.create(
     entry: vine.string().minLength(1).maxLength(CODE_MAP_LIMITS.codeKey),
     architectureId: idInput(),
     kind: vine.enum(PROCESS_DIAGRAM_KINDS),
+    locale: vine.enum(ASSISTANT_LOCALES),
+  }),
+)
+
+/**
+ * `POST /code-maps/:id/suggestions`: have the user's own provider propose the diagrams worth
+ * drawing for the map. The key is used for this call only.
+ */
+export const suggestDiagramsInput = vine.create(
+  vine.object({
+    ...llmCallFields(),
+    locale: vine.enum(ASSISTANT_LOCALES),
+  }),
+)
+
+/** `PATCH /code-map-suggestions/:id`: set a proposal aside, or bring it back. */
+export const updateSuggestionInput = vine.create(
+  vine.object({
+    status: vine.enum([CodeMapSuggestionStatus.Open, CodeMapSuggestionStatus.Dismissed] as const),
+  }),
+)
+
+/**
+ * `POST /code-map-suggestions/:id/draft`: draw the proposal as a new view of one of the project's
+ * architectures, with the user's own provider.
+ */
+export const draftSuggestionInput = vine.create(
+  vine.object({
+    ...llmCallFields(),
+    architectureId: idInput(),
     locale: vine.enum(ASSISTANT_LOCALES),
   }),
 )

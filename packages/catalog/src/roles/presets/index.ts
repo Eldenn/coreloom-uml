@@ -15,8 +15,6 @@ export {
 export const READ_ONLY_PRESETS: ReadonlySet<string> = new Set([
   // Audits documents against parsers and hands back scorecards.
   'ats-validator-architect',
-  // Delivers architecture designs and specifications.
-  'backend-architect',
   'code-reviewer',
   // Reads and traces code to explain it.
   'codebase-onboarding-engineer',

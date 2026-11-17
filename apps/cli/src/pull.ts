@@ -77,8 +77,8 @@ export async function requireApiKey(env: NodeJS.ProcessEnv): Promise<string> {
 
 function describe(change: FileChange): string {
   const edited = change.edited ? ' (edited by hand)' : ''
-  // In a JSON settings file the CLI owns entries, not a block.
-  const what = isJson(change.path) ? 'keys ' : 'block'
+  // In a JSON settings file the CLI owns entries, not a block; a role file it owns whole.
+  const what = isJson(change.path) ? 'keys ' : change.whole ? 'file ' : 'block'
   switch (change.action) {
     case ChangeAction.Create:
       return `create        ${change.path}`
@@ -193,7 +193,11 @@ export async function pull(options: PullOptions): Promise<ExitCode> {
     for (const change of pending) {
       if (change.edited || isSettings(change.path)) showDiff(io, change)
       const question = change.edited
-        ? `${change.path}: overwrite what was edited by hand?`
+        ? change.whole
+          ? change.action === ChangeAction.Remove
+            ? `${change.path}: delete this file? It was edited by hand.`
+            : `${change.path}: replace the whole file? It was edited by hand, or not written by coreloom-uml.`
+          : `${change.path}: overwrite what was edited by hand?`
         : isCjs(change.path)
           ? `${change.path}: write this configuration? It is code the tool that reads it runs.`
           : isShell(change.path)
@@ -224,6 +228,7 @@ export async function pull(options: PullOptions): Promise<ExitCode> {
         path: change.path,
         blockHash: change.blockHash,
         ...(change.content !== undefined && { content: change.content }),
+        ...(change.whole && { kind: 'role' as const }),
       })
     }
   }

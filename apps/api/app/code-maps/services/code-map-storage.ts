@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { promisify } from 'node:util'
 import { gunzip, gzip } from 'node:zlib'
 import drive from '@adonisjs/drive/services/main'
-import type { CodeMap } from '@coreloom-uml/codemap'
+import { type CodeMap, detectEntryPoints } from '@coreloom-uml/codemap'
 import { CODE_MAP_LIMITS, CODE_MAP_STORAGE_FOLDER } from '#app/code-maps/constants/code-map'
 
 const gzipAsync = promisify(gzip)
@@ -39,6 +39,15 @@ export async function readCodeMapFile(key: string): Promise<CodeMap> {
   const bytes = await drive.use().getBytes(key)
   const json = await gunzipAsync(bytes, { maxOutputLength: CODE_MAP_LIMITS.inflatedBytes })
   return JSON.parse(json.toString('utf8')) as CodeMap
+}
+
+/**
+ * A stored map with its entry points found again by today's rules, so that every reader (the
+ * summary, the processes, the proposals) sees the same ones, even for a map stored before a rule
+ * was added.
+ */
+export async function readDetectedCodeMap(key: string): Promise<CodeMap> {
+  return detectEntryPoints(await readCodeMapFile(key))
 }
 
 /** Deletes stored maps; one already gone is not an error (the row is the source of truth). */

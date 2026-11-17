@@ -222,8 +222,37 @@ export class AuthAccessTokenSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
+export class CodeMapSuggestionSchema extends BaseModel {
+  static $columns = ['architectureId', 'codeMapId', 'conversationId', 'createdAt', 'focus', 'id', 'kind', 'position', 'reason', 'status', 'title', 'updatedAt'] as const
+  $columns = CodeMapSuggestionSchema.$columns
+  @column()
+  declare architectureId: number | null
+  @column()
+  declare codeMapId: number
+  @column()
+  declare conversationId: number | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare focus: any
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare kind: string
+  @column()
+  declare position: number
+  @column()
+  declare reason: string
+  @column()
+  declare status: string
+  @column()
+  declare title: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class CodeMapSchema extends BaseModel {
-  static $columns = ['branch', 'commitSha', 'createdAt', 'edgeCount', 'extractor', 'extractorVersion', 'failureReason', 'id', 'nodeCount', 'projectId', 'repositoryUrl', 'source', 'status', 'storageKey', 'updatedAt', 'userId'] as const
+  static $columns = ['branch', 'commitSha', 'createdAt', 'edgeCount', 'extractor', 'extractorVersion', 'failureReason', 'id', 'nodeCount', 'projectId', 'repositoryUrl', 'source', 'status', 'storageKey', 'suggestedAt', 'updatedAt', 'userId'] as const
   $columns = CodeMapSchema.$columns
   @column()
   declare branch: string | null
@@ -253,6 +282,8 @@ export class CodeMapSchema extends BaseModel {
   declare status: string
   @column()
   declare storageKey: string | null
+  @column.dateTime()
+  declare suggestedAt: DateTime | null
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
   @column()
@@ -387,6 +418,56 @@ export class FeatureFlagSchema extends BaseModel {
   declare state: any
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
+}
+
+export class GithubCodeMapFollowSchema extends BaseModel {
+  static $columns = ['branch', 'createdAt', 'id', 'projectId', 'repositoryId', 'repositoryUrl', 'updatedAt', 'userId'] as const
+  $columns = GithubCodeMapFollowSchema.$columns
+  @column()
+  declare branch: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare projectId: number
+  @column()
+  declare repositoryId: bigint | number
+  @column()
+  declare repositoryUrl: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
+}
+
+export class GithubRepositoryGrantSchema extends BaseModel {
+  static $columns = ['createdAt', 'defaultBranch', 'githubLogin', 'githubUserId', 'id', 'installationId', 'name', 'owner', 'private', 'repositoryId', 'updatedAt', 'userId'] as const
+  $columns = GithubRepositoryGrantSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare defaultBranch: string
+  @column()
+  declare githubLogin: string
+  @column()
+  declare githubUserId: bigint | number
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare installationId: bigint | number
+  @column()
+  declare name: string
+  @column()
+  declare owner: string
+  @column()
+  declare private: boolean
+  @column()
+  declare repositoryId: bigint | number
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
 }
 
 export class LlmConnectionSchema extends BaseModel {

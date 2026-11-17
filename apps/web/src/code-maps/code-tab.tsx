@@ -1,7 +1,7 @@
 // A project's "Code" tab: the ways to add a code map while it has none; then the shown map (the
-// newest, or one picked among the five kept), in four views: what the map holds, how each
-// diagram matches it, the conformance reviews of the diagrams by the user's own model, and the
-// processes no diagram documents.
+// newest, or one picked among the five kept), in five views: what the map holds, the diagrams the
+// user's own model proposes for it, how each diagram matches it, the conformance reviews of the
+// diagrams by that model, and the processes no diagram documents.
 import { PlusIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 
@@ -10,6 +10,7 @@ import { CodeMapOverview } from '@/code-maps/code-map-overview'
 import { CodeMapSources } from '@/code-maps/code-map-sources'
 import { CodeProcesses } from '@/code-maps/code-processes'
 import { CodeReviews } from '@/code-maps/code-reviews'
+import { AutoSuggest, CodeSuggestions, SuggestionsCount } from '@/code-maps/code-suggestions'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -161,8 +162,12 @@ function CodeMapPanel({
           onStateChange({ ...state, view: next as CodeView })
         }}
       >
-        <TabsList>
+        <TabsList className="max-w-full justify-start overflow-x-auto">
           <TabsTrigger value="map">{t.code.viewOverview}</TabsTrigger>
+          <TabsTrigger value="suggestions">
+            {t.code.viewSuggestions}
+            {shown.status === 'ready' && <SuggestionsCount mapId={shown.id} />}
+          </TabsTrigger>
           <TabsTrigger value="diagrams">{t.code.viewDiagrams}</TabsTrigger>
           <TabsTrigger value="review">{t.code.viewReview}</TabsTrigger>
           <TabsTrigger value="processes">{t.code.viewProcesses}</TabsTrigger>
@@ -170,8 +175,12 @@ function CodeMapPanel({
         <ShownMap id={shown.id}>
           {(map) => (
             <>
+              <AutoSuggest map={map} />
               <TabsContent value="map">
                 {map.summary && <CodeMapOverview map={map} contents={map.summary} />}
+              </TabsContent>
+              <TabsContent value="suggestions">
+                <CodeSuggestions map={map} />
               </TabsContent>
               <TabsContent value="diagrams">
                 <CodeDiagramLinks
@@ -195,7 +204,12 @@ function CodeMapPanel({
                 />
               </TabsContent>
               <TabsContent value="processes">
-                <CodeProcesses map={map} />
+                <CodeProcesses
+                  map={map}
+                  onShowSuggestions={() => {
+                    onStateChange({ ...state, view: 'suggestions' })
+                  }}
+                />
               </TabsContent>
             </>
           )}

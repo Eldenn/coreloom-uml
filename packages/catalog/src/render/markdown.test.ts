@@ -11,7 +11,32 @@ describe('blockMarkdown', () => {
 
   it('escapes a tag outside a fenced code block', () => {
     expect(blockMarkdown('```\n<b>\n```\n<div>')).toBe('```\n<b>\n```\n\\<div>')
-    expect(blockMarkdown('Use `<div>` here')).toBe('Use `\\<div>` here')
+    expect(blockMarkdown('`a` <div> `b`')).toBe('`a` \\<div> `b`')
+  })
+
+  it('keeps a tag inside a code span as written, where a backslash would show', () => {
+    expect(blockMarkdown('Use `<div>` here')).toBe('Use `<div>` here')
+    expect(blockMarkdown('Run ``tool <file> `x` `` and `a<b>`')).toBe(
+      'Run ``tool <file> `x` `` and `a<b>`',
+    )
+    expect(blockMarkdown('```\n<b>\n```\nSee `<b>`')).toBe('```\n<b>\n```\nSee `<b>`')
+  })
+
+  it('reads an escaped backtick as plain text, not as a code span', () => {
+    expect(blockMarkdown('\\`<div>`')).toBe('\\`\\<div>`')
+    expect(blockMarkdown('\\``<div>`')).toBe('\\``<div>`')
+    // Inside a span a backslash is plain text, so it does not stop the span from closing.
+    expect(blockMarkdown('`<div>\\` <b>')).toBe('`<div>\\` \\<b>')
+  })
+
+  it('trusts no code span once a backtick run is left unpaired', () => {
+    // The unpaired run may pair with one on the next line, which puts `<script>` outside code.
+    expect(blockMarkdown('a `b\nc` <script> `d`')).toBe('a `b\nc` \\<script> `d`')
+    expect(blockMarkdown('`a`` <b>\n`<i>`')).toBe('`a`` \\<b>\n`\\<i>`')
+  })
+
+  it('keeps no code span on a line that a table could split into cells', () => {
+    expect(blockMarkdown('| `a | ` `<b>` |')).toBe('| `a | ` `\\<b>` |')
   })
 
   it('protects nothing in a fence that never closes', () => {

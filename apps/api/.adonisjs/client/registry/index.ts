@@ -132,6 +132,18 @@ const routes = {
     tokens: [{"old":"/projects/:id/code-maps/github","type":0,"val":"projects","end":""},{"old":"/projects/:id/code-maps/github","type":1,"val":"id","end":""},{"old":"/projects/:id/code-maps/github","type":0,"val":"code-maps","end":""},{"old":"/projects/:id/code-maps/github","type":0,"val":"github","end":""}],
     types: placeholder as Registry['projects.code_maps.github']['types'],
   },
+  'projects.code_maps.follow.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/projects/:id/code-maps/github/follow',
+    tokens: [{"old":"/projects/:id/code-maps/github/follow","type":0,"val":"projects","end":""},{"old":"/projects/:id/code-maps/github/follow","type":1,"val":"id","end":""},{"old":"/projects/:id/code-maps/github/follow","type":0,"val":"code-maps","end":""},{"old":"/projects/:id/code-maps/github/follow","type":0,"val":"github","end":""},{"old":"/projects/:id/code-maps/github/follow","type":0,"val":"follow","end":""}],
+    types: placeholder as Registry['projects.code_maps.follow.show']['types'],
+  },
+  'projects.code_maps.follow.destroy': {
+    methods: ["DELETE"],
+    pattern: '/projects/:id/code-maps/github/follow',
+    tokens: [{"old":"/projects/:id/code-maps/github/follow","type":0,"val":"projects","end":""},{"old":"/projects/:id/code-maps/github/follow","type":1,"val":"id","end":""},{"old":"/projects/:id/code-maps/github/follow","type":0,"val":"code-maps","end":""},{"old":"/projects/:id/code-maps/github/follow","type":0,"val":"github","end":""},{"old":"/projects/:id/code-maps/github/follow","type":0,"val":"follow","end":""}],
+    types: placeholder as Registry['projects.code_maps.follow.destroy']['types'],
+  },
   'code_maps.show': {
     methods: ["GET","HEAD"],
     pattern: '/code-maps/:id',
@@ -161,6 +173,48 @@ const routes = {
     pattern: '/code-maps/:id/processes',
     tokens: [{"old":"/code-maps/:id/processes","type":0,"val":"code-maps","end":""},{"old":"/code-maps/:id/processes","type":1,"val":"id","end":""},{"old":"/code-maps/:id/processes","type":0,"val":"processes","end":""}],
     types: placeholder as Registry['code_maps.processes.index']['types'],
+  },
+  'code_maps.suggestions.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/code-maps/:id/suggestions',
+    tokens: [{"old":"/code-maps/:id/suggestions","type":0,"val":"code-maps","end":""},{"old":"/code-maps/:id/suggestions","type":1,"val":"id","end":""},{"old":"/code-maps/:id/suggestions","type":0,"val":"suggestions","end":""}],
+    types: placeholder as Registry['code_maps.suggestions.index']['types'],
+  },
+  'code_map_suggestions.update': {
+    methods: ["PATCH"],
+    pattern: '/code-map-suggestions/:id',
+    tokens: [{"old":"/code-map-suggestions/:id","type":0,"val":"code-map-suggestions","end":""},{"old":"/code-map-suggestions/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['code_map_suggestions.update']['types'],
+  },
+  'github.connection.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/github/connection',
+    tokens: [{"old":"/github/connection","type":0,"val":"github","end":""},{"old":"/github/connection","type":0,"val":"connection","end":""}],
+    types: placeholder as Registry['github.connection.show']['types'],
+  },
+  'github.connection.start': {
+    methods: ["POST"],
+    pattern: '/github/connection/start',
+    tokens: [{"old":"/github/connection/start","type":0,"val":"github","end":""},{"old":"/github/connection/start","type":0,"val":"connection","end":""},{"old":"/github/connection/start","type":0,"val":"start","end":""}],
+    types: placeholder as Registry['github.connection.start']['types'],
+  },
+  'github.connection.store': {
+    methods: ["POST"],
+    pattern: '/github/connection',
+    tokens: [{"old":"/github/connection","type":0,"val":"github","end":""},{"old":"/github/connection","type":0,"val":"connection","end":""}],
+    types: placeholder as Registry['github.connection.store']['types'],
+  },
+  'github.connection.destroy': {
+    methods: ["DELETE"],
+    pattern: '/github/connection',
+    tokens: [{"old":"/github/connection","type":0,"val":"github","end":""},{"old":"/github/connection","type":0,"val":"connection","end":""}],
+    types: placeholder as Registry['github.connection.destroy']['types'],
+  },
+  'github.webhook': {
+    methods: ["POST"],
+    pattern: '/github/webhook',
+    tokens: [{"old":"/github/webhook","type":0,"val":"github","end":""},{"old":"/github/webhook","type":0,"val":"webhook","end":""}],
+    types: placeholder as Registry['github.webhook']['types'],
   },
   'projects.code_reviews.index': {
     methods: ["GET","HEAD"],
@@ -203,6 +257,18 @@ const routes = {
     pattern: '/code-maps/:id/processes/propose',
     tokens: [{"old":"/code-maps/:id/processes/propose","type":0,"val":"code-maps","end":""},{"old":"/code-maps/:id/processes/propose","type":1,"val":"id","end":""},{"old":"/code-maps/:id/processes/propose","type":0,"val":"processes","end":""},{"old":"/code-maps/:id/processes/propose","type":0,"val":"propose","end":""}],
     types: placeholder as Registry['code_maps.processes.propose']['types'],
+  },
+  'code_maps.suggestions.store': {
+    methods: ["POST"],
+    pattern: '/code-maps/:id/suggestions',
+    tokens: [{"old":"/code-maps/:id/suggestions","type":0,"val":"code-maps","end":""},{"old":"/code-maps/:id/suggestions","type":1,"val":"id","end":""},{"old":"/code-maps/:id/suggestions","type":0,"val":"suggestions","end":""}],
+    types: placeholder as Registry['code_maps.suggestions.store']['types'],
+  },
+  'code_map_suggestions.draft': {
+    methods: ["POST"],
+    pattern: '/code-map-suggestions/:id/draft',
+    tokens: [{"old":"/code-map-suggestions/:id/draft","type":0,"val":"code-map-suggestions","end":""},{"old":"/code-map-suggestions/:id/draft","type":1,"val":"id","end":""},{"old":"/code-map-suggestions/:id/draft","type":0,"val":"draft","end":""}],
+    types: placeholder as Registry['code_map_suggestions.draft']['types'],
   },
   'agent_configs.index': {
     methods: ["GET","HEAD"],

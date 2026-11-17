@@ -10,6 +10,7 @@ import {
   ROLE_PRESETS,
   roleSchema,
 } from '../../index.ts'
+import { blockMarkdown } from '../../render/markdown.ts'
 import { AGENCY_AGENTS_FILE_COUNT } from './agency-agents.ts'
 
 describe('role presets', () => {
@@ -26,6 +27,13 @@ describe('role presets', () => {
       expect(roleSchema.parse(role), preset.slug).toEqual(role)
       expect(role.source).toEqual({ preset: preset.slug, commit: AGENCY_AGENTS_COMMIT })
       expect(role.done.commands).toEqual(['pnpm test'])
+    }
+  })
+
+  it('renders every example of a mission as written', () => {
+    // The presets write tags only as code, where an escaping backslash would show.
+    for (const preset of ROLE_PRESETS) {
+      expect(blockMarkdown(preset.mission), preset.slug).not.toContain('\\<')
     }
   })
 
@@ -54,12 +62,25 @@ describe('role presets', () => {
     for (const slug of [
       'code-reviewer',
       'software-architect',
-      'backend-architect',
       'codebase-onboarding-engineer',
       'multi-agent-systems-architect',
     ]) {
       expect(READ_ONLY_PRESETS.has(slug), slug).toBe(true)
     }
+  })
+
+  it('lets the backend architect implement what it designs', () => {
+    // Its mission builds the schemas, APIs and pipelines it designs, unlike the software architect.
+    expect(READ_ONLY_PRESETS.has('backend-architect')).toBe(false)
+    const preset = ROLE_PRESETS.find((candidate) => candidate.slug === 'backend-architect')
+    if (!preset) throw new Error('No backend-architect preset')
+    expect(presetRole(preset, []).rights).toEqual([
+      'read',
+      'write',
+      'run-checks',
+      'shell',
+      'commit',
+    ])
   })
 
   it('pins a full commit', () => {

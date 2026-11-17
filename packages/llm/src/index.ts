@@ -81,6 +81,24 @@ export {
   testConnection,
 } from './connection.ts'
 export {
+  cleanSuggestions,
+  type DiagramSuggestion,
+  SUGGESTED_DIAGRAM_KINDS,
+  SUGGESTION_FOCUS_MAX,
+  SUGGESTION_REASON_MAX_LENGTH,
+  SUGGESTION_TITLE_MAX_LENGTH,
+  SUGGESTIONS_INSTRUCTIONS,
+  SUGGESTIONS_MAX,
+  type SuggestedDiagramKind,
+  type SuggestionOutline,
+  type SuggestionSource,
+  type SuggestionsResult,
+  suggestDiagrams,
+  suggestionsOutputSchema,
+  suggestionsPrompt,
+} from './diagram-suggestions.ts'
+export type { DrawingLink, DrawingResult } from './drawing.ts'
+export {
   failureReason,
   LLM_FAILURE_REASONS,
   LlmCallError,
@@ -149,3 +167,13 @@ export {
   requiresApiKey,
   takesBaseUrl,
 } from './provider.ts'
+export {
+  proposeStructureDiagram,
+  STRUCTURE_DIAGRAM_KINDS,
+  STRUCTURE_INSTRUCTIONS,
+  type StructureDiagramKind,
+  type StructureDiagramResult,
+  type StructureNode,
+  type StructureSource,
+  structurePrompt,
+} from './structure-diagram.ts'

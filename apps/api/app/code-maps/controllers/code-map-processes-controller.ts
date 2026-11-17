@@ -5,7 +5,7 @@ import {
   projectDiagrams,
   undocumentedProcesses,
 } from '#app/code-maps/services/code-conformance'
-import { readCodeMapFile } from '#app/code-maps/services/code-map-storage'
+import { readDetectedCodeMap } from '#app/code-maps/services/code-map-storage'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
 import { CODE_MAP_NOT_FOUND, findOwnedCodeMap } from '#app/code-maps/services/owned-code-map'
 
@@ -25,7 +25,7 @@ export default class CodeMapProcessesController {
       return response.conflict({ error: { message: 'This code map is not ready' } })
     }
 
-    const map = await readCodeMapFile(codeMap.storageKey)
+    const map = await readDetectedCodeMap(codeMap.storageKey)
     const matches = await matchDiagrams(await projectDiagrams(codeMap.projectId, user), map)
     return response.ok(undocumentedProcesses(codeMap, map, matches))
   }

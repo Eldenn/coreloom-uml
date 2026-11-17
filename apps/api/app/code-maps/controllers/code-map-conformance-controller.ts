@@ -2,7 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { CodeMapStatus } from '#app/code-maps/constants/code-map'
 import type CodeMap from '#app/code-maps/models/code-map'
 import { codeConformance, latestReadyCodeMap } from '#app/code-maps/services/code-conformance'
-import { readCodeMapFile } from '#app/code-maps/services/code-map-storage'
+import { readDetectedCodeMap } from '#app/code-maps/services/code-map-storage'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
 import { CODE_MAP_NOT_FOUND, findOwnedCodeMap } from '#app/code-maps/services/owned-code-map'
 import { showCodeConformanceInput } from '#app/code-maps/validators/code-maps-input'
@@ -38,7 +38,7 @@ export default class CodeMapConformanceController {
       }
     }
 
-    const map = await readCodeMapFile(codeMap.storageKey as string)
+    const map = await readDetectedCodeMap(codeMap.storageKey as string)
     return response.ok(await codeConformance(codeMap, map, user))
   }
 }

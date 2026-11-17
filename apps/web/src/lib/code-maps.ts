@@ -1,9 +1,16 @@
 // Query and mutation hooks for a project's code maps: the maps, one map's summary, how a diagram
 // matches it and the processes no diagram documents (the pattern of src/lib/query.ts).
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useIsMutating,
+  useMutation,
+  useMutationState,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 
 import { assistantKeys } from '@/lib/assistant'
 import { apiBaseUrl, client } from '@/lib/client'
+import { githubKeys } from '@/lib/github'
 import { MODEL_CALL, type StoredProvider } from '@/lib/llm-provider'
 import { callBody } from '@/lib/llm-provider-body'
 import { projectKeys } from '@/lib/projects'
@@ -21,6 +28,9 @@ export type ElementMatch = DiagramMatch['elements'][number]
 export type MatchFinding = DiagramMatch['findings'][number]
 export type CodeMapProcesses = Awaited<ReturnType<typeof client.api.codeMaps.processes.index>>
 export type CodeMapProcess = CodeMapProcesses['processes'][number]
+export type CodeMapSuggestions = Awaited<ReturnType<typeof client.api.codeMaps.suggestions.index>>
+export type CodeMapSuggestion = CodeMapSuggestions['suggestions'][number]
+export type SuggestedDiagramKind = CodeMapSuggestion['kind']
 
 /** Largest file the API takes, as `CODE_MAP_LIMITS.uploadSize` says. */
 export const CODE_MAP_MAX_BYTES = 50 * 1024 * 1024
@@ -32,6 +42,7 @@ export const codeMapKeys = {
   links: (id: number, diagramId: number) =>
     ['code-maps', 'detail', id, 'links', diagramId] as const,
   processes: (id: number) => ['code-maps', 'detail', id, 'processes'] as const,
+  suggestions: (id: number) => ['code-maps', 'detail', id, 'suggestions'] as const,
 }
 
 /** How often a map the server is still reading is asked about again. */
@@ -64,18 +75,20 @@ export function useCodeMap(id: number | undefined) {
 }
 
 /**
- * Has the server clone a public GitHub repository and read it: the new map comes back `pending`
- * and the lists poll it until it is ready or failed.
+ * Has the server clone a GitHub repository (public, or one the GitHub App reads for the user) and
+ * read it: the new map comes back `pending` and the lists poll it until it is ready or failed.
+ * `follow` makes the project read it again on each push.
  */
 export function useImportGithubCodeMap(projectId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (body: { url: string; branch?: string }) =>
+    mutationFn: async (body: { url: string; branch?: string; follow?: boolean }) =>
       (await client.api.projects.codeMaps.github({ params: { id: projectId }, body })).codeMap,
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: codeMapKeys.list(projectId) }),
         queryClient.invalidateQueries({ queryKey: projectKeys.all }),
+        queryClient.invalidateQueries({ queryKey: githubKeys.follow(projectId) }),
       ]),
   })
 }
@@ -224,7 +237,7 @@ export function codeMapWorkflow(projectId: number): string {
   ].join('\n')
 }
 
-export const CODE_VIEWS = ['map', 'diagrams', 'review', 'processes'] as const
+export const CODE_VIEWS = ['map', 'suggestions', 'diagrams', 'review', 'processes'] as const
 export type CodeView = (typeof CODE_VIEWS)[number]
 
 /** Where the tab stands, kept in the page's URL. */
@@ -265,5 +278,89 @@ export function useProposeProcess(mapId: number) {
       }),
     onSuccess: (result) =>
       queryClient.invalidateQueries({ queryKey: assistantKeys.list(result.architectureId) }),
+  })
+}
+
+/** `GET /code-maps/:id/suggestions`: the diagrams the user's model proposed for the map. */
+export function useCodeMapSuggestions(mapId: number) {
+  return useQuery({
+    queryKey: codeMapKeys.suggestions(mapId),
+    queryFn: () => client.api.codeMaps.suggestions.index({ params: { id: mapId } }),
+  })
+}
+
+/** Shared by the automatic run and the button, so that both show the same call in progress. */
+const suggestKey = (mapId: number) => ['code-maps', 'suggest', mapId] as const
+
+/** `POST /code-maps/:id/suggestions`: the user's model proposes diagrams for the map. */
+export function useSuggestDiagrams(mapId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationKey: suggestKey(mapId),
+    mutationFn: ({ provider, locale }: { provider: StoredProvider; locale: 'en' | 'fr' }) =>
+      client.api.codeMaps.suggestions.store({
+        params: { id: mapId },
+        body: { ...callBody(provider), locale },
+        ...MODEL_CALL,
+      }),
+    onSuccess: (result) => {
+      queryClient.setQueryData(codeMapKeys.suggestions(mapId), result)
+    },
+  })
+}
+
+/** Whether the map's proposals are being asked for right now, from anywhere on the page. */
+export function useSuggesting(mapId: number): boolean {
+  return useIsMutating({ mutationKey: suggestKey(mapId) }) > 0
+}
+
+/**
+ * Why the latest request for the map's proposals failed, the automatic one included; null when it
+ * is running or succeeded.
+ */
+export function useSuggestFailure(mapId: number): Error | null {
+  const states = useMutationState({
+    filters: { mutationKey: suggestKey(mapId) },
+    select: (mutation) => mutation.state,
+  })
+  const latest = states.at(-1)
+  return latest?.status === 'error' ? latest.error : null
+}
+
+/** `PATCH /code-map-suggestions/:id`: set a proposal aside, or bring it back. */
+export function useUpdateSuggestion(mapId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: 'open' | 'dismissed' }) =>
+      client.api.codeMapSuggestions.update({ params: { id }, body: { status } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: codeMapKeys.suggestions(mapId) }),
+  })
+}
+
+/** `POST /code-map-suggestions/:id/draft`: the user's model draws the proposal as a new view. */
+export function useDraftSuggestion(mapId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      provider,
+      ...body
+    }: {
+      id: number
+      provider: StoredProvider
+      architectureId: number
+      locale: 'en' | 'fr'
+    }) =>
+      client.api.codeMapSuggestions.draft({
+        params: { id },
+        body: { ...callBody(provider), ...body },
+        ...MODEL_CALL,
+      }),
+    onSuccess: async (result) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: codeMapKeys.suggestions(mapId) }),
+        queryClient.invalidateQueries({ queryKey: assistantKeys.list(result.architectureId) }),
+      ])
+    },
   })
 }

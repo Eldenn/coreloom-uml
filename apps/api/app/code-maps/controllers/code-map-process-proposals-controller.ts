@@ -1,36 +1,25 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
-import db from '@adonisjs/lucid/services/db'
 import { processSlice } from '@coreloom-uml/codemap'
-import {
-  LlmCallError,
-  type ProcessDiagramKind,
-  type ProcessDiagramResult,
-  type ProposedChange,
-  proposeProcessDiagram,
-} from '@coreloom-uml/llm'
+import { LlmCallError, type ProcessDiagramResult, proposeProcessDiagram } from '@coreloom-uml/llm'
 import {
   ARCHITECTURE_NOT_FOUND,
   findOwnedArchitecture,
 } from '#app/architectures/services/owned-architecture'
-import {
-  ASSISTANT_TITLE_MAX_LENGTH,
-  AssistantRole,
-  ChangeStatus,
-  type StoredChange,
-} from '#app/assistant/constants/assistant'
-import AssistantConversation from '#app/assistant/models/assistant-conversation'
-import AssistantMessage from '#app/assistant/models/assistant-message'
+import { ChangeStatus } from '#app/assistant/constants/assistant'
 import {
   serializeConversation,
   serializeMessage,
 } from '#app/assistant/serializers/assistant-serializer'
 import { ASSISTANT_NOT_FOUND, assistantEnabled } from '#app/assistant/services/assistant-flag'
-import { storedChange } from '#app/assistant/services/stored-change'
-import { CODE_MAP_LIMITS, CodeMapStatus } from '#app/code-maps/constants/code-map'
-import { readCodeMapFile } from '#app/code-maps/services/code-map-storage'
+import { CodeMapStatus } from '#app/code-maps/constants/code-map'
+import { readDetectedCodeMap } from '#app/code-maps/services/code-map-storage'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
 import { CODE_MAP_NOT_FOUND, findOwnedCodeMap } from '#app/code-maps/services/owned-code-map'
+import {
+  createProposalConversation,
+  proposedChange,
+} from '#app/code-maps/services/proposal-conversation'
 import { proposeProcessInput } from '#app/code-maps/validators/code-maps-input'
 import type { ProposeProcessOutput } from '#app/code-maps/validators/code-maps-output'
 import { llmFailure, userLanguageModel } from '#app/llm/services/language-models'
@@ -87,7 +76,7 @@ export default class CodeMapProcessProposalsController {
     if (!architecture || architecture.projectId !== codeMap.projectId) {
       return response.notFound(ARCHITECTURE_NOT_FOUND)
     }
-    const map = await readCodeMapFile(codeMap.storageKey)
+    const map = await readDetectedCodeMap(codeMap.storageKey)
     const slice = processSlice(map, entry)
     if (!slice) return response.notFound(PROCESS_NOT_FOUND)
 
@@ -140,33 +129,13 @@ export default class CodeMapProcessProposalsController {
 
     const words = REQUEST[locale]
     const name = entryName(slice.entry)
-    const { conversation, messages } = await db.transaction(async (trx) => {
-      const created = await AssistantConversation.create(
-        {
-          architectureId: architecture.id,
-          userId: user.id,
-          title: (result.title || name).slice(0, ASSISTANT_TITLE_MAX_LENGTH),
-        },
-        { client: trx },
-      )
-      const asked = await AssistantMessage.create(
-        {
-          conversationId: created.id,
-          role: AssistantRole.User,
-          content: words.text(name, words.entries[slice.entryKind], words.kinds[kind]),
-        },
-        { client: trx },
-      )
-      const answered = await AssistantMessage.create(
-        {
-          conversationId: created.id,
-          role: AssistantRole.Assistant,
-          content: result.summary || words.noSummary,
-          changes: [change],
-        },
-        { client: trx },
-      )
-      return { conversation: created, messages: [asked, answered] }
+    const { conversation, messages } = await createProposalConversation({
+      architecture,
+      userId: user.id,
+      title: result.title || name,
+      request: words.text(name, words.entries[slice.entryKind], words.kinds[kind]),
+      summary: result.summary || words.noSummary,
+      change,
     })
 
     return response.created({
@@ -175,24 +144,4 @@ export default class CodeMapProcessProposalsController {
       messages: messages.map(serializeMessage),
     } satisfies ProposeProcessOutput)
   }
-}
-
-/** The proposal as an assistant change: a new view, with the code its elements stand for. */
-function proposedChange(
-  result: ProcessDiagramResult,
-  kind: ProcessDiagramKind,
-  diagrams: Parameters<typeof storedChange>[1],
-): StoredChange {
-  const proposed: ProposedChange =
-    'failed' in result
-      ? { op: 'create', kind, title: result.title, failed: result.failed }
-      : { op: 'create', kind, title: result.title, after: result.diagram, relayout: false }
-  const stored = storedChange(proposed, diagrams)
-  if ('failed' in result || stored.status === ChangeStatus.Failed) return stored
-  const codeLinks = result.links.flatMap((link) =>
-    link.elementId.length > CODE_MAP_LIMITS.elementId
-      ? []
-      : link.codeKeys.map((codeKey) => ({ elementId: link.elementId, codeKey })),
-  )
-  return codeLinks.length ? { ...stored, codeLinks } : stored
 }

@@ -36,7 +36,9 @@ export {
   type CodeFlow,
   DEFAULT_FLOW_DEPTH,
   type FlowOptions,
+  type FlowSlice,
   findUncoveredFlows,
+  flowSlice,
   PROCESS_SLICE_MAX_NODES,
   type ProcessNode,
   type ProcessSlice,
@@ -68,6 +70,16 @@ export {
   type RelationCheck,
 } from './match.ts'
 export {
+  type CodeMapOutline,
+  OUTLINE_DEFAULTS,
+  type OutlineClass,
+  type OutlineDependency,
+  type OutlineFolder,
+  type OutlineOptions,
+  type OutlineStart,
+  outlineCodeMap,
+} from './outline.ts'
+export {
   CODE_SLICE_DEFAULTS,
   type CodeSlice,
   type CodeSliceEdge,
@@ -75,4 +87,13 @@ export {
   type CodeSliceOptions,
   codeSlice,
 } from './slice.ts'
+export {
+  STRUCTURE_KINDS,
+  STRUCTURE_LIMITS,
+  type StructureEdge,
+  type StructureKind,
+  type StructureNode,
+  type StructureSlice,
+  structureSlice,
+} from './structure.ts'
 export { type CodeMapSummary, summarizeCodeMap } from './summary.ts'

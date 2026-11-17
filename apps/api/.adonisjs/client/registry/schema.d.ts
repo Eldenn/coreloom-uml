@@ -259,6 +259,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-imports-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'projects.code_maps.follow.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/projects/:id/code-maps/github/follow'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-imports-controller').default['showFollow']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-imports-controller').default['showFollow']>>>
+    }
+  }
+  'projects.code_maps.follow.destroy': {
+    methods: ["DELETE"]
+    pattern: '/projects/:id/code-maps/github/follow'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-imports-controller').default['destroyFollow']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-imports-controller').default['destroyFollow']>>>
+    }
+  }
   'code_maps.show': {
     methods: ["GET","HEAD"]
     pattern: '/code-maps/:id'
@@ -317,6 +341,90 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-processes-controller').default['index']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-processes-controller').default['index']>>>
+    }
+  }
+  'code_maps.suggestions.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/code-maps/:id/suggestions'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestions-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestions-controller').default['index']>>>
+    }
+  }
+  'code_map_suggestions.update': {
+    methods: ["PATCH"]
+    pattern: '/code-map-suggestions/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').updateSuggestionInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').updateSuggestionInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestions-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestions-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'github.connection.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/github/connection'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['show']>>>
+    }
+  }
+  'github.connection.start': {
+    methods: ["POST"]
+    pattern: '/github/connection/start'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/github/validators/github-input').startGithubConnectionInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/github/validators/github-input').startGithubConnectionInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['start']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['start']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'github.connection.store': {
+    methods: ["POST"]
+    pattern: '/github/connection'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/github/validators/github-input').completeGithubConnectionInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/github/validators/github-input').completeGithubConnectionInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'github.connection.destroy': {
+    methods: ["DELETE"]
+    pattern: '/github/connection'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['destroy']>>>
+    }
+  }
+  'github.webhook': {
+    methods: ["POST"]
+    pattern: '/github/webhook'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/github/controllers/github-webhook-controller').default['handle']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/github-webhook-controller').default['handle']>>>
     }
   }
   'projects.code_reviews.index': {
@@ -401,6 +509,30 @@ export interface Registry {
       query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').proposeProcessInput)>>
       response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-process-proposals-controller').default['store']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-process-proposals-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'code_maps.suggestions.store': {
+    methods: ["POST"]
+    pattern: '/code-maps/:id/suggestions'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').suggestDiagramsInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').suggestDiagramsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestions-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestions-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'code_map_suggestions.draft': {
+    methods: ["POST"]
+    pattern: '/code-map-suggestions/:id/draft'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').draftSuggestionInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').draftSuggestionInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestion-drafts-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestion-drafts-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'agent_configs.index': {

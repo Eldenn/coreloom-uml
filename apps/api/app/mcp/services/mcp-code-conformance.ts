@@ -5,7 +5,7 @@ import {
   projectDiagrams,
   undocumentedProcesses,
 } from '#app/code-maps/services/code-conformance'
-import { readCodeMapFile } from '#app/code-maps/services/code-map-storage'
+import { readDetectedCodeMap } from '#app/code-maps/services/code-map-storage'
 import {
   CodeReviewDiagramStatus,
   CodeReviewResolution,
@@ -74,7 +74,7 @@ export async function getCodeConformance(project: Project, user: User, diagramId
 
   const codeMap = await latestReadyCodeMap(project.id)
   const conformance = codeMap
-    ? await codeConformance(codeMap, await readCodeMapFile(codeMap.storageKey as string), user)
+    ? await codeConformance(codeMap, await readDetectedCodeMap(codeMap.storageKey as string), user)
     : null
 
   return {
@@ -124,7 +124,7 @@ export async function getCodeConformance(project: Project, user: User, diagramId
 export async function listUndocumentedProcesses(project: Project, user: User) {
   const codeMap = await latestReadyCodeMap(project.id)
   if (!codeMap) return null
-  const map = await readCodeMapFile(codeMap.storageKey as string)
+  const map = await readDetectedCodeMap(codeMap.storageKey as string)
   const matches = await matchDiagrams(await projectDiagrams(project.id, user), map)
   return undocumentedProcesses(codeMap, map, matches)
 }

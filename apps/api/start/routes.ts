@@ -127,7 +127,8 @@ router
 |
 | A map belongs to one of the owner's projects; the graph is a gzipped file in Drive. Uploading
 | one is a write (an API token needs `write`); `github` has the server clone and map a public
-| GitHub repository in the background (the analyzer service, `ImportGithubCodeMapJob`). `links`
+| GitHub repository in the background (the analyzer service, `ImportGithubCodeMapJob`), and
+| `github/follow` is the repository the project reads again on each push. `links`
 | read and replace one diagram's links, `?diagramId=` naming a diagram of the map's project.
 | `processes` lists the flows from the entry points that no diagram documents. `conformance`
 | weighs how every diagram of the project matches a map (its newest ready one by default), for
@@ -141,6 +142,8 @@ const codeMapProcessesController = () =>
   import('#app/code-maps/controllers/code-map-processes-controller')
 const codeMapConformanceController = () =>
   import('#app/code-maps/controllers/code-map-conformance-controller')
+const codeMapSuggestionsController = () =>
+  import('#app/code-maps/controllers/code-map-suggestions-controller')
 router
   .group(() => {
     router
@@ -155,6 +158,12 @@ router
     router
       .post('/projects/:id/code-maps/github', [codeMapImportsController, 'store'])
       .as('projects.code_maps.github')
+    router
+      .get('/projects/:id/code-maps/github/follow', [codeMapImportsController, 'showFollow'])
+      .as('projects.code_maps.follow.show')
+    router
+      .delete('/projects/:id/code-maps/github/follow', [codeMapImportsController, 'destroyFollow'])
+      .as('projects.code_maps.follow.destroy')
     router.get('/code-maps/:id', [codeMapsController, 'show']).as('code_maps.show')
     router.delete('/code-maps/:id', [codeMapsController, 'destroy']).as('code_maps.destroy')
     router.get('/code-maps/:id/links', [codeMapLinksController, 'show']).as('code_maps.links.show')
@@ -164,9 +173,44 @@ router
     router
       .get('/code-maps/:id/processes', [codeMapProcessesController, 'index'])
       .as('code_maps.processes.index')
+    router
+      .get('/code-maps/:id/suggestions', [codeMapSuggestionsController, 'index'])
+      .as('code_maps.suggestions.index')
+    router
+      .patch('/code-map-suggestions/:id', [codeMapSuggestionsController, 'update'])
+      .as('code_map_suggestions.update')
   })
   .where('id', router.matchers.number())
   .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
+
+/*
+|--------------------------------------------------------------------------
+| GitHub App: private repositories for code maps (behind `code-maps`)
+|--------------------------------------------------------------------------
+|
+| `connection` is the user's link to the App: `start` gives the GitHub page to open (install, or
+| authorize), the callback page posts GitHub's `code` back, and the repositories the user reaches
+| are kept (never a token). Session only. `webhook` takes the App's deliveries, signed with its
+| secret: no session, and the signature is checked before anything else.
+*/
+const githubConnectionController = () =>
+  import('#app/github/controllers/github-connection-controller')
+router
+  .group(() => {
+    router.get('/connection', [githubConnectionController, 'show']).as('connection.show')
+    router.post('/connection/start', [githubConnectionController, 'start']).as('connection.start')
+    router.post('/connection', [githubConnectionController, 'store']).as('connection.store')
+    router.delete('/connection', [githubConnectionController, 'destroy']).as('connection.destroy')
+  })
+  .prefix('/github')
+  .as('github')
+  .use(middleware.auth())
+router
+  .post('/github/webhook', [
+    () => import('#app/github/controllers/github-webhook-controller'),
+    'handle',
+  ])
+  .as('github.webhook')
 
 /*
 |--------------------------------------------------------------------------
@@ -219,6 +263,25 @@ router
     'store',
   ])
   .as('code_maps.processes.propose')
+  .where('id', router.matchers.number())
+  .use([middleware.auth(), llmThrottle])
+
+/*
+| The diagrams worth drawing for a code map, proposed by the user's own model from an outline of
+| the map, then each drawn as a new view in a new assistant conversation (drafting is also behind
+| `diagram-assistant`). Provider and key in the body, never stored or logged. Session only.
+*/
+router
+  .post('/code-maps/:id/suggestions', [codeMapSuggestionsController, 'store'])
+  .as('code_maps.suggestions.store')
+  .where('id', router.matchers.number())
+  .use([middleware.auth(), llmThrottle])
+router
+  .post('/code-map-suggestions/:id/draft', [
+    () => import('#app/code-maps/controllers/code-map-suggestion-drafts-controller'),
+    'store',
+  ])
+  .as('code_map_suggestions.draft')
   .where('id', router.matchers.number())
   .use([middleware.auth(), llmThrottle])
 
