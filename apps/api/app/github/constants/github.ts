@@ -4,10 +4,21 @@
  * from the App the admin created in the settings (`#app/github/services/github-app-config`).
  */
 
-/** Where GitHub answers: the REST API, and the web host of the OAuth and installation pages. */
+/**
+ * Where GitHub answers: the REST API, the web host of the OAuth and installation pages, and the
+ * host of public files (`{raw}/{owner}/{name}/{ref}/{path}`), outside the anonymous API's quota.
+ */
 export const GITHUB_URLS = {
   api: 'https://api.github.com',
   web: 'https://github.com',
+  raw: 'https://raw.githubusercontent.com',
+} as const
+
+/** One file read from a repository (`GithubApi.readFile`). */
+export const GITHUB_SOURCE_LIMITS = {
+  /** Past it, the read stops and the file is left out. */
+  fileBytes: 512_000,
+  pathLength: 400,
 } as const
 
 /** The REST API version every call pins. */

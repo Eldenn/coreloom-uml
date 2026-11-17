@@ -2,6 +2,7 @@ import { createSign } from 'node:crypto'
 import {
   GITHUB_API_VERSION,
   GITHUB_LIMITS,
+  GITHUB_SOURCE_LIMITS,
   GITHUB_URLS,
   GITHUB_USER_AGENT,
   GithubAppOwnerType,
@@ -189,6 +190,57 @@ export default class GithubApi {
     })
   }
 
+  /**
+   * The text of one file at one commit. `null` when there is nothing to send: the file or the
+   * commit is not there (404), the path or commit is refused, the file is larger than
+   * `GITHUB_SOURCE_LIMITS.fileBytes`, or it is not UTF-8 text. `token` is an installation token
+   * for a private repository; without one the read is anonymous, from the raw file host.
+   */
+  async readFile(
+    repository: { owner: string; name: string },
+    commit: string,
+    path: string,
+    token?: string,
+  ): Promise<GithubResult<string | null>> {
+    const { owner, name } = repository
+    if (!OWNER.test(owner) || !NAME.test(name) || !isCommitId(commit) || !isRepositoryPath(path))
+      return { ok: true, value: null }
+    const encoded = path.split('/').map(encodeURIComponent).join('/')
+    const response = await this.#send(
+      token
+        ? `${GITHUB_URLS.api}/repos/${owner}/${name}/contents/${encoded}?ref=${commit}`
+        : `${GITHUB_URLS.raw}/${owner}/${name}/${commit}/${encoded}`,
+      token
+        ? {
+            headers: {
+              accept: 'application/vnd.github.raw+json',
+              'x-github-api-version': GITHUB_API_VERSION,
+              authorization: `Bearer ${token}`,
+            },
+          }
+        : {},
+    )
+    if (!response) return { ok: false, failure: GithubFailure.Unreachable }
+    if (!response.ok) {
+      await response.body?.cancel()
+      if (response.status === 404) return { ok: true, value: null }
+      return { ok: false, failure: failureOf(response.status) }
+    }
+    let bytes: Uint8Array | null
+    try {
+      bytes = await readCapped(response, GITHUB_SOURCE_LIMITS.fileBytes)
+    } catch {
+      return { ok: false, failure: GithubFailure.Unreachable }
+    }
+    if (!bytes) return { ok: true, value: null }
+    try {
+      const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+      return { ok: true, value: text.includes('\u0000') ? null : text }
+    } catch {
+      return { ok: true, value: null }
+    }
+  }
+
   #api(path: string, init: RequestInit): Promise<GithubResult<unknown>> {
     return this.#call(`${GITHUB_URLS.api}${path}`, {
       ...init,
@@ -201,23 +253,12 @@ export default class GithubApi {
   }
 
   async #call(url: string, init: RequestInit): Promise<GithubResult<unknown>> {
-    let response: Response
-    try {
-      response = await fetch(url, {
-        ...init,
-        headers: { 'user-agent': GITHUB_USER_AGENT, ...(init.headers as Record<string, string>) },
-        redirect: 'error',
-        signal: AbortSignal.timeout(GITHUB_LIMITS.requestTimeoutMs),
-      })
-    } catch {
-      return { ok: false, failure: GithubFailure.Unreachable }
-    }
+    const response = await this.#send(url, init)
+    if (!response) return { ok: false, failure: GithubFailure.Unreachable }
     if (response.status === 204) return { ok: true, value: null }
     if (!response.ok) {
       await response.body?.cancel()
-      // 401, 403, 404, 422: the code, token or installation is refused. 5xx and 429: try later.
-      const denied = response.status < 500 && response.status !== 429
-      return { ok: false, failure: denied ? GithubFailure.Denied : GithubFailure.Unreachable }
+      return { ok: false, failure: failureOf(response.status) }
     }
     try {
       return { ok: true, value: await response.json() }
@@ -225,6 +266,60 @@ export default class GithubApi {
       return { ok: false, failure: GithubFailure.Unreachable }
     }
   }
+
+  /** One call with the fixed header, timeout and no redirect; null when GitHub is not reached. */
+  async #send(url: string, init: RequestInit): Promise<Response | null> {
+    try {
+      return await fetch(url, {
+        ...init,
+        headers: { 'user-agent': GITHUB_USER_AGENT, ...(init.headers as Record<string, string>) },
+        redirect: 'error',
+        signal: AbortSignal.timeout(GITHUB_LIMITS.requestTimeoutMs),
+      })
+    } catch {
+      return null
+    }
+  }
+}
+
+/** 401, 403, 404, 422: the code, token or installation is refused. 5xx and 429: try later. */
+function failureOf(status: number): GithubFailure {
+  return status < 500 && status !== 429 ? GithubFailure.Denied : GithubFailure.Unreachable
+}
+
+/** The body, or null as soon as it grows past `limit` bytes (the rest is never downloaded). */
+async function readCapped(response: Response, limit: number): Promise<Uint8Array | null> {
+  if (Number(response.headers.get('content-length') ?? 0) > limit) {
+    await response.body?.cancel()
+    return null
+  }
+  if (!response.body) return new Uint8Array()
+  const reader = response.body.getReader()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) return Buffer.concat(chunks, size)
+    size += value.byteLength
+    if (size > limit) {
+      await reader.cancel()
+      return null
+    }
+    chunks.push(value)
+  }
+}
+
+/** True for a relative path GitHub can be asked for: no `..`, `.` or empty segment, no leading `/`, no `\`, no control character, at most `GITHUB_SOURCE_LIMITS.pathLength` characters. */
+export function isRepositoryPath(path: string): boolean {
+  if (path === '' || path.length > GITHUB_SOURCE_LIMITS.pathLength) return false
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it refuses.
+  if (path.includes('\\') || /[\u0000-\u001f\u007f]/.test(path)) return false
+  return path.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..')
+}
+
+/** A commit id: 7 to 64 hexadecimal characters. */
+export function isCommitId(value: string): boolean {
+  return /^[0-9a-f]{7,64}$/i.test(value)
 }
 
 function toCreatedApp(value: unknown): GithubCreatedApp | null {
