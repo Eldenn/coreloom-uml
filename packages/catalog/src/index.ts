@@ -59,6 +59,7 @@ export {
   type AgentContextRole,
   NOTES_INTRO,
   renderAgentContext,
+  repositoryChecks,
 } from './render/render-agent-context.ts'
 export { deniedRights, roleMatrix } from './roles/matrix.ts'
 export {

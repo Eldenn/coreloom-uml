@@ -14,6 +14,10 @@ export const PROJECT_HAS_AGENT_CONFIG = {
   error: { message: 'This project already has an agent configuration' },
 } as const
 export const AGENT_RULE_NOT_FOUND = { error: { message: 'Rule not found' } } as const
+export const AGENT_ROLE_NOT_FOUND = { error: { message: 'Role not found' } } as const
+export const AGENT_ROLE_SLUG_TAKEN = {
+  error: { message: 'A role with this slug already exists' },
+} as const
 export const AGENT_GENERATION_NOT_FOUND = { error: { message: 'Generation not found' } } as const
 
 /**

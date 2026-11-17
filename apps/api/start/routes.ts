@@ -98,6 +98,8 @@ const projectsController = () => import('#app/projects/controllers/projects-cont
 const agentConfigController = () => import('#app/agent-configs/controllers/agent-config-controller')
 const agentRulesController = () =>
   import('#app/agent-configs/controllers/agent-config-rules-controller')
+const agentRolesController = () =>
+  import('#app/agent-configs/controllers/agent-config-roles-controller')
 const agentGenerationsController = () =>
   import('#app/agent-configs/controllers/agent-config-generations-controller')
 router
@@ -146,6 +148,14 @@ router
     router
       .delete('/:id/rules/:ruleId', [agentRulesController, 'destroy'])
       .as('agent_configs.rules.destroy')
+    // Behind the `agent-roles` flag: 404 while it is off for the caller.
+    router.post('/:id/roles', [agentRolesController, 'store']).as('agent_configs.roles.store')
+    router
+      .patch('/:id/roles/:roleId', [agentRolesController, 'update'])
+      .as('agent_configs.roles.update')
+    router
+      .delete('/:id/roles/:roleId', [agentRolesController, 'destroy'])
+      .as('agent_configs.roles.destroy')
     router
       .post('/:id/generations', [agentGenerationsController, 'store'])
       .as('agent_configs.generations.store')
@@ -163,6 +173,7 @@ router
   .prefix('/agent-configs')
   .where('id', router.matchers.number())
   .where('ruleId', router.matchers.number())
+  .where('roleId', router.matchers.number())
   .where('generationId', router.matchers.number())
   .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
 
@@ -271,6 +282,21 @@ router
     router.get('/:questionnaireId', [questionnairesController, 'show']).as('questionnaires.show')
   })
   .prefix('/questionnaires')
+  .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
+
+/*
+|--------------------------------------------------------------------------
+| Ready-made agent roles of the catalog (`@coreloom-uml/catalog`)
+|--------------------------------------------------------------------------
+|
+| Behind the `agent-roles` flag: 404 while it is off for the caller.
+*/
+router
+  .get('/role-presets', [
+    () => import('#app/agent-configs/controllers/role-presets-controller'),
+    'index',
+  ])
+  .as('role_presets.index')
   .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
 
 /*

@@ -289,7 +289,10 @@ function describe(description: string | null): string {
 }
 
 /** The answer feeding a slot, if it fits its question. */
-function slotAnswer(input: AgentContextInput, slot: Slot): AnswerValue | undefined {
+function slotAnswer(
+  input: Pick<AgentContextInput, 'questionnaires' | 'answers'>,
+  slot: Slot,
+): AnswerValue | undefined {
   for (const questionnaire of input.questionnaires) {
     const question = questionnaire.questions.find((item) => item.slot === slot)
     if (!question) continue
@@ -301,12 +304,22 @@ function slotAnswer(input: AgentContextInput, slot: Slot): AnswerValue | undefin
   return undefined
 }
 
-function targetContext(input: AgentContextInput): TargetContext {
+/**
+ * The repository's checks: the `tooling.checks` commands `splitCommands` keeps, the ones every
+ * rendered settings file, hook and workflow runs.
+ */
+export function repositoryChecks(
+  input: Pick<AgentContextInput, 'questionnaires' | 'answers'>,
+): string[] {
   const checks = slotAnswer(input, 'tooling.checks')
+  return typeof checks === 'string' ? splitCommands(stripMarkers(checks)) : []
+}
+
+function targetContext(input: AgentContextInput): TargetContext {
   const packageManager = slotAnswer(input, 'tooling.package-manager')
   const autonomy = slotAnswer(input, 'workflow.autonomy')
   return {
-    checks: typeof checks === 'string' ? splitCommands(stripMarkers(checks)) : [],
+    checks: repositoryChecks(input),
     otherPackageManagers: PACKAGE_MANAGERS.some((manager) => manager === packageManager)
       ? PACKAGE_MANAGERS.filter((manager) => manager !== packageManager)
       : [],

@@ -4,6 +4,7 @@ import type { DateTime } from 'luxon'
 import type { Target } from '#app/agent-configs/constants/agent-config'
 import AgentConfigAnswer from '#app/agent-configs/models/agent-config-answer'
 import AgentConfigGeneration from '#app/agent-configs/models/agent-config-generation'
+import AgentConfigRole from '#app/agent-configs/models/agent-config-role'
 import AgentConfigRule from '#app/agent-configs/models/agent-config-rule'
 import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
@@ -62,6 +63,9 @@ export default class AgentConfig extends BaseModel {
 
   @hasMany(() => AgentConfigRule)
   declare rules: HasMany<typeof AgentConfigRule>
+
+  @hasMany(() => AgentConfigRole)
+  declare roles: HasMany<typeof AgentConfigRole>
 
   @hasMany(() => AgentConfigGeneration)
   declare generations: HasMany<typeof AgentConfigGeneration>
