@@ -51,7 +51,13 @@ import { providerCallFailure, useStoredProvider } from '@/lib/llm-provider'
 import { useLocale, useT } from '@/lib/locale'
 import { useProviderFailureText } from '@/llm/provider-failure'
 
-export function CodeProcesses({ map }: { map: CodeMapDetail }) {
+export function CodeProcesses({
+  map,
+  onShowSuggestions,
+}: {
+  map: CodeMapDetail
+  onShowSuggestions: () => void
+}) {
   const t = useT()
   const processes = useCodeMapProcesses(map.id)
   if (processes.isPending) return <Skeleton className="h-64 w-full" />
@@ -74,9 +80,18 @@ export function CodeProcesses({ map }: { map: CodeMapDetail }) {
         <CardDescription>{t.code.processesHint}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        {total === 0 ? (
+        {map.summary?.entries.length === 0 && (
+          <div className="flex flex-col items-start gap-3">
+            <p className="m-0 text-[13px] text-muted-foreground">{t.code.processesNoEntries}</p>
+            <Button variant="outline" size="sm" onClick={onShowSuggestions}>
+              <SparklesIcon /> {t.code.processesSeeSuggestions}
+            </Button>
+          </div>
+        )}
+        {map.summary?.entries.length !== 0 && total === 0 && (
           <p className="m-0 text-[13px] text-muted-foreground">{t.code.noProcesses}</p>
-        ) : (
+        )}
+        {total > 0 && (
           <>
             <p className="m-0 text-[13px] text-fg-secondary">
               {t.code.processesCount(list.length, total)}
@@ -302,27 +317,12 @@ function ProposeFields({
     return <p className="m-0 text-[13px] text-muted-foreground">{t.code.proposeNoArchitecture}</p>
   return (
     <div className="flex flex-col gap-5">
-      <Field>
-        <FieldLabel htmlFor="propose-architecture">{t.code.proposeArchitecture}</FieldLabel>
-        <Select
-          value={architectureId === null ? '' : String(architectureId)}
-          onValueChange={(value) => {
-            onArchitectureChange(Number(value))
-          }}
-          disabled={disabled}
-        >
-          <SelectTrigger id="propose-architecture">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {architectures.map((architecture) => (
-              <SelectItem key={architecture.id} value={String(architecture.id)}>
-                {architecture.title}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
+      <ArchitectureField
+        architectures={architectures}
+        architectureId={architectureId}
+        onChange={onArchitectureChange}
+        disabled={disabled}
+      />
       <FieldSet>
         <FieldLegend variant="label">{t.code.proposeKind}</FieldLegend>
         <RadioGroup
@@ -343,5 +343,43 @@ function ProposeFields({
         </RadioGroup>
       </FieldSet>
     </div>
+  )
+}
+
+/** The architecture a new view goes to, among the project's. */
+export function ArchitectureField({
+  architectures,
+  architectureId,
+  onChange,
+  disabled,
+}: {
+  architectures: { id: number; title: string }[]
+  architectureId: number | null
+  onChange: (id: number) => void
+  disabled: boolean
+}) {
+  const t = useT()
+  return (
+    <Field>
+      <FieldLabel htmlFor="propose-architecture">{t.code.proposeArchitecture}</FieldLabel>
+      <Select
+        value={architectureId === null ? '' : String(architectureId)}
+        onValueChange={(value) => {
+          onChange(Number(value))
+        }}
+        disabled={disabled}
+      >
+        <SelectTrigger id="propose-architecture">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {architectures.map((architecture) => (
+            <SelectItem key={architecture.id} value={String(architecture.id)}>
+              {architecture.title}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </Field>
   )
 }

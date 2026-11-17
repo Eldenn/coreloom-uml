@@ -307,6 +307,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-processes-controller').default['index']>>>
     }
   }
+  'code_maps.suggestions.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/code-maps/:id/suggestions'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestions-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestions-controller').default['index']>>>
+    }
+  }
+  'code_map_suggestions.update': {
+    methods: ["PATCH"]
+    pattern: '/code-map-suggestions/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').updateSuggestionInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').updateSuggestionInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestions-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestions-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'projects.code_reviews.index': {
     methods: ["GET","HEAD"]
     pattern: '/projects/:id/code-reviews'
@@ -389,6 +413,30 @@ export interface Registry {
       query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').proposeProcessInput)>>
       response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-process-proposals-controller').default['store']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-process-proposals-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'code_maps.suggestions.store': {
+    methods: ["POST"]
+    pattern: '/code-maps/:id/suggestions'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').suggestDiagramsInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').suggestDiagramsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestions-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestions-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'code_map_suggestions.draft': {
+    methods: ["POST"]
+    pattern: '/code-map-suggestions/:id/draft'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').draftSuggestionInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').draftSuggestionInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestion-drafts-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestion-drafts-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'agent_configs.index': {

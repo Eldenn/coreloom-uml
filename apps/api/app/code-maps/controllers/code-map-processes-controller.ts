@@ -3,7 +3,7 @@ import { findUncoveredFlows, linkedCodeKeys } from '@coreloom-uml/codemap'
 import Architecture from '#app/architectures/models/architecture'
 import { CodeMapStatus } from '#app/code-maps/constants/code-map'
 import DiagramCodeLink from '#app/code-maps/models/diagram-code-link'
-import { readCodeMapFile } from '#app/code-maps/services/code-map-storage'
+import { readDetectedCodeMap } from '#app/code-maps/services/code-map-storage'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
 import { matchStoredDiagram } from '#app/code-maps/services/diagram-code-links'
 import { CODE_MAP_NOT_FOUND, findOwnedCodeMap } from '#app/code-maps/services/owned-code-map'
@@ -30,7 +30,7 @@ export default class CodeMapProcessesController {
       return response.conflict({ error: { message: 'This code map is not ready' } })
     }
 
-    const map = await readCodeMapFile(codeMap.storageKey)
+    const map = await readDetectedCodeMap(codeMap.storageKey)
     const architectures = await Architecture.query()
       .where('projectId', codeMap.projectId)
       .where('userId', user.id)

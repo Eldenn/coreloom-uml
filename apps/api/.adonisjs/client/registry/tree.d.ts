@@ -48,6 +48,14 @@ export interface ApiDefinition {
       index: typeof routes['code_maps.processes.index']
       propose: typeof routes['code_maps.processes.propose']
     }
+    suggestions: {
+      index: typeof routes['code_maps.suggestions.index']
+      store: typeof routes['code_maps.suggestions.store']
+    }
+  }
+  codeMapSuggestions: {
+    update: typeof routes['code_map_suggestions.update']
+    draft: typeof routes['code_map_suggestions.draft']
   }
   codeReviews: {
     store: typeof routes['code_reviews.store']
