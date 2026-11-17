@@ -73,6 +73,13 @@ comments) and `.devcontainer/init-firewall.sh`, the container's firewall. The sc
 It is run with `bash`, so the CLI does not make it executable. Both files decide what runs in the
 container, so every change to them is shown and confirmed first too.
 
+**Role files** (`.agents/roles/<slug>.md`, `.claude/agents/<slug>.md`, `.codex/agents/<slug>.toml`)
+have no markers: the CLI owns them whole, from the first line to the last. A pull replaces such a
+file entirely and deletes it once the role is gone. A role file edited by hand, or a file of that
+name the CLI did not write, is only replaced or deleted after a confirmation (or with `--force`),
+like a block edited by hand. A Codex role sets the sandbox the agent runs in, so writing one is
+confirmed too.
+
 Requires Node.js 22 or newer.
 
 ## Quick start
@@ -101,15 +108,16 @@ Requires Node.js 22 or newer.
 
 Fetches the conventions' latest generation and, for each file:
 
-| The file…                                   | What happens                                              |
-| ------------------------------------------- | --------------------------------------------------------- |
-| does not exist                              | it is created with the block alone                        |
-| exists without markers                      | the block is added at its end, after a confirmation       |
-| holds the block the last pull wrote         | the block is replaced                                     |
-| holds a block edited by hand                | the diff is shown and a confirmation asked                |
-| left the generation (a target was removed)  | its block is removed, and the file deleted if left empty |
-| is a settings file, a hook or a workflow with new content | the diff is shown and a confirmation asked |
-| is a JSON file missing an entry it was given | it counts as edited by hand: same as a block edited by hand |
+| The file…                                                 | What happens                                                |
+| --------------------------------------------------------- | ----------------------------------------------------------- |
+| does not exist                                            | it is created with the block alone                          |
+| exists without markers                                    | the block is added at its end, after a confirmation         |
+| holds the block the last pull wrote                       | the block is replaced                                       |
+| holds a block edited by hand                              | the diff is shown and a confirmation asked                  |
+| left the generation (a target was removed)                | its block is removed, and the file deleted if left empty    |
+| is a settings file, a hook or a workflow with new content | the diff is shown and a confirmation asked                  |
+| is a JSON file missing an entry it was given              | it counts as edited by hand: same as a block edited by hand |
+| is a role file                                            | it is replaced whole, and deleted once the role is gone     |
 
 - `--dry-run` shows the plan and the diffs, and writes nothing.
 - `--yes` answers yes to every question, except for a block edited by hand: the CLI then writes
@@ -125,8 +133,9 @@ Coreloom UML: links only, never a command to run.
 
 ### `status [--api-url <url>]`
 
-For each file of the last pull: `unchanged`, `block edited`, `keys edited` (a JSON settings file
-that lost an entry the last pull wrote), `block missing` or `file missing`.
+For each file of the last pull: `unchanged`, `block edited`, `file edited` (a role file that no
+longer holds what the last pull wrote), `keys edited` (a JSON settings file that lost an entry the
+last pull wrote), `block missing` or `file missing`.
 With an API key at hand, also says whether a newer generation exists. Never writes.
 
 ### `check [--api-url <url>] [--json]`
@@ -136,13 +145,13 @@ every managed block is the one the last pull wrote **and** that pull is the late
 It needs the committed `.coreloom-uml.json` and an API key (`read` is enough), never asks
 anything and never writes.
 
-| Code | Meaning                                                                      |
-| ---- | ---------------------------------------------------------------------------- |
-| 0    | Every block matches the latest generation                                    |
-| 1    | Could not check: no manifest, no key, network, refused key…                  |
-| 2    | A block was edited by hand                                                   |
-| 3    | A newer generation exists: run `pull` and commit                             |
-| 4    | A block, or its file, is missing                                             |
+| Code | Meaning                                                     |
+| ---- | ----------------------------------------------------------- |
+| 0    | Every block matches the latest generation                   |
+| 1    | Could not check: no manifest, no key, network, refused key… |
+| 2    | A block was edited by hand                                  |
+| 3    | A newer generation exists: run `pull` and commit            |
+| 4    | A block, or its file, is missing                            |
 
 When several apply, the first of 2, 4, 3 is returned (edited, then missing, then stale). `--json` prints one object instead of text: `ok`, `exitCode`, `generationId`,
 `latestGenerationId` and `files` (`path`, `state`).
@@ -226,12 +235,12 @@ readable by you only. `CORELOOM_UML_API_KEY` takes precedence over it.
 
 ## Settings
 
-| Setting  | Read from, in order                                                          |
-| -------- | ---------------------------------------------------------------------------- |
-| API URL  | `--api-url`, `CORELOOM_UML_API_URL`, `.coreloom-uml.json`. No default.       |
-| API key  | `CORELOOM_UML_API_KEY`, then the config file. Never an argument.             |
-| Source   | `--config` or `--project`, then `.coreloom-uml.json`.                        |
-| Project  | `map push`: `--project`, then the project of `.coreloom-uml.json`, if any.   |
+| Setting | Read from, in order                                                        |
+| ------- | -------------------------------------------------------------------------- |
+| API URL | `--api-url`, `CORELOOM_UML_API_URL`, `.coreloom-uml.json`. No default.     |
+| API key | `CORELOOM_UML_API_KEY`, then the config file. Never an argument.           |
+| Source  | `--config` or `--project`, then `.coreloom-uml.json`.                      |
+| Project | `map push`: `--project`, then the project of `.coreloom-uml.json`, if any. |
 
 `.coreloom-uml.json` holds the API URL, the conventions' id (or, for a manifest written by an
 older version, the project's), the pulled generation, the hash of
@@ -239,10 +248,10 @@ each block written and the entries merged into each JSON settings file. It holds
 
 ## Exit codes
 
-| Code | Meaning                                                                       |
-| ---- | ----------------------------------------------------------------------------- |
-| 0    | Success                                                                       |
-| 1    | Error: network, refused key or map, unknown id, refused path, broken markers  |
-| 2    | A block edited by hand was left as it was (`pull`) or found (`check`)         |
-| 3    | `check`: a newer generation exists                                            |
-| 4    | `check`: a managed block, or its file, is missing                             |
+| Code | Meaning                                                                      |
+| ---- | ---------------------------------------------------------------------------- |
+| 0    | Success                                                                      |
+| 1    | Error: network, refused key or map, unknown id, refused path, broken markers |
+| 2    | A block edited by hand was left as it was (`pull`) or found (`check`)        |
+| 3    | `check`: a newer generation exists                                           |
+| 4    | `check`: a managed block, or its file, is missing                            |

@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { HASH_MARKERS, SLASH_MARKERS, wrapManagedBlock } from '@coreloom-uml/catalog'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { CliError, ExitCode } from '../src/errors.ts'
-import { MANIFEST_FILE, readManifest } from '../src/manifest.ts'
+import { MANIFEST_FILE, readManifest, writeManifest } from '../src/manifest.ts'
 import { type PullOptions, pull } from '../src/pull.ts'
 import {
   API_KEY,
@@ -11,6 +11,7 @@ import {
   file,
   generation,
   recordingIo,
+  roleFile,
   settingsFile,
   tempDir,
 } from './fixtures.ts'
@@ -597,5 +598,145 @@ describe('pull, settings files', () => {
     await writeFile(join(dir.path, TOML), 'sandbox_mode = "danger-full-access"\n')
     api.current = generation(1, [toml('sandbox_mode = "read-only"')])
     await expect(run({ yes: true })).rejects.toThrow(/already sets sandbox_mode/)
+  })
+})
+
+describe('pull, role files', () => {
+  const MARKDOWN_ROLE = '.agents/roles/reviewer.md'
+  const CODEX_ROLE = '.codex/agents/reviewer.toml'
+  const markdownRole = (mission: string) =>
+    roleFile(
+      MARKDOWN_ROLE,
+      `---\nname: reviewer\ntools: Read, Grep\n---\n\nRead and follow AGENTS.md.\n\n## Mission\n\n${mission}`,
+    )
+  const codex = (mission: string) =>
+    roleFile(
+      CODEX_ROLE,
+      `name = "reviewer"\nsandbox_mode = "read-only"\ndeveloper_instructions = """\n${mission}\n"""`,
+    )
+
+  it('creates a role file whole, then replaces it whole instead of adding a second copy', async () => {
+    api.current = generation(1, [file(AGENTS, 'a'), markdownRole('Review.'), codex('Review.')])
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await read(MARKDOWN_ROLE)).toBe(api.current.files[1]?.content)
+    expect(await read(CODEX_ROLE)).toBe(api.current.files[2]?.content)
+    expect((await readManifest(dir.path))?.files).toContainEqual({
+      path: MARKDOWN_ROLE,
+      blockHash: api.current.files[1]?.blockHash,
+      kind: 'role',
+    })
+
+    // The same generation again: nothing to write, and no TOML key counted twice.
+    const same = recordingIo()
+    expect(await run({ yes: true }, same.io)).toBe(ExitCode.Ok)
+    expect(same.output()).toMatch(/up to date\s+\.agents\/roles\/reviewer\.md/)
+    expect(same.output()).toMatch(/up to date\s+\.codex\/agents\/reviewer\.toml/)
+
+    api.current = generation(2, [
+      file(AGENTS, 'a'),
+      markdownRole('Review twice.'),
+      codex('Review twice.'),
+    ])
+    const next = recordingIo()
+    expect(await run({ yes: true }, next.io)).toBe(ExitCode.Ok)
+    expect(next.output()).toMatch(/update file\s+\.agents\/roles\/reviewer\.md/)
+    expect(await read(MARKDOWN_ROLE)).toBe(api.current.files[1]?.content)
+    expect(await read(CODEX_ROLE)).toBe(api.current.files[2]?.content)
+  })
+
+  it('asks before writing a Codex role, which sets the sandbox, but not a Markdown one', async () => {
+    api.current = generation(1, [markdownRole('Review.'), codex('Review.')])
+    const recorder = recordingIo({ interactive: true, answers: [false] })
+    expect(await run({}, recorder.io)).toBe(ExitCode.Ok)
+    expect(recorder.questions).toEqual([
+      `${CODEX_ROLE}: write these settings? They decide what the assistant may run.`,
+    ])
+    expect(await exists(MARKDOWN_ROLE)).toBe(true)
+    expect(await exists(CODEX_ROLE)).toBe(false)
+    expect((await readManifest(dir.path))?.files.map((entry) => entry.path)).toEqual([
+      MARKDOWN_ROLE,
+    ])
+  })
+
+  it('deletes a role file once the role is gone', async () => {
+    api.current = generation(1, [file(AGENTS, 'a'), markdownRole('Review.')])
+    await run({ yes: true })
+    api.current = generation(2, [file(AGENTS, 'a')])
+    const recorder = recordingIo()
+
+    expect(await run({ yes: true }, recorder.io)).toBe(ExitCode.Ok)
+
+    expect(recorder.output()).toMatch(/delete\s+\.agents\/roles\/reviewer\.md/)
+    expect(await exists(MARKDOWN_ROLE)).toBe(false)
+    expect((await readManifest(dir.path))?.files.map((entry) => entry.path)).toEqual([AGENTS])
+  })
+
+  it('treats a role file edited by hand like an edited block, on update and on delete', async () => {
+    api.current = generation(1, [markdownRole('Review.')])
+    await run({ yes: true })
+    const mine = `${api.current.files[0]?.content}\nMy note.\n`
+    await writeFile(join(dir.path, MARKDOWN_ROLE), mine)
+
+    api.current = generation(2, [markdownRole('Review twice.')])
+    expect(await run({ yes: true })).toBe(ExitCode.EditedBlockKept)
+    expect(await read(MARKDOWN_ROLE)).toBe(mine)
+
+    const declined = recordingIo({ interactive: true, answers: [false] })
+    expect(await run({}, declined.io)).toBe(ExitCode.EditedBlockKept)
+    expect(declined.questions[0]).toContain('replace the whole file?')
+    expect(await read(MARKDOWN_ROLE)).toBe(mine)
+
+    api.current = generation(3, [])
+    const removal = recordingIo({ interactive: true, answers: [false] })
+    expect(await run({}, removal.io)).toBe(ExitCode.EditedBlockKept)
+    expect(removal.questions).toEqual([
+      `${MARKDOWN_ROLE}: delete this file? It was edited by hand.`,
+    ])
+    expect(await read(MARKDOWN_ROLE)).toBe(mine)
+
+    expect(await run({ yes: true, force: true })).toBe(ExitCode.Ok)
+    expect(await exists(MARKDOWN_ROLE)).toBe(false)
+  })
+
+  it('asks before replacing a file of that name it did not write', async () => {
+    await mkdir(join(dir.path, '.agents/roles'), { recursive: true })
+    await writeFile(join(dir.path, MARKDOWN_ROLE), '# My own reviewer\n')
+    api.current = generation(1, [markdownRole('Review.')])
+
+    expect(await run({ yes: true })).toBe(ExitCode.EditedBlockKept)
+    expect(await read(MARKDOWN_ROLE)).toBe('# My own reviewer\n')
+
+    const recorder = recordingIo({ interactive: true, answers: [true] })
+    expect(await run({}, recorder.io)).toBe(ExitCode.Ok)
+    expect(recorder.questions[0]).toContain('not written by coreloom-uml')
+    expect(await read(MARKDOWN_ROLE)).toBe(api.current.files[0]?.content)
+  })
+
+  it('takes over a role pulled before the manifest recorded its kind', async () => {
+    const role = markdownRole('Review.')
+    await mkdir(join(dir.path, '.agents/roles'), { recursive: true })
+    await writeFile(join(dir.path, MARKDOWN_ROLE), role.content)
+    await writeManifest(dir.path, {
+      apiUrl: api.url,
+      configId: 3,
+      generationId: 1,
+      revision: 1,
+      files: [{ path: MARKDOWN_ROLE, blockHash: role.blockHash }],
+    })
+
+    api.current = generation(2, [markdownRole('Review twice.')])
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await read(MARKDOWN_ROLE)).toBe(api.current.files[0]?.content)
+
+    await writeManifest(dir.path, {
+      apiUrl: api.url,
+      configId: 3,
+      generationId: 2,
+      revision: 2,
+      files: [{ path: MARKDOWN_ROLE, blockHash: api.current.files[0]?.blockHash ?? '' }],
+    })
+    api.current = generation(3, [])
+    expect(await run({ yes: true })).toBe(ExitCode.Ok)
+    expect(await exists(MARKDOWN_ROLE)).toBe(false)
   })
 })

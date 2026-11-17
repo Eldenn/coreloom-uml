@@ -11,6 +11,7 @@ import {
   file,
   generation,
   recordingIo,
+  roleFile,
   settingsFile,
   tempDir,
 } from './fixtures.ts'
@@ -136,4 +137,21 @@ it('check: fails without a key or when the API cannot answer', async () => {
   await expect(status({ cwd: dir.path, io: recordingIo().io, env, check: true })).rejects.toThrow(
     /refused/,
   )
+})
+
+it('compares a role file whole', async () => {
+  const env = { CORELOOM_UML_API_KEY: API_KEY, XDG_CONFIG_HOME: dir.path }
+  api.current = generation(1, [
+    roleFile('.agents/roles/a.md', '---\nname: a\n---\n\nA.'),
+    roleFile('.agents/roles/b.md', '---\nname: b\n---\n\nB.'),
+  ])
+  await pull({ cwd: dir.path, io: recordingIo().io, env, apiUrl: api.url, config: '3', yes: true })
+  await writeFile(join(dir.path, '.agents/roles/b.md'), 'Mine.\n')
+
+  const recorder = recordingIo()
+  expect(await status({ cwd: dir.path, io: recorder.io, env, check: true })).toBe(
+    ExitCode.EditedBlockKept,
+  )
+  expect(recorder.output()).toMatch(/unchanged\s+\.agents\/roles\/a\.md/)
+  expect(recorder.output()).toMatch(/file edited\s+\.agents\/roles\/b\.md/)
 })
