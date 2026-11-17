@@ -29,6 +29,16 @@ export function settingsFile(path: string, content: string) {
   }
 }
 
+/** A role file: its whole text, without block markers. */
+export function roleFile(path: string, content: string) {
+  return {
+    path,
+    kind: 'role' as const,
+    content: `${content}\n`,
+    blockHash: hashManagedBlock(content),
+  }
+}
+
 export function generation(id: number, files: Generation['files']): Generation {
   return {
     id,

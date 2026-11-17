@@ -12,6 +12,8 @@ import { API_KEY_ENV, resolveApiKey, resolveApiUrl } from './settings.ts'
 export const FileState = {
   Unchanged: 'unchanged',
   BlockEdited: 'block edited',
+  /** A role file, managed whole, no longer holds what the last pull wrote. */
+  FileEdited: 'file edited',
   /** A JSON settings file no longer holds every entry the last pull merged into it. */
   KeysEdited: 'keys edited',
   BlockMissing: 'block missing',
@@ -48,8 +50,14 @@ async function fileState(root: string, file: ManifestFile): Promise<FileState> {
       ? FileState.Unchanged
       : FileState.KeysEdited
   }
+  if (file.kind === 'role') {
+    return hashManagedBlock(text) === blockHash ? FileState.Unchanged : FileState.FileEdited
+  }
   const location = locateBlock(path, text)
-  if (!location) return FileState.BlockMissing
+  if (!location) {
+    // A role file pulled before the manifest recorded its kind: it has no markers, it is whole.
+    return hashManagedBlock(text) === blockHash ? FileState.Unchanged : FileState.BlockMissing
+  }
   return hashManagedBlock(location.block) === blockHash
     ? FileState.Unchanged
     : FileState.BlockEdited
@@ -113,7 +121,11 @@ export async function status(options: StatusOptions): Promise<ExitCode> {
 
   const states = new Set(files.map((file) => file.state))
   let exitCode: ExitCode = ExitCode.Ok
-  if (states.has(FileState.BlockEdited) || states.has(FileState.KeysEdited)) {
+  if (
+    states.has(FileState.BlockEdited) ||
+    states.has(FileState.FileEdited) ||
+    states.has(FileState.KeysEdited)
+  ) {
     exitCode = ExitCode.EditedBlockKept
   } else if (states.has(FileState.BlockMissing) || states.has(FileState.FileMissing)) {
     exitCode = ExitCode.BlockMissing
