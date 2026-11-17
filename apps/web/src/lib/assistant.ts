@@ -89,6 +89,20 @@ export function useCreateConversation(architectureId: number) {
   })
 }
 
+/**
+ * Creates an empty conversation in an architecture chosen at call time, for a screen that is not
+ * the architecture's own (the Code tab opening the assistant).
+ */
+export function useOpenConversation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ architectureId }: { architectureId: number }) =>
+      (await api.conversations.store({ params: { id: architectureId }, body: {} })).conversation,
+    onSuccess: (_conversation, { architectureId }) =>
+      queryClient.invalidateQueries({ queryKey: assistantKeys.all(architectureId) }),
+  })
+}
+
 export function useRenameConversation(architectureId: number) {
   const invalidate = useInvalidateAssistant(architectureId)
   return useMutation({
@@ -121,7 +135,12 @@ export function useAskAssistant(architectureId: number, conversationId: number) 
       provider,
       message,
       ...selection
-    }: ViewSelection & { provider: StoredProvider; message: string }) =>
+    }: ViewSelection & {
+      provider: StoredProvider
+      message: string
+      /** A ready code map of the architecture's project: the message asks for a diagram of it. */
+      codeMapId?: number
+    }) =>
       api.messages.store({
         params: { id: architectureId, conversationId },
         body: { ...callBody(provider), message, ...selection, locale },
