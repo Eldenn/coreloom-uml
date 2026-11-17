@@ -247,6 +247,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-imports-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'projects.code_maps.follow.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/projects/:id/code-maps/github/follow'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-imports-controller').default['showFollow']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-imports-controller').default['showFollow']>>>
+    }
+  }
+  'projects.code_maps.follow.destroy': {
+    methods: ["DELETE"]
+    pattern: '/projects/:id/code-maps/github/follow'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-imports-controller').default['destroyFollow']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-imports-controller').default['destroyFollow']>>>
+    }
+  }
   'code_maps.show': {
     methods: ["GET","HEAD"]
     pattern: '/code-maps/:id'
@@ -329,6 +353,66 @@ export interface Registry {
       query: ExtractQuery<InferInput<(typeof import('#app/code-maps/validators/code-maps-input').updateSuggestionInput)>>
       response: ExtractResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestions-controller').default['update']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/code-maps/controllers/code-map-suggestions-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'github.connection.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/github/connection'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['show']>>>
+    }
+  }
+  'github.connection.start': {
+    methods: ["POST"]
+    pattern: '/github/connection/start'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/github/validators/github-input').startGithubConnectionInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/github/validators/github-input').startGithubConnectionInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['start']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['start']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'github.connection.store': {
+    methods: ["POST"]
+    pattern: '/github/connection'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/github/validators/github-input').completeGithubConnectionInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/github/validators/github-input').completeGithubConnectionInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'github.connection.destroy': {
+    methods: ["DELETE"]
+    pattern: '/github/connection'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/github-connection-controller').default['destroy']>>>
+    }
+  }
+  'github.webhook': {
+    methods: ["POST"]
+    pattern: '/github/webhook'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/github/controllers/github-webhook-controller').default['handle']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/github-webhook-controller').default['handle']>>>
     }
   }
   'projects.code_reviews.index': {
@@ -547,6 +631,42 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-rules-controller').default['destroy']>>>
     }
   }
+  'agent_configs.roles.store': {
+    methods: ["POST"]
+    pattern: '/agent-configs/:id/roles'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').createAgentRoleFromPresetInput)>|InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').createAgentRoleInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').createAgentRoleFromPresetInput)>|InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').createAgentRoleInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-roles-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-roles-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'agent_configs.roles.update': {
+    methods: ["PATCH"]
+    pattern: '/agent-configs/:id/roles/:roleId'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').updateAgentRoleInput)>>
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; roleId: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').updateAgentRoleInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-roles-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-roles-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'agent_configs.roles.destroy': {
+    methods: ["DELETE"]
+    pattern: '/agent-configs/:id/roles/:roleId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; roleId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-roles-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-roles-controller').default['destroy']>>>
+    }
+  }
   'agent_configs.generations.store': {
     methods: ["POST"]
     pattern: '/agent-configs/:id/generations'
@@ -737,6 +857,18 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/questionnaires-controller').default['show']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/questionnaires-controller').default['show']>>>
+    }
+  }
+  'role_presets.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/role-presets'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/role-presets-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/role-presets-controller').default['index']>>>
     }
   }
   'skills.index': {

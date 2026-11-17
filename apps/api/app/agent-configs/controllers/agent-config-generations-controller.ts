@@ -48,6 +48,7 @@ export default class AgentConfigGenerationsController {
           inputs,
           files: output.files,
           recommendations: output.recommendations,
+          roles: output.roles,
           skills: suggestSkills(inputs, skills),
         },
         { client: trx },

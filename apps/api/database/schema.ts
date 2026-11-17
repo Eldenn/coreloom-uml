@@ -29,7 +29,7 @@ export class AgentConfigAnswerSchema extends BaseModel {
 }
 
 export class AgentConfigGenerationSchema extends BaseModel {
-  static $columns = ['agentConfigId', 'catalogVersion', 'createdAt', 'files', 'id', 'inputs', 'recommendations', 'revision', 'skills', 'updatedAt'] as const
+  static $columns = ['agentConfigId', 'catalogVersion', 'createdAt', 'files', 'id', 'inputs', 'recommendations', 'revision', 'roles', 'skills', 'updatedAt'] as const
   $columns = AgentConfigGenerationSchema.$columns
   @column()
   declare agentConfigId: number
@@ -48,7 +48,42 @@ export class AgentConfigGenerationSchema extends BaseModel {
   @column()
   declare revision: number
   @column()
+  declare roles: any
+  @column()
   declare skills: any
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class AgentConfigRoleSchema extends BaseModel {
+  static $columns = ['agentConfigId', 'createdAt', 'description', 'done', 'escalation', 'forbidden', 'id', 'mission', 'name', 'rights', 'scope', 'slug', 'source', 'updatedAt'] as const
+  $columns = AgentConfigRoleSchema.$columns
+  @column()
+  declare agentConfigId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare description: string
+  @column()
+  declare done: any
+  @column()
+  declare escalation: string | null
+  @column()
+  declare forbidden: any
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare mission: string
+  @column()
+  declare name: string
+  @column()
+  declare rights: any
+  @column()
+  declare scope: any
+  @column()
+  declare slug: string
+  @column()
+  declare source: any | null
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
 }
@@ -383,6 +418,56 @@ export class FeatureFlagSchema extends BaseModel {
   declare state: any
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
+}
+
+export class GithubCodeMapFollowSchema extends BaseModel {
+  static $columns = ['branch', 'createdAt', 'id', 'projectId', 'repositoryId', 'repositoryUrl', 'updatedAt', 'userId'] as const
+  $columns = GithubCodeMapFollowSchema.$columns
+  @column()
+  declare branch: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare projectId: number
+  @column()
+  declare repositoryId: bigint | number
+  @column()
+  declare repositoryUrl: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
+}
+
+export class GithubRepositoryGrantSchema extends BaseModel {
+  static $columns = ['createdAt', 'defaultBranch', 'githubLogin', 'githubUserId', 'id', 'installationId', 'name', 'owner', 'private', 'repositoryId', 'updatedAt', 'userId'] as const
+  $columns = GithubRepositoryGrantSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare defaultBranch: string
+  @column()
+  declare githubLogin: string
+  @column()
+  declare githubUserId: bigint | number
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare installationId: bigint | number
+  @column()
+  declare name: string
+  @column()
+  declare owner: string
+  @column()
+  declare private: boolean
+  @column()
+  declare repositoryId: bigint | number
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
 }
 
 export class LlmConnectionSchema extends BaseModel {

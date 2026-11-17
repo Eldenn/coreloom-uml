@@ -126,6 +126,18 @@ const routes = {
     tokens: [{"old":"/projects/:id/code-maps/github","type":0,"val":"projects","end":""},{"old":"/projects/:id/code-maps/github","type":1,"val":"id","end":""},{"old":"/projects/:id/code-maps/github","type":0,"val":"code-maps","end":""},{"old":"/projects/:id/code-maps/github","type":0,"val":"github","end":""}],
     types: placeholder as Registry['projects.code_maps.github']['types'],
   },
+  'projects.code_maps.follow.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/projects/:id/code-maps/github/follow',
+    tokens: [{"old":"/projects/:id/code-maps/github/follow","type":0,"val":"projects","end":""},{"old":"/projects/:id/code-maps/github/follow","type":1,"val":"id","end":""},{"old":"/projects/:id/code-maps/github/follow","type":0,"val":"code-maps","end":""},{"old":"/projects/:id/code-maps/github/follow","type":0,"val":"github","end":""},{"old":"/projects/:id/code-maps/github/follow","type":0,"val":"follow","end":""}],
+    types: placeholder as Registry['projects.code_maps.follow.show']['types'],
+  },
+  'projects.code_maps.follow.destroy': {
+    methods: ["DELETE"],
+    pattern: '/projects/:id/code-maps/github/follow',
+    tokens: [{"old":"/projects/:id/code-maps/github/follow","type":0,"val":"projects","end":""},{"old":"/projects/:id/code-maps/github/follow","type":1,"val":"id","end":""},{"old":"/projects/:id/code-maps/github/follow","type":0,"val":"code-maps","end":""},{"old":"/projects/:id/code-maps/github/follow","type":0,"val":"github","end":""},{"old":"/projects/:id/code-maps/github/follow","type":0,"val":"follow","end":""}],
+    types: placeholder as Registry['projects.code_maps.follow.destroy']['types'],
+  },
   'code_maps.show': {
     methods: ["GET","HEAD"],
     pattern: '/code-maps/:id',
@@ -167,6 +179,36 @@ const routes = {
     pattern: '/code-map-suggestions/:id',
     tokens: [{"old":"/code-map-suggestions/:id","type":0,"val":"code-map-suggestions","end":""},{"old":"/code-map-suggestions/:id","type":1,"val":"id","end":""}],
     types: placeholder as Registry['code_map_suggestions.update']['types'],
+  },
+  'github.connection.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/github/connection',
+    tokens: [{"old":"/github/connection","type":0,"val":"github","end":""},{"old":"/github/connection","type":0,"val":"connection","end":""}],
+    types: placeholder as Registry['github.connection.show']['types'],
+  },
+  'github.connection.start': {
+    methods: ["POST"],
+    pattern: '/github/connection/start',
+    tokens: [{"old":"/github/connection/start","type":0,"val":"github","end":""},{"old":"/github/connection/start","type":0,"val":"connection","end":""},{"old":"/github/connection/start","type":0,"val":"start","end":""}],
+    types: placeholder as Registry['github.connection.start']['types'],
+  },
+  'github.connection.store': {
+    methods: ["POST"],
+    pattern: '/github/connection',
+    tokens: [{"old":"/github/connection","type":0,"val":"github","end":""},{"old":"/github/connection","type":0,"val":"connection","end":""}],
+    types: placeholder as Registry['github.connection.store']['types'],
+  },
+  'github.connection.destroy': {
+    methods: ["DELETE"],
+    pattern: '/github/connection',
+    tokens: [{"old":"/github/connection","type":0,"val":"github","end":""},{"old":"/github/connection","type":0,"val":"connection","end":""}],
+    types: placeholder as Registry['github.connection.destroy']['types'],
+  },
+  'github.webhook': {
+    methods: ["POST"],
+    pattern: '/github/webhook',
+    tokens: [{"old":"/github/webhook","type":0,"val":"github","end":""},{"old":"/github/webhook","type":0,"val":"webhook","end":""}],
+    types: placeholder as Registry['github.webhook']['types'],
   },
   'projects.code_reviews.index': {
     methods: ["GET","HEAD"],
@@ -276,6 +318,24 @@ const routes = {
     tokens: [{"old":"/agent-configs/:id/rules/:ruleId","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/rules/:ruleId","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/rules/:ruleId","type":0,"val":"rules","end":""},{"old":"/agent-configs/:id/rules/:ruleId","type":1,"val":"ruleId","end":""}],
     types: placeholder as Registry['agent_configs.rules.destroy']['types'],
   },
+  'agent_configs.roles.store': {
+    methods: ["POST"],
+    pattern: '/agent-configs/:id/roles',
+    tokens: [{"old":"/agent-configs/:id/roles","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/roles","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/roles","type":0,"val":"roles","end":""}],
+    types: placeholder as Registry['agent_configs.roles.store']['types'],
+  },
+  'agent_configs.roles.update': {
+    methods: ["PATCH"],
+    pattern: '/agent-configs/:id/roles/:roleId',
+    tokens: [{"old":"/agent-configs/:id/roles/:roleId","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/roles/:roleId","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/roles/:roleId","type":0,"val":"roles","end":""},{"old":"/agent-configs/:id/roles/:roleId","type":1,"val":"roleId","end":""}],
+    types: placeholder as Registry['agent_configs.roles.update']['types'],
+  },
+  'agent_configs.roles.destroy': {
+    methods: ["DELETE"],
+    pattern: '/agent-configs/:id/roles/:roleId',
+    tokens: [{"old":"/agent-configs/:id/roles/:roleId","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/roles/:roleId","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/roles/:roleId","type":0,"val":"roles","end":""},{"old":"/agent-configs/:id/roles/:roleId","type":1,"val":"roleId","end":""}],
+    types: placeholder as Registry['agent_configs.roles.destroy']['types'],
+  },
   'agent_configs.generations.store': {
     methods: ["POST"],
     pattern: '/agent-configs/:id/generations',
@@ -371,6 +431,12 @@ const routes = {
     pattern: '/questionnaires/:questionnaireId',
     tokens: [{"old":"/questionnaires/:questionnaireId","type":0,"val":"questionnaires","end":""},{"old":"/questionnaires/:questionnaireId","type":1,"val":"questionnaireId","end":""}],
     types: placeholder as Registry['questionnaires.show']['types'],
+  },
+  'role_presets.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/role-presets',
+    tokens: [{"old":"/role-presets","type":0,"val":"role-presets","end":""}],
+    types: placeholder as Registry['role_presets.index']['types'],
   },
   'skills.index': {
     methods: ["GET","HEAD"],

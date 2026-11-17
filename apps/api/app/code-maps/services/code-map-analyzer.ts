@@ -7,8 +7,10 @@ import { inflate } from '#app/code-maps/services/code-map-storage'
 import env from '#start/env'
 
 /**
- * The analyzer service (`apps/analyzer`): it clones a public GitHub repository, runs graphify on
- * it and answers the `graph.json`, gzipped. It holds no secret; the worker stores what it answers.
+ * The analyzer service (`apps/analyzer`): it clones a GitHub repository, runs graphify on it and
+ * answers the `graph.json`, gzipped. It holds no secret; the worker stores what it answers. A
+ * private repository comes with an installation token of the GitHub App, made for that one clone
+ * (one repository, read only) and revoked by the worker once the analyzer answered.
  */
 
 export type AnalyzerResult =
@@ -35,6 +37,8 @@ export async function analyzeRepository(request: {
   repository: string
   branch: string | null
   ignore: string
+  /** An installation token, for a repository the owner reads through the GitHub App. */
+  token?: string
 }): Promise<AnalyzerResult> {
   const base = analyzerUrl()
   if (!base) return { ok: false, retry: true, detail: 'ANALYZER_URL is not set' }
@@ -48,6 +52,7 @@ export async function analyzeRepository(request: {
         repository: request.repository,
         ...(request.branch ? { branch: request.branch } : {}),
         ignore: request.ignore,
+        ...(request.token ? { token: request.token } : {}),
       }),
       redirect: 'error',
       signal: AbortSignal.timeout(GITHUB_IMPORT_LIMITS.analyzerTimeoutMs),

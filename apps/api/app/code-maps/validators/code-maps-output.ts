@@ -27,6 +27,15 @@ export type CodeMapOutput = {
   updatedAt: string
 }
 
+/** `GET /projects/:id/code-maps/github/follow`: the GitHub repository a project reads on each push. */
+export type GithubFollowOutput = {
+  repositoryUrl: string
+  /** Null: the repository's default branch. */
+  branch: string | null
+  /** False when the owner no longer reaches the repository through the GitHub App. */
+  active: boolean
+}
+
 /** `GET /code-maps/:id`: the header, and what the map holds when it is ready. */
 export type CodeMapDetailOutput = CodeMapOutput & {
   /** Folders, communities, entry points (detected again on each read) and counts. */

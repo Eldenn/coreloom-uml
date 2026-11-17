@@ -13,6 +13,8 @@ export const AGENT_CONFIG_NAME_MAX_LENGTH = 120
 
 /** Accepted rules one configuration can hold. */
 export const AGENT_RULES_MAX = 50
+/** Roles one configuration can hold. */
+export const AGENT_ROLES_MAX = 20
 /** Longest accepted rule (the `agent_config_rules.text` column). */
 export const AGENT_RULE_TEXT_MAX_LENGTH = 300
 /** Longest project notes. */

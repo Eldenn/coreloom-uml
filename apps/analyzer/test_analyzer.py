@@ -6,6 +6,7 @@ real one is installed (then the end-to-end test runs it too).
 
 from __future__ import annotations
 
+import base64
 import gzip
 import json
 import os
@@ -95,7 +96,7 @@ class ParseTest(unittest.TestCase):
     def test_branches(self) -> None:
         for good in ["main", "feature/x", "release-1.2", "v1.0_rc"]:
             self.assertTrue(analyzer.valid_branch(good), good)
-        for bad in ["-x", "--upload-pack=x", "a..b", "a//b", "/a", "a/", "a.lock", ".a", "a b", "a~1", "a:b"]:
+        for bad in ["main\n", "-x", "--upload-pack=x", "a..b", "a//b", "/a", "a/", "a.lock", ".a", "a b", "a~1", "a:b"]:
             self.assertFalse(analyzer.valid_branch(bad), bad)
 
     def test_requests(self) -> None:
@@ -110,6 +111,22 @@ class ParseTest(unittest.TestCase):
             )
         )
 
+    def test_tokens(self) -> None:
+        token = "ghs_" + "a1B2" * 9
+        ok = analyzer.parse_request(
+            json.dumps({"repository": "https://github.com/acme/shop", "token": token}).encode()
+        )
+        self.assertIsNotNone(ok)
+        self.assertEqual(ok.token, token)
+        self.assertNotIn(token, repr(ok))
+        for bad in ["short", "ghs_" + "a" * 30 + " x", "ghs_" + "a" * 30 + "\n", 42, "x" * 300]:
+            self.assertIsNone(
+                analyzer.parse_request(
+                    json.dumps({"repository": "https://github.com/acme/shop", "token": bad}).encode()
+                ),
+                bad,
+            )
+
 
 class AnalyzeTest(Fixture):
     def test_maps_the_default_branch(self) -> None:
@@ -118,6 +135,31 @@ class AnalyzeTest(Fixture):
         self.assertEqual(json.loads(result.graph)["nodes"], [{"id": "a"}])
         self.assertEqual(result.branch, "main")
         self.assertRegex(result.commit, r"^[0-9a-f]{40}$")
+
+    def test_a_token_reaches_git_through_its_environment_only(self) -> None:
+        token = "ghs_" + "Z9" * 18
+        seen: dict[str, object] = {}
+        real_run = analyzer.run_bounded
+
+        def spy(args, *, cwd, env, deadline, watch=None):  # type: ignore[no-untyped-def]
+            if "clone" in args:
+                seen["args"] = list(args)
+                seen["env"] = dict(env)
+            return real_run(args, cwd=cwd, env=env, deadline=deadline, watch=watch)
+
+        request = analyzer.Request("acme", "shop", None, None, token=token)
+        with mock.patch.object(analyzer, "run_bounded", spy):
+            result = analyzer.analyze(request, clone_url=self.origin)
+        self.assertEqual(result.branch, "main")
+        self.assertNotIn(token, " ".join(seen["args"]))  # type: ignore[arg-type]
+        env = seen["env"]
+        self.assertEqual(env["GIT_CONFIG_KEY_0"], "http.https://github.com/.extraheader")  # type: ignore[index]
+        header = env["GIT_CONFIG_VALUE_0"]  # type: ignore[index]
+        basic = header.removeprefix("Authorization: Basic ")
+        self.assertEqual(base64.b64decode(basic).decode(), f"x-access-token:{token}")
+
+    def test_no_token_no_header(self) -> None:
+        self.assertEqual(analyzer.token_config(None), {})
 
     def test_maps_a_named_branch(self) -> None:
         result = analyzer.analyze(self.request(branch="feature/x"), clone_url=self.origin)

@@ -32,6 +32,10 @@ export interface ApiDefinition {
       index: typeof routes['projects.code_maps.index']
       store: typeof routes['projects.code_maps.store']
       github: typeof routes['projects.code_maps.github']
+      follow: {
+        show: typeof routes['projects.code_maps.follow.show']
+        destroy: typeof routes['projects.code_maps.follow.destroy']
+      }
     }
     codeReviews: {
       index: typeof routes['projects.code_reviews.index']
@@ -57,6 +61,15 @@ export interface ApiDefinition {
     update: typeof routes['code_map_suggestions.update']
     draft: typeof routes['code_map_suggestions.draft']
   }
+  github: {
+    connection: {
+      show: typeof routes['github.connection.show']
+      start: typeof routes['github.connection.start']
+      store: typeof routes['github.connection.store']
+      destroy: typeof routes['github.connection.destroy']
+    }
+    webhook: typeof routes['github.webhook']
+  }
   codeReviews: {
     store: typeof routes['code_reviews.store']
     show: typeof routes['code_reviews.show']
@@ -81,6 +94,11 @@ export interface ApiDefinition {
       store: typeof routes['agent_configs.rules.store']
       update: typeof routes['agent_configs.rules.update']
       destroy: typeof routes['agent_configs.rules.destroy']
+    }
+    roles: {
+      store: typeof routes['agent_configs.roles.store']
+      update: typeof routes['agent_configs.roles.update']
+      destroy: typeof routes['agent_configs.roles.destroy']
     }
     generations: {
       store: typeof routes['agent_configs.generations.store']
@@ -118,6 +136,9 @@ export interface ApiDefinition {
   questionnaires: {
     index: typeof routes['questionnaires.index']
     show: typeof routes['questionnaires.show']
+  }
+  rolePresets: {
+    index: typeof routes['role_presets.index']
   }
   skills: {
     index: typeof routes['skills.index']

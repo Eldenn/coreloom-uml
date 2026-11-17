@@ -30,6 +30,7 @@ const input = (
   rules: [],
   notes: null,
   targets,
+  roles: [],
 })
 
 const sandboxOf = (context: AgentContextInput) => {

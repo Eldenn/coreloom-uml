@@ -1,4 +1,14 @@
-import { MARKER_PREFIX } from '@coreloom-uml/catalog'
+import {
+  MARKER_PREFIX,
+  RIGHTS,
+  ROLE_DESCRIPTION_MAX_LENGTH,
+  ROLE_LINE_MAX_LENGTH,
+  ROLE_LIST_MAX,
+  ROLE_MISSION_MAX_LENGTH,
+  ROLE_NAME_MAX_LENGTH,
+  ROLE_SLUG,
+  ROLE_SLUG_MAX_LENGTH,
+} from '@coreloom-uml/catalog'
 import vine from '@vinejs/vine'
 import type { FieldContext } from '@vinejs/vine/types'
 import {
@@ -132,6 +142,54 @@ export const updateAgentRuleInput = vine.create(
     position: vine.number().withoutDecimals().min(0).optional(),
   }),
 )
+
+/** `POST /agent-configs/:id/roles` with `preset`: a copy of the catalog's ready-made role. */
+export const createAgentRoleFromPresetInput = vine.create(vine.object({ preset: catalogId() }))
+
+const roleLine = () =>
+  vine.string().trim().minLength(1).maxLength(ROLE_LINE_MAX_LENGTH).use(withoutMarkers())
+const roleLines = () => vine.array(roleLine()).maxLength(ROLE_LIST_MAX)
+
+/**
+ * A role's fields: shape, lengths and markers only. The controller checks the whole role
+ * against the catalog's `roleSchema` (folders, rights that need another), a 422 otherwise.
+ */
+const roleFields = () => ({
+  slug: vine.string().trim().maxLength(ROLE_SLUG_MAX_LENGTH).regex(ROLE_SLUG),
+  name: vine.string().trim().minLength(1).maxLength(ROLE_NAME_MAX_LENGTH).use(withoutMarkers()),
+  description: vine
+    .string()
+    .trim()
+    .minLength(1)
+    .maxLength(ROLE_DESCRIPTION_MAX_LENGTH)
+    .use(withoutMarkers()),
+  mission: vine.string().minLength(1).maxLength(ROLE_MISSION_MAX_LENGTH).use(withoutMarkers()),
+  rights: vine.array(vine.enum(RIGHTS)).maxLength(RIGHTS.length),
+  scope: roleLines().optional(),
+  forbidden: roleLines().optional(),
+  done: vine
+    .object({ commands: roleLines().optional(), text: roleLine().nullable().optional() })
+    .optional(),
+  escalation: roleLine().nullable().optional(),
+})
+
+/** `POST /agent-configs/:id/roles` without `preset`: a role written by the owner. */
+export const createAgentRoleInput = vine.create(vine.object(roleFields()))
+
+/** `PATCH /agent-configs/:id/roles/:roleId`: omitted fields are left as is. */
+export const updateAgentRoleInput = (() => {
+  const { slug, name, description, mission, rights, ...optional } = roleFields()
+  return vine.create(
+    vine.object({
+      slug: slug.optional(),
+      name: name.optional(),
+      description: description.optional(),
+      mission: mission.optional(),
+      rights: rights.optional(),
+      ...optional,
+    }),
+  )
+})()
 
 /**
  * `POST /agent-configs/:id/proposals`: the user's provider, and what the model reads —

@@ -4,7 +4,10 @@ export const CodeMapSource = {
   Cli: 'cli',
   /** Uploaded from the web app (a graphify `graph.json`). */
   Upload: 'upload',
-  /** Extracted by the server from a public GitHub repository (the analyzer service). */
+  /**
+   * Extracted by the server from a GitHub repository (the analyzer service): a public one, or one
+   * the owner reads through the GitHub App.
+   */
   Github: 'github',
 } as const
 export type CodeMapSource = (typeof CodeMapSource)[keyof typeof CodeMapSource]
@@ -78,12 +81,17 @@ export type AnalyzerError = (typeof AnalyzerError)[keyof typeof AnalyzerError]
 
 /** The `failureReason` shown for each refusal, and for the cases the job itself gives up on. */
 export const GITHUB_IMPORT_FAILURES = {
-  [AnalyzerError.NotFound]: 'The repository or branch does not exist, or it is not public.',
+  [AnalyzerError.NotFound]:
+    'The repository or branch does not exist, or it is private and the GitHub App does not reach it.',
   [AnalyzerError.TooLarge]: 'The repository is larger than 200 MB.',
   [AnalyzerError.TooManyFiles]: 'The repository holds more than 20,000 files.',
   [AnalyzerError.Timeout]: 'Reading the repository took more than 5 minutes.',
   [AnalyzerError.ExtractionFailed]: 'graphify could not read the repository.',
   unreachable: 'The code analyzer could not be reached. Try again later.',
+  githubAccess:
+    'The GitHub App no longer reaches this repository: install it on the repository again, then connect GitHub.',
+  githubUnreachable:
+    'GitHub could not be reached to read this private repository. Try again later.',
   storage: 'The map was read but could not be stored (file storage unreachable). Try again later.',
   unexpected: 'The map could not be stored. Try again later.',
   refused: 'The map graphify wrote was refused',

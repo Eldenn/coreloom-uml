@@ -98,6 +98,8 @@ const projectsController = () => import('#app/projects/controllers/projects-cont
 const agentConfigController = () => import('#app/agent-configs/controllers/agent-config-controller')
 const agentRulesController = () =>
   import('#app/agent-configs/controllers/agent-config-rules-controller')
+const agentRolesController = () =>
+  import('#app/agent-configs/controllers/agent-config-roles-controller')
 const agentGenerationsController = () =>
   import('#app/agent-configs/controllers/agent-config-generations-controller')
 router
@@ -125,7 +127,8 @@ router
 |
 | A map belongs to one of the owner's projects; the graph is a gzipped file in Drive. Uploading
 | one is a write (an API token needs `write`); `github` has the server clone and map a public
-| GitHub repository in the background (the analyzer service, `ImportGithubCodeMapJob`). `links`
+| GitHub repository in the background (the analyzer service, `ImportGithubCodeMapJob`), and
+| `github/follow` is the repository the project reads again on each push. `links`
 | read and replace one diagram's links, `?diagramId=` naming a diagram of the map's project.
 | `processes` lists the flows from the entry points that no diagram documents. No model is called.
 */
@@ -148,6 +151,12 @@ router
     router
       .post('/projects/:id/code-maps/github', [codeMapImportsController, 'store'])
       .as('projects.code_maps.github')
+    router
+      .get('/projects/:id/code-maps/github/follow', [codeMapImportsController, 'showFollow'])
+      .as('projects.code_maps.follow.show')
+    router
+      .delete('/projects/:id/code-maps/github/follow', [codeMapImportsController, 'destroyFollow'])
+      .as('projects.code_maps.follow.destroy')
     router.get('/code-maps/:id', [codeMapsController, 'show']).as('code_maps.show')
     router.delete('/code-maps/:id', [codeMapsController, 'destroy']).as('code_maps.destroy')
     router.get('/code-maps/:id/links', [codeMapLinksController, 'show']).as('code_maps.links.show')
@@ -166,6 +175,35 @@ router
   })
   .where('id', router.matchers.number())
   .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
+
+/*
+|--------------------------------------------------------------------------
+| GitHub App: private repositories for code maps (behind `code-maps`)
+|--------------------------------------------------------------------------
+|
+| `connection` is the user's link to the App: `start` gives the GitHub page to open (install, or
+| authorize), the callback page posts GitHub's `code` back, and the repositories the user reaches
+| are kept (never a token). Session only. `webhook` takes the App's deliveries, signed with its
+| secret: no session, and the signature is checked before anything else.
+*/
+const githubConnectionController = () =>
+  import('#app/github/controllers/github-connection-controller')
+router
+  .group(() => {
+    router.get('/connection', [githubConnectionController, 'show']).as('connection.show')
+    router.post('/connection/start', [githubConnectionController, 'start']).as('connection.start')
+    router.post('/connection', [githubConnectionController, 'store']).as('connection.store')
+    router.delete('/connection', [githubConnectionController, 'destroy']).as('connection.destroy')
+  })
+  .prefix('/github')
+  .as('github')
+  .use(middleware.auth())
+router
+  .post('/github/webhook', [
+    () => import('#app/github/controllers/github-webhook-controller'),
+    'handle',
+  ])
+  .as('github.webhook')
 
 /*
 |--------------------------------------------------------------------------
@@ -268,6 +306,14 @@ router
     router
       .delete('/:id/rules/:ruleId', [agentRulesController, 'destroy'])
       .as('agent_configs.rules.destroy')
+    // Behind the `agent-roles` flag: 404 while it is off for the caller.
+    router.post('/:id/roles', [agentRolesController, 'store']).as('agent_configs.roles.store')
+    router
+      .patch('/:id/roles/:roleId', [agentRolesController, 'update'])
+      .as('agent_configs.roles.update')
+    router
+      .delete('/:id/roles/:roleId', [agentRolesController, 'destroy'])
+      .as('agent_configs.roles.destroy')
     router
       .post('/:id/generations', [agentGenerationsController, 'store'])
       .as('agent_configs.generations.store')
@@ -285,6 +331,7 @@ router
   .prefix('/agent-configs')
   .where('id', router.matchers.number())
   .where('ruleId', router.matchers.number())
+  .where('roleId', router.matchers.number())
   .where('generationId', router.matchers.number())
   .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
 
@@ -393,6 +440,21 @@ router
     router.get('/:questionnaireId', [questionnairesController, 'show']).as('questionnaires.show')
   })
   .prefix('/questionnaires')
+  .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
+
+/*
+|--------------------------------------------------------------------------
+| Ready-made agent roles of the catalog (`@coreloom-uml/catalog`)
+|--------------------------------------------------------------------------
+|
+| Behind the `agent-roles` flag: 404 while it is off for the caller.
+*/
+router
+  .get('/role-presets', [
+    () => import('#app/agent-configs/controllers/role-presets-controller'),
+    'index',
+  ])
+  .as('role_presets.index')
   .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
 
 /*

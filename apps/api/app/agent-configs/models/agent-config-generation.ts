@@ -1,5 +1,10 @@
 import { BaseModel, column } from '@adonisjs/lucid/orm'
-import type { AgentContextFile, Recommendation, SkillSuggestions } from '@coreloom-uml/catalog'
+import type {
+  AgentContextFile,
+  AgentContextRole,
+  Recommendation,
+  SkillSuggestions,
+} from '@coreloom-uml/catalog'
 import type { DateTime } from 'luxon'
 import type { AgentConfigInputs } from '#app/agent-configs/services/agent-context'
 
@@ -40,6 +45,10 @@ export default class AgentConfigGeneration extends BaseModel {
 
   @column(json)
   declare skills: AgentGenerationSkills
+
+  /** What each target does with each role; generations made before roles hold none. */
+  @column(json)
+  declare roles: AgentContextRole[]
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

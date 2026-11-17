@@ -110,7 +110,7 @@ coreloom-uml/
 │   │                         #   app/architectures/ is the reference domain — copy it for new user-owned resources
 │   ├── web/                  # React 19 + Vite SPA built with coreloom-ui (sign-in, architectures, editor, settings)
 │   ├── cli/                  # `@coreloom-uml/cli` (npm): pulls agent conventions, sends code maps
-│   └── analyzer/             # Python service: clones a public GitHub repository, maps it with graphify
+│   └── analyzer/             # Python service: clones a GitHub repository, maps it with graphify
 ├── packages/
 │   ├── config/               # Shared TypeScript config — copied from coreloom, unmodified
 │   ├── auth-policy/          # Password policy — copied from coreloom (consumed from source, no build step)
@@ -313,6 +313,52 @@ source code) with the titles of the project's views, and stores up to 8 proposal
 view) as a new view in a new assistant conversation of one of the project's architectures, where
 accepting it stores its links to the code as confirmed. The web app asks for the list once, by
 itself, the first time a ready map without proposals is shown with a provider set.
+
+#### GitHub App (private repositories, pushes)
+
+With a GitHub App set up, the server also reads the **private repositories** a user installed the
+App on, and a project can **follow** one: each push on its branch reads it into a new map.
+
+- **Connecting.** The "From GitHub" card opens GitHub's page to install the App (choosing its
+  repositories), then GitHub's authorization page; `/github/callback` posts GitHub's `code` to
+  `POST /github/connection` with the `state` it was given (encrypted, bound to the user, 10
+  minutes). The API trades the code for a user token, lists the repositories the user reaches
+  through the App's installations (`GET /user/installations/:id/repositories`), revokes the token
+  and keeps only that list (`github_repository_grants`). Nothing else is stored: no user token, no
+  installation token.
+- **Reading.** `POST /projects/:id/code-maps/github` is unchanged; when the owner has a grant on the
+  repository, `ImportGithubCodeMapJob` makes an installation token for that repository only, with
+  `contents: read`, sends it to the analyzer in the request (git gets it as an HTTP header through
+  its environment, never in the URL, the command line or a file), and revokes it once the analyzer
+  answered. It never reaches Redis, the database or a log. `follow: true` makes the project follow
+  the repository (`GET|DELETE /projects/:id/code-maps/github/follow`).
+- **Webhook.** `POST /github/webhook` checks `X-Hub-Signature-256` over the raw body before reading
+  anything. A push on a followed branch queues `FollowGithubPushJob` (same `code-maps` queue), which
+  starts a new map unless the newest one is already at that commit or one is waiting; the
+  `installation` (deleted), `installation_repositories` (removed) and `github_app_authorization`
+  (revoked) events delete the grants GitHub took away.
+
+To set it up, create a GitHub App (Settings → Developer settings → GitHub Apps → New):
+
+| Setting | Value |
+| --- | --- |
+| Homepage URL | the web app's URL |
+| Callback URL | `<web app>/github/callback` |
+| Request user authorization (OAuth) during installation | off |
+| Setup URL | `<web app>/github/callback`, with "Redirect on update" on |
+| Webhook URL | `<API>/github/webhook`, active |
+| Webhook secret | a long random string (`GITHUB_APP_WEBHOOK_SECRET`) |
+| Repository permissions | Contents: read-only (Metadata: read-only comes with it); nothing else |
+| Subscribe to events | Push |
+| Where can it be installed | Any account, or only yours |
+
+Then set on the `api` and `queue-worker` services: `GITHUB_APP_ID` (App ID), `GITHUB_APP_SLUG`
+(the name in the App's public URL, `github.com/apps/<slug>`), `GITHUB_APP_CLIENT_ID`,
+`GITHUB_APP_CLIENT_SECRET` (generate one), `GITHUB_APP_PRIVATE_KEY` (generate one; the `.pem`
+content, its line breaks written `\n` on one line, or base64-encoded whole) and
+`GITHUB_APP_WEBHOOK_SECRET`. All six or none: with one missing the App is off and only public
+repositories can be read. The `installation`, `installation_repositories` and
+`github_app_authorization` events are sent to every App without subscribing.
 
 ### Agent conventions
 
