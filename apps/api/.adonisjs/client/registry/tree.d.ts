@@ -74,6 +74,11 @@ export interface ApiDefinition {
       update: typeof routes['agent_configs.rules.update']
       destroy: typeof routes['agent_configs.rules.destroy']
     }
+    roles: {
+      store: typeof routes['agent_configs.roles.store']
+      update: typeof routes['agent_configs.roles.update']
+      destroy: typeof routes['agent_configs.roles.destroy']
+    }
     generations: {
       store: typeof routes['agent_configs.generations.store']
       index: typeof routes['agent_configs.generations.index']
@@ -110,6 +115,9 @@ export interface ApiDefinition {
   questionnaires: {
     index: typeof routes['questionnaires.index']
     show: typeof routes['questionnaires.show']
+  }
+  rolePresets: {
+    index: typeof routes['role_presets.index']
   }
   skills: {
     index: typeof routes['skills.index']

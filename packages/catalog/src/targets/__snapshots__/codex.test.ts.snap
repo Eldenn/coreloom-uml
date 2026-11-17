@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`codex role > renders a reviewer without commands 1`] = `
+"name = "reviewer"
+description = "Reviews a change and reports what it finds."
+developer_instructions = "Read and follow AGENTS.md at the repository root; this file only adds your role.\\n\\n## Mission\\n\\nReview the change.\\n\\n## Forbidden\\n\\n- You must not edit or create files.\\n- You must not run commands, except to read the repository.\\n- You must not commit.\\n- You must not push to any remote.\\n- You must not access the network.\\n\\n## Done when\\n\\n- The review is posted.""
+`;

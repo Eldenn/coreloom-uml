@@ -13,6 +13,15 @@ export function truncate(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`
 }
 
+/**
+ * Writes half a surrogate pair as a replacement character: no UTF-8 file can hold one, TOML has
+ * no escape for it and a YAML reader may refuse the escape or hand the half back.
+ */
+export function wellFormed(text: string): string {
+  // With the `u` flag a surrogate matches only when it stands alone.
+  return text.replace(/\p{Surrogate}/gu, '\ufffd')
+}
+
 /** Removes managed-block markers, so that no input can open or close a block. */
 export function stripMarkers(text: string): string {
   return text.replaceAll(MARKER_PREFIX, 'coreloom-uml ')
@@ -28,17 +37,58 @@ export function inlineMarkdown(text: string, max?: number): string {
   return cut.replace(MARKDOWN_SPECIAL, (character) => `\\${character}`)
 }
 
+/** A tag start with the backslashes before it, which could otherwise cancel its escape. */
+const RAW_TAG = /(\\*)<(?=[a-zA-Z!/?])/g
+const FENCE_OPEN = /^(`{3,}|~{3,})(.*)$/
+const FENCE_LIKE = /```|~~~/
+
 /**
  * Turns the owner's notes into a Markdown body kept as written, except that line endings are
  * normalised, trailing spaces and blank runs are trimmed, markers are removed and raw HTML
- * tags are escaped (no HTML is ever rendered from user input).
+ * tags are escaped (no HTML is ever rendered from user input). A tag is left as written only
+ * inside a closed fenced code block opened at column 0, where a reader shows it as code.
  */
 export function blockMarkdown(text: string): string {
-  return stripMarkers(text)
+  const lines = stripMarkers(text)
     .replace(/\r\n?/g, '\n')
     .split('\n')
-    .map((line) => line.trimEnd().replace(/<(?=[a-zA-Z!/?])/g, '\\<'))
+    .map((line) => line.trimEnd())
     .join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
+    .split('\n')
+  const kept = protectedLines(lines)
+  return lines
+    .map((line, index) =>
+      kept.has(index)
+        ? line
+        : line.replace(RAW_TAG, (_, backslashes: string) => `${backslashes.repeat(2)}\\<`),
+    )
+    .join('\n')
+}
+
+/**
+ * The lines inside closed top-level fences. Once any other line holds ``` or ~~~ (a fence in a
+ * list, a quote, indented or unclosed, or just inline in prose), a later column-0 fence line may
+ * close that one rather than open a block, so nothing after it is protected: when in doubt,
+ * escape.
+ */
+function protectedLines(lines: string[]): Set<number> {
+  const kept = new Set<number>()
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index] ?? ''
+    const [, fence = '', info = ''] = FENCE_OPEN.exec(line) ?? []
+    const character = fence.charAt(0)
+    // An info string with a backtick makes a backtick line plain text, not a fence.
+    if (!fence || (character === '`' && info.includes('`'))) {
+      if (FENCE_LIKE.test(line)) break
+      continue
+    }
+    const close = new RegExp(`^ {0,3}${character}{${fence.length},}$`)
+    const end = lines.findIndex((line, at) => at > index && close.test(line))
+    if (end === -1) break
+    for (let inside = index + 1; inside < end; inside++) kept.add(inside)
+    index = end
+  }
+  return kept
 }
