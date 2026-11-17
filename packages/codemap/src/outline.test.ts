@@ -54,9 +54,20 @@ describe('outlineCodeMap', () => {
 })
 
 describe('queryWords', () => {
-  it('keeps distinct lowercase words of 3 letters or more, 8 at most', () => {
-    expect(queryWords('La séquence de Update, update ! ok')).toEqual(['séquence', 'update'])
-    expect(queryWords('a b c d e f g h i j aaa bbb ccc ddd eee fff ggg hhh iii')).toHaveLength(8)
+  it('keeps distinct lowercase words of 3 letters or more', () => {
+    expect(queryWords('Le flux de Update, update ! ok')).toEqual(['flux', 'update'])
+  })
+
+  it('drops the words that name a diagram or ask for one, in English and in French', () => {
+    expect(queryWords('Draw a sequence diagram of the update route')).toEqual([
+      'the',
+      'update',
+      'route',
+    ])
+    expect(queryWords('Dessine-moi un diagramme de séquence de assertOwner')).toEqual([
+      'moi',
+      'assertowner',
+    ])
   })
 })
 
@@ -122,6 +133,32 @@ describe('outlineCodeMap with a query', () => {
     expect(two.starts[plain.starts.length]?.key).toBe(
       `${APP}/projects/controllers/projects-controller.ts#ProjectsController.update`,
     )
+  })
+
+  it('finds the code a long sentence names last, in English and in French', () => {
+    const english = outlineCodeMap(map, {
+      ...small,
+      query:
+        'Can you please draw for me a sequence diagram that shows how the refresh skills job works',
+    })
+    expect(english.starts.map((start) => start.key)).toContain(`${JOB}.process`)
+    const french = outlineCodeMap(map, {
+      ...small,
+      query:
+        'Dessine-moi un diagramme de séquence qui montre comment marche la fonction assertOwner',
+    })
+    expect(french.starts.map((start) => start.key)).toContain(ASSERT_OWNER)
+  })
+
+  it('fills the words a request leaves free from the earlier requests', () => {
+    const alone = outlineCodeMap(map, { ...small, query: 'The same as an activity diagram' })
+    expect(alone.starts.map((start) => start.key)).not.toContain(ASSERT_OWNER)
+    const followUp = outlineCodeMap(map, {
+      ...small,
+      query: 'The same as an activity diagram',
+      earlier: ['A sequence diagram of assertOwner'],
+    })
+    expect(followUp.starts.map((start) => start.key)).toContain(ASSERT_OWNER)
   })
 
   it('leaves tests out', () => {

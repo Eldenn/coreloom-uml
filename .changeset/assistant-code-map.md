@@ -1,8 +1,6 @@
 ---
 "@coreloom-uml/api": minor
 "@coreloom-uml/web": minor
-"@coreloom-uml/codemap": minor
-"@coreloom-uml/llm": minor
 ---
 
 Any diagram on request, drawn from a code map, behind the `code-maps` and `diagram-assistant`

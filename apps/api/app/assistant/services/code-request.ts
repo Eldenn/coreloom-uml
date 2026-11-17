@@ -24,6 +24,9 @@ const WORDS = {
   },
 } as const
 
+/** Earlier requests of the conversation whose words may still name the code asked about. */
+const EARLIER_REQUESTS = 2
+
 export type CodeAnswer = {
   content: string
   /** The new view, to accept like any other change; null when nothing was drawn. */
@@ -51,13 +54,20 @@ export async function answerFromCode(input: {
   const { model, codeMap, architecture, locale } = input
   const words = WORDS[locale]
   const map = await readDetectedCodeMap(codeMap.storageKey)
+  const history = await conversationHistory(input.conversation)
+  // A follow-up ("the same as an activity diagram") names nothing: the requests before it do.
+  const earlier = history
+    .filter((turn) => turn.role === 'user')
+    .map((turn) => turn.text)
+    .reverse()
+    .slice(0, EARLIER_REQUESTS)
   const resolved = await resolveDiagramRequest(model, {
-    outline: outlineCodeMap(map, { query: input.message }),
+    outline: outlineCodeMap(map, { query: input.message, earlier }),
     ...(codeMap.repositoryUrl ? { repository: codeMap.repositoryUrl } : {}),
     views: await projectViews(codeMap.projectId, input.user),
     locale,
     message: input.message,
-    history: await conversationHistory(input.conversation),
+    history,
   })
   const nothing = (reply = '') => ({
     content: reply || words.nothing,

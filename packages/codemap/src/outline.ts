@@ -81,30 +81,74 @@ export type OutlineOptions = {
    * be about code the outline would leave out.
    */
   query?: string
+  /**
+   * The requests made before `query` in the same conversation, the latest first: their words
+   * fill what `query` leaves free, so that "the same as an activity diagram" still finds the code.
+   */
+  earlier?: readonly string[]
 }
 
 /** How much of a request is read, and how much it may add to each list. */
 export const OUTLINE_QUERY_LIMITS = {
+  /** Words compared with the names: the rarest in the map, a request's own before earlier ones. */
   words: 8,
+  /** Words of one request considered before the rarest are kept. */
+  candidates: 40,
   minWordLength: 3,
   folders: 10,
   classes: 20,
   starts: 20,
 } as const
 
-/** The words of a request that names are compared with. */
+/** Words that ask for a diagram or name its kind, not the code it is about (English, French). */
+const REQUEST_WORDS = new Set(
+  (
+    'draw show shows diagram diagrams view sequence activity class classes package packages ' +
+    'component components uml please ' +
+    'dessine dessiner montre montrer diagramme diagrammes vue séquence sequence activité activite ' +
+    'classe paquetage paquetages composant composants'
+  ).split(' '),
+)
+
+/** The words of a request that may name code, in the order they come. */
 export function queryWords(query: string): string[] {
   const words = query
     .toLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
-    .filter((word) => word.length >= OUTLINE_QUERY_LIMITS.minWordLength)
-  return [...new Set(words)].slice(0, OUTLINE_QUERY_LIMITS.words)
+    .filter((word) => word.length >= OUTLINE_QUERY_LIMITS.minWordLength && !REQUEST_WORDS.has(word))
+  return [...new Set(words)].slice(0, OUTLINE_QUERY_LIMITS.candidates)
+}
+
+/**
+ * The words names are compared with: of each request, those that name something in the map, the
+ * rarest first, so that "the" or "how" never push out the one word that names the code. An
+ * earlier request only fills what the later ones leave free.
+ */
+function chosenWords(map: CodeMap, requests: readonly string[]): string[] {
+  const chosen: string[] = []
+  for (const request of requests) {
+    const words = queryWords(request).filter((word) => !chosen.includes(word))
+    const counts = new Map(words.map((word) => [word, 0]))
+    for (const node of map.nodes) {
+      if (node.path === undefined || isTestPath(node.path)) continue
+      const text = `${node.key}\n${node.name}`.toLowerCase()
+      for (const word of words) {
+        if (text.includes(word)) counts.set(word, (counts.get(word) ?? 0) + 1)
+      }
+    }
+    const found = words
+      .filter((word) => (counts.get(word) ?? 0) > 0)
+      .sort((a, b) => (counts.get(a) ?? 0) - (counts.get(b) ?? 0))
+    chosen.push(...found.slice(0, OUTLINE_QUERY_LIMITS.words - chosen.length))
+    if (chosen.length >= OUTLINE_QUERY_LIMITS.words) break
+  }
+  return chosen
 }
 
 /** How many of `words` the text holds. */
 function matched(words: readonly string[], ...texts: string[]): number {
-  // ponytail: plain substring match, no stemming or stop words; rank by embedding or an index
-  // if requests miss their target.
+  // ponytail: plain substring match, no stemming; rank by embedding or an index if requests
+  // miss their target.
   const text = texts.join('\n').toLowerCase()
   return words.filter((word) => text.includes(word)).length
 }
@@ -348,7 +392,7 @@ export function outlineCodeMap(map: CodeMap, options: OutlineOptions = {}): Code
     modules: modules(graph).slice(0, limits.maxModules),
     counts,
   }
-  const words = queryWords(options.query ?? '')
+  const words = chosenWords(map, [options.query ?? '', ...(options.earlier ?? [])])
   if (words.length === 0) return outline
 
   const listed = new Set(outline.classes.map((item) => item.key))

@@ -328,6 +328,31 @@ test.group('Assistant - messages drawn from the code map', (group) => {
     assert.lengthOf(await stored(conversation.id), 4)
   })
 
+  test('a follow-up that names nothing still reads the code the earlier request named', async ({
+    client,
+    assert,
+  }) => {
+    const { user, project, architecture, conversation } = await setup()
+    const path = { architectureId: architecture.id, conversationId: conversation.id }
+    const map = await uploadMap(client, user, project.id)
+    const nothing = JSON.stringify({ reply: 'Which one?', target: null })
+    const model = answersInTurn(nothing, nothing)
+    useModel(model)
+    // `assertOwner` is called by other code: the outline lists it only when a request names it.
+    const first = await ask(client, user, path, {
+      codeMapId: map.id,
+      message: 'A sequence diagram of assertOwner',
+    })
+    first.assertStatus(200)
+    const second = await ask(client, user, path, {
+      codeMapId: map.id,
+      message: 'The same as an activity diagram',
+    })
+    second.assertStatus(200)
+    assert.include(JSON.stringify(model.doGenerateCalls[0]?.prompt), '| function | assertOwner |')
+    assert.include(JSON.stringify(model.doGenerateCalls[1]?.prompt), '| function | assertOwner |')
+  })
+
   test('answers in text, with one model call, when the model gives no target', async ({
     client,
     assert,

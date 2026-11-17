@@ -194,6 +194,8 @@ export function AssistantPanel({
   const conversationId =
     conversations.find((c) => c.id === chosen)?.id ?? conversations.at(0)?.id ?? null
   const create = useCreateConversation(architectureId)
+  // Held here, not in a conversation: switching it off holds when another conversation opens.
+  const code = useCodeMode(architecture.projectId, codeMapId)
   const current = conversations.find((c) => c.id === conversationId)
   const startConversation = () => {
     create.mutate(undefined, {
@@ -241,7 +243,7 @@ export function AssistantPanel({
           autosave={autosave}
           provider={provider}
           onContinued={setChosen}
-          {...(codeMapId === undefined ? {} : { codeMapId })}
+          code={code}
         />
       )}
     </div>
@@ -379,7 +381,7 @@ function Conversation({
   autosave,
   provider,
   onContinued,
-  codeMapId,
+  code,
 }: {
   architecture: ArchitectureDetail
   conversationId: number
@@ -387,7 +389,7 @@ function Conversation({
   autosave: AutosaveControl
   provider: StoredProvider | null
   onContinued: (conversationId: number) => void
-  codeMapId?: number
+  code: ReturnType<typeof useCodeMode>
 }) {
   const t = useT().assistant
   const architectureId = architecture.id
@@ -406,7 +408,6 @@ function Conversation({
   const deleteSummary = useDeleteSummary(architectureId, conversationId)
   const changes = useChangeActions(architectureId, conversationId, autosave)
   const [draft, setDraft] = React.useState('')
-  const code = useCodeMode(architecture.projectId, codeMapId)
   const fromCode = code.sent !== undefined
 
   const messages = detail.data?.messages ?? []
