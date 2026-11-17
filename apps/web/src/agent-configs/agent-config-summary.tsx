@@ -4,6 +4,7 @@ import { FileTextIcon, PencilIcon, SparklesIcon, Trash2Icon, WandSparklesIcon } 
 import * as React from 'react'
 import { z } from 'zod'
 
+import { AgentConfigRoles } from '@/agent-configs/agent-config-roles'
 import { AgentConfigRules, type RuleDraft } from '@/agent-configs/agent-config-rules'
 import { AnswerForm, CatalogText } from '@/agent-configs/answer-form'
 import { useFormatAnswer, useLocalized, useTargetOptions } from '@/agent-configs/catalog'
@@ -36,6 +37,7 @@ import {
   useUpdateAgentConfig,
 } from '@/lib/agent-configs'
 import { getErrorMessage } from '@/lib/client'
+import { useFeature } from '@/lib/feature-flags'
 import { useT } from '@/lib/locale'
 
 export function AgentConfigSummary({
@@ -58,6 +60,7 @@ export function AgentConfigSummary({
   const t = useT()
   const [ruleDraft, setRuleDraft] = React.useState<RuleDraft | null>(null)
   const save = useUpdateAgentConfig(configId)
+  const roles = useFeature('agent-roles')
 
   return (
     <div className="flex flex-col gap-6">
@@ -113,6 +116,7 @@ export function AgentConfigSummary({
         draft={ruleDraft}
         onDraftChange={setRuleDraft}
       />
+      {roles && <AgentConfigRoles configId={configId} config={config} />}
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <NotesCard configId={configId} config={config} />
         <TargetsCard configId={configId} config={config} />

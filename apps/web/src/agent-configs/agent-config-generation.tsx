@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import * as React from 'react'
 
+import { RoleMatrixCard } from '@/agent-configs/agent-config-role-matrix'
 import { useLocalized } from '@/agent-configs/catalog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -188,6 +189,7 @@ export function AgentConfigGeneration({
           </CardContent>
         </Card>
       )}
+      <RoleMatrixCard configId={configId} generation={current} />
       <SkillsCard skills={current.skills} />
       <InstallCard configId={configId} />
     </div>
