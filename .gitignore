@@ -72,3 +72,6 @@ graphify-out/
 
 # Git worktrees (scratch, per-session)
 .worktrees/
+# Python bytecode (apps/analyzer)
+__pycache__/
+*.pyc

@@ -1,3 +1,4 @@
+import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
 import { defaultGraphifyIgnore } from '@coreloom-uml/codemap'
 import { Job } from '@nemoventures/adonis-jobs'
@@ -14,11 +15,18 @@ import { analyzeRepository } from '#app/code-maps/services/code-map-analyzer'
 import { pruneCodeMaps } from '#app/code-maps/services/code-map-pruning'
 import { deleteCodeMapFiles, storeCodeMapFile } from '#app/code-maps/services/code-map-storage'
 import { readCodeMapValue } from '#app/code-maps/services/code-map-upload'
+import { GithubFailure } from '#app/github/constants/github'
+import GithubApi from '#app/github/services/github-api'
+import { githubAppConfig } from '#app/github/services/github-app-config'
+import { findGrant } from '#app/github/services/github-grants'
 
 /**
- * Maps a public GitHub repository for a `pending` code map (`POST /projects/:id/code-maps/github`):
- * the analyzer service clones it and runs graphify, then the map is checked and stored like an
- * upload. A repository that cannot be mapped fails the map at once; an analyzer that cannot be
+ * Maps a GitHub repository for a `pending` code map (`POST /projects/:id/code-maps/github`, or a
+ * push the project follows): the analyzer service clones it and runs graphify, then the map is
+ * checked and stored like an upload. When the owner reads the repository through the GitHub App,
+ * an installation token is made here, for this repository only and read only, handed to the
+ * analyzer in the request and revoked once it answered: it never reaches Redis, the database or
+ * a log. A repository that cannot be mapped fails the map at once; an analyzer that cannot be
  * reached is tried again, and fails the map after the last attempt. No model is called.
  */
 /** A failed attempt worth retrying, with the reason the map gets after the last one. */
@@ -55,11 +63,28 @@ export default class ImportGithubCodeMapJob extends Job<ImportGithubCodeMapJobDa
     codeMap.status = CodeMapStatus.Running
     await codeMap.save()
 
-    const result = await analyzeRepository({
-      repository: codeMap.repositoryUrl,
-      branch: codeMap.branch,
-      ignore: defaultGraphifyIgnore(),
-    })
+    const access = await this.githubToken(codeMap.userId, codeMap.repositoryUrl)
+    if (access === GithubFailure.Denied)
+      return this.markFailed(codeMap, GITHUB_IMPORT_FAILURES.githubAccess)
+    if (typeof access === 'string') {
+      throw new ImportAttemptError(
+        `code map ${String(codeMap.id)}: GitHub unreachable`,
+        GITHUB_IMPORT_FAILURES.githubUnreachable,
+      )
+    }
+
+    let result: Awaited<ReturnType<typeof analyzeRepository>>
+    try {
+      result = await analyzeRepository({
+        repository: codeMap.repositoryUrl,
+        branch: codeMap.branch,
+        ignore: defaultGraphifyIgnore(),
+        ...(access ? { token: access.token } : {}),
+      })
+    } finally {
+      // It would expire within the hour anyway.
+      if (access) await access.github.revokeInstallationToken(access.token).catch(() => undefined)
+    }
     if (!result.ok) {
       if (!result.retry) return this.markFailed(codeMap, GITHUB_IMPORT_FAILURES[result.code])
       // BullMQ tries again; `onFailed` fails the map after the last attempt.
@@ -135,6 +160,24 @@ export default class ImportGithubCodeMapJob extends Job<ImportGithubCodeMapJobDa
           : GITHUB_IMPORT_FAILURES.unexpected
       await this.markFailed(codeMap, reason)
     }
+  }
+
+  /**
+   * A read-only token for this one repository when the owner reaches it through the GitHub App,
+   * null for a repository read anonymously (public, or no App on this server), or why GitHub
+   * refused one.
+   */
+  private async githubToken(
+    userId: number,
+    repositoryUrl: string,
+  ): Promise<{ github: GithubApi; token: string } | null | GithubFailure> {
+    const config = githubAppConfig()
+    if (!config) return null
+    const grant = await findGrant(userId, repositoryUrl)
+    if (!grant) return null
+    const github = await app.container.make(GithubApi)
+    const token = await github.installationToken(config, grant.installationId, grant.repositoryId)
+    return token.ok ? { github, token: token.value } : token.failure
   }
 
   private async markFailed(codeMap: CodeMap, reason: string): Promise<void> {

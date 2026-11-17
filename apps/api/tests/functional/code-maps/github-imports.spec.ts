@@ -1,9 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import type { AddressInfo } from 'node:net'
 import { gzipSync } from 'node:zlib'
 import type { Logger } from '@adonisjs/core/logger'
-import app from '@adonisjs/core/services/app'
 import drive from '@adonisjs/drive/services/main'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import { test } from '@japa/runner'
@@ -24,6 +20,7 @@ import ImportGithubCodeMapJob from '#app/jobs/import-github-code-map_job'
 import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
 import env from '#start/env'
+import { ANALYZED_SHA, FakeAnalyzer, graphAnswer } from '#tests/helpers/fake-analyzer'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 
 /**
@@ -34,58 +31,7 @@ import { withDefaultFlags } from '#tests/helpers/feature-flags'
 
 const json = { accept: 'application/json' }
 const ON = { enabled: true, rollout: 100, rules: [] }
-const SHA = '0123456789abcdef0123456789abcdef01234567'
-
-/** graphify's own output on part of this repository (see `packages/codemap/fixtures`). */
-const GRAPH = readFileSync(app.makePath('../../packages/codemap/fixtures/adonis-graph.json'))
-
-type Answer = { status: number; body: Buffer | object; headers?: Record<string, string> }
-
-/** A stand-in for the analyzer: records each request, answers the next queued answer. */
-class FakeAnalyzer {
-  requests: Array<Record<string, unknown>> = []
-  answers: Answer[] = []
-  #server: Server
-
-  constructor() {
-    this.#server = createServer((request, response) => void this.#handle(request, response))
-  }
-
-  async start(): Promise<string> {
-    await new Promise<void>((resolve) => this.#server.listen(0, '127.0.0.1', resolve))
-    return `http://127.0.0.1:${String((this.#server.address() as AddressInfo).port)}`
-  }
-
-  stop(): Promise<void> {
-    return new Promise((resolve) => this.#server.close(() => resolve()))
-  }
-
-  async #handle(request: IncomingMessage, response: ServerResponse) {
-    const chunks: Buffer[] = []
-    for await (const chunk of request) chunks.push(chunk as Buffer)
-    this.requests.push(
-      JSON.parse(Buffer.concat(chunks).toString('utf8')) as Record<string, unknown>,
-    )
-    const answer: Answer = this.answers.shift() ?? {
-      status: 500,
-      body: { error: { code: 'internal' } },
-    }
-    const isBytes = Buffer.isBuffer(answer.body)
-    response.writeHead(answer.status, {
-      'content-type': isBytes ? 'application/gzip' : 'application/json',
-      ...answer.headers,
-    })
-    response.end(isBytes ? answer.body : JSON.stringify(answer.body))
-  }
-}
-
-function graphAnswer(): Answer {
-  return {
-    status: 200,
-    body: gzipSync(GRAPH),
-    headers: { 'x-commit-sha': SHA, 'x-branch': 'main', 'x-graphify-version': '0.9.108' },
-  }
-}
+const SHA = ANALYZED_SHA
 
 async function setup(flag = true) {
   const user = await User.create({

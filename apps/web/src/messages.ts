@@ -312,6 +312,38 @@ export const en = {
     githubSubmit: 'Read the repository',
     githubStarted: 'The repository is being read. Its map shows here once it is ready.',
     githubFailed: 'The repository could not be read.',
+    githubTextApp:
+      'Coreloom clones the repository and reads it with graphify, the code left unrun. Private repositories are read through the GitHub App, with a token made for each clone and never kept.',
+    githubUrlHint: 'Pick one of your connected repositories, or type a public one’s URL.',
+    githubPick: 'Pick or type a repository',
+    githubNoMatch: 'No connected repository matches.',
+    githubPrivate: 'Private',
+    githubPublic: 'Public',
+    githubFollow: 'Read it again on every push',
+    githubFollowHint: 'Each push on this branch adds a new map, through the GitHub App.',
+    githubFollowOnlyApp: 'Only for a repository you connected through the GitHub App.',
+    githubFollowingTitle: 'Read again on every push',
+    githubFollowing: (repository: string, branch: string) => `${repository}, ${branch}.`,
+    githubDefaultBranch: 'default branch',
+    githubFollowingText: 'Each push on this branch reads the repository into a new map.',
+    githubFollowingLost:
+      'The GitHub App no longer reaches this repository: pushes are ignored until you install it there again and connect GitHub.',
+    githubFollowStop: 'Stop following',
+    githubFollowStopped: 'This project no longer follows the repository.',
+    githubAppText:
+      'For a private repository, install the GitHub App on it, then connect GitHub. Already installed? Connect directly.',
+    githubConnectedAs: (login: string, count: number) =>
+      `Connected to GitHub as ${login}: ${String(count)} ${count === 1 ? 'repository' : 'repositories'} reachable.`,
+    githubInstall: 'Install the GitHub App',
+    githubAddRepositories: 'Add repositories',
+    githubConnect: 'Connect GitHub',
+    githubRefresh: 'Refresh',
+    githubDisconnect: 'Disconnect',
+    githubDisconnectTitle: 'Disconnect GitHub?',
+    githubDisconnectText:
+      'Coreloom forgets your repositories and stops following them. The App stays installed on GitHub until you remove it there.',
+    githubDisconnected: 'GitHub disconnected.',
+    githubConnectFailed: 'GitHub could not be opened.',
     addMap: 'Add a map',
     addTitle: 'Add a code map',
     addDescription: 'A new map replaces the shown one; the project keeps its five newest.',
@@ -487,6 +519,13 @@ export const en = {
       error: 'Missing from the code',
       unknown: 'Uncertain',
     },
+  },
+  github: {
+    callbackTitle: 'GitHub',
+    connecting: 'Connecting GitHub…',
+    callbackFailed: 'GitHub could not be connected',
+    callbackEmpty: 'GitHub sent nothing back. Start again from the Code tab of a project.',
+    backToProjects: 'Back to projects',
   },
   shared: {
     unavailableTitle: 'This link is not available',
@@ -1234,6 +1273,39 @@ export const fr: Messages = {
     githubStarted:
       'Le dépôt est en cours de lecture. Sa carte s’affiche ici dès qu’elle est prête.',
     githubFailed: 'Le dépôt n’a pas pu être lu.',
+    githubTextApp:
+      'Coreloom clone le dépôt et le lit avec graphify, sans exécuter le code. Les dépôts privés sont lus via l’application GitHub, avec un jeton créé pour chaque clone et jamais conservé.',
+    githubUrlHint: 'Choisissez l’un de vos dépôts connectés, ou saisissez l’URL d’un dépôt public.',
+    githubPick: 'Choisir ou saisir un dépôt',
+    githubNoMatch: 'Aucun dépôt connecté ne correspond.',
+    githubPrivate: 'Privé',
+    githubPublic: 'Public',
+    githubFollow: 'Relire à chaque push',
+    githubFollowHint:
+      'Chaque push sur cette branche ajoute une nouvelle carte, via l’application GitHub.',
+    githubFollowOnlyApp: 'Seulement pour un dépôt connecté via l’application GitHub.',
+    githubFollowingTitle: 'Relu à chaque push',
+    githubFollowing: (repository: string, branch: string) => `${repository}, ${branch}.`,
+    githubDefaultBranch: 'branche par défaut',
+    githubFollowingText: 'Chaque push sur cette branche relit le dépôt dans une nouvelle carte.',
+    githubFollowingLost:
+      'L’application GitHub n’atteint plus ce dépôt : les push sont ignorés tant que vous ne l’y réinstallez pas et ne reconnectez pas GitHub.',
+    githubFollowStop: 'Ne plus suivre',
+    githubFollowStopped: 'Ce projet ne suit plus le dépôt.',
+    githubAppText:
+      'Pour un dépôt privé, installez l’application GitHub dessus, puis connectez GitHub. Déjà installée ? Connectez directement.',
+    githubConnectedAs: (login: string, count: number) =>
+      `Connecté à GitHub en tant que ${login} : ${String(count)} ${count === 1 ? 'dépôt accessible' : 'dépôts accessibles'}.`,
+    githubInstall: 'Installer l’application GitHub',
+    githubAddRepositories: 'Ajouter des dépôts',
+    githubConnect: 'Connecter GitHub',
+    githubRefresh: 'Actualiser',
+    githubDisconnect: 'Déconnecter',
+    githubDisconnectTitle: 'Déconnecter GitHub ?',
+    githubDisconnectText:
+      'Coreloom oublie vos dépôts et cesse de les suivre. L’application reste installée sur GitHub jusqu’à ce que vous l’y retiriez.',
+    githubDisconnected: 'GitHub déconnecté.',
+    githubConnectFailed: 'GitHub n’a pas pu être ouvert.',
     addMap: 'Ajouter une carte',
     addTitle: 'Ajouter une carte du code',
     addDescription:
@@ -1419,6 +1491,13 @@ export const fr: Messages = {
       error: 'Absent du code',
       unknown: 'Incertain',
     },
+  },
+  github: {
+    callbackTitle: 'GitHub',
+    connecting: 'Connexion à GitHub…',
+    callbackFailed: 'GitHub n’a pas pu être connecté',
+    callbackEmpty: 'GitHub n’a rien renvoyé. Recommencez depuis l’onglet Code d’un projet.',
+    backToProjects: 'Retour aux projets',
   },
   shared: {
     unavailableTitle: 'Ce lien n’est pas disponible',

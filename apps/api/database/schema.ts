@@ -389,6 +389,56 @@ export class FeatureFlagSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
+export class GithubCodeMapFollowSchema extends BaseModel {
+  static $columns = ['branch', 'createdAt', 'id', 'projectId', 'repositoryId', 'repositoryUrl', 'updatedAt', 'userId'] as const
+  $columns = GithubCodeMapFollowSchema.$columns
+  @column()
+  declare branch: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare projectId: number
+  @column()
+  declare repositoryId: bigint | number
+  @column()
+  declare repositoryUrl: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
+}
+
+export class GithubRepositoryGrantSchema extends BaseModel {
+  static $columns = ['createdAt', 'defaultBranch', 'githubLogin', 'githubUserId', 'id', 'installationId', 'name', 'owner', 'private', 'repositoryId', 'updatedAt', 'userId'] as const
+  $columns = GithubRepositoryGrantSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare defaultBranch: string
+  @column()
+  declare githubLogin: string
+  @column()
+  declare githubUserId: bigint | number
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare installationId: bigint | number
+  @column()
+  declare name: string
+  @column()
+  declare owner: string
+  @column()
+  declare private: boolean
+  @column()
+  declare repositoryId: bigint | number
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
+}
+
 export class LlmConnectionSchema extends BaseModel {
   static $columns = ['accessToken', 'accountId', 'createdAt', 'expiresAt', 'id', 'kind', 'refreshToken', 'updatedAt', 'userId'] as const
   $columns = LlmConnectionSchema.$columns

@@ -6,4 +6,6 @@
 export const TokenPurpose = {
   PasswordReset: 'password-reset',
   EmailVerification: 'email-verification',
+  /** The `state` of a GitHub App connection (`app/github/services/github-state.ts`). */
+  GithubConnection: 'github-connection',
 } as const

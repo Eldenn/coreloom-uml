@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { assistantKeys } from '@/lib/assistant'
 import { apiBaseUrl, client } from '@/lib/client'
+import { githubKeys } from '@/lib/github'
 import { MODEL_CALL, type StoredProvider } from '@/lib/llm-provider'
 import { callBody } from '@/lib/llm-provider-body'
 import { projectKeys } from '@/lib/projects'
@@ -64,18 +65,20 @@ export function useCodeMap(id: number | undefined) {
 }
 
 /**
- * Has the server clone a public GitHub repository and read it: the new map comes back `pending`
- * and the lists poll it until it is ready or failed.
+ * Has the server clone a GitHub repository (public, or one the GitHub App reads for the user) and
+ * read it: the new map comes back `pending` and the lists poll it until it is ready or failed.
+ * `follow` makes the project read it again on each push.
  */
 export function useImportGithubCodeMap(projectId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (body: { url: string; branch?: string }) =>
+    mutationFn: async (body: { url: string; branch?: string; follow?: boolean }) =>
       (await client.api.projects.codeMaps.github({ params: { id: projectId }, body })).codeMap,
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: codeMapKeys.list(projectId) }),
         queryClient.invalidateQueries({ queryKey: projectKeys.all }),
+        queryClient.invalidateQueries({ queryKey: githubKeys.follow(projectId) }),
       ]),
   })
 }

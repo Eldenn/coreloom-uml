@@ -1,10 +1,14 @@
-"""Code map analyzer: clones a public GitHub repository and maps its code with graphify.
+"""Code map analyzer: clones a GitHub repository and maps its code with graphify.
 
 A small HTTP service with no secrets: no database, no APP_KEY, no storage credentials. The API's
 queue worker calls it and stores what it answers; nothing else should reach it (it is never
-published on a port).
+published on a port). A private repository comes with `token`, an installation token of the
+GitHub App that reads only that repository, made by the worker for this one clone and revoked
+once the analyzer answered: it is handed to git through its environment (never the command line,
+the URL or a file), and never logged nor answered.
 
-    POST /analyze  {"repository": "https://github.com/<owner>/<repo>", "branch"?: str, "ignore"?: str}
+    POST /analyze  {"repository": "https://github.com/<owner>/<repo>", "branch"?: str, "ignore"?: str,
+                    "token"?: str}
         200: graphify's graph.json, gzipped (application/gzip), with the X-Commit-Sha, X-Branch
              and X-Graphify-Version headers.
         400: a malformed request. 422: {"error": {"code", "message"}}, the repository could not be
@@ -28,7 +32,8 @@ import sys
 import tempfile
 import threading
 import time
-from dataclasses import dataclass
+import base64
+from dataclasses import dataclass, field
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -47,6 +52,8 @@ OWNER = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")
 REPOSITORY = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
 BRANCH = re.compile(r"^[A-Za-z0-9._/-]{1,200}$")
 SHA = re.compile(r"^[0-9a-f]{40,64}$")
+# GitHub's tokens: a prefix such as `ghs_`, then letters, digits and underscores.
+TOKEN = re.compile(r"^[A-Za-z0-9_]{20,255}$")
 
 # What a refusal says. The API shows its own wording; the code is what it reads.
 ERRORS = {
@@ -81,6 +88,8 @@ class Request:
     repository: str
     branch: str | None
     ignore: str | None
+    # Never printed with the request.
+    token: str | None = field(default=None, repr=False)
 
     @property
     def clone_url(self) -> str:
@@ -102,7 +111,7 @@ def parse_repository(value: object) -> tuple[str, str] | None:
     if not match:
         return None
     owner, repository = match.groups()
-    if not OWNER.match(owner) or not REPOSITORY.match(repository) or repository in {".", ".."}:
+    if not OWNER.fullmatch(owner) or not REPOSITORY.fullmatch(repository) or repository in {".", ".."}:
         return None
     return owner, repository
 
@@ -110,7 +119,7 @@ def parse_repository(value: object) -> tuple[str, str] | None:
 def valid_branch(value: str) -> bool:
     """A branch name git accepts and that cannot be read as an option or a path trick."""
     return (
-        bool(BRANCH.match(value))
+        bool(BRANCH.fullmatch(value))
         and not value.startswith(("-", "/", "."))
         and not value.endswith(("/", ".", ".lock"))
         and ".." not in value
@@ -137,7 +146,10 @@ def parse_request(body: bytes) -> Request | None:
         not isinstance(ignore, str) or len(ignore.encode()) > MAX_IGNORE_BYTES
     ):
         return None
-    return Request(owner=parts[0], repository=parts[1], branch=branch, ignore=ignore)
+    token = value.get("token")
+    if token is not None and (not isinstance(token, str) or not TOKEN.fullmatch(token)):
+        return None
+    return Request(owner=parts[0], repository=parts[1], branch=branch, ignore=ignore, token=token)
 
 
 def tool_env(home: str, **extra: str) -> dict[str, str]:
@@ -250,6 +262,7 @@ def clone(request: Request, work: str, deadline: float, clone_url: str | None = 
         GIT_CONFIG_NOSYSTEM="1",
         GIT_CONFIG_GLOBAL=os.devnull,
         GIT_LFS_SKIP_SMUDGE="1",
+        **token_config(request.token),
     )
     command = git(*args)
     if clone_url:
@@ -257,9 +270,26 @@ def clone(request: Request, work: str, deadline: float, clone_url: str | None = 
         command[1:1] = ["-c", "protocol.file.allow=always"]
     result = run_bounded(command, cwd=work, env=env, deadline=deadline, watch=target)
     if result.returncode != 0:
-        # A private or missing repository asks for credentials, which are refused: not found.
+        # A private or missing repository (or one the token does not reach) asks for
+        # credentials, which are refused: not found.
         raise AnalysisError("not_found")
     return target
+
+
+def token_config(token: str | None) -> dict[str, str]:
+    """The installation token as an HTTP header for github.com, in git's environment only.
+
+    Not `credential.helper` (refused above), not the URL (git would print and keep it), not
+    `-c` (visible to every process): `GIT_CONFIG_*` is read by this one git process.
+    """
+    if not token:
+        return {}
+    basic = base64.b64encode(f"x-access-token:{token}".encode()).decode()
+    return {
+        "GIT_CONFIG_COUNT": "1",
+        "GIT_CONFIG_KEY_0": f"http.https://{GITHUB_HOST}/.extraheader",
+        "GIT_CONFIG_VALUE_0": f"Authorization: Basic {basic}",
+    }
 
 
 def revision(repo: str, work: str) -> tuple[str, str]:
@@ -274,7 +304,7 @@ def revision(repo: str, work: str) -> tuple[str, str]:
 
     commit = read("rev-parse", "HEAD")
     branch = read("rev-parse", "--abbrev-ref", "HEAD")
-    if not SHA.match(commit):
+    if not SHA.fullmatch(commit):
         raise AnalysisError("extraction_failed")
     return commit, branch
 

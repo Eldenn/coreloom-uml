@@ -42,7 +42,7 @@ const githubRepository = vine.createRule(
   (value: unknown, _options: undefined, field: FieldContext) => {
     if (typeof value === 'string' && !parseGithubRepository(value)) {
       field.report(
-        'The {{ field }} field must be a public GitHub repository, https://github.com/<owner>/<name>',
+        'The {{ field }} field must be a GitHub repository, https://github.com/<owner>/<name>',
         'githubRepository',
         field,
       )
@@ -57,8 +57,10 @@ const gitBranch = vine.createRule((value: unknown, _options: undefined, field: F
 })
 
 /**
- * `POST /projects/:id/code-maps/github`: a public repository on github.com, and its branch (the
- * default one when left out). The server clones and maps it in the background.
+ * `POST /projects/:id/code-maps/github`: a repository on github.com (public, or one the user reads
+ * through the GitHub App), and its branch (the default one when left out). The server clones and
+ * maps it in the background. `follow` makes the project read it again on each push (true), or
+ * stop (false).
  */
 export const importGithubCodeMapInput = vine.create(
   vine.object({
@@ -70,6 +72,7 @@ export const importGithubCodeMapInput = vine.create(
       .maxLength(CODE_MAP_LIMITS.branch)
       .use(gitBranch())
       .optional(),
+    follow: vine.boolean().optional(),
   }),
 )
 
