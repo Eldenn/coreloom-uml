@@ -14,8 +14,8 @@ import type {
   TargetTemplate,
 } from './types.ts'
 
-/** From this `workflow.autonomy` answer up, Codex asks before writing anything. */
-const READ_ONLY_FROM = 5
+/** With this `workflow.autonomy` rule, Codex asks before writing anything. */
+const READ_ONLY_RULE = 'ask-before-writing'
 
 /**
  * Verified 2026-11-11. Instructions: Codex reads AGENTS.md natively, from the project root down
@@ -26,7 +26,7 @@ const READ_ONLY_FROM = 5
  * `on-request`, `never` or a `granular` table; the reference calls `untrusted` unsupported and
  * `on-failure` deprecated, though Codex 0.167.2 still reads both without an error;
  * `sandbox_mode` is `read-only`, `workspace-write` or `danger-full-access`. Only the first of
- * each is ever written here, and the sandbox comes from the autonomy answer.
+ * each is ever written here, and the sandbox comes from the autonomy rule.
  *
  * Rules (experimental): Codex scans `rules/*.rules` next to every active config layer at start;
  * `<repo>/.codex/rules/` loads only when the project's `.codex/` layer is trusted. A file is
@@ -197,7 +197,7 @@ function renderRole(role: Role, { checks, container }: RoleContext): RoleRender 
   }
 }
 
-const readOnly = ({ autonomy }: TargetContext) => autonomy !== null && autonomy >= READ_ONLY_FROM
+const readOnly = ({ autonomy }: TargetContext) => autonomy === READ_ONLY_RULE
 
 /**
  * The checks Codex may run without asking. `allow` also takes the command out of the sandbox, so
@@ -214,7 +214,7 @@ type Rule = {
 }
 
 /**
- * Forbidden whatever the answers: the commands Claude Code is denied, as far as a prefix can say
+ * Forbidden whatever the rules held: the commands Claude Code is denied, as far as a prefix can say
  * it. A flag placed after other arguments gets through, which `not_match` records.
  */
 const DEFAULT_FORBIDDEN: Rule[] = [

@@ -314,11 +314,11 @@ router
     router.patch('/:id', [agentConfigController, 'update']).as('agent_configs.update')
     router.delete('/:id', [agentConfigController, 'destroy']).as('agent_configs.destroy')
     router
-      .put('/:id/answers', [
-        () => import('#app/agent-configs/controllers/agent-config-answers-controller'),
+      .put('/:id/ready-rules/:slot', [
+        () => import('#app/agent-configs/controllers/agent-config-ready-rules-controller'),
         'update',
       ])
-      .as('agent_configs.answers.update')
+      .as('agent_configs.ready_rules.update')
     router.post('/:id/rules', [agentRulesController, 'store']).as('agent_configs.rules.store')
     router
       .patch('/:id/rules/:ruleId', [agentRulesController, 'update'])
@@ -447,19 +447,17 @@ router
 
 /*
 |--------------------------------------------------------------------------
-| Questionnaires of the agent conventions catalog (`@coreloom-uml/catalog`)
+| Rule packs of the agent conventions catalog (`@coreloom-uml/catalog`)
 |--------------------------------------------------------------------------
 |
 | Served by the API so the web app always shows the server's version.
 */
-const questionnairesController = () =>
-  import('#app/agent-configs/controllers/questionnaires-controller')
 router
-  .group(() => {
-    router.get('/', [questionnairesController, 'index']).as('questionnaires.index')
-    router.get('/:questionnaireId', [questionnairesController, 'show']).as('questionnaires.show')
-  })
-  .prefix('/questionnaires')
+  .get('/rule-packs', [
+    () => import('#app/agent-configs/controllers/rule-packs-controller'),
+    'index',
+  ])
+  .as('rule_packs.index')
   .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
 
 /*

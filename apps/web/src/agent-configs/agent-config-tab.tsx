@@ -1,16 +1,21 @@
-// One configuration, on its own page or in its project's "Agent conventions" tab: the
-// questionnaire (`?step=questions`), a generation (`?generation=<id>`) or the summary.
+// One configuration, on its own page or in its project's "Agent conventions" tab: the catalog of
+// ready-made rules (`?step=rules`, with `pack` and `group`), a generation (`?generation=<id>`) or
+// the summary.
 import { AgentConfigGeneration } from '@/agent-configs/agent-config-generation'
-import { AgentConfigQuestions } from '@/agent-configs/agent-config-questions'
+import { AgentConfigLibrary } from '@/agent-configs/agent-config-library'
 import { AgentConfigSummary } from '@/agent-configs/agent-config-summary'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useAgentConfig, useConfigQuestionnaires } from '@/lib/agent-configs'
+import { useAgentConfig, useRulePacks } from '@/lib/agent-configs'
 import { useT } from '@/lib/locale'
 
 export interface AgentConfigView {
-  step?: 'questions'
+  step?: 'rules'
+  /** In the catalog: the pack shown, all of them without it. */
+  pack?: string
+  /** In the catalog: the slot of the group to land on. */
+  group?: string
   generation?: number
 }
 
@@ -40,8 +45,7 @@ export function AgentConfigTab({
   onDeleted: () => void
 }) {
   const config = useAgentConfig(configId)
-  const ids = config.data?.config.questionnaires.map((q) => q.id) ?? []
-  const questionnaires = useConfigQuestionnaires(ids)
+  const packs = useRulePacks()
 
   if (config.isPending) return <Skeleton className="h-64 w-full" />
   if (config.isError) return <LoadFailed onRetry={() => void config.refetch()} />
@@ -58,15 +62,19 @@ export function AgentConfigTab({
         }}
       />
     )
-  if (questionnaires.isError) return <LoadFailed onRetry={() => void questionnaires.refetch()} />
-  if (!questionnaires.data) return <Skeleton className="h-64 w-full" />
-  if (view.step === 'questions')
+  if (packs.isError) return <LoadFailed onRetry={() => void packs.refetch()} />
+  if (!packs.data) return <Skeleton className="h-64 w-full" />
+  if (view.step === 'rules')
     return (
-      <AgentConfigQuestions
+      <AgentConfigLibrary
         configId={configId}
         config={config.data.config}
-        questionnaires={questionnaires.data}
-        onDone={() => {
+        packs={packs.data}
+        view={{ pack: view.pack, group: view.group }}
+        onViewChange={(library) => {
+          onViewChange({ step: 'rules', ...library })
+        }}
+        onBack={() => {
           onViewChange({})
         }}
       />
@@ -76,9 +84,9 @@ export function AgentConfigTab({
       configId={configId}
       config={config.data.config}
       impact={config.data.impact}
-      questionnaires={questionnaires.data}
-      onEditAnswers={() => {
-        onViewChange({ step: 'questions' })
+      packs={packs.data}
+      onBrowse={(group) => {
+        onViewChange({ step: 'rules', group })
       }}
       onShowGeneration={(generation) => {
         onViewChange({ generation })

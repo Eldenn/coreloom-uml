@@ -1,5 +1,5 @@
 // One agent conventions configuration on its own page: rename it, change its project, and the
-// questionnaire, rules, generations and summary also shown in its project's tab.
+// rules, generations and summary also shown in its project's tab.
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
 import { FolderInputIcon, PencilIcon } from 'lucide-react'
 import * as React from 'react'
@@ -22,9 +22,12 @@ export const Route = createFileRoute('/_authed/agent-configs/$id')({
     parse: ({ id }) => ({ id: z.coerce.number().int().positive().parse(id) }),
     stringify: ({ id }) => ({ id: String(id) }),
   },
-  // `step=questions` for the questionnaire and `generation=<id>` for generated files.
+  // `step=rules` for the catalog of ready-made rules (with `pack=<id>` and `group=<slot>`) and
+  // `generation=<id>` for generated files.
   validateSearch: z.object({
-    step: z.enum(['questions']).optional().catch(undefined),
+    step: z.enum(['rules']).optional().catch(undefined),
+    pack: z.string().optional().catch(undefined),
+    group: z.string().optional().catch(undefined),
     generation: z.coerce.number().int().positive().optional().catch(undefined),
   }),
   // Its project (if any) and name, for the breadcrumbs; the page shows its own error if it can't load.
@@ -86,7 +89,7 @@ function AgentConfigPageView({ config }: { config: AgentConfig }) {
   const t = useT()
   const router = useRouter()
   const navigate = useNavigate({ from: Route.fullPath })
-  const { step, generation } = Route.useSearch()
+  const { step, pack, group, generation } = Route.useSearch()
   const projects = useProjects()
   const [renaming, setRenaming] = React.useState(false)
   const [moving, setMoving] = React.useState(false)
@@ -123,7 +126,7 @@ function AgentConfigPageView({ config }: { config: AgentConfig }) {
       />
       <AgentConfigTab
         configId={config.id}
-        view={{ step, generation }}
+        view={{ step, pack, group, generation }}
         onViewChange={(view) => void navigate({ search: view })}
         onDeleted={() => void navigate({ to: '/agent-configs', replace: true })}
       />

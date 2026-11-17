@@ -1,12 +1,11 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import db from '@adonisjs/lucid/services/db'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
-import { ruleSections } from '@coreloom-uml/catalog'
+import { RULE_PACKS, ruleSections } from '@coreloom-uml/catalog'
 import { AGENT_RULES_MAX, AgentRuleSource } from '#app/agent-configs/constants/agent-config'
 import type AgentConfig from '#app/agent-configs/models/agent-config'
 import AgentConfigRule from '#app/agent-configs/models/agent-config-rule'
 import { serializeAgentRule } from '#app/agent-configs/serializers/agent-config-serializer'
-import { resolveQuestionnaires } from '#app/agent-configs/services/agent-context'
 import {
   AGENT_CONFIG_NOT_FOUND,
   AGENT_RULE_NOT_FOUND,
@@ -23,8 +22,8 @@ const TOO_MANY_RULES = {
   error: { message: `A configuration holds at most ${AGENT_RULES_MAX} rules.` },
 } as const
 
-function unknownSection(config: AgentConfig, section: string) {
-  const sections = ruleSections(resolveQuestionnaires(config.questionnaires))
+function unknownSection(section: string) {
+  const sections = ruleSections(RULE_PACKS)
   return sections.includes(section)
     ? null
     : { error: { message: `Unknown section: ${section}. Expected one of: ${sections.join(', ')}` } }
@@ -57,7 +56,7 @@ export default class AgentConfigRulesController {
     const result = await db.transaction(async (trx) => {
       const config = await findOwnedAgentConfig(params.id, user, trx)
       if (!config) return { notFound: true as const }
-      const refused = unknownSection(config, section)
+      const refused = unknownSection(section)
       if (refused) return { refused }
       const rules = await rulesOf(config, trx)
       if (rules.length >= AGENT_RULES_MAX) return { refused: TOO_MANY_RULES }
@@ -97,7 +96,7 @@ export default class AgentConfigRulesController {
       const rule = rules.find((item) => item.id === Number(params.ruleId))
       if (!rule) return { notFound: AGENT_RULE_NOT_FOUND }
       if (section !== undefined) {
-        const refused = unknownSection(config, section)
+        const refused = unknownSection(section)
         if (refused) return { refused }
       }
 

@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`renderAgentContext > forbids the default commands in Codex rules whatever the answers 1`] = `
+exports[`renderAgentContext > forbids the default commands in Codex rules whatever the rules held 1`] = `
 "# coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
 # A rule matches the first words of a command: it stops the usual form, it is not a security boundary.
 
@@ -23,7 +23,7 @@ prefix_rule(
 "
 `;
 
-exports[`renderAgentContext > renders a commit-msg hook only for what an answer states 1`] = `
+exports[`renderAgentContext > renders a commit-msg hook only for what a rule states 1`] = `
 "# coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
 # From the agent conventions (Coreloom UML). It applies to every commit, whoever writes it.
 # Git runs it once the hooks are turned on: git config core.hooksPath .githooks
@@ -414,7 +414,7 @@ Stop and ask when the task is unclear.
 }
 `;
 
-exports[`renderAgentContext > renders the back-end, Git and security questionnaires together 1`] = `
+exports[`renderAgentContext > renders the back-end, Git and security rule packs together 1`] = `
 "<!-- coreloom-uml:begin · managed block, edits inside it are replaced on the next pull -->
 ## Project
 
@@ -452,9 +452,9 @@ Its architectures, as described in Coreloom UML:
 - Commit messages follow this convention: Subject under 50 characters, ticket id first.
 - Commit finished work in coherent commits; never push unless asked to.
 - Keep a pull request under about 400 changed lines, generated files aside; past that, propose how to split it before going on.
-- Read the staged diff before every commit and stage files by name, never with \`git add -A\`.
 - Never commit a secret, a key, a token or a \`.env\` file; if one is staged, unstage it and say so.
 - Never commit changes unrelated to the task: no reformatting of untouched code, no lockfile change without a dependency change.
+- Read the staged diff before every commit and stage files by name, never with \`git add -A\`.
 - Tidy a task’s branch with amend or rebase before review when it helps; never rewrite the main branch.
 - Never credit a coding assistant in a commit, a pull request or a comment: no co-author trailer, no "generated with" footer.
 
@@ -482,7 +482,7 @@ Deploys go through **staging** first.
 "
 `;
 
-exports[`renderAgentContext > renders the settings each tool enforces from the tooling and autonomy answers 1`] = `
+exports[`renderAgentContext > renders the settings each tool enforces from the tooling and autonomy rules 1`] = `
 "{
   "permissions": {
     "allow": [
@@ -520,7 +520,7 @@ exports[`renderAgentContext > renders the settings each tool enforces from the t
 "
 `;
 
-exports[`renderAgentContext > renders the settings each tool enforces from the tooling and autonomy answers 2`] = `
+exports[`renderAgentContext > renders the settings each tool enforces from the tooling and autonomy rules 2`] = `
 "# coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
@@ -528,7 +528,7 @@ sandbox_mode = "workspace-write"
 "
 `;
 
-exports[`renderAgentContext > renders the settings each tool enforces from the tooling and autonomy answers 3`] = `
+exports[`renderAgentContext > renders the settings each tool enforces from the tooling and autonomy rules 3`] = `
 "# coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
 # A rule matches the first words of a command: it stops the usual form, it is not a security boundary.
 
@@ -586,7 +586,7 @@ prefix_rule(
 "
 `;
 
-exports[`renderAgentContext > renders the settings each tool enforces from the tooling and autonomy answers 4`] = `
+exports[`renderAgentContext > renders the settings each tool enforces from the tooling and autonomy rules 4`] = `
 "{
   "tools": {
     "allowed": [
@@ -663,7 +663,7 @@ pnpm lint || exit 1
 "
 `;
 
-exports[`renderAgentContext > scans for secrets only when an answer keeps them out, with a pinned and checked binary 1`] = `
+exports[`renderAgentContext > scans for secrets only when a rule keeps them out, with a pinned and checked binary 1`] = `
 "# coreloom-uml:begin · managed block, edits inside it are replaced on the next pull
 # From the agent conventions (Coreloom UML). It applies to every change, whoever writes it.
 # The conventions check needs the committed .coreloom-uml.json and an API key with the read

@@ -1,43 +1,47 @@
-import { type Questionnaire, ruleSections, SCALE_LABELS } from '@coreloom-uml/catalog'
+import {
+  isAppliedRule,
+  RULE_PACKS,
+  type RulePack,
+  ruleSections,
+  ruleTitle,
+} from '@coreloom-uml/catalog'
 import type AgentConfig from '#app/agent-configs/models/agent-config'
-import type AgentConfigAnswer from '#app/agent-configs/models/agent-config-answer'
 import type AgentConfigGeneration from '#app/agent-configs/models/agent-config-generation'
 import type AgentConfigRole from '#app/agent-configs/models/agent-config-role'
 import type AgentConfigRule from '#app/agent-configs/models/agent-config-rule'
-import {
-  outdatedQuestionnaires,
-  resolveQuestionnaires,
-} from '#app/agent-configs/services/agent-context'
 import type {
-  AgentAnswerOutput,
   AgentConfigDetailOutput,
   AgentConfigOutput,
   AgentGenerationOutput,
   AgentGenerationSummaryOutput,
+  AgentReadyRuleOutput,
   AgentRoleOutput,
   AgentRuleOutput,
-  QuestionnaireOutput,
-  QuestionnaireSummaryOutput,
+  RulePackOutput,
 } from '#app/agent-configs/validators/agent-configs-output'
 
-export function serializeQuestionnaireSummary(
-  questionnaire: Questionnaire,
-): QuestionnaireSummaryOutput {
+export function serializeRulePack(pack: RulePack): RulePackOutput {
   return {
-    id: questionnaire.id,
-    version: questionnaire.version,
-    title: questionnaire.title,
-    description: questionnaire.description,
-    questionCount: questionnaire.questions.length,
-  }
-}
-
-export function serializeQuestionnaire(questionnaire: Questionnaire): QuestionnaireOutput {
-  return {
-    ...serializeQuestionnaireSummary(questionnaire),
-    sections: [...questionnaire.sections],
-    scaleLabels: SCALE_LABELS,
-    questions: questionnaire.questions.map(({ fragments: _fragments, ...question }) => question),
+    id: pack.id,
+    title: pack.title,
+    description: pack.description,
+    sections: [...pack.sections],
+    groups: pack.groups.map((group) => ({
+      slot: group.slot,
+      section: group.section,
+      label: group.label,
+      help: group.help ?? null,
+      pick: group.pick,
+      lines: [...(group.lines ?? [])],
+      rules: group.rules.map((rule) => ({
+        id: rule.id,
+        title: ruleTitle(group, rule),
+        lines: [...rule.lines],
+        input: rule.input === true,
+        alone: rule.alone === true,
+        applied: isAppliedRule(group.slot, rule.id),
+      })),
+    })),
   }
 }
 
@@ -46,22 +50,11 @@ export function serializeAgentConfig(config: AgentConfig): AgentConfigOutput {
     id: config.id,
     projectId: config.projectId,
     name: config.name,
-    questionnaires: config.questionnaires,
     targets: config.targets,
     notes: config.notes,
     revision: config.revision,
     createdAt: config.createdAt.toISO() ?? '',
     updatedAt: config.updatedAt.toISO() ?? '',
-  }
-}
-
-export function serializeAgentAnswer(answer: AgentConfigAnswer): AgentAnswerOutput {
-  return {
-    questionnaireId: answer.questionnaireId,
-    questionId: answer.questionId,
-    value: answer.value,
-    details: answer.details,
-    updatedAt: answer.updatedAt.toISO() ?? '',
   }
 }
 
@@ -109,7 +102,23 @@ export function serializeAgentGeneration(generation: AgentConfigGeneration): Age
 }
 
 /**
- * Expects `answers`, `rules` and `roles` preloaded (`currentInputs` loads them), rules in
+ * The ready-made rules a configuration holds that the catalog still has, in catalog order (packs,
+ * groups, then each group's rules).
+ */
+export function heldReadyRules(rows: readonly AgentReadyRuleOutput[]): AgentReadyRuleOutput[] {
+  return RULE_PACKS.flatMap((pack) =>
+    pack.groups.flatMap((group) =>
+      group.rules.flatMap((rule) =>
+        rows
+          .filter((row) => row.slot === group.slot && row.rule === rule.id)
+          .map(({ slot, rule: id, value }) => ({ slot, rule: id, value })),
+      ),
+    ),
+  )
+}
+
+/**
+ * Expects `readyRules`, `rules` and `roles` preloaded (`currentInputs` loads them), rules in
  * position order, roles in id order.
  */
 export function serializeAgentConfigDetail(
@@ -117,17 +126,13 @@ export function serializeAgentConfigDetail(
   latest: AgentConfigGeneration | null,
   diagrams: AgentConfigDetailOutput['diagrams'],
 ): AgentConfigDetailOutput {
-  const configured = new Set(config.questionnaires.map((item) => item.id))
   return {
     ...serializeAgentConfig(config),
-    ruleSections: ruleSections(resolveQuestionnaires(config.questionnaires)),
-    answers: config.answers
-      .filter((answer) => configured.has(answer.questionnaireId))
-      .map(serializeAgentAnswer),
+    ruleSections: ruleSections(RULE_PACKS),
+    readyRules: heldReadyRules(config.readyRules),
     rules: config.rules.map(serializeAgentRule),
     roles: config.roles.map(serializeAgentRole),
     latestGeneration: latest ? serializeAgentGenerationSummary(latest) : null,
-    outdatedQuestionnaires: outdatedQuestionnaires(config),
     diagrams,
   }
 }

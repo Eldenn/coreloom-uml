@@ -1,47 +1,58 @@
 import type {
   AgentContextFile,
   AgentContextRole,
-  AnswerValue,
   Localized,
-  Question,
   Recommendation,
   Role,
+  RulePick,
 } from '@coreloom-uml/catalog'
 import type { AgentRuleSource, Target } from '#app/agent-configs/constants/agent-config'
-import type { AgentConfigQuestionnaire } from '#app/agent-configs/models/agent-config'
 import type { AgentGenerationSkills } from '#app/agent-configs/models/agent-config-generation'
 import type { AgentConfigImpact } from '#app/agent-configs/services/agent-context'
 import type { DiagramKind } from '#app/diagrams/constants/diagram'
 import type { Paginated } from '#app/shared/pagination/paginate'
 
-/** A catalog questionnaire, as listed by `GET /questionnaires`. */
-export type QuestionnaireSummaryOutput = {
+/** A ready-made rule of the catalog, as the screen shows it. */
+export type ReadyRuleOutput = {
+  /** Unique in its group. */
   id: string
-  version: string
+  /** Its name: its label, or its first line. */
+  title: Localized
+  /** The lines it writes in its group's section; `{value}` stands for the typed text or its id. */
+  lines: string[]
+  /** Accepted with a text typed by the owner. */
+  input: boolean
+  /** Cannot be held together with another rule of its group. */
+  alone: boolean
+  /** Accepting it also changes a generated file besides AGENTS.md (settings, hook, workflow…). */
+  applied: boolean
+}
+
+/** The ready-made rules about one aspect of the work, identified by its slot. */
+export type RuleGroupOutput = {
+  slot: string
+  section: string
+  label: Localized
+  help: Localized | null
+  /** How many of its rules a configuration may hold. */
+  pick: RulePick
+  /** Written once, after the accepted rules' own lines. */
+  lines: string[]
+  rules: ReadyRuleOutput[]
+}
+
+/** A rule pack of the catalog, as listed by `GET /rule-packs`. */
+export type RulePackOutput = {
+  id: string
   title: Localized
   description: Localized
-  questionCount: number
-}
-
-/** A question as the questionnaire screen shows it: without the fragments it renders. */
-export type QuestionnaireQuestionOutput = Omit<Question, 'fragments'>
-
-/** `GET /questionnaires/:questionnaireId` */
-export type QuestionnaireOutput = QuestionnaireSummaryOutput & {
   /** The sections it adds, in render order. */
   sections: string[]
-  /** Labels of the ends of every scale question. */
-  scaleLabels: { min: Localized; max: Localized }
-  questions: QuestionnaireQuestionOutput[]
+  groups: RuleGroupOutput[]
 }
 
-export type AgentAnswerOutput = {
-  questionnaireId: string
-  questionId: string
-  value: AnswerValue
-  details: string | null
-  updatedAt: string
-}
+/** A ready-made rule a configuration holds. */
+export type AgentReadyRuleOutput = { slot: string; rule: string; value: string | null }
 
 export type AgentRuleOutput = {
   id: number
@@ -70,7 +81,6 @@ export type AgentConfigOutput = {
   /** null outside any project. */
   projectId: number | null
   name: string
-  questionnaires: AgentConfigQuestionnaire[]
   targets: Target[]
   notes: string | null
   revision: number
@@ -96,9 +106,6 @@ export type AgentGenerationOutput = AgentGenerationSummaryOutput & {
   roles: AgentContextRole[]
 }
 
-/** A configured questionnaire answered against an older version than the catalog's. */
-export type OutdatedQuestionnaireOutput = { id: string; version: string; currentVersion: string }
-
 /** A diagram with content of the architectures it reads from, which rule proposals can read. */
 export type AgentDiagramOutput = {
   id: number
@@ -110,8 +117,8 @@ export type AgentDiagramOutput = {
 
 /** `POST /agent-configs/:id/imports`: nothing is stored. */
 export type AgentImportOutput = {
-  /** Each fits its question and differs from the current answer. */
-  answers: { questionnaireId: string; questionId: string; value: AnswerValue; evidence: string }[]
+  /** Ready-made rules to accept: each fits its group and is not held yet. */
+  ready: (AgentReadyRuleOutput & { evidence: string })[]
   rules: { section: string; text: string }[]
   /** The end of the file was cut to fit what the model can read. */
   truncated: boolean
@@ -119,15 +126,15 @@ export type AgentImportOutput = {
 
 /** `GET /agent-configs/:id`: the configuration and everything it is rendered from. */
 export type AgentConfigDetailOutput = AgentConfigOutput & {
-  /** The sections an accepted rule may go to, in render order. */
+  /** The sections one of the owner's own rules may go to, in render order. */
   ruleSections: string[]
-  answers: AgentAnswerOutput[]
+  /** The ready-made rules it holds, in catalog order. */
+  readyRules: AgentReadyRuleOutput[]
   /** In position order. */
   rules: AgentRuleOutput[]
   /** In id order. */
   roles: AgentRoleOutput[]
   latestGeneration: AgentGenerationSummaryOutput | null
-  outdatedQuestionnaires: OutdatedQuestionnaireOutput[]
   /** Its diagrams with content, architecture by architecture. */
   diagrams: AgentDiagramOutput[]
 }

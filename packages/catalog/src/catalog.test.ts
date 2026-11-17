@@ -1,11 +1,13 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { composeQuestionnaires, findQuestionnaire, QUESTIONNAIRES } from './questionnaires/index.ts'
+import { APPLIED_RULES } from './ready-rules.ts'
+import { findRuleGroup, RULE_PACKS } from './rule-packs/index.ts'
 import {
   isSlotAffinity,
-  type Question,
-  type Questionnaire,
-  questionnaireSchema,
+  type RuleGroup,
+  type RulePack,
+  rulePackSchema,
+  type SkillAffinity,
   skillAffinitySchema,
   skillSchema,
 } from './schemas.ts'
@@ -17,46 +19,43 @@ import { TARGET_TEMPLATES } from './targets/index.ts'
 import { TARGETS } from './targets.ts'
 import { CATALOG_VERSION } from './version.ts'
 
-const frontendReact = findQuestionnaire('frontend-react') as Questionnaire
+const frontendReact = RULE_PACKS.find((pack) => pack.id === 'frontend-react') as RulePack
+const GROUPS = RULE_PACKS.flatMap((pack) => pack.groups)
+
+/** Checks a slot affinity against the group that feeds its slot. */
+function expectAffinityFits(affinity: SkillAffinity, name: string) {
+  if (!isSlotAffinity(affinity)) return
+  const group = findRuleGroup(RULE_PACKS, affinity.slot)
+  expect(group, `${name}: no group feeds ${affinity.slot}`).toBeDefined()
+  const ids = group?.rules.map((rule) => rule.id) ?? []
+  for (const rule of [...affinity.values, ...(affinity.against ?? [])]) {
+    expect(ids, `${name}: ${affinity.slot}`).toContain(rule)
+  }
+}
 
 describe('the real catalog', () => {
   it.each(
-    QUESTIONNAIRES.map((questionnaire) => [questionnaire.id, questionnaire] as const),
-  )('%s passes its schema', (_id, questionnaire) => {
-    const result = questionnaireSchema.safeParse(questionnaire)
+    RULE_PACKS.map((pack) => [pack.id, pack] as const),
+  )('%s passes its schema', (_id, pack) => {
+    const result = rulePackSchema.safeParse(pack)
     expect(result.success ? [] : result.error.issues).toEqual([])
   })
 
-  it('has unique questionnaire ids', () => {
-    const ids = QUESTIONNAIRES.map((questionnaire) => questionnaire.id)
+  it('has unique pack ids', () => {
+    const ids = RULE_PACKS.map((pack) => pack.id)
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('feeds only registered slots, each from one questionnaire', () => {
-    const slots = QUESTIONNAIRES.flatMap((q) => q.questions.map((question) => question.slot))
+  it('feeds only registered slots, each from one group', () => {
+    const slots = GROUPS.map((group) => group.slot)
     for (const slot of slots) expect(Object.keys(SLOTS)).toContain(slot)
     expect(new Set(slots).size).toBe(slots.length)
+    for (const slot of slots) expect(findRuleGroup(RULE_PACKS, slot)?.slot).toBe(slot)
+    expect(findRuleGroup(RULE_PACKS, 'typescript.unknown')).toBeUndefined()
   })
 
-  it('still asks the eleven frontend-react questions of the spec first', () => {
-    const spec = frontendReact.questions.slice(0, 11)
-    expect(spec.map((question) => question.id)).toEqual([
-      'ts-any',
-      'ts-strict',
-      'components-size',
-      'state-management',
-      'styling',
-      'tests-level',
-      'comments',
-      'change-size',
-      'ask-before-act',
-      'package-manager',
-      'checks',
-    ])
-  })
-
-  it('adds questionnaires that combine with every other one, each with its own sections', () => {
-    expect(QUESTIONNAIRES.map((questionnaire) => questionnaire.id)).toEqual([
+  it('holds packs that combine with every other one, each with its own sections', () => {
+    expect(RULE_PACKS.map((pack) => pack.id)).toEqual([
       'frontend-react',
       'backend-node',
       'git-workflow',
@@ -67,24 +66,50 @@ describe('the real catalog', () => {
       'ai-agents',
       'frontend-performance',
     ])
-    for (const questionnaire of QUESTIONNAIRES) {
-      expect(questionnaire.questions.length).toBeGreaterThanOrEqual(5)
-    }
-    expect(composeQuestionnaires(QUESTIONNAIRES)).toMatchObject({ ok: true })
-    const own = QUESTIONNAIRES.flatMap((questionnaire) => questionnaire.sections)
+    for (const pack of RULE_PACKS) expect(pack.groups.length).toBeGreaterThanOrEqual(5)
+    const own = RULE_PACKS.flatMap((pack) => pack.sections)
     expect(new Set(own).size).toBe(own.length)
-    expect(sectionOrder(QUESTIONNAIRES).slice(3, -4)).toEqual(own)
+    for (const section of own) {
+      expect(SHARED_SECTIONS).not.toContain(section)
+      expect(RESERVED_SECTIONS).not.toContain(section)
+    }
+    expect(sectionOrder(RULE_PACKS).slice(3, -4)).toEqual(own)
   })
 
-  it('never reuses a question id across questionnaires', () => {
-    const ids = QUESTIONNAIRES.flatMap((q) => q.questions.map((question) => question.id))
-    expect(new Set(ids).size).toBe(ids.length)
+  it('keeps every line in English, on one line, without markers', () => {
+    for (const group of GROUPS) {
+      for (const line of [...group.rules.flatMap((rule) => rule.lines), ...(group.lines ?? [])]) {
+        expect(line).not.toMatch(/[\r\n]|coreloom-uml:|[àâçéèêëîïôûùüÿœ]/i)
+      }
+    }
   })
 
-  it('keeps every fragment in English, on one line, without markers', () => {
-    for (const question of QUESTIONNAIRES.flatMap((questionnaire) => questionnaire.questions)) {
-      for (const fragment of question.fragments) {
-        expect(fragment.text).not.toMatch(/[\r\n]|coreloom-uml:|[àâçéèêëîïôûùüÿœ]/i)
+  it('gives every applied slot a group, and every applied rule a place in it', () => {
+    for (const [slot, applied] of Object.entries(APPLIED_RULES)) {
+      const group = findRuleGroup(RULE_PACKS, slot)
+      expect(group, slot).toBeDefined()
+      if (applied === 'all') continue
+      const ids = group?.rules.map((rule) => rule.id) ?? []
+      for (const rule of applied) expect(ids, slot).toContain(rule)
+    }
+  })
+
+  it('writes `{value}` in a group line only for a group that holds one rule', () => {
+    for (const group of GROUPS) {
+      if (group.lines?.some((line) => line.includes('{value}'))) {
+        expect(group.pick, group.slot).toBe('one')
+      }
+    }
+  })
+
+  it('writes the text typed into a rule: an `input` rule has a line with `{value}`', () => {
+    for (const group of GROUPS) {
+      for (const rule of group.rules.filter((item) => item.input)) {
+        const lines = [...rule.lines, ...(group.lines ?? [])]
+        expect(
+          lines.some((line) => line.includes('{value}')),
+          `${group.slot}: ${rule.id}`,
+        ).toBe(true)
       }
     }
   })
@@ -120,34 +145,19 @@ describe('the real catalog', () => {
     }
   })
 
-  it('matches every skill affinity to the question that feeds its slot', () => {
-    const questions = QUESTIONNAIRES.flatMap((questionnaire) => questionnaire.questions)
+  it('matches every skill affinity to the group that feeds its slot', () => {
     for (const skill of SKILLS) {
-      for (const affinity of skill.affinities.filter(isSlotAffinity)) {
-        const question = questions.find((item) => item.slot === affinity.slot)
-        expect(question, `${skill.id}: no question feeds ${affinity.slot}`).toBeDefined()
-        if (affinity.scale) expect(question?.type).toBe('scale')
-        if (affinity.values) {
-          expect(['single', 'multi']).toContain(question?.type)
-          const options = question?.options?.map((option) => option.value) ?? []
-          for (const value of affinity.values) expect(options).toContain(value)
-        }
-      }
+      for (const affinity of skill.affinities) expectAffinityFits(affinity, skill.id)
     }
   })
 
-  it('gives every search query an affinity that passes the schema and fits its question', () => {
-    const questions = QUESTIONNAIRES.flatMap((questionnaire) => questionnaire.questions)
+  it('gives every search query an affinity that passes the schema and fits its group', () => {
     const queries = SKILL_SEARCH_PLAN.map((item) => item.query)
     expect(new Set(queries).size).toBe(queries.length)
     for (const { query, affinity } of SKILL_SEARCH_PLAN) {
       if (!affinity) continue
       expect(skillAffinitySchema.safeParse(affinity).success, query).toBe(true)
-      if (!isSlotAffinity(affinity)) continue
-      const question = questions.find((item) => item.slot === affinity.slot)
-      if (affinity.scale) expect(question?.type, query).toBe('scale')
-      const options = question?.options?.map((option) => option.value) ?? []
-      for (const value of affinity.values ?? []) expect(options, query).toContain(value)
+      expectAffinityFits(affinity, query)
     }
   })
 
@@ -164,98 +174,77 @@ describe('the real catalog', () => {
   })
 })
 
-describe('questionnaireSchema', () => {
-  const valid = {
-    ...frontendReact,
-    questions: [frontendReact.questions[0]],
-  }
+describe('rulePackSchema', () => {
+  const group = frontendReact.groups[0] as RuleGroup
+  const many = frontendReact.groups.find((item) => item.pick === 'many') as RuleGroup
+  const withGroups = (...groups: unknown[]) =>
+    rulePackSchema.safeParse({ ...frontendReact, groups }).success
+
+  it('accepts a pack of one group', () => {
+    expect(withGroups(group)).toBe(true)
+  })
 
   it('refuses an unknown slot', () => {
-    const questions = [{ ...frontendReact.questions[0], slot: 'typescript.unknown' }]
-    expect(questionnaireSchema.safeParse({ ...valid, questions }).success).toBe(false)
+    expect(withGroups({ ...group, slot: 'typescript.unknown' })).toBe(false)
   })
 
   it('refuses a section that is neither its own nor shared', () => {
-    const questions = [{ ...frontendReact.questions[0], section: 'Elsewhere' }]
-    expect(questionnaireSchema.safeParse({ ...valid, questions }).success).toBe(false)
+    expect(withGroups({ ...group, section: 'Elsewhere' })).toBe(false)
   })
 
   it('refuses to declare a shared or reserved section as its own', () => {
     for (const section of [...SHARED_SECTIONS, ...RESERVED_SECTIONS]) {
-      expect(questionnaireSchema.safeParse({ ...valid, sections: [section] }).success).toBe(false)
+      const pack = { ...frontendReact, groups: [group], sections: ['TypeScript', section] }
+      expect(rulePackSchema.safeParse(pack).success).toBe(false)
     }
   })
 
-  it('refuses a fragment condition that does not fit the question type', () => {
-    const question = {
-      ...frontendReact.questions[0],
-      fragments: [{ when: { equals: 'all' }, text: 'Never do this.' }],
-    }
-    expect(questionnaireSchema.safeParse({ ...valid, questions: [question] }).success).toBe(false)
+  it('refuses two groups feeding the same slot, and a rule id used twice', () => {
+    expect(withGroups(group, group)).toBe(false)
+    expect(withGroups({ ...group, rules: [group.rules[0], group.rules[0]] })).toBe(false)
   })
 
-  it('refuses an option value no fragment can match', () => {
-    const strict = frontendReact.questions[1]
-    const question = { ...strict, fragments: [{ when: { equals: 'maybe' }, text: 'Do this.' }] }
-    expect(questionnaireSchema.safeParse({ ...valid, questions: [question] }).success).toBe(false)
+  it('refuses a rule that writes nothing, a two-line line and a group without rule', () => {
+    const rule = { id: 'quiet', lines: [] }
+    expect(withGroups({ ...group, rules: [rule] })).toBe(false)
+    expect(withGroups({ ...group, rules: [rule], lines: ['Always do this.'] })).toBe(true)
+    expect(withGroups({ ...group, rules: [{ id: 'two', lines: ['One.\nTwo.'] }] })).toBe(false)
+    expect(withGroups({ ...group, rules: [] })).toBe(false)
   })
 
-  it('refuses a fragment without condition and a two-line fragment', () => {
-    const base = frontendReact.questions[0]
-    for (const fragment of [
-      { when: {}, text: 'Always do this.' },
-      { when: { scaleAtLeast: 4 }, text: 'Line one.\nLine two.' },
-    ]) {
-      const question = { ...base, fragments: [fragment] }
-      expect(questionnaireSchema.safeParse({ ...valid, questions: [question] }).success).toBe(false)
-    }
+  it('refuses a rule that stands alone in a group that holds one', () => {
+    const alone = { id: 'none', lines: ['Do nothing.'], alone: true }
+    expect(withGroups({ ...group, rules: [alone] })).toBe(false)
+    expect(withGroups({ ...many, rules: [alone] })).toBe(true)
+  })
+
+  it('refuses `{value}` in a line of a group that holds several rules', () => {
+    expect(withGroups({ ...many, lines: ['Use {value}.'] })).toBe(false)
+    expect(withGroups({ ...many, lines: ['Use them all.'] })).toBe(true)
+    expect(withGroups({ ...group, lines: ['Use {value}.'] })).toBe(true)
   })
 })
 
-describe('composeQuestionnaires', () => {
-  const backend: Questionnaire = {
-    ...frontendReact,
-    id: 'backend-node',
-    sections: ['Node', 'TypeScript'],
-    questions: [
-      { ...(frontendReact.questions[0] as Question), id: 'other-question', section: 'Node' },
-    ],
-  }
-
+describe('sectionOrder', () => {
   it('returns the sections in render order', () => {
-    const composition = composeQuestionnaires([frontendReact])
-    expect(composition).toMatchObject({
-      ok: true,
-      sections: [
-        'Project',
-        'Architecture',
-        'Working style',
-        ...frontendReact.sections,
-        'Testing',
-        'Workflow',
-        'Tooling',
-        'Project notes',
-      ],
-    })
-  })
-
-  it('refuses two questionnaires feeding the same slot', () => {
-    const composition = composeQuestionnaires([frontendReact, backend])
-    expect(composition.ok).toBe(false)
-    if (!composition.ok) expect(composition.problems[0]).toContain('typescript.any')
-  })
-
-  it('merges sections in questionnaire order without duplicates', () => {
-    const disjoint = { ...backend, questions: [] } as unknown as Questionnaire
-    expect(sectionOrder([frontendReact, disjoint]).slice(3, -4)).toEqual([
+    expect(sectionOrder([frontendReact])).toEqual([
+      'Project',
+      'Architecture',
+      'Working style',
       ...frontendReact.sections,
-      'Node',
+      'Testing',
+      'Workflow',
+      'Tooling',
+      'Project notes',
     ])
   })
 
-  it('refuses a questionnaire listed twice and an empty list', () => {
-    expect(composeQuestionnaires([frontendReact, frontendReact]).ok).toBe(false)
-    expect(composeQuestionnaires([]).ok).toBe(false)
+  it('merges sections in pack order without duplicates', () => {
+    const other = { sections: ['Node', 'TypeScript'] }
+    expect(sectionOrder([frontendReact, other]).slice(3, -4)).toEqual([
+      ...frontendReact.sections,
+      'Node',
+    ])
   })
 })
 
@@ -266,7 +255,7 @@ describe('skillSchema', () => {
     description: { en: 'A skill.', fr: 'Un skill.' },
     url: 'https://example.com/a-skill',
     targets: ['cursor'],
-    affinities: [{ slot: 'typescript.any', scale: { min: 4, max: 5 } }],
+    affinities: [{ slot: 'typescript.any', values: ['agree'], against: ['disagree'] }],
     origin: 'manual',
   }
 
@@ -288,11 +277,13 @@ describe('skillSchema', () => {
     }
   })
 
-  it('refuses an affinity with both or neither of scale and values, or an inverted range', () => {
+  it('refuses an affinity without values, with a scale, or with a rule both fitted and gone against', () => {
     for (const affinity of [
       { slot: 'typescript.any' },
-      { slot: 'typescript.any', scale: { min: 4, max: 5 }, values: ['x'] },
-      { slot: 'typescript.any', scale: { min: 5, max: 4 } },
+      { slot: 'typescript.any', values: [] },
+      { slot: 'typescript.any', values: ['agree'], against: [] },
+      { slot: 'typescript.any', scale: { min: 4, max: 5 } },
+      { slot: 'typescript.any', values: ['agree'], against: ['agree'] },
     ]) {
       expect(skillSchema.safeParse({ ...valid, affinities: [affinity] }).success).toBe(false)
     }

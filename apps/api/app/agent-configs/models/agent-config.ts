@@ -2,22 +2,19 @@ import { BaseModel, belongsTo, column, hasMany } from '@adonisjs/lucid/orm'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import type { DateTime } from 'luxon'
 import type { Target } from '#app/agent-configs/constants/agent-config'
-import AgentConfigAnswer from '#app/agent-configs/models/agent-config-answer'
 import AgentConfigGeneration from '#app/agent-configs/models/agent-config-generation'
+import AgentConfigReadyRule from '#app/agent-configs/models/agent-config-ready-rule'
 import AgentConfigRole from '#app/agent-configs/models/agent-config-role'
 import AgentConfigRule from '#app/agent-configs/models/agent-config-rule'
 import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
 
-/** A catalog questionnaire a configuration uses, at the version it was answered against. */
-export type AgentConfigQuestionnaire = { id: string; version: string }
-
 const json = { prepare: (value: unknown) => JSON.stringify(value) }
 
 /**
  * Agent conventions: what AGENTS.md and its pointer files are rendered from, in one of the
- * owner's projects (at most one per project) or outside any. Answers, accepted rules, notes and
- * targets are the source of truth; the files only exist in its generations.
+ * owner's projects (at most one per project) or outside any. Ready-made rules, the owner's own
+ * rules, notes, roles and targets are the source of truth; the files only exist in its generations.
  */
 export default class AgentConfig extends BaseModel {
   @column({ isPrimary: true })
@@ -34,15 +31,12 @@ export default class AgentConfig extends BaseModel {
   declare name: string
 
   @column(json)
-  declare questionnaires: AgentConfigQuestionnaire[]
-
-  @column(json)
   declare targets: Target[]
 
   @column()
   declare notes: string | null
 
-  /** Goes up on every change to answers, rules, notes, targets or questionnaires. */
+  /** Goes up on every change to ready-made rules, rules, roles, notes or targets. */
   @column()
   declare revision: number
 
@@ -58,8 +52,8 @@ export default class AgentConfig extends BaseModel {
   @belongsTo(() => Project)
   declare project: BelongsTo<typeof Project>
 
-  @hasMany(() => AgentConfigAnswer)
-  declare answers: HasMany<typeof AgentConfigAnswer>
+  @hasMany(() => AgentConfigReadyRule)
+  declare readyRules: HasMany<typeof AgentConfigReadyRule>
 
   @hasMany(() => AgentConfigRule)
   declare rules: HasMany<typeof AgentConfigRule>

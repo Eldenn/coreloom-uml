@@ -103,7 +103,6 @@ test.group('LLM calls with a subscription', (group) => {
       .json({
         name: 'Shop',
         projectId: project.id,
-        questionnaires: ['frontend-react'],
         targets: ['generic'],
       })
     created.assertStatus(201)
@@ -111,7 +110,7 @@ test.group('LLM calls with a subscription', (group) => {
       .post(`/agent-configs/${created.body().config.id}/proposals`)
       .headers(json)
       .loginAs(user)
-      .json({ provider: codex })
+      .json({ provider: codex, from: 'feedback', feedback: 'No raw fetch in a component.' })
     response.assertStatus(502)
     response.assertBodyContains({ reason: 'subscription_expired' })
   })

@@ -68,13 +68,13 @@ export const SKILL_SEARCH_PLAN: readonly SkillSearchQuery[] = [
   {
     query: 'typescript type safety',
     topic: SkillTopic.TypeScript,
-    affinity: { slot: 'typescript.any', scale: { min: 4, max: 5 } },
+    affinity: { slot: 'typescript.any', values: ['agree'], against: ['disagree'] },
   },
   // React
   {
     query: 'react composition',
     topic: SkillTopic.React,
-    affinity: { slot: 'react.granularity', scale: { min: 4, max: 5 } },
+    affinity: { slot: 'react.granularity', values: ['agree'], against: ['disagree'] },
   },
   {
     query: 'tanstack query',
@@ -105,12 +105,16 @@ export const SKILL_SEARCH_PLAN: readonly SkillSearchQuery[] = [
   {
     query: 'implementation plan',
     topic: SkillTopic.Workflow,
-    affinity: { slot: 'workflow.changes', scale: { min: 4, max: 5 } },
+    affinity: { slot: 'workflow.changes', values: ['agree'], against: ['disagree'] },
   },
   {
     query: 'brainstorming',
     topic: SkillTopic.Workflow,
-    affinity: { slot: 'workflow.autonomy', scale: { min: 4, max: 5 } },
+    affinity: {
+      slot: 'workflow.autonomy',
+      values: ['agree', 'ask-before-writing'],
+      against: ['disagree'],
+    },
   },
   // Tooling
   {

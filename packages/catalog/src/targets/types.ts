@@ -9,14 +9,14 @@ export type Recommendation = {
   body: string
 }
 
-/** What a target's settings and recommendations are derived from: answers, read by slot. */
+/** What a target's settings and recommendations are derived from: the ready-made rules held, read by slot. */
 export type TargetContext = {
-  /** `tooling.checks`, split into the commands that are safe to allow and to run in a hook. */
+  /** The `tooling.checks` rule's commands, split into the commands that are safe to allow and to run in a hook. */
   checks: string[]
-  /** Every package manager but the `tooling.package-manager` answer; empty without one. */
+  /** Every package manager but the `tooling.package-manager` rule held; empty without one. */
   otherPackageManagers: string[]
-  /** `workflow.autonomy`: 1 (decides alone) to 5 (asks first), `null` without an answer. */
-  autonomy: number | null
+  /** The `workflow.autonomy` rule held (`disagree`, `agree`, `ask-before-writing`), or `null`. */
+  autonomy: string | null
 }
 
 /**
@@ -26,9 +26,9 @@ export type TargetContext = {
  */
 export type TargetSettings = { path: string; content: string }
 
-/** What a role is rendered from besides the role itself: the answers, read by slot. */
+/** What a role is rendered from besides the role itself: the rules held, read by slot. */
 export type RoleContext = TargetContext & {
-  /** Whether the `security.sandbox` answer is `container`. */
+  /** Whether the `security.sandbox` rule held is `container`. */
   container: boolean
 }
 

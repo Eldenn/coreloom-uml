@@ -58,7 +58,7 @@ The generation also holds gates that apply to every commit, whatever tool wrote 
   If another tool already owns the hooks path (Husky, for instance), call the scripts from its
   hooks instead: `sh .githooks/commit-msg "$1"`.
 - **A GitHub Actions workflow**, `.github/workflows/agent-conventions.yml`, when the Git
-  workflow questionnaire asks for it: it runs `check` (below), then your checks. The block uses `#` markers; steps you add after it, at the same
+  workflow rule asking for it is held: it runs `check` (below), then your checks. The block uses `#` markers; steps you add after it, at the same
   indentation, are kept. `check` needs the `CORELOOM_UML_API_KEY` repository secret: without it (a pull request from a
   fork, or a secret not configured) that step is skipped with a warning and the others still
   run. An existing file of that name without a block is refused rather than appended to.
@@ -66,7 +66,7 @@ The generation also holds gates that apply to every commit, whatever tool wrote 
 Both are code that runs on your machine or in your CI, so every change to one is shown and
 confirmed first (or accepted with `--yes`).
 
-When the security questionnaire asks for a sandboxed development container, the generation also
+When the security rule for a sandboxed development container is held, the generation also
 holds `.devcontainer/devcontainer.json` (merged entry by entry like any JSON file, so it cannot hold
 comments) and `.devcontainer/init-firewall.sh`, the container's firewall. The script's block uses
 `#` markers: a line you add above it, such as `EXTRA_ALLOWED_DOMAINS="uml.example.com"`, is kept.
@@ -156,7 +156,7 @@ anything and never writes.
 When several apply, the first of 2, 4, 3 is returned (edited, then missing, then stale). `--json` prints one object instead of text: `ok`, `exitCode`, `generationId`,
 `latestGenerationId` and `files` (`path`, `state`).
 
-When the Git workflow questionnaire asks for it, the generation holds a GitHub Actions workflow
+When the Git workflow rule for it is held, the generation holds a GitHub Actions workflow
 that runs it, then your own checks: `.github/workflows/agent-conventions.yml`, written by `pull`.
 It reads the key from the `CORELOOM_UML_API_KEY` repository secret. In another CI, run
 `npx @coreloom-uml/cli@<version> check` with that variable set (pin the version you use).

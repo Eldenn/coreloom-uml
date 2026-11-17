@@ -69,7 +69,7 @@ export type GatesInput = {
   noAttribution: boolean
   /** Secrets are never committed (`git.never-commit`) or never handled (`security.secrets`). */
   secretScan: boolean
-  /** `git.ci-workflow` is `github-actions`: the workflow is asked for. Off without an answer. */
+  /** `git.ci-workflow` is `github-actions`: the workflow is asked for. Off without that rule. */
   ciWorkflow: boolean
 }
 
@@ -206,9 +206,9 @@ function workflow(input: GatesInput, commands: readonly string[]): GateFile {
 }
 
 /**
- * The hooks and the workflow the answers call for. A hook is rendered only when it has something
+ * The hooks and the workflow the rules held call for. A hook is rendered only when it has something
  * to check, and the workflow only when it is asked for: it runs in the owner's CI.
- * Only commands `splitCommands` kept go into a script, and no other text from an answer does.
+ * Only commands `splitCommands` kept go into a script, and no other text typed into a rule does.
  */
 export function renderGates(input: GatesInput): {
   files: GateFile[]
@@ -229,7 +229,7 @@ export function renderGates(input: GatesInput): {
     title: 'Check the conventions in CI',
     body: input.ciWorkflow
       ? `\`${CI_WORKFLOW_FILE}\` fails a build when the conventions in the repository are not the latest generation or were edited by hand, then runs your checks. Commit it with \`.coreloom-uml.json\`, and store an API key with the \`read\` ability as the \`CORELOOM_UML_API_KEY\` repository secret; without the secret that check is skipped with a warning.`
-      : `To fail a build when the conventions in the repository are not the latest generation or were edited by hand, run \`npx @coreloom-uml/cli@${CLI_CHECK_VERSION} check\` in your CI with the \`CORELOOM_UML_API_KEY\` secret, or ask for the generated GitHub Actions workflow in the Git workflow questionnaire.`,
+      : `To fail a build when the conventions in the repository are not the latest generation or were edited by hand, run \`npx @coreloom-uml/cli@${CLI_CHECK_VERSION} check\` in your CI with the \`CORELOOM_UML_API_KEY\` secret, or accept the GitHub Actions workflow rule in the Git workflow rules.`,
   })
   const files = input.ciWorkflow ? [...hooks, workflow(input, commands)] : hooks
   return { files, recommendations }

@@ -100,8 +100,8 @@ export interface ApiDefinition {
     show: typeof routes['agent_configs.show']
     update: typeof routes['agent_configs.update']
     destroy: typeof routes['agent_configs.destroy']
-    answers: {
-      update: typeof routes['agent_configs.answers.update']
+    readyRules: {
+      update: typeof routes['agent_configs.ready_rules.update']
     }
     rules: {
       store: typeof routes['agent_configs.rules.store']
@@ -146,9 +146,8 @@ export interface ApiDefinition {
       }
     }
   }
-  questionnaires: {
-    index: typeof routes['questionnaires.index']
-    show: typeof routes['questionnaires.show']
+  rulePacks: {
+    index: typeof routes['rule_packs.index']
   }
   rolePresets: {
     index: typeof routes['role_presets.index']

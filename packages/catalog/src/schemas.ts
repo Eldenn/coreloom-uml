@@ -11,231 +11,157 @@ export const localizedSchema = z.object({ en: z.string().min(1), fr: z.string().
 
 export type Localized = z.infer<typeof localizedSchema>
 
-export const QuestionType = {
-  Scale: 'scale',
-  Single: 'single',
-  Multi: 'multi',
-  Text: 'text',
-} as const
+/** How many rules of a group a configuration may hold: one, or any number. */
+export const RulePick = { One: 'one', Many: 'many' } as const
 
-export type QuestionType = (typeof QuestionType)[keyof typeof QuestionType]
+export type RulePick = (typeof RulePick)[keyof typeof RulePick]
 
-/** A scale answer goes from 1 ("strongly disagree") to 5 ("strongly agree"). */
-export const SCALE_MIN = 1
-export const SCALE_MAX = 5
-
-/** Longest free-text answer, and longest `{value}` once inlined in a fragment. */
-export const ANSWER_TEXT_MAX_LENGTH = 500
-export const FRAGMENT_VALUE_MAX_LENGTH = 200
+/** Longest text typed into a rule, and longest `{value}` once inlined in a line. */
+export const RULE_VALUE_MAX_LENGTH = 500
+export const LINE_VALUE_MAX_LENGTH = 200
 
 const KEBAB_CASE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
-const SEMVER = /^\d+\.\d+\.\d+$/
 
-const scaleBound = z.number().int().min(SCALE_MIN).max(SCALE_MAX)
+/** English, imperative, one line; may contain `{value}`. */
+const lineSchema = z
+  .string()
+  .min(3)
+  .max(300)
+  .refine((text) => !/[\r\n]/.test(text), { message: 'A line is one line' })
 
 /**
- * When a fragment applies. Every condition given must hold. `other` holds when a single-choice
- * answer is the free text of a `freeText` option rather than one of the listed values.
+ * A ready-made rule: the lines it writes in its group's section. `{value}` in a line is the text
+ * typed into the rule when it takes one (`input`), its id otherwise.
  */
-export const fragmentConditionSchema = z
+export const readyRuleSchema = z
   .object({
-    scaleAtLeast: scaleBound.optional(),
-    scaleAtMost: scaleBound.optional(),
-    equals: z.string().min(1).optional(),
-    includes: z.string().min(1).optional(),
-    other: z.literal(true).optional(),
-    answered: z.literal(true).optional(),
-  })
-  .strict()
-  .refine((when) => Object.values(when).some((value) => value !== undefined), {
-    message: 'A fragment needs at least one condition',
-  })
-
-export type FragmentCondition = z.infer<typeof fragmentConditionSchema>
-
-export const fragmentSchema = z
-  .object({
-    when: fragmentConditionSchema,
-    /** English, imperative, one line; may contain `{value}` for single and text answers. */
-    text: z
-      .string()
-      .min(3)
-      .max(300)
-      .refine((text) => !/[\r\n]/.test(text), { message: 'A fragment is one line' }),
-  })
-  .strict()
-
-export type Fragment = z.infer<typeof fragmentSchema>
-
-export const questionOptionSchema = z
-  .object({
-    value: z.string().regex(KEBAB_CASE),
-    label: localizedSchema,
-    /** Cannot be picked together with another option (multi only). */
-    exclusive: z.boolean().optional(),
-    /** Opens a text field whose content becomes the answer (single only). */
-    freeText: z.boolean().optional(),
-  })
-  .strict()
-
-export type QuestionOption = z.infer<typeof questionOptionSchema>
-
-export const questionSchema = z
-  .object({
+    /** Unique in its group, never reused once removed. */
     id: z.string().regex(KEBAB_CASE),
-    type: z.enum(QuestionType),
+    /** A short name; without one the screen shows the lines. */
+    label: localizedSchema.optional(),
+    lines: z.array(lineSchema),
+    /** The rule is accepted with a text typed by the owner. */
+    input: z.literal(true).optional(),
+    /** Cannot be held together with another rule of its group (`many` only). */
+    alone: z.literal(true).optional(),
+  })
+  .strict()
+
+export type ReadyRule = z.infer<typeof readyRuleSchema>
+
+/**
+ * The rules about one aspect of the work, identified by its slot. `lines` are written once,
+ * after the accepted rules' own, whenever the configuration holds a rule of the group.
+ */
+export const ruleGroupSchema = z
+  .object({
     slot: z.string().refine(isSlot, { message: 'Unknown slot: declare it in slots.ts' }),
     section: z.string().min(1),
     label: localizedSchema,
     help: localizedSchema.optional(),
-    options: z.array(questionOptionSchema).optional(),
-    required: z.boolean(),
-    fragments: z.array(fragmentSchema),
+    pick: z.enum(RulePick),
+    rules: z.array(readyRuleSchema).min(1),
+    lines: z.array(lineSchema).min(1).optional(),
   })
   .strict()
-  .superRefine((question, ctx) => {
-    const hasOptions = question.type === 'single' || question.type === 'multi'
-    if (hasOptions && (question.options?.length ?? 0) < 2) {
-      ctx.addIssue({ code: 'custom', path: ['options'], message: 'Needs at least two options' })
+  .superRefine((group, ctx) => {
+    const ids = group.rules.map((rule) => rule.id)
+    if (new Set(ids).size !== ids.length) {
+      ctx.addIssue({ code: 'custom', path: ['rules'], message: 'Duplicate rule id' })
     }
-    if (!hasOptions && question.options) {
-      ctx.addIssue({ code: 'custom', path: ['options'], message: `A ${question.type} has none` })
-    }
-    const values = question.options?.map((option) => option.value) ?? []
-    if (new Set(values).size !== values.length) {
-      ctx.addIssue({ code: 'custom', path: ['options'], message: 'Duplicate option value' })
-    }
-    question.options?.forEach((option, index) => {
-      if (option.exclusive && question.type !== 'multi') {
+    group.rules.forEach((rule, index) => {
+      if (rule.lines.length === 0 && !group.lines) {
         ctx.addIssue({
           code: 'custom',
-          path: ['options', index, 'exclusive'],
-          message: 'Only a multi-choice option can be exclusive',
+          path: ['rules', index, 'lines'],
+          message: 'A rule writes at least one line, its own or its group’s',
         })
       }
-      if (option.freeText && question.type !== 'single') {
+      if (rule.alone && group.pick !== RulePick.Many) {
         ctx.addIssue({
           code: 'custom',
-          path: ['options', index, 'freeText'],
-          message: 'Only a single-choice option can open a text field',
+          path: ['rules', index, 'alone'],
+          message: 'Only a rule of a `many` group can stand alone',
         })
       }
     })
-    if (question.options && question.options.filter((option) => option.freeText).length > 1) {
-      ctx.addIssue({ code: 'custom', path: ['options'], message: 'At most one freeText option' })
+    if (group.pick === RulePick.Many && group.lines?.some((line) => line.includes('{value}'))) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['lines'],
+        message: '`{value}` in a group line needs a `one` group',
+      })
     }
-    question.fragments.forEach((fragment, index) => {
-      for (const problem of fragmentProblems(question, fragment, values)) {
-        ctx.addIssue({ code: 'custom', path: ['fragments', index], message: problem })
-      }
-    })
   })
 
-export type Question = z.infer<typeof questionSchema>
+export type RuleGroup = z.infer<typeof ruleGroupSchema>
 
-function fragmentProblems(question: Question, fragment: Fragment, values: string[]): string[] {
-  const { when } = fragment
-  const problems: string[] = []
-  const isScale = question.type === 'scale'
-  if ((when.scaleAtLeast !== undefined || when.scaleAtMost !== undefined) && !isScale) {
-    problems.push('Scale conditions apply to scale questions only')
-  }
-  if (when.equals !== undefined) {
-    if (question.type !== 'single') problems.push('`equals` applies to single questions only')
-    else if (!values.includes(when.equals)) problems.push(`Unknown option: ${when.equals}`)
-  }
-  if (when.includes !== undefined) {
-    if (question.type !== 'multi') problems.push('`includes` applies to multi questions only')
-    else if (!values.includes(when.includes)) problems.push(`Unknown option: ${when.includes}`)
-  }
-  if (when.other && !question.options?.some((option) => option.freeText)) {
-    problems.push('`other` needs a freeText option')
-  }
-  if (fragment.text.includes('{value}') && question.type !== 'single' && question.type !== 'text') {
-    problems.push('`{value}` is only filled for single and text answers')
-  }
-  return problems
-}
-
-export const questionnaireSchema = z
+export const rulePackSchema = z
   .object({
     id: z.string().regex(KEBAB_CASE),
-    /** Bumped on any change to a question, an option or a fragment. */
-    version: z.string().regex(SEMVER),
     title: localizedSchema,
     description: localizedSchema,
-    /** Sections this questionnaire adds, in render order. */
+    /** Sections this pack adds, in render order. */
     sections: z.array(z.string().min(1)),
-    questions: z.array(questionSchema).min(1),
-    /** questionId → removed option → replacement option (`null` drops the answer). */
-    migrations: z.record(z.string(), z.record(z.string(), z.string().nullable())).optional(),
+    groups: z.array(ruleGroupSchema).min(1),
   })
   .strict()
-  .superRefine((questionnaire, ctx) => {
-    for (const section of questionnaire.sections) {
+  .superRefine((pack, ctx) => {
+    for (const section of pack.sections) {
       if (SHARED_SECTIONS.includes(section) || RESERVED_SECTIONS.includes(section)) {
         ctx.addIssue({
           code: 'custom',
           path: ['sections'],
-          message: `${section} is a shared or reserved section, not a questionnaire's own`,
+          message: `${section} is a shared or reserved section, not a pack's own`,
         })
       }
     }
-    const ids = new Set<string>()
     const slots = new Set<string>()
-    questionnaire.questions.forEach((question, index) => {
-      if (ids.has(question.id)) {
-        ctx.addIssue({ code: 'custom', path: ['questions', index, 'id'], message: 'Duplicate id' })
-      }
-      ids.add(question.id)
-      if (slots.has(question.slot)) {
+    pack.groups.forEach((group, index) => {
+      if (slots.has(group.slot)) {
         ctx.addIssue({
           code: 'custom',
-          path: ['questions', index, 'slot'],
-          message: 'Two questions feed the same slot',
+          path: ['groups', index, 'slot'],
+          message: 'Two groups feed the same slot',
         })
       }
-      slots.add(question.slot)
-      if (
-        !questionnaire.sections.includes(question.section) &&
-        !SHARED_SECTIONS.includes(question.section)
-      ) {
+      slots.add(group.slot)
+      if (!pack.sections.includes(group.section) && !SHARED_SECTIONS.includes(group.section)) {
         ctx.addIssue({
           code: 'custom',
-          path: ['questions', index, 'section'],
-          message: `Not one of the questionnaire's sections nor a shared one: ${question.section}`,
+          path: ['groups', index, 'section'],
+          message: `Not one of the pack's sections nor a shared one: ${group.section}`,
         })
       }
     })
   })
 
-export type Questionnaire = z.infer<typeof questionnaireSchema>
+export type RulePack = z.infer<typeof rulePackSchema>
+
+/** A ready-made rule a configuration holds: its group's slot, its id and, for an `input` rule, the typed text. */
+export const acceptedRuleSchema = z
+  .object({
+    slot: z.string().min(1),
+    rule: z.string().min(1),
+    value: z.string().nullable().optional(),
+  })
+  .strict()
+
+export type AcceptedRule = z.infer<typeof acceptedRuleSchema>
 
 /**
- * An answer: a scale value, a single choice or text, or the values of a multiple choice. A
- * single choice whose `freeText` option was picked stores the typed text.
- */
-export const answerValueSchema = z.union([z.number(), z.string(), z.array(z.string())])
-
-export type AnswerValue = z.infer<typeof answerValueSchema>
-
-/**
- * How a skill relates to one slot: a range on an agreement scale, or the options it fits. The
- * catalog test checks each against the question that feeds the slot.
+ * How a skill relates to one slot: the rules it fits (`values`) and the ones it goes against
+ * (`against`). The catalog test checks each against the group that feeds the slot.
  */
 export const slotAffinitySchema = z
   .object({
     slot: z.string().refine(isSlot, { message: 'Unknown slot: declare it in slots.ts' }),
-    scale: z
-      .object({ min: scaleBound, max: scaleBound })
-      .strict()
-      .refine((range) => range.min <= range.max, { message: '`min` is above `max`' })
-      .optional(),
-    values: z.array(z.string().regex(KEBAB_CASE)).min(1).optional(),
+    values: z.array(z.string().regex(KEBAB_CASE)).min(1),
+    against: z.array(z.string().regex(KEBAB_CASE)).min(1).optional(),
   })
   .strict()
-  .refine((affinity) => (affinity.scale === undefined) !== (affinity.values === undefined), {
-    message: 'An affinity has either a scale range or values',
+  .refine((affinity) => !affinity.against?.some((rule) => affinity.values.includes(rule)), {
+    message: 'A rule is both fitted and gone against',
   })
 
 export type SlotAffinity = z.infer<typeof slotAffinitySchema>

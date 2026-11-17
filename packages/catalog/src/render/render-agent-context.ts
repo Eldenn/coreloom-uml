@@ -1,9 +1,8 @@
-import { answerProblem, fragmentTexts } from '../answers.ts'
+import { type AppliedSlot, acceptedLines, acceptedProblem } from '../ready-rules.ts'
 import { roleMatrix } from '../roles/matrix.ts'
 import { type Right, type RightStatus, type Role, roleSchema } from '../roles/role.ts'
-import type { AnswerValue, Questionnaire } from '../schemas.ts'
+import type { AcceptedRule, RulePack } from '../schemas.ts'
 import { Section, sectionOrder } from '../sections.ts'
-import type { Slot } from '../slots.ts'
 import { PACKAGE_MANAGERS, splitCommands } from '../targets/commands.ts'
 import { TARGET_TEMPLATES } from '../targets/index.ts'
 import type { Recommendation, TargetContext } from '../targets/types.ts'
@@ -31,10 +30,11 @@ export type AgentContextProject = {
 
 export type AgentContextInput = {
   project: AgentContextProject
-  /** Resolved from the catalog, in the configuration's order. */
-  questionnaires: readonly Questionnaire[]
-  answers: readonly { questionnaireId: string; questionId: string; value: AnswerValue }[]
-  /** Accepted rules, in position order. */
+  /** The catalog's rule packs, in the order their sections are rendered in. */
+  packs: readonly RulePack[]
+  /** The ready-made rules the configuration holds, in any order. */
+  ready: readonly AcceptedRule[]
+  /** The owner's own rules, in position order. */
   rules: readonly { section: string; text: string }[]
   notes: string | null
   targets: readonly Target[]
@@ -59,8 +59,8 @@ export type AgentContextFile = {
 }
 
 export type AgentContextFragment = {
-  questionnaireId: string
-  questionId: string
+  slot: string
+  rule: string
   section: string
   text: string
 }
@@ -79,7 +79,7 @@ export type AgentContextOutput = {
   recommendations: Recommendation[]
   /** One entry per role and target that can run it: roles in input order, targets in catalog order. */
   roles: AgentContextRole[]
-  /** Every fragment the answers produced, in render order; `impact` compares them. */
+  /** Every line the ready-made rules wrote, in render order; `impact` compares them. */
   fragments: AgentContextFragment[]
 }
 
@@ -94,11 +94,11 @@ export const NOTES_INTRO = 'The notes below were written by the project owner.'
 /**
  * Renders a configuration into its files. Pure: no date, no id, no network, no randomness, so
  * the same input always gives the same bytes. Targets are taken in catalog order whatever the
- * input order, and an answer that does not fit its question, a rule whose section the
- * configuration does not have, or a role that does not fit its schema, is left out.
+ * input order, and ready-made rules that cannot be held together, a rule whose section the
+ * catalog does not have, or a role that does not fit its schema, is left out.
  */
 export function renderAgentContext(input: AgentContextInput): AgentContextOutput {
-  const sections = sectionOrder(input.questionnaires)
+  const sections = sectionOrder(input.packs)
   const bodies = new Map<string, string[]>(sections.map((section) => [section, []]))
 
   const fragments = collectFragments(input)
@@ -138,7 +138,7 @@ export function renderAgentContext(input: AgentContextInput): AgentContextOutput
   }
 
   const context = targetContext(input)
-  const container = slotAnswer(input, 'security.sandbox') === 'container'
+  const container = heldRule(input, 'security.sandbox') === 'container'
   for (const target of targets) {
     for (const settings of [TARGET_TEMPLATES[target].settings?.(context) ?? []].flat()) {
       files.push({
@@ -164,14 +164,10 @@ export function renderAgentContext(input: AgentContextInput): AgentContextOutput
   recommendations.push(...gates.recommendations)
 
   if (container) {
-    const text = (slot: Slot) => {
-      const value = slotAnswer(input, slot)
-      return typeof value === 'string' ? value : undefined
-    }
     const sandbox = renderSandbox({
       targets,
-      packageManager: text('tooling.package-manager'),
-      network: text('security.network'),
+      packageManager: heldRule(input, 'tooling.package-manager'),
+      network: heldRule(input, 'security.network'),
     })
     for (const { path, content } of sandbox.files) {
       files.push({
@@ -233,19 +229,11 @@ export function renderAgentContext(input: AgentContextInput): AgentContextOutput
 
 function collectFragments(input: AgentContextInput): AgentContextFragment[] {
   const fragments: AgentContextFragment[] = []
-  for (const questionnaire of input.questionnaires) {
-    for (const question of questionnaire.questions) {
-      const answer = input.answers.find(
-        (item) => item.questionnaireId === questionnaire.id && item.questionId === question.id,
-      )
-      if (!answer) continue
-      for (const text of fragmentTexts(question, answer.value)) {
-        fragments.push({
-          questionnaireId: questionnaire.id,
-          questionId: question.id,
-          section: question.section,
-          text,
-        })
+  for (const pack of input.packs) {
+    for (const group of pack.groups) {
+      const accepted = input.ready.filter((item) => item.slot === group.slot)
+      for (const { rule, text } of acceptedLines(group, accepted)) {
+        fragments.push({ slot: group.slot, rule, section: group.section, text })
       }
     }
   }
@@ -288,65 +276,61 @@ function describe(description: string | null): string {
   return text ? `: ${text}` : '.'
 }
 
-/** The answer feeding a slot, if it fits its question. */
-function slotAnswer(
-  input: Pick<AgentContextInput, 'questionnaires' | 'answers'>,
-  slot: Slot,
-): AnswerValue | undefined {
-  for (const questionnaire of input.questionnaires) {
-    const question = questionnaire.questions.find((item) => item.slot === slot)
-    if (!question) continue
-    const answer = input.answers.find(
-      (item) => item.questionnaireId === questionnaire.id && item.questionId === question.id,
-    )
-    if (answer && answerProblem(question, answer.value) === null) return answer.value
+type Held = Pick<AgentContextInput, 'packs' | 'ready'>
+
+/** The rules of a slot the configuration holds, when they can be held together. */
+function held(input: Held, slot: AppliedSlot): AcceptedRule[] {
+  for (const pack of input.packs) {
+    const group = pack.groups.find((item) => item.slot === slot)
+    if (!group) continue
+    const accepted = input.ready.filter((item) => item.slot === slot)
+    return acceptedProblem(group, accepted) === null ? accepted : []
   }
-  return undefined
+  return []
+}
+
+/** The id of the one rule held for a slot. */
+function heldRule(input: Held, slot: AppliedSlot): string | undefined {
+  return held(input, slot)[0]?.rule
 }
 
 /**
- * The repository's checks: the `tooling.checks` commands `splitCommands` keeps, the ones every
- * rendered settings file, hook and workflow runs.
+ * The repository's checks: the commands of the `tooling.checks` rule that `splitCommands` keeps,
+ * the ones every rendered settings file, hook and workflow runs.
  */
-export function repositoryChecks(
-  input: Pick<AgentContextInput, 'questionnaires' | 'answers'>,
-): string[] {
-  const checks = slotAnswer(input, 'tooling.checks')
+export function repositoryChecks(input: Held): string[] {
+  const checks = held(input, 'tooling.checks')[0]?.value
   return typeof checks === 'string' ? splitCommands(stripMarkers(checks)) : []
 }
 
 function targetContext(input: AgentContextInput): TargetContext {
-  const packageManager = slotAnswer(input, 'tooling.package-manager')
-  const autonomy = slotAnswer(input, 'workflow.autonomy')
+  const packageManager = heldRule(input, 'tooling.package-manager')
   return {
     checks: repositoryChecks(input),
     otherPackageManagers: PACKAGE_MANAGERS.some((manager) => manager === packageManager)
       ? PACKAGE_MANAGERS.filter((manager) => manager !== packageManager)
       : [],
-    autonomy: typeof autonomy === 'number' ? autonomy : null,
+    autonomy: heldRule(input, 'workflow.autonomy') ?? null,
   }
 }
 
-/** What the hooks and the CI workflow check: only what an answer states without ambiguity. */
+/** What the hooks and the CI workflow check: only what a rule states without ambiguity. */
 function gatesInput(
   input: AgentContextInput,
   checks: readonly string[],
   boundariesCommand: string | null,
 ): GatesInput {
-  const packageManager = slotAnswer(input, 'tooling.package-manager')
-  const attribution = slotAnswer(input, 'git.attribution')
-  const neverCommit = slotAnswer(input, 'git.never-commit')
-  const secrets = slotAnswer(input, 'security.secrets')
+  const packageManager = heldRule(input, 'tooling.package-manager')
   return {
     checks,
     packageManager: PACKAGE_MANAGERS.find((manager) => manager === packageManager) ?? null,
     boundariesCommand,
-    conventionalCommits: slotAnswer(input, 'git.commit-messages') === 'conventional',
-    noAttribution: typeof attribution === 'number' && attribution >= 4,
-    ciWorkflow: slotAnswer(input, 'git.ci-workflow') === 'github-actions',
+    conventionalCommits: heldRule(input, 'git.commit-messages') === 'conventional',
+    noAttribution: heldRule(input, 'git.attribution') === 'agree',
+    ciWorkflow: heldRule(input, 'git.ci-workflow') === 'github-actions',
     secretScan:
-      (Array.isArray(neverCommit) && neverCommit.includes('secrets')) ||
-      (typeof secrets === 'number' && secrets >= 4),
+      held(input, 'git.never-commit').some((item) => item.rule === 'secrets') ||
+      heldRule(input, 'security.secrets') === 'agree',
   }
 }
 

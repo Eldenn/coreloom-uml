@@ -27,7 +27,7 @@ import { suggestableSkills } from '#app/skills/services/skills-catalog'
  */
 export default class AgentConfigGenerationsController {
   /**
-   * Renders synchronously, with the skills that fit the answers; only the newest AGENT_GENERATIONS_KEPT
+   * Renders synchronously, with the skills that fit the rules held; only the newest AGENT_GENERATIONS_KEPT
    * generations are kept.
    */
   async store({ params, auth, response }: HttpContext) {

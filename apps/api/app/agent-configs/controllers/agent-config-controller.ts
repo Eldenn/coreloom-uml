@@ -1,14 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import db from '@adonisjs/lucid/services/db'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
-import {
-  composeQuestionnaires,
-  findQuestionnaire,
-  migrateAnswers,
-  type Questionnaire,
-} from '@coreloom-uml/catalog'
-import AgentConfig, { type AgentConfigQuestionnaire } from '#app/agent-configs/models/agent-config'
-import AgentConfigAnswer from '#app/agent-configs/models/agent-config-answer'
+import AgentConfig from '#app/agent-configs/models/agent-config'
 import { serializeAgentConfig } from '#app/agent-configs/serializers/agent-config-serializer'
 import {
   AGENT_CONFIG_NOT_FOUND,
@@ -46,15 +39,12 @@ export default class AgentConfigController {
     return response.ok(await paginate(query, { page, perPage }, serializeAgentConfig))
   }
 
-  /** Each questionnaire is taken at its current catalog version. */
   async store({ request, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
     const input = await request.validateUsing(createAgentConfigInput)
 
     const project = input.projectId ? await findOwnedProject(input.projectId, user) : null
     if (input.projectId && !project) return response.notFound(PROJECT_NOT_FOUND)
-    const composed = composeInput(input.questionnaires)
-    if ('refused' in composed) return response.unprocessableEntity(composed.refused)
 
     const config = await db.transaction(async (trx) => {
       if (project && (await lockProjectHasConfig(project.id, undefined, trx))) return null
@@ -63,7 +53,6 @@ export default class AgentConfigController {
           userId: user.id,
           projectId: project?.id ?? null,
           name: input.name,
-          questionnaires: composed.questionnaires.map(({ id, version }) => ({ id, version })),
           targets: input.targets,
           notes: cleanNotes(input.notes) ?? null,
           revision: 1,
@@ -84,17 +73,13 @@ export default class AgentConfigController {
   }
 
   /**
-   * Omitted fields are left as is. Questionnaires are taken at their current catalog version:
-   * answers saved against an older one go through its migrations, and answers to a
-   * questionnaire no longer listed are removed. `projectId` moves it (409 when that project
-   * already holds a configuration), null takes it out of its project.
+   * Omitted fields are left as is. `projectId` moves it (409 when that project already holds a
+   * configuration), null takes it out of its project.
    */
   async update({ params, request, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
     const input = await request.validateUsing(updateAgentConfigInput)
 
-    const composed = input.questionnaires ? composeInput(input.questionnaires) : null
-    if (composed && 'refused' in composed) return response.unprocessableEntity(composed.refused)
     if (input.projectId && !(await findOwnedProject(input.projectId, user)))
       return response.notFound(PROJECT_NOT_FOUND)
     const notes = cleanNotes(input.notes)
@@ -114,17 +99,11 @@ export default class AgentConfigController {
       }
       if (input.name !== undefined) config.name = input.name
 
-      const questionnaires = composed
-        ? composed.questionnaires.map(({ id, version }) => ({ id, version }))
-        : config.questionnaires
       const targets = input.targets ?? config.targets
       const changed =
-        JSON.stringify(config.questionnaires) !== JSON.stringify(questionnaires) ||
         JSON.stringify(config.targets) !== JSON.stringify(targets) ||
         (notes !== undefined && notes !== config.notes)
       if (changed) {
-        if (composed) await syncAnswers(config, composed.questionnaires, trx)
-        config.questionnaires = questionnaires
         config.targets = targets
         if (notes !== undefined) config.notes = notes
         config.revision += 1
@@ -138,7 +117,7 @@ export default class AgentConfigController {
     return response.ok(await describeAgentConfig(result.config))
   }
 
-  /** Its answers, rules and generations go with it. */
+  /** Its ready-made rules, rules, roles and generations go with it. */
   async destroy({ params, auth, response }: HttpContext) {
     const config = await findOwnedAgentConfig(params.id, auth.getUserOrFail())
     if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
@@ -165,57 +144,4 @@ async function lockProjectHasConfig(
 /** Blank notes are stored as none; omitted notes stay omitted. */
 function cleanNotes(notes: string | null | undefined) {
   return notes === undefined ? undefined : notes?.trim() ? notes : null
-}
-
-/** The questionnaires at their current catalog version, or why they cannot be used together. */
-function composeInput(ids: string[]) {
-  const unknown = ids.filter((id) => !findQuestionnaire(id))
-  if (unknown.length > 0) {
-    return { refused: { error: { message: `Unknown questionnaire: ${unknown.join(', ')}` } } }
-  }
-  const composition = composeQuestionnaires(ids.map((id) => findQuestionnaire(id) as Questionnaire))
-  if (!composition.ok) {
-    return {
-      refused: {
-        error: {
-          message: 'These questionnaires cannot be combined.',
-          problems: composition.problems,
-        },
-      },
-    }
-  }
-  return { questionnaires: composition.questionnaires }
-}
-
-/**
- * Brings the stored answers in line with the new list of questionnaires: answers to a dropped
- * questionnaire are removed, and answers to one whose version changed go through its migrations.
- */
-async function syncAnswers(
-  config: AgentConfig,
-  questionnaires: Questionnaire[],
-  trx: TransactionClientContract,
-) {
-  const kept = new Map(questionnaires.map((item) => [item.id, item]))
-  const before = new Map<string, AgentConfigQuestionnaire>(
-    config.questionnaires.map((item) => [item.id, item]),
-  )
-  const answers = await AgentConfigAnswer.query({ client: trx }).where('agentConfigId', config.id)
-
-  for (const answer of answers) {
-    const questionnaire = kept.get(answer.questionnaireId)
-    if (!questionnaire) {
-      await answer.useTransaction(trx).delete()
-      continue
-    }
-    if (before.get(questionnaire.id)?.version === questionnaire.version) continue
-    const [migrated] = migrateAnswers(questionnaire, [answer])
-    if (!migrated) {
-      await answer.useTransaction(trx).delete()
-    } else if (JSON.stringify(migrated.value) !== JSON.stringify(answer.value)) {
-      answer.useTransaction(trx)
-      answer.value = migrated.value
-      await answer.save()
-    }
-  }
 }

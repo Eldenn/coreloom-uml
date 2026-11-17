@@ -21,10 +21,8 @@ export const SKILLS_DATA: readonly Skill[] = [
       },
       {
         slot: 'workflow.changes',
-        scale: {
-          min: 4,
-          max: 5,
-        },
+        values: ['agree'],
+        against: ['disagree'],
       },
     ],
   },
@@ -75,10 +73,8 @@ export const SKILLS_DATA: readonly Skill[] = [
     affinities: [
       {
         slot: 'workflow.autonomy',
-        scale: {
-          min: 4,
-          max: 5,
-        },
+        values: ['agree', 'ask-before-writing'],
+        against: ['disagree'],
       },
     ],
   },
@@ -95,17 +91,13 @@ export const SKILLS_DATA: readonly Skill[] = [
     affinities: [
       {
         slot: 'workflow.changes',
-        scale: {
-          min: 4,
-          max: 5,
-        },
+        values: ['agree'],
+        against: ['disagree'],
       },
       {
         slot: 'workflow.autonomy',
-        scale: {
-          min: 4,
-          max: 5,
-        },
+        values: ['agree', 'ask-before-writing'],
+        against: ['disagree'],
       },
     ],
   },
@@ -122,10 +114,8 @@ export const SKILLS_DATA: readonly Skill[] = [
     affinities: [
       {
         slot: 'react.granularity',
-        scale: {
-          min: 4,
-          max: 5,
-        },
+        values: ['agree'],
+        against: ['disagree'],
       },
     ],
   },

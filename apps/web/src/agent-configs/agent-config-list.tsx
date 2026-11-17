@@ -133,7 +133,7 @@ function AgentConfigRow({
   )
 }
 
-/** Creates a configuration, in no project by default, then opens its questions. */
+/** Creates a configuration, in no project by default, then opens it. */
 export function CreateAgentConfigDialog({
   open,
   onOpenChange,
@@ -154,11 +154,7 @@ export function CreateAgentConfigDialog({
           defaultName=""
           onCreated={(id) => {
             onOpenChange(false)
-            void navigate({
-              to: '/agent-configs/$id',
-              params: { id },
-              search: { step: 'questions' },
-            })
+            void navigate({ to: '/agent-configs/$id', params: { id } })
           }}
         />
       </DialogContent>

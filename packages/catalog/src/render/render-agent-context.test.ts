@@ -1,8 +1,8 @@
 import { spawnSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
-import { findQuestionnaire } from '../questionnaires/index.ts'
 import type { Role } from '../roles/role.ts'
-import type { Questionnaire } from '../schemas.ts'
+import { RULE_PACKS } from '../rule-packs/index.ts'
+import type { AcceptedRule } from '../schemas.ts'
 import { TARGETS } from '../targets.ts'
 import { yamlString } from './gates.ts'
 import {
@@ -18,13 +18,12 @@ import {
   repositoryChecks,
 } from './render-agent-context.ts'
 
-const frontendReact = findQuestionnaire('frontend-react') as Questionnaire
+/** A rule held: its slot, its id and, for a rule that takes one, the typed text. */
+const held = (slot: string, rule: string, value?: string): AcceptedRule =>
+  value === undefined ? { slot, rule } : { slot, rule, value }
 
-const answer = (questionId: string, value: number | string | string[]) => ({
-  questionnaireId: 'frontend-react',
-  questionId,
-  value,
-})
+/** The checks typed into the `tooling.checks` rule. */
+const checks = (commands: string) => held('tooling.checks', 'run', commands)
 
 const INPUT: AgentContextInput = {
   project: {
@@ -42,19 +41,19 @@ const INPUT: AgentContextInput = {
       { title: 'Catalog', description: null, diagrams: [] },
     ],
   },
-  questionnaires: [frontendReact],
-  answers: [
-    answer('ts-any', 5),
-    answer('ts-strict', 'all'),
-    answer('components-size', 4),
-    answer('state-management', 'tanstack-query-only'),
-    answer('styling', 'tailwind'),
-    answer('tests-level', ['unit', 'e2e']),
-    answer('comments', 5),
-    answer('change-size', 3),
-    answer('ask-before-act', 4),
-    answer('package-manager', 'pnpm'),
-    answer('checks', 'pnpm lint && pnpm test'),
+  packs: RULE_PACKS,
+  ready: [
+    held('typescript.any', 'agree'),
+    held('typescript.strict', 'all'),
+    held('react.granularity', 'agree'),
+    held('react.state', 'tanstack-query-only'),
+    held('react.styling', 'tailwind'),
+    held('testing.levels', 'unit'),
+    held('testing.levels', 'e2e'),
+    held('style.comments', 'agree'),
+    held('workflow.autonomy', 'agree'),
+    held('tooling.package-manager', 'pnpm'),
+    checks('pnpm lint && pnpm test'),
   ],
   rules: [
     { section: 'React', text: 'Prefer `useSuspenseQuery` in routes.' },
@@ -128,44 +127,33 @@ describe('renderAgentContext', () => {
     expect(agentsMd(INPUT)).toMatchSnapshot()
   })
 
-  it('renders the back-end, Git and security questionnaires together', () => {
-    const ids = ['backend-node', 'git-workflow', 'security']
-    const questionnaires = ids.map((id) => findQuestionnaire(id) as Questionnaire)
-    const to = (
-      questionnaireId: string,
-      questionId: string,
-      value: number | string | string[],
-    ) => ({
-      questionnaireId,
-      questionId,
-      value,
-    })
-    const answers = [
-      to('backend-node', 'api-style', 'rest'),
-      to('backend-node', 'api-compatibility', 5),
-      to('backend-node', 'input-validation', 'zod'),
-      to('backend-node', 'error-handling', 'central-handler'),
-      to('backend-node', 'log-style', 'structured'),
-      to('backend-node', 'log-sensitive-data', 4),
-      to('backend-node', 'db-access', 'query-builder'),
-      to('backend-node', 'db-migrations', 'ask'),
-      to('backend-node', 'db-layering', 3),
-      to('git-workflow', 'branching', 'worktree'),
-      to('git-workflow', 'commit-messages', 'Subject under 50 characters, ticket id first'),
-      to('git-workflow', 'commit-permission', 'commit'),
-      to('git-workflow', 'pull-request-size', '400'),
-      to('git-workflow', 'never-commit', ['secrets', 'unrelated']),
-      to('git-workflow', 'history', 2),
-      to('git-workflow', 'attribution', 5),
-      to('security', 'secrets', 5),
-      to('security', 'new-dependencies', 'ask'),
-      to('security', 'version-pins', 'exact'),
-      to('security', 'input-trust', 1),
-      to('security', 'destructive-commands', 'ask'),
-      to('security', 'network-access', 'registry'),
-      to('security', 'sensitive-code', 4),
+  it('renders the back-end, Git and security rule packs together', () => {
+    const ready = [
+      held('api.style', 'rest'),
+      held('api.compatibility', 'agree'),
+      held('api.validation', 'zod'),
+      held('errors.handling', 'central-handler'),
+      held('logging.style', 'structured'),
+      held('logging.sensitive-data', 'agree'),
+      held('database.access', 'query-builder'),
+      held('database.migrations', 'ask'),
+      held('git.branching', 'worktree'),
+      held('git.commit-messages', 'other', 'Subject under 50 characters, ticket id first'),
+      held('git.commit-permission', 'commit'),
+      held('git.pull-request-size', '400'),
+      held('git.never-commit', 'secrets'),
+      held('git.never-commit', 'unrelated'),
+      held('git.history', 'disagree'),
+      held('git.attribution', 'agree'),
+      held('security.secrets', 'agree'),
+      held('security.dependencies', 'ask'),
+      held('security.version-pins', 'exact'),
+      held('security.input-trust', 'disagree'),
+      held('security.destructive-commands', 'ask'),
+      held('security.network', 'registry'),
+      held('security.sensitive-code', 'agree'),
     ]
-    expect(agentsMd({ ...INPUT, questionnaires, answers, rules: [] })).toMatchSnapshot()
+    expect(agentsMd({ ...INPUT, ready, rules: [] })).toMatchSnapshot()
   })
 
   it('orders sections and lists the architectures in Project', () => {
@@ -195,10 +183,18 @@ describe('renderAgentContext', () => {
     expect(text).not.toContain('Dropped.')
   })
 
-  it('omits empty sections, and a neutral answer produces nothing', () => {
+  it('omits empty sections, and rules that cannot be held together produce nothing', () => {
     const text = agentsMd({
       ...INPUT,
-      answers: [answer('ts-any', 3), answer('comments', 5)],
+      ready: [
+        held('style.comments', 'agree'),
+        // Two rules of a group that holds one, a rule the group does not have, a text nobody asked for.
+        held('typescript.any', 'agree'),
+        held('typescript.any', 'disagree'),
+        held('react.state', 'mobx'),
+        held('react.styling', 'tailwind', 'With plugins'),
+        held('unknown.slot', 'agree'),
+      ],
       rules: [],
       notes: null,
     })
@@ -206,10 +202,46 @@ describe('renderAgentContext', () => {
     expect(headings).toEqual(['Project', 'Working style'])
   })
 
+  it('writes the lines of a group in the group’s order, whatever the order they are held in', () => {
+    const levels = (ready: AcceptedRule[]) => {
+      const text = agentsMd({ ...INPUT, ready, rules: [], notes: null })
+      return text.slice(text.indexOf('## Testing'))
+    }
+    const unit = held('testing.levels', 'unit')
+    const e2e = held('testing.levels', 'e2e')
+    expect(levels([e2e, unit])).toBe(levels([unit, e2e]))
+    expect(
+      levels([unit, e2e])
+        .split('\n')
+        .filter((line) => line.startsWith('- ')),
+    ).toHaveLength(2)
+  })
+
+  it('writes the text typed into a rule escaped, and a group’s own line after its rules’', () => {
+    const text = agentsMd({
+      ...INPUT,
+      ready: [
+        held('react.state', 'other', 'MobX <b>stores</b>'),
+        held('git.never-commit', 'debug'),
+        held('tooling.package-manager', 'yarn'),
+      ],
+      rules: [],
+      notes: null,
+    })
+    expect(text).toContain('MobX \\<b\\>stores\\</b\\>')
+    expect(text).not.toContain('<b>')
+    expect(text).toContain(
+      '## Git\n\n- Never commit debug statements, temporary files or commented-out code.\n- Read the staged diff before every commit and stage files by name, never with `git add -A`.',
+    )
+    expect(text).toContain(
+      '- Use yarn for every install and script; never another package manager.',
+    )
+  })
+
   it('renders architecture rules right after Project', () => {
     const text = agentsMd({
       ...INPUT,
-      answers: [answer('comments', 5)],
+      ready: [held('style.comments', 'agree')],
       rules: [{ section: 'Architecture', text: '`billing` never imports from `auth`.' }],
       notes: null,
     })
@@ -346,17 +378,9 @@ describe('renderAgentContext', () => {
       project: { ...INPUT.project, name: marker },
       notes: `${marker}\n<!-- coreloom-uml:begin -->`,
       rules: [{ section: 'React', text: marker }],
-      answers: [answer('checks', marker)],
+      ready: [checks(marker), held('react.state', 'other', marker)],
     })
     for (const file of output.files) expect(() => findManagedBlock(file.content)).not.toThrow()
-  })
-
-  it('never renders free-text details, which are not part of the input', () => {
-    const withDetails = {
-      ...INPUT,
-      answers: INPUT.answers.map((item) => ({ ...item, details: 'Toujours en français' })),
-    }
-    expect(agentsMd(withDetails)).not.toContain('français')
   })
 
   it('hashes each block as the CLI will', () => {
@@ -405,7 +429,7 @@ describe('renderAgentContext', () => {
   const WORKFLOW = '.github/workflows/agent-conventions.yml'
   const PRE_COMMIT = '.githooks/pre-commit'
 
-  it('renders the settings each tool enforces from the tooling and autonomy answers', () => {
+  it('renders the settings each tool enforces from the tooling and autonomy rules', () => {
     const input: AgentContextInput = { ...INPUT, targets: ['codex', 'claude-code', 'gemini-cli'] }
     expect(settings(input, '.claude/settings.json')).toMatchSnapshot()
     expect(settings(input, '.codex/config.toml')).toMatchSnapshot()
@@ -424,39 +448,43 @@ describe('renderAgentContext', () => {
   })
 
   it('puts Codex in a read-only sandbox only when the assistant always asks first', () => {
-    const autonomy = (value: number) => ({
+    const autonomy = (rule: string) => ({
       ...INPUT,
       targets: ['codex' as const],
-      answers: [answer('ask-before-act', value)],
+      ready: [held('workflow.autonomy', rule)],
     })
-    expect(settings(autonomy(5), '.codex/config.toml')).toContain('sandbox_mode = "read-only"')
-    expect(settings(autonomy(1), '.codex/config.toml')).toContain('"workspace-write"')
-    expect(settings({ ...autonomy(1), answers: [] }, '.codex/config.toml')).toBeUndefined()
+    expect(settings(autonomy('ask-before-writing'), '.codex/config.toml')).toContain(
+      'sandbox_mode = "read-only"',
+    )
+    expect(settings(autonomy('agree'), '.codex/config.toml')).toContain('"workspace-write"')
+    expect(settings(autonomy('disagree'), '.codex/config.toml')).toContain('"workspace-write"')
+    expect(settings({ ...autonomy('agree'), ready: [] }, '.codex/config.toml')).toBeUndefined()
+    expect(settings(autonomy('sometimes'), '.codex/config.toml')).toBeUndefined()
   })
 
-  it('forbids the default commands in Codex rules whatever the answers', () => {
-    const rules = (answers: AgentContextInput['answers']) =>
-      settings({ ...INPUT, targets: ['codex'], answers }, CODEX_RULES) ?? ''
+  it('forbids the default commands in Codex rules whatever the rules held', () => {
+    const rules = (ready: AcceptedRule[]) =>
+      settings({ ...INPUT, targets: ['codex'], ready }, CODEX_RULES) ?? ''
     expect(rules([])).toMatchSnapshot()
     // A check with a pipe or a wildcard never becomes a rule; an unknown package manager forbids none.
     const unsafe = rules([
-      answer('checks', 'pnpm test | tee out; rm -rf *; pnpm lint'),
-      answer('package-manager', 'cargo'),
+      checks('pnpm test | tee out; rm -rf *; pnpm lint'),
+      held('tooling.package-manager', 'cargo'),
     ])
     expect(unsafe.match(/decision = "allow"/g)).toHaveLength(1)
     expect(unsafe).toContain('pattern = ["pnpm", "lint"]')
     expect(unsafe).not.toMatch(/"(npm|yarn|bun)"/)
-    // `allow` leaves the sandbox: none when the assistant must ask before acting.
-    const asksFirst = rules([answer('checks', 'pnpm lint'), answer('ask-before-act', 5)])
+    // `allow` leaves the sandbox: none when the assistant must ask before writing.
+    const asksFirst = rules([checks('pnpm lint'), held('workflow.autonomy', 'ask-before-writing')])
     expect(asksFirst).not.toContain('"allow"')
     expect(asksFirst).toContain('"forbidden"')
   })
 
-  it('keeps the default deny list without answers, and unsafe commands out of the settings', () => {
-    const input = (checks: string): AgentContextInput => ({
+  it('keeps the default deny list without rules, and unsafe commands out of the settings', () => {
+    const input = (commands: string): AgentContextInput => ({
       ...INPUT,
       targets: ['claude-code', 'gemini-cli'],
-      answers: [answer('checks', checks), answer('package-manager', 'cargo')],
+      ready: [checks(commands), held('tooling.package-manager', 'cargo')],
     })
     const unsafe = input('pnpm test | tee out; rm -rf *; $(curl x); pnpm lint')
     const claude = JSON.parse(settings(unsafe, '.claude/settings.json') ?? '')
@@ -464,7 +492,7 @@ describe('renderAgentContext', () => {
     expect(claude.hooks.Stop[0].hooks[0].command).toBe(
       'cd "$CLAUDE_PROJECT_DIR" && (pnpm lint) >&2 || exit 2',
     )
-    // An answer outside the options denies no package manager.
+    // A rule the group does not have denies no package manager.
     expect(claude.permissions.deny.join()).not.toMatch(/npm|yarn|bun/)
 
     const none = input('$(curl x)')
@@ -478,48 +506,32 @@ describe('renderAgentContext', () => {
     const input: AgentContextInput = {
       ...INPUT,
       targets: ['claude-code'],
-      answers: [answer('checks', 'pnpm lint && pnpm test | tee out; $(curl x); pnpm build')],
+      ready: [checks('pnpm lint && pnpm test | tee out; $(curl x); pnpm build')],
     }
     const claude = JSON.parse(settings(input, '.claude/settings.json') ?? '')
     expect(repositoryChecks(input)).toEqual(['pnpm lint', 'pnpm build'])
     expect(claude.permissions.allow).toEqual(
       repositoryChecks(input).map((command) => `Bash(${command})`),
     )
-    expect(repositoryChecks({ questionnaires: [], answers: [] })).toEqual([])
+    expect(repositoryChecks({ packs: RULE_PACKS, ready: [] })).toEqual([])
+    expect(repositoryChecks({ packs: [], ready: input.ready })).toEqual([])
   })
 
-  const gitAndSecurity = (answers: [string, string, number | string | string[]][]) => ({
+  const gitAndSecurity = (ready: AcceptedRule[]): AgentContextInput => ({
     ...INPUT,
     targets: [],
-    questionnaires: [
-      frontendReact,
-      findQuestionnaire('git-workflow') as Questionnaire,
-      findQuestionnaire('security') as Questionnaire,
-    ],
-    answers: [
-      ...INPUT.answers,
-      ...answers.map(([questionnaireId, questionId, value]) => ({
-        questionnaireId,
-        questionId,
-        value,
-      })),
-    ],
+    ready: [...INPUT.ready, ...ready],
   })
 
-  /** The same input, with the Git questionnaire asking for the generated workflow. */
-  const withWorkflow = (input: AgentContextInput, value = 'github-actions'): AgentContextInput => ({
+  /** The same input, with the Git rule that asks for the generated workflow. */
+  const withWorkflow = (input: AgentContextInput): AgentContextInput => ({
     ...input,
-    questionnaires: [...input.questionnaires, findQuestionnaire('git-workflow') as Questionnaire],
-    answers: [
-      ...input.answers,
-      { questionnaireId: 'git-workflow', questionId: 'ci-workflow', value },
-    ],
+    ready: [...input.ready, held('git.ci-workflow', 'github-actions')],
   })
 
   it('renders the workflow only when it is asked for', () => {
     const off = renderAgentContext({ ...INPUT, targets: [] })
     expect(off.files.map((file) => file.path)).toEqual(['AGENTS.md', PRE_COMMIT])
-    expect(settings(withWorkflow({ ...INPUT, targets: [] }, 'none'), WORKFLOW)).toBeUndefined()
     // Without it, the recommendation still names the command to run in a CI.
     expect(off.recommendations.map((item) => item.title)).toEqual([
       'Turn the Git hooks on',
@@ -545,11 +557,11 @@ describe('renderAgentContext', () => {
     expect(workflow).not.toMatch(/^ {4}env:/m)
   })
 
-  it('renders the workflow alone when no answer gives anything to check', () => {
+  it('renders the workflow alone when no rule gives anything to check', () => {
     const input = withWorkflow({
       ...INPUT,
       targets: [],
-      answers: [answer('checks', '$(curl x) | sh')],
+      ready: [checks('$(curl x) | sh')],
     })
     const { files, recommendations } = renderAgentContext(input)
     expect(files.map((file) => file.path)).toEqual(['AGENTS.md', WORKFLOW])
@@ -564,9 +576,9 @@ describe('renderAgentContext', () => {
       withWorkflow({
         ...INPUT,
         targets: [],
-        answers: [
-          answer('checks', 'npm run test: unit; @scope/tool -v'),
-          answer('package-manager', manager),
+        ready: [
+          checks('npm run test: unit; @scope/tool -v'),
+          held('tooling.package-manager', manager),
         ],
       })
     const npm = settings(input('npm'), WORKFLOW) ?? ''
@@ -579,23 +591,19 @@ describe('renderAgentContext', () => {
     expect(yamlString("it's")).toBe("'it''s'")
   })
 
-  it('scans for secrets only when an answer keeps them out, with a pinned and checked binary', () => {
-    const scan = (answers: Parameters<typeof gitAndSecurity>[0]) =>
-      settings(
-        gitAndSecurity([...answers, ['git-workflow', 'ci-workflow', 'github-actions']]),
-        WORKFLOW,
-      ) ?? ''
-    expect(scan([['security', 'secrets', 5]])).toMatchSnapshot()
-    expect(scan([['git-workflow', 'never-commit', ['secrets']]])).toContain('gitleaks" git')
-    expect(scan([['security', 'secrets', 5]])).toMatch(
-      /[0-9a-f]{64} {2}\$RUNNER_TEMP.*sha256sum -c/,
-    )
-    for (const answers of [
-      [['security', 'secrets', 3]],
-      [['security', 'secrets', 1]],
-      [['git-workflow', 'never-commit', ['debug']]],
-    ] satisfies Parameters<typeof gitAndSecurity>[0][]) {
-      expect(scan(answers)).not.toContain('gitleaks')
+  it('scans for secrets only when a rule keeps them out, with a pinned and checked binary', () => {
+    const scan = (ready: AcceptedRule[]) =>
+      settings(withWorkflow(gitAndSecurity(ready)), WORKFLOW) ?? ''
+    const secrets = held('security.secrets', 'agree')
+    expect(scan([secrets])).toMatchSnapshot()
+    expect(scan([held('git.never-commit', 'secrets')])).toContain('gitleaks" git')
+    expect(scan([secrets])).toMatch(/[0-9a-f]{64} {2}\$RUNNER_TEMP.*sha256sum -c/)
+    for (const ready of [
+      [],
+      [held('security.secrets', 'disagree')],
+      [held('git.never-commit', 'debug')],
+    ]) {
+      expect(scan(ready)).not.toContain('gitleaks')
     }
   })
 
@@ -604,7 +612,7 @@ describe('renderAgentContext', () => {
       {
         ...INPUT,
         targets: [],
-        answers: [answer('checks', 'pnpm test | tee out; rm -rf *; pnpm lint')],
+        ready: [checks('pnpm test | tee out; rm -rf *; pnpm lint')],
       },
       PRE_COMMIT,
     )
@@ -613,25 +621,26 @@ describe('renderAgentContext', () => {
   })
 
   /** Runs the rendered commit-msg hook on a message, as Git does; `null` when none is rendered. */
-  const commitMsg = (answers: Parameters<typeof gitAndSecurity>[0], message = '') => {
-    const hook = settings(gitAndSecurity(answers), '.githooks/commit-msg')
+  const commitMsg = (ready: AcceptedRule[], message = '') => {
+    const hook = settings(gitAndSecurity(ready), '.githooks/commit-msg')
     if (hook === undefined) return null
     const script = `printf '%s' "$1" > "$0.msg"; sh -c "$2" hook "$0.msg"; code=$?; rm -f "$0.msg"; exit $code`
     const file = `${process.env.TMPDIR ?? '/tmp'}/coreloom-commit-msg-${process.pid}`
     return spawnSync('sh', ['-c', script, file, message, `#!/bin/sh\n${hook}`]).status
   }
 
-  it('renders a commit-msg hook only for what an answer states', () => {
+  it('renders a commit-msg hook only for what a rule states', () => {
     expect(commitMsg([])).toBeNull()
-    expect(commitMsg([['git-workflow', 'commit-messages', 'imperative']])).toBeNull()
-    expect(commitMsg([['git-workflow', 'commit-messages', 'Ticket id first']])).toBeNull()
-    expect(commitMsg([['git-workflow', 'attribution', 3]])).toBeNull()
-    expect(commitMsg([['git-workflow', 'attribution', 1]])).toBeNull()
+    expect(commitMsg([held('git.commit-messages', 'imperative')])).toBeNull()
+    expect(commitMsg([held('git.commit-messages', 'other', 'Ticket id first')])).toBeNull()
+    // Typed into the rule, the name of a convention is a text, not the rule that checks it.
+    expect(commitMsg([held('git.commit-messages', 'other', 'conventional')])).toBeNull()
+    expect(commitMsg([held('git.attribution', 'disagree')])).toBeNull()
     expect(
       settings(
         gitAndSecurity([
-          ['git-workflow', 'commit-messages', 'conventional'],
-          ['git-workflow', 'attribution', 4],
+          held('git.commit-messages', 'conventional'),
+          held('git.attribution', 'agree'),
         ]),
         '.githooks/commit-msg',
       ),
@@ -640,7 +649,7 @@ describe('renderAgentContext', () => {
 
   it.skipIf(process.platform === 'win32')('enforces Conventional Commits on the subject', () => {
     const run = (message: string) =>
-      commitMsg([['git-workflow', 'commit-messages', 'conventional']], message)
+      commitMsg([held('git.commit-messages', 'conventional')], message)
     expect(run('feat(api): add the thing\n\nBecause.\n')).toBe(0)
     expect(run('fix!: drop the old flag')).toBe(0)
     expect(run('# a comment first\n\nchore: tidy\n')).toBe(0)
@@ -649,12 +658,12 @@ describe('renderAgentContext', () => {
     expect(run('Add the thing')).toBe(1)
     expect(run('feat:missing space')).toBe(1)
     expect(run('Feat: capital')).toBe(1)
-    // Without the attribution answer, a trailer is not this hook's business.
+    // Without the attribution rule, a trailer is not this hook's business.
     expect(run('feat: x\n\nCo-Authored-By: Claude <noreply@anthropic.com>')).toBe(0)
   })
 
   it.skipIf(process.platform === 'win32')('refuses a commit that credits an assistant', () => {
-    const run = (message: string) => commitMsg([['git-workflow', 'attribution', 5]], message)
+    const run = (message: string) => commitMsg([held('git.attribution', 'agree')], message)
     expect(run('Add the thing\n\nCo-authored-by: Ada Lovelace <ada@example.com>\n')).toBe(0)
     // A person may be called Claude: only the assistant's own signature is refused.
     expect(run('Add the thing\n\nCo-authored-by: Claude Dupont <claude@example.com>\n')).toBe(0)
@@ -695,23 +704,32 @@ describe('renderAgentContext', () => {
     expect(files.some((file) => file.path.includes('mcp'))).toBe(false)
   })
 
-  it('reports each fragment with its question and section', () => {
+  it('reports each fragment with its slot, rule and section', () => {
     const { fragments } = renderAgentContext(INPUT)
     expect(fragments[0]).toEqual({
-      questionnaireId: 'frontend-react',
-      questionId: 'ts-any',
+      slot: 'typescript.any',
+      rule: 'agree',
       section: 'TypeScript',
       text: 'Never use `any`; prefer `unknown` with narrowing or an explicit type.',
     })
-    expect(fragments.some((fragment) => fragment.questionId === 'change-size')).toBe(false)
+    expect(fragments.some((fragment) => fragment.slot === 'workflow.changes')).toBe(false)
+    // A group's own line is reported with the rule that brought it.
+    expect(fragments.filter((fragment) => fragment.slot === 'tooling.package-manager')).toEqual([
+      {
+        slot: 'tooling.package-manager',
+        rule: 'pnpm',
+        section: 'Tooling',
+        text: 'Use pnpm for every install and script; never another package manager.',
+      },
+    ])
   })
 
-  it('changes only the TypeScript section of AGENTS.md when ts-any goes from 5 to 1', () => {
+  it('changes only the TypeScript section of AGENTS.md when the rule about `any` changes', () => {
     const before = renderAgentContext(INPUT)
     const after = renderAgentContext({
       ...INPUT,
-      answers: INPUT.answers.map((item) =>
-        item.questionId === 'ts-any' ? answer('ts-any', 1) : item,
+      ready: INPUT.ready.map((item) =>
+        item.slot === 'typescript.any' ? held('typescript.any', 'disagree') : item,
       ),
     })
     expect(after.files[0]?.blockHash).not.toBe(before.files[0]?.blockHash)
