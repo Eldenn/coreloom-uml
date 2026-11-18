@@ -1,7 +1,9 @@
 // Import: the user's own model reads a conventions file pasted here and proposes ready-made rules
 // to hold (added together; one that would replace a rule already held starts unchecked) and rules
 // of the owner's own (accepted one by one, as proposals). Nothing is stored before that.
-import { FileInputIcon } from 'lucide-react'
+// Behind the `web-research` flag the text can also come from the web: the model reads the pages a
+// request names from a sandbox, and what it found goes through the same import and the same review.
+import { CheckIcon, FileInputIcon, GlobeIcon, XIcon } from 'lucide-react'
 import * as React from 'react'
 
 import { ProposalsFailed, ProposalsReview } from '@/agent-configs/agent-config-proposals'
@@ -10,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 import {
   Sheet,
   SheetContent,
@@ -23,7 +26,16 @@ import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { type AgentConfig, type RulePack, useSaveReadyRules } from '@/lib/agent-configs'
 import { getErrorMessage } from '@/lib/client'
-import { type ImportedReadyRule, useImportAgentFile, useStoredProvider } from '@/lib/llm-provider'
+import { useFeature } from '@/lib/feature-flags'
+import {
+  type ImportedReadyRule,
+  type ResearchSource,
+  type ResearchStep,
+  useAgentResearch,
+  useImportAgentFile,
+  useResearchProgress,
+  useStoredProvider,
+} from '@/lib/llm-provider'
 import { useLocale, useT } from '@/lib/locale'
 import { type Choice, chooseRule, fillValue, heldBySlot } from '@/lib/ready-rules'
 
@@ -34,7 +46,13 @@ interface Result {
   ready: ImportedReadyRule[]
   rules: { id: string; section: string; text: string; basedOn: null }[]
   truncated: boolean
+  /** The pages a web research read; `null` for a file. */
+  sources: ResearchSource[] | null
 }
+
+type Mode = 'file' | 'web'
+/** Longest request the API takes (`RESEARCH_REQUEST_MAX_LENGTH`). */
+const REQUEST_MAX_LENGTH = 2000
 
 /** The rules a group holds once a proposed one is added to them. */
 function withProposed(
@@ -59,6 +77,10 @@ export function AgentFileImport({
   const provider = useStoredProvider()
   const [open, setOpen] = React.useState(false)
   const [content, setContent] = React.useState('')
+  const webResearch = useFeature('web-research')
+  const [mode, setMode] = React.useState<Mode>('file')
+  const [request, setRequest] = React.useState('')
+  const research = useAgentResearch(configId)
   const [result, setResult] = React.useState<Result | null>(null)
   const [checked, setChecked] = React.useState<Set<string>>(() => new Set())
   const read = useImportAgentFile(configId)
@@ -69,9 +91,15 @@ export function AgentFileImport({
 
   if (!provider) return null
 
-  const run = () => {
+  // The API refuses the ChatGPT subscription: it is not known to drive the sandbox's tools.
+  const canResearch = provider.kind !== 'openai-codex'
+  const web = webResearch && mode === 'web'
+  const pending = research.isPending || read.isPending
+  const failure = research.error ?? read.error
+
+  const propose = (text: string, sources: ResearchSource[] | null) => {
     read.mutate(
-      { provider, content },
+      { provider, content: text, origin: sources ? 'research' : 'file' },
       {
         onSuccess: (body) => {
           const held = heldBySlot(config.readyRules)
@@ -90,7 +118,30 @@ export function AgentFileImport({
               basedOn: null,
             })),
             truncated: body.truncated,
+            sources,
           })
+        },
+      },
+    )
+  }
+
+  const run = () => {
+    if (!web) {
+      propose(content, null)
+      return
+    }
+    // The pages were read and only the proposals failed: the same request keeps its findings
+    // instead of paying for the research again.
+    if (research.data && read.isError && research.variables.request === request) {
+      propose(research.data.findings, research.data.sources)
+      return
+    }
+    read.reset()
+    research.mutate(
+      { provider, request },
+      {
+        onSuccess: (body) => {
+          propose(body.findings, body.sources)
         },
       },
     )
@@ -99,6 +150,7 @@ export function AgentFileImport({
   const reset = () => {
     setResult(null)
     read.reset()
+    research.reset()
   }
 
   return (
@@ -120,85 +172,330 @@ export function AgentFileImport({
           </SheetHeader>
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4">
             {!result && (
-              <Field>
-                <FieldLabel htmlFor="agent-file-import">{t.llm.importLabel}</FieldLabel>
-                <Textarea
-                  id="agent-file-import"
-                  className="min-h-64 font-mono text-xs"
-                  maxLength={50_000}
-                  value={content}
-                  disabled={read.isPending}
-                  onChange={(event) => {
-                    setContent(event.target.value)
-                  }}
-                />
-              </Field>
+              <ImportInput
+                model={provider.model}
+                webResearch={webResearch}
+                web={web}
+                canResearch={canResearch}
+                pending={pending}
+                content={content}
+                onContentChange={setContent}
+                request={request}
+                onRequestChange={setRequest}
+                onModeChange={(next) => {
+                  setMode(next)
+                  reset()
+                }}
+              />
             )}
-            {read.isPending && (
-              <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Spinner /> {t.llm.importReading(provider.model)}
-              </p>
-            )}
-            {read.isError && <ProposalsFailed error={read.error} />}
+            <ImportStatus
+              model={provider.model}
+              step={importStep(research.isPending, read.isPending, web)}
+              failure={failure}
+            />
+            {research.isPending && <ResearchSteps configId={configId} />}
             {result && (
-              <>
-                {result.truncated && (
-                  <Alert>
-                    <AlertDescription>{t.llm.importTruncated}</AlertDescription>
-                  </Alert>
-                )}
-                <ImportedReadyRules
-                  configId={configId}
-                  config={config}
-                  groups={groups}
-                  ready={result.ready}
-                  checked={checked}
-                  onCheckedChange={setChecked}
-                  onApplied={(keys) => {
-                    setResult((left) =>
-                      left
-                        ? { ...left, ready: left.ready.filter((item) => !keys.has(readyKey(item))) }
-                        : left,
-                    )
-                  }}
-                />
-                <section aria-labelledby="agent-import-rules" className="flex flex-col gap-3">
-                  <h3 id="agent-import-rules" className="text-sm font-medium">
-                    {t.llm.importRules}
-                  </h3>
-                  <ProposalsReview
-                    configId={configId}
-                    config={config}
-                    proposals={result.rules}
-                    truncated={false}
-                    skipped={[]}
-                    empty={t.llm.importNoRules}
-                    onHandled={(id) => {
-                      setResult((left) =>
-                        left
-                          ? { ...left, rules: left.rules.filter((rule) => rule.id !== id) }
-                          : left,
-                      )
-                    }}
-                  />
-                </section>
-              </>
+              <ImportReview
+                configId={configId}
+                config={config}
+                groups={groups}
+                result={result}
+                checked={checked}
+                onCheckedChange={setChecked}
+                onResultChange={setResult}
+              />
             )}
           </div>
           <SheetFooter>
-            {result ? (
-              <Button variant="outline" onClick={reset}>
-                <FileInputIcon /> {t.llm.importAgain}
-              </Button>
-            ) : (
-              <Button disabled={read.isPending || !content.trim()} onClick={run}>
-                <FileInputIcon /> {read.isError ? t.llm.retry : t.llm.importRun}
-              </Button>
-            )}
+            <ImportAction
+              done={result && (result.sources ? 'web' : 'file')}
+              web={web}
+              retry={Boolean(failure)}
+              disabled={pending || (web ? !canResearch || !request.trim() : !content.trim())}
+              onRun={run}
+              onReset={reset}
+            />
           </SheetFooter>
         </SheetContent>
       </Sheet>
     </>
+  )
+}
+
+type Step = 'researching' | 'writing' | 'reading' | null
+
+/** What the panel is waiting for, if anything. */
+function importStep(researching: boolean, reading: boolean, web: boolean): Step {
+  if (researching) return 'researching'
+  if (!reading) return null
+  return web ? 'writing' : 'reading'
+}
+
+/** Where the conventions come from (behind the flag) and the field of the source picked. */
+function ImportInput({
+  model,
+  webResearch,
+  web,
+  canResearch,
+  pending,
+  content,
+  onContentChange,
+  request,
+  onRequestChange,
+  onModeChange,
+}: {
+  model: string
+  webResearch: boolean
+  web: boolean
+  canResearch: boolean
+  pending: boolean
+  content: string
+  onContentChange: (content: string) => void
+  request: string
+  onRequestChange: (request: string) => void
+  onModeChange: (mode: Mode) => void
+}) {
+  const t = useT()
+  return (
+    <>
+      {webResearch && (
+        <SegmentedControl
+          aria-label={t.llm.importSource}
+          size="sm"
+          value={web ? 'web' : 'file'}
+          disabled={pending}
+          onValueChange={(value) => {
+            onModeChange(value === 'web' ? 'web' : 'file')
+          }}
+          options={[
+            { value: 'file', label: t.llm.importFromFile, icon: <FileInputIcon /> },
+            { value: 'web', label: t.llm.importFromWeb, icon: <GlobeIcon /> },
+          ]}
+        />
+      )}
+      {!web && (
+        <Field>
+          <FieldLabel htmlFor="agent-file-import">{t.llm.importLabel}</FieldLabel>
+          <Textarea
+            id="agent-file-import"
+            className="min-h-64 font-mono text-xs"
+            maxLength={50_000}
+            value={content}
+            disabled={pending}
+            onChange={(event) => {
+              onContentChange(event.target.value)
+            }}
+          />
+        </Field>
+      )}
+      {web && !canResearch && (
+        <Alert>
+          <AlertDescription>{t.llm.researchNoSubscription}</AlertDescription>
+        </Alert>
+      )}
+      {web && canResearch && (
+        <Field>
+          <FieldLabel htmlFor="agent-web-research">{t.llm.researchLabel}</FieldLabel>
+          <Textarea
+            id="agent-web-research"
+            className="min-h-32"
+            maxLength={REQUEST_MAX_LENGTH}
+            placeholder={t.llm.researchPlaceholder}
+            aria-describedby="agent-web-research-hint"
+            value={request}
+            disabled={pending}
+            onChange={(event) => {
+              onRequestChange(event.target.value)
+            }}
+          />
+          <FieldDescription id="agent-web-research-hint">
+            {t.llm.researchHint(model)}
+          </FieldDescription>
+        </Field>
+      )}
+    </>
+  )
+}
+
+/** The step in progress, or why the last one failed. */
+function ImportStatus({ model, step, failure }: { model: string; step: Step; failure: unknown }) {
+  const t = useT()
+  if (step) {
+    const text = {
+      researching: t.llm.researchReading(model),
+      writing: t.llm.researchWriting(model),
+      reading: t.llm.importReading(model),
+    }[step]
+    return (
+      <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Spinner /> {text}
+      </p>
+    )
+  }
+  return failure ? <ProposalsFailed error={failure} /> : null
+}
+
+/** What the model proposed: the pages it read, the ready-made rules, then the other rules. */
+function ImportReview({
+  configId,
+  config,
+  groups,
+  result,
+  checked,
+  onCheckedChange,
+  onResultChange,
+}: {
+  configId: number
+  config: AgentConfig
+  groups: Map<string, RulePack['groups'][number]>
+  result: Result
+  checked: Set<string>
+  onCheckedChange: (checked: Set<string>) => void
+  onResultChange: React.Dispatch<React.SetStateAction<Result | null>>
+}) {
+  const t = useT()
+  return (
+    <>
+      {result.sources && <ResearchSources sources={result.sources} />}
+      {result.truncated && (
+        <Alert>
+          <AlertDescription>{t.llm.importTruncated}</AlertDescription>
+        </Alert>
+      )}
+      <ImportedReadyRules
+        configId={configId}
+        config={config}
+        groups={groups}
+        ready={result.ready}
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        onApplied={(keys) => {
+          onResultChange((left) =>
+            left
+              ? { ...left, ready: left.ready.filter((item) => !keys.has(readyKey(item))) }
+              : left,
+          )
+        }}
+      />
+      <section aria-labelledby="agent-import-rules" className="flex flex-col gap-3">
+        <h3 id="agent-import-rules" className="text-sm font-medium">
+          {t.llm.importRules}
+        </h3>
+        <ProposalsReview
+          configId={configId}
+          config={config}
+          proposals={result.rules}
+          truncated={false}
+          skipped={[]}
+          empty={t.llm.importNoRules}
+          onHandled={(id) => {
+            onResultChange((left) =>
+              left ? { ...left, rules: left.rules.filter((rule) => rule.id !== id) } : left,
+            )
+          }}
+        />
+      </section>
+    </>
+  )
+}
+
+/** The panel's one action: read the source, or start over once it was read. */
+function ImportAction({
+  done,
+  web,
+  retry,
+  disabled,
+  onRun,
+  onReset,
+}: {
+  /** The source of the result shown, `null` before one. */
+  done: Mode | null
+  web: boolean
+  retry: boolean
+  disabled: boolean
+  onRun: () => void
+  onReset: () => void
+}) {
+  const t = useT()
+  if (done) {
+    return (
+      <Button variant="outline" onClick={onReset}>
+        {done === 'web' ? <GlobeIcon /> : <FileInputIcon />}{' '}
+        {done === 'web' ? t.llm.researchAgain : t.llm.importAgain}
+      </Button>
+    )
+  }
+  const run = web ? t.llm.researchRun : t.llm.importRun
+  return (
+    <Button disabled={disabled} onClick={onRun}>
+      {web ? <GlobeIcon /> : <FileInputIcon />} {retry ? t.llm.retry : run}
+    </Button>
+  )
+}
+
+/** The pages a web research read, so the owner can check where each proposal comes from. */
+/** What the model has done in the sandbox so far, while the research runs. */
+function ResearchSteps({ configId }: { configId: number }) {
+  const t = useT()
+  const steps = useResearchProgress(configId, true).data ?? []
+  if (steps.length === 0) return null
+  return (
+    <ol aria-label={t.llm.researchSteps} className="flex flex-col gap-1 text-sm">
+      {steps.map((step) => (
+        <li key={step.position} className="flex min-w-0 items-start gap-2">
+          <ResearchStepState state={step.state} />
+          <span className="min-w-0 break-all">
+            <span className="text-muted-foreground">{t.llm.researchStepKind[step.kind]}</span>{' '}
+            {step.kind === 'command' ? <code>{step.label}</code> : step.label}
+          </span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function ResearchStepState({ state }: { state: ResearchStep['state'] }) {
+  const t = useT()
+  const label = t.llm.researchStepState[state]
+  const icon = {
+    running: <Spinner />,
+    done: <CheckIcon aria-hidden className="size-4" />,
+    failed: <XIcon aria-hidden className="size-4 text-destructive" />,
+  }[state]
+  return (
+    <span className="mt-0.5 shrink-0">
+      {icon}
+      <span className="sr-only">{label}</span>
+    </span>
+  )
+}
+
+function ResearchSources({ sources }: { sources: ResearchSource[] }) {
+  const t = useT()
+  return (
+    <section aria-labelledby="agent-research-sources" className="flex flex-col gap-2">
+      <h3 id="agent-research-sources" className="text-sm font-medium">
+        {t.llm.researchSources}
+      </h3>
+      {sources.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t.llm.researchNoSources}</p>
+      ) : (
+        <ul className="flex flex-col gap-1 text-sm">
+          {sources.map((source) => (
+            <li key={source.url} className="min-w-0">
+              <a
+                href={source.url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="break-all text-primary-text underline underline-offset-2 outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+              >
+                {source.title ?? source.url}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 

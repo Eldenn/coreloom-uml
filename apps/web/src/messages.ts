@@ -1092,6 +1092,9 @@ export const en = {
       timeout: 'The provider took too long to answer.',
       rate_limited: 'The provider is limiting requests. Try again in a moment.',
       subscription_expired: 'The subscription is no longer connected. Connect it again.',
+      tools_unused:
+        'The model did not read anything. Give it the address of a page, or try another model.',
+      sandbox_unavailable: 'The sandbox could not start. Try again in a moment.',
       unknown: 'The provider call failed.',
     },
     subscription: {
@@ -1160,6 +1163,25 @@ export const en = {
     importRun: 'Read the file',
     importAgain: 'Import another file',
     importReading: (model: string) => `${model} is reading the file…`,
+    importSource: 'Where the conventions come from',
+    importFromFile: 'A file',
+    importFromWeb: 'The web',
+    researchHint: (model: string) =>
+      `Say what you are looking for and give the addresses of the pages to read: ${model} reads them from an isolated sandbox, then proposes rules. There is no search engine: it starts from your addresses and may follow their links.`,
+    researchLabel: 'What to look for, and where',
+    researchPlaceholder: 'The conventions of https://example.com/guide, for our React code',
+    researchRun: 'Read the pages',
+    researchAgain: 'Read other pages',
+    researchReading: (model: string) =>
+      `${model} is reading the pages… This can take up to a minute and a half.`,
+    researchWriting: (model: string) => `${model} is writing the proposals…`,
+    researchSources: 'Pages read',
+    researchSteps: 'What the model is doing',
+    researchStepKind: { page: 'Reading', command: 'Running' },
+    researchStepState: { running: 'In progress', done: 'Done', failed: 'Failed' },
+    researchNoSources: 'No page was read: the model worked from commands only.',
+    researchNoSubscription:
+      'The ChatGPT subscription cannot read the web here yet: choose another provider.',
     importTruncated: 'The file was too long for the model: its end was left out.',
     importReady: 'Ready-made rules',
     importReadyHint:
@@ -2305,6 +2327,9 @@ export const fr: Messages = {
       timeout: 'Le fournisseur a mis trop de temps à répondre.',
       rate_limited: 'Le fournisseur limite les requêtes. Réessayez dans un instant.',
       subscription_expired: 'L’abonnement n’est plus connecté. Connectez-le à nouveau.',
+      tools_unused:
+        'Le modèle n’a rien lu. Donnez-lui l’adresse d’une page, ou essayez un autre modèle.',
+      sandbox_unavailable: 'Le bac à sable n’a pas pu démarrer. Réessayez dans un instant.',
       unknown: 'L’appel au fournisseur a échoué.',
     },
     subscription: {
@@ -2374,6 +2399,26 @@ export const fr: Messages = {
     importRun: 'Lire le fichier',
     importAgain: 'Importer un autre fichier',
     importReading: (model: string) => `${model} lit le fichier…`,
+    importSource: 'D’où viennent les conventions',
+    importFromFile: 'Un fichier',
+    importFromWeb: 'Le web',
+    researchHint: (model: string) =>
+      `Dites ce que vous cherchez et donnez les adresses des pages à lire : ${model} les lit depuis un bac à sable isolé, puis propose des règles. Il n’y a pas de moteur de recherche : il part de vos adresses et peut suivre leurs liens.`,
+    researchLabel: 'Ce qu’il faut chercher, et où',
+    researchPlaceholder: 'Les conventions de https://example.com/guide, pour notre code React',
+    researchRun: 'Lire les pages',
+    researchAgain: 'Lire d’autres pages',
+    researchReading: (model: string) =>
+      `${model} lit les pages… Cela peut prendre jusqu’à une minute et demie.`,
+    researchWriting: (model: string) => `${model} rédige les propositions…`,
+    researchSources: 'Pages lues',
+    researchSteps: 'Ce que fait le modèle',
+    researchStepKind: { page: 'Lecture de', command: 'Commande' },
+    researchStepState: { running: 'En cours', done: 'Terminé', failed: 'Échec' },
+    researchNoSources:
+      'Aucune page n’a été lue : le modèle a travaillé avec des commandes seulement.',
+    researchNoSubscription:
+      'L’abonnement ChatGPT ne peut pas encore lire le web ici : choisissez un autre fournisseur.',
     importTruncated: 'Le fichier était trop long pour le modèle : sa fin a été laissée de côté.',
     importReady: 'Règles prêtes à l’emploi',
     importReadyHint:

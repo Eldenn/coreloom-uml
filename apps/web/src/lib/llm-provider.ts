@@ -128,12 +128,66 @@ export type ImportedReadyRule = Awaited<
 /** `POST /agent-configs/:id/imports`: ready-made and own rules read from a conventions file, nothing stored. */
 export function useImportAgentFile(configId: number) {
   return useMutation({
-    mutationFn: ({ provider, content }: { provider: StoredProvider; content: string }) =>
+    mutationFn: ({
+      provider,
+      content,
+      origin,
+    }: {
+      provider: StoredProvider
+      content: string
+      /** `research` when the text is the findings of a web research. */
+      origin?: 'file' | 'research'
+    }) =>
       client.api.agentConfigs.imports.store({
         params: { id: configId },
-        body: { ...callBody(provider), content },
+        body: { ...callBody(provider), content, origin },
         ...MODEL_CALL,
       }),
+  })
+}
+
+export type ResearchSource = Awaited<
+  ReturnType<typeof client.api.agentConfigs.research.store>
+>['sources'][number]
+
+/**
+ * `POST /agent-configs/:id/research`: the model reads the pages a request names from a sandbox and
+ * answers its findings, which go to the import (`origin: 'research'`). Nothing stored.
+ */
+export function useAgentResearch(configId: number) {
+  return useMutation({
+    mutationFn: ({ provider, request }: { provider: StoredProvider; request: string }) =>
+      client.api.agentConfigs.research.store({
+        params: { id: configId },
+        body: { ...callBody(provider), request },
+        ...MODEL_CALL,
+      }),
+  })
+}
+
+/** How often the screen asks what a running research has done. */
+const RESEARCH_PROGRESS_INTERVAL_MS = 1000
+
+export type ResearchStep = Awaited<
+  ReturnType<typeof client.api.agentConfigs.research.show>
+>['steps'][number]
+
+/**
+ * `GET /agent-configs/:id/research`: the addresses read and the commands run so far, asked again
+ * while the research is pending. The server keeps none once it ends.
+ */
+export function useResearchProgress(configId: number, running: boolean) {
+  return useQuery({
+    queryKey: ['agent-configs', configId, 'research-progress'],
+    queryFn: async () =>
+      // Steps are only ever added at the end: the position is the identity.
+      (await client.api.agentConfigs.research.show({ params: { id: configId } })).steps.map(
+        (step, position) => ({ ...step, position }),
+      ),
+    enabled: running,
+    refetchInterval: running ? RESEARCH_PROGRESS_INTERVAL_MS : false,
+    // Each research starts from an empty list, not from the last one's steps.
+    gcTime: 0,
   })
 }
 
@@ -216,7 +270,8 @@ export function providerCallFailure(error: unknown): ProviderCallFailure {
     | undefined
   if (error.status === 502 && body?.reason) return { kind: 'provider', reason: body.reason }
   if (error.status === 429) return { kind: 'rate-limited' }
-  if (error.status === 422)
+  // 409: the account already has a web research running.
+  if (error.status === 422 || error.status === 409)
     return {
       kind: 'refused',
       message: body?.error?.message ?? body?.errors?.[0]?.message ?? null,

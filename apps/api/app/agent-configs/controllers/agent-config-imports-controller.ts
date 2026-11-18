@@ -17,7 +17,8 @@ import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-conne
  * file (AGENTS.md, CLAUDE.md…) and proposes the catalog's ready-made rules it states, and rules
  * for the rest. Nothing is stored: the owner accepts the ready-made rules they keep with
  * `PUT …/ready-rules/:slot` and the others with `POST …/rules`. The file is never logged, only
- * counts. Session only.
+ * counts. Session only. With `origin: 'research'` the text is the findings of a web research
+ * (`POST …/research`): the model is told so, and nothing else changes.
  */
 export default class AgentConfigImportsController {
   async store({ params, request, auth, response }: HttpContext) {
@@ -25,7 +26,7 @@ export default class AgentConfigImportsController {
     const config = await findOwnedAgentConfig(params.id, user)
     if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
 
-    const { provider, apiKey, content } = await request.validateUsing(agentImportInput)
+    const { provider, apiKey, content, origin } = await request.validateUsing(agentImportInput)
     const built = await userLanguageModel(provider, apiKey, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
@@ -47,6 +48,7 @@ export default class AgentConfigImportsController {
         sections: ruleSections(RULE_PACKS),
         existing: [...render(inputs).fragments, ...inputs.rules],
         content,
+        origin,
       })
       logger.info(
         {

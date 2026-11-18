@@ -746,6 +746,41 @@ test.group('LLM - conventions file import', (group) => {
     assert.notInclude(lines, 'pnpm lint')
   })
 
+  test('reads the notes of a web research as notes, not as the file', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    const project = await configuredProject(client, user)
+    const model = answeringModel(IMPORTED)
+    useModel(model)
+
+    const response = await client
+      .post(`/agent-configs/${project.configId}/imports`)
+      .headers(json)
+      .loginAs(user)
+      .json({ provider: hosted, apiKey: KEY, content: 'Use pnpm (a.example).', origin: 'research' })
+
+    response.assertStatus(200)
+    assert.properties(response.body(), ['ready', 'rules', 'truncated'])
+    const prompt = JSON.stringify(model.doGenerateCalls[0])
+    assert.include(prompt, '<notes>')
+    assert.notInclude(prompt, '<file>')
+  })
+
+  test('refuses an unknown origin', async ({ client }) => {
+    const user = await makeUser()
+    const project = await configuredProject(client, user)
+    useModel(answeringModel(IMPORTED))
+
+    const response = await client
+      .post(`/agent-configs/${project.configId}/imports`)
+      .headers(json)
+      .loginAs(user)
+      .json({ provider: hosted, apiKey: KEY, content: 'Anything.', origin: 'other' })
+    response.assertStatus(422)
+  })
+
   test('another account cannot import into a project', async ({ client }) => {
     const owner = await makeUser()
     const project = await configuredProject(client, owner)

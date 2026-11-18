@@ -10,6 +10,7 @@ import {
   ROLE_SLUG_MAX_LENGTH,
   RULE_VALUE_MAX_LENGTH,
 } from '@coreloom-uml/catalog'
+import { IMPORT_ORIGINS } from '@coreloom-uml/llm'
 import vine from '@vinejs/vine'
 import type { FieldContext } from '@vinejs/vine/types'
 import {
@@ -26,6 +27,7 @@ import {
   TARGETS,
 } from '#app/agent-configs/constants/agent-config'
 import { llmCallFields } from '#app/llm/validators/llm-input'
+import { RESEARCH_REQUEST_MAX_LENGTH } from '#app/research/constants/research'
 
 /** Longest rule, preset or section name accepted on the wire. */
 const CATALOG_ID_MAX_LENGTH = 64
@@ -216,6 +218,19 @@ export const agentImportInput = vine.create(
   vine.object({
     ...llmCallFields(),
     content: vine.string().trim().minLength(1).maxLength(AGENT_IMPORT_MAX_LENGTH),
+    /** `research` when the text is the findings of a web research rather than the owner's file. */
+    origin: vine.enum(IMPORT_ORIGINS).optional(),
+  }),
+)
+
+/**
+ * `POST /agent-configs/:id/research`: the user's provider and what to look for, usually with the
+ * URLs to read (never stored or logged).
+ */
+export const agentResearchInput = vine.create(
+  vine.object({
+    ...llmCallFields(),
+    request: vine.string().trim().minLength(1).maxLength(RESEARCH_REQUEST_MAX_LENGTH),
   }),
 )
 

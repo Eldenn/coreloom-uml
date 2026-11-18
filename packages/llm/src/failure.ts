@@ -12,6 +12,10 @@ export const LlmFailureReason = {
   RateLimited: 'rate_limited',
   /** The connected subscription is gone (revoked, signed out): the user connects it again. */
   SubscriptionExpired: 'subscription_expired',
+  /** A web research whose model read nothing: it called no tool, or none of them worked. */
+  ToolsUnused: 'tools_unused',
+  /** The sandbox a web research runs its tools in could not start. */
+  SandboxUnavailable: 'sandbox_unavailable',
   Unknown: 'unknown',
 } as const
 export type LlmFailureReason = (typeof LlmFailureReason)[keyof typeof LlmFailureReason]

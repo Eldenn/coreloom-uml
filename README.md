@@ -126,6 +126,7 @@ coreloom-uml/
     │                              #   test databases on every `up`) + redis + mailpit + minio + bull-board
     │                              #   + analyzer
     ├── docker-compose.staging.yml # Coolify staging stack
+    ├── e2b/                       # self-hosted E2B sandboxes for the web research, started on demand
     └── .env.staging.example       # staging environment variables
 ```
 
@@ -538,6 +539,35 @@ minute per user (`llmThrottle`).
   `{ proposals: [{ section, text, basedOn }], truncated }` after dropping unknown sections and
   duplicates and cleaning the text (one line, no HTML, no marker). Nothing is stored: the owner
   accepts a proposal with `POST …/rules` and `source: 'llm'`.
+- `POST /agent-configs/:id/research` (behind the `web-research` flag and `E2B_API_KEY`, 404
+  without either) makes conventions from a resource found on the web. The request says what to
+  look for and names the pages; the user's model reads them through two tools (`read_page`, `run`)
+  that execute in an [E2B](https://github.com/e2b-dev/E2B) sandbox, one per research, killed when
+  it ends. It answers its findings and the pages actually read; the screen then sends the findings
+  to `POST …/imports` with `origin: 'research'`, and the owner accepts the proposals as for a
+  file. Two requests on purpose: each stays under 80 seconds, below what a proxy such as
+  Cloudflare allows. The model's key never reaches the sandbox, the research gets nothing of the
+  configuration, and nothing is stored or logged but counts. While it runs, `GET /agent-configs/:id/research` answers the addresses read and the commands
+  run so far, which the screen asks again every second; they are removed when it ends. There is no search engine: the model
+  starts from the addresses given and may follow their links. The Claude subscription runs one
+  more slowly (its binary is launched once a step and never gets a tool: it names which of ours to
+  run); the ChatGPT subscription cannot run one yet. The sandboxes are E2B Cloud's with `E2B_API_KEY` alone, or
+  a self-hosted install's ([e2b-dev/runtime](https://github.com/e2b-dev/runtime), "Embed") with
+  `E2B_API_URL` and `E2B_SANDBOX_URL` as well. `infra/e2b/` is that install, kept apart from the
+  dev stack because it needs a Linux host with KVM and a kernel 6.8 or newer (on WSL2,
+  `wsl --update`), reserves 4 GiB of memory and sets the host's kernel up (modules, sysctl, one
+  iptables rule, files under `/etc`):
+
+  ```bash
+  docker compose -f infra/e2b/compose.yaml up -d --wait              # start; again after a reboot
+  docker compose -f infra/e2b/compose.yaml exec ready cat /run/e2b/sdk.env   # the three E2B_* values for apps/api/.env
+  docker compose -f infra/e2b/compose.yaml down                      # stop
+  docker compose -f infra/e2b/compose.yaml down -v && \
+    docker compose -f infra/e2b/compose.yaml --profile purge run --rm host-teardown   # undo everything
+  ```
+
+  Its services listen on this machine only by intent (one control port has no authentication):
+  never run it on a host reachable from outside.
 - A provider failure answers 502 `{ error, reason }`, never the provider's own error. Everything
   else (manual rules, generations) works without a provider.
 - Providers: `anthropic`, `openai`, `mistral` (fixed URLs, a key is required, a `baseUrl` is

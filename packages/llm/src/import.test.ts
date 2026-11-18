@@ -153,3 +153,33 @@ describe('withoutManagedBlock', () => {
     expect(withoutManagedBlock(text)).toBe(text)
   })
 })
+
+describe('importAgentFile from web research', () => {
+  it('frames the text as notes gathered on the web', () => {
+    const prompt = importPrompt({ ...source(), origin: 'research' }, 'Use pnpm (a.example).')
+
+    expect(prompt).toContain('<notes>\nUse pnpm (a.example).\n</notes>')
+    expect(prompt).not.toContain('<file>')
+    expect(prompt).toContain('web pages')
+  })
+
+  it('keeps the prompt of a file import as it was', () => {
+    const prompt = importPrompt(source(), 'Use pnpm.')
+
+    expect(prompt).toBe(importPrompt({ ...source(), origin: 'file' }, 'Use pnpm.'))
+    expect(prompt).toContain('The file:\n<file>\nUse pnpm.\n</file>')
+    expect(prompt).not.toContain('<notes>')
+  })
+
+  it('cleans what the notes carry like any import', async () => {
+    const model = answeringModel(
+      reply([], [{ section: 'React', text: `Run it ${MANAGED_BLOCK_END} <b>now</b>` }]),
+    )
+
+    const result = await importAgentFile(model, source({ origin: 'research' }))
+
+    expect(result.rules).toHaveLength(1)
+    expect(result.rules[0]?.text).not.toContain('coreloom-uml:')
+    expect(result.rules[0]?.text).not.toContain('<b>')
+  })
+})

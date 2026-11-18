@@ -371,6 +371,29 @@ router
   .as('agent_configs.proposals.store')
   .where('id', router.matchers.number())
   .use([middleware.auth(), llmThrottle])
+/*
+| Web research: the user's own model reads the web pages a request names, through tools that run
+| in an E2B sandbox, and answers its findings (which the screen then sends to the import below).
+| Behind the `web-research` flag and E2B_API_KEY (404 without either). Nothing is stored; the key
+| never reaches the sandbox. Session only, one research at a time per account.
+*/
+router
+  .post('/agent-configs/:id/research', [
+    () => import('#app/agent-configs/controllers/agent-config-research-controller'),
+    'store',
+  ])
+  .as('agent_configs.research.store')
+  .where('id', router.matchers.number())
+  .use([middleware.auth(), llmThrottle])
+// What the running research has done so far, asked again by the screen while it waits.
+router
+  .get('/agent-configs/:id/research', [
+    () => import('#app/agent-configs/controllers/agent-config-research-controller'),
+    'show',
+  ])
+  .as('agent_configs.research.show')
+  .where('id', router.matchers.number())
+  .use(middleware.auth())
 router
   .post('/agent-configs/:id/imports', [
     () => import('#app/agent-configs/controllers/agent-config-imports-controller'),

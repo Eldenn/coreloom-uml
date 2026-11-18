@@ -1,4 +1,4 @@
-import { generateText, Output } from 'ai'
+import { generateText, Output, stepCountIs, tool } from 'ai'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { type ClaudeRun, createClaudeCodeModel, jsonFromText } from './claude-code.ts'
@@ -169,5 +169,75 @@ describe('abort', () => {
     }).catch((caught: unknown) => caught)
     expect(signals[0]).toBeInstanceOf(AbortSignal)
     expect(failureReason(error)).toBe('timeout')
+  })
+})
+
+describe('tools', () => {
+  function sequence(answers: unknown[]) {
+    const calls: Parameters<ClaudeRun>[] = []
+    const run: ClaudeRun = async (...args) => {
+      const json = success({ structured_output: answers[calls.length] })
+      calls.push(args)
+      return { exitCode: 0, stdout: JSON.stringify(json), timedOut: false, missing: false }
+    }
+    return { run, calls }
+  }
+  const read: string[] = []
+  const tools = {
+    read_page: tool({
+      description: 'Reads one web page.',
+      inputSchema: z.object({ url: z.string() }),
+      execute: async ({ url }) => {
+        read.push(url)
+        return 'PAGE TEXT'
+      },
+    }),
+  }
+
+  it('asks the binary for one action a step, and runs the tool itself', async () => {
+    const { run, calls } = sequence([
+      { action: 'read_page', input: { url: 'https://a.example/' } },
+      { action: 'answer', answer: 'What the page says.' },
+    ])
+    const result = await generateText({
+      model: createClaudeCodeModel('sonnet', CREDENTIAL, run),
+      system: 'Research.',
+      prompt: 'Read https://a.example/',
+      tools,
+      stopWhen: stepCountIs(4),
+      maxRetries: 0,
+    })
+    expect(result.text).toBe('What the page says.')
+    expect(read).toEqual(['https://a.example/'])
+    expect(calls).toHaveLength(2)
+
+    const [args] = calls[0] ?? []
+    // The binary still has no tool of its own: it only says which of ours to run.
+    expect(args?.[args.indexOf('--tools') + 1]).toBe('')
+    const schema = JSON.parse(args?.[(args?.indexOf('--json-schema') ?? 0) + 1] ?? '{}')
+    expect(schema.properties.action.enum).toEqual(['read_page', 'answer'])
+    const system = args?.[(args?.indexOf('--system-prompt') ?? 0) + 1] ?? ''
+    expect(system).toContain('Research.')
+    expect(system).toContain('read_page')
+    expect(system).toContain('Reads one web page.')
+
+    // The next step reads what was asked and what came back.
+    const stdin = calls[1]?.[1].stdin ?? ''
+    expect(stdin).toContain('Read https://a.example/')
+    expect(stdin).toContain('"url":"https://a.example/"')
+    expect(stdin).toContain('PAGE TEXT')
+  })
+
+  it('reads an action that names no tool as the answer', async () => {
+    const { run } = sequence([{ action: 'delete_everything', answer: 'Only this.' }])
+    const result = await generateText({
+      model: createClaudeCodeModel('sonnet', CREDENTIAL, run),
+      prompt: 'P',
+      tools,
+      stopWhen: stepCountIs(4),
+      maxRetries: 0,
+    })
+    expect(result.text).toBe('Only this.')
+    expect(result.toolCalls).toEqual([])
   })
 })

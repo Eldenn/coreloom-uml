@@ -1,6 +1,9 @@
+import { randomUUID } from 'node:crypto'
 import type {
   LanguageModelV4,
   LanguageModelV4CallOptions,
+  LanguageModelV4Content,
+  LanguageModelV4FunctionTool,
   LanguageModelV4GenerateResult,
 } from '@ai-sdk/provider'
 import { LlmCallError, type LlmFailureReason } from './failure.ts'
@@ -9,6 +12,10 @@ import { LlmCallError, type LlmFailureReason } from './failure.ts'
  * A model of the user's Claude subscription, called through the unmodified `claude` binary
  * (Claude Code) in print mode. The binary holds the user's credentials in its own configuration
  * folder; this code never reads them. Flags checked against Claude Code 2.1.322 on 2026-11-12.
+ *
+ * The binary never gets a tool. When the caller has tools (the web research), each call asks
+ * it for one action as structured output: which of the caller's tools to run, or the answer.
+ * The caller runs the tool and calls again with the result, one launch of the binary a step.
  */
 
 /** What a call with a connected Claude subscription needs: the account's own folder. */
@@ -69,12 +76,75 @@ function promptParts(prompt: LanguageModelV4CallOptions['prompt']) {
       continue
     }
     const text = message.content
-      .map((part) => (part.type === 'text' ? part.text : ''))
+      .map((part) => {
+        if (part.type === 'text') return part.text
+        // Earlier steps of a call with tools: what was asked, then what came back.
+        if (part.type === 'tool-call') {
+          return `Action taken: ${JSON.stringify({ action: part.toolName, input: part.input })}`
+        }
+        if (part.type === 'tool-result') {
+          const value = 'value' in part.output ? part.output.value : part.output.type
+          const shown = typeof value === 'string' ? value : JSON.stringify(value)
+          return `Result of ${part.toolName}:\n${shown}`
+        }
+        return ''
+      })
       .filter(Boolean)
       .join('\n')
     if (text) messages.push(text)
   }
   return { system: system.join('\n\n'), stdin: messages.join('\n\n') }
+}
+
+/** The action that ends a call with tools. */
+const ANSWER_ACTION = 'answer'
+
+function functionTools(tools: LanguageModelV4CallOptions['tools']): LanguageModelV4FunctionTool[] {
+  return (tools ?? []).filter((tool) => tool.type === 'function')
+}
+
+function actionSchema(tools: LanguageModelV4FunctionTool[]) {
+  return {
+    type: 'object',
+    properties: {
+      action: { type: 'string', enum: [...tools.map((tool) => tool.name), ANSWER_ACTION] },
+      input: { type: 'object' },
+      answer: { type: 'string' },
+    },
+    required: ['action'],
+  }
+}
+
+function actionInstructions(tools: LanguageModelV4FunctionTool[]): string {
+  return [
+    'You cannot do anything yourself. Reply with one action at a time:',
+    ...tools.map(
+      (tool) =>
+        `- "${tool.name}": ${tool.description ?? ''} Its "input" follows ${JSON.stringify(tool.inputSchema)}`,
+    ),
+    `- "${ANSWER_ACTION}": you are done; your final text goes in "answer".`,
+    'After an action, you are called again with its result.',
+  ].join('\n')
+}
+
+/** What the binary answered a call with tools: one tool call, or the final text. */
+function actionContent(
+  output: unknown,
+  tools: LanguageModelV4FunctionTool[],
+): LanguageModelV4Content[] {
+  const value = (output && typeof output === 'object' ? output : {}) as Record<string, unknown>
+  if (tools.some((tool) => tool.name === value.action)) {
+    return [
+      {
+        type: 'tool-call',
+        toolCallId: randomUUID(),
+        toolName: String(value.action),
+        input: JSON.stringify(value.input ?? {}),
+      },
+    ]
+  }
+  // An action that names none of the tools runs nothing: only its text is kept.
+  return [{ type: 'text', text: typeof value.answer === 'string' ? value.answer : '' }]
 }
 
 function tokens(value: unknown): number | undefined {
@@ -92,8 +162,16 @@ export function createClaudeCodeModel(
     modelId: model,
     supportedUrls: {},
     async doGenerate(options): Promise<LanguageModelV4GenerateResult> {
-      const { system, stdin } = promptParts(options.prompt)
-      const format = options.responseFormat
+      const parts = promptParts(options.prompt)
+      const stdin = parts.stdin
+      const tools = functionTools(options.tools)
+      const system = tools.length
+        ? [parts.system, actionInstructions(tools)].filter(Boolean).join('\n\n')
+        : parts.system
+      // ponytail: a call with tools ignores a response format; no caller asks for both.
+      const format = tools.length
+        ? ({ type: 'json', schema: actionSchema(tools) } as const)
+        : options.responseFormat
       const wantsJson = format?.type === 'json'
       const args = [
         '-p',
@@ -131,9 +209,15 @@ export function createClaudeCodeModel(
             : raw
       const input = tokens(result.usage?.input_tokens)
       const output = tokens(result.usage?.output_tokens)
+      const content: LanguageModelV4Content[] = tools.length
+        ? actionContent(parse(text), tools)
+        : [{ type: 'text', text }]
+      const called = content.some((part) => part.type === 'tool-call')
       return {
-        content: [{ type: 'text', text }],
-        finishReason: { unified: 'stop', raw: 'stop' },
+        content,
+        finishReason: called
+          ? { unified: 'tool-calls', raw: 'tool-calls' }
+          : { unified: 'stop', raw: 'stop' },
         usage: {
           inputTokens: {
             total: input,

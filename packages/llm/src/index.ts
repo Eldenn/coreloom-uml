@@ -125,8 +125,10 @@ export {
   IMPORT_EVIDENCE_MAX_LENGTH,
   IMPORT_INSTRUCTIONS,
   IMPORT_MAX_INPUT_TOKENS,
+  IMPORT_ORIGINS,
   IMPORT_RULE_TITLE_MAX_LENGTH,
   type ImportedRule,
+  ImportOrigin,
   type ImportResult,
   type ImportSource,
   importAgentFile,
@@ -172,6 +174,19 @@ export {
   requiresApiKey,
   takesBaseUrl,
 } from './provider.ts'
+export {
+  RESEARCH_FINDINGS_MAX_LENGTH,
+  RESEARCH_INSTRUCTIONS,
+  RESEARCH_MAX_OUTPUT_TOKENS,
+  RESEARCH_MAX_STEPS,
+  RESEARCH_TEMPERATURE,
+  RESEARCH_TIMEOUT_MS,
+  RESEARCH_TOOL_RESULT_MAX_LENGTH,
+  type ResearchPage,
+  type ResearchResult,
+  type ResearchTools,
+  researchWeb,
+} from './research.ts'
 export {
   excerptSource,
   SOURCE_LIMITS,
