@@ -34,6 +34,8 @@ apps/web/dist/
 .env.*
 !.env.example
 !.env.staging.example
+# Version pins of the vendored E2B stack, no secret.
+!infra/e2b/.env
 !.env.production.example
 !.env.test
 

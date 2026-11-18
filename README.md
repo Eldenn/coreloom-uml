@@ -126,6 +126,7 @@ coreloom-uml/
     │                              #   test databases on every `up`) + redis + mailpit + minio + bull-board
     │                              #   + analyzer
     ├── docker-compose.staging.yml # Coolify staging stack
+    ├── e2b/                       # self-hosted E2B sandboxes for the web research, started on demand
     └── .env.staging.example       # staging environment variables
 ```
 
@@ -549,8 +550,22 @@ minute per user (`llmThrottle`).
   configuration, and nothing is stored or logged but counts. There is no search engine: the model
   starts from the addresses given and may follow their links. A subscription (Claude, ChatGPT)
   cannot run one. The sandboxes are E2B Cloud's with `E2B_API_KEY` alone, or
-  a self-hosted install's ([e2b-dev/runtime](https://github.com/e2b-dev/runtime), "Embed", which
-  needs a Linux host with KVM) with `E2B_API_URL` and `E2B_SANDBOX_URL` as well.
+  a self-hosted install's ([e2b-dev/runtime](https://github.com/e2b-dev/runtime), "Embed") with
+  `E2B_API_URL` and `E2B_SANDBOX_URL` as well. `infra/e2b/` is that install, kept apart from the
+  dev stack because it needs a Linux host with KVM and a kernel 6.8 or newer (on WSL2,
+  `wsl --update`), reserves 4 GiB of memory and sets the host's kernel up (modules, sysctl, one
+  iptables rule, files under `/etc`):
+
+  ```bash
+  docker compose -f infra/e2b/compose.yaml up -d --wait              # start; again after a reboot
+  docker compose -f infra/e2b/compose.yaml exec ready cat /run/e2b/sdk.env   # the three E2B_* values for apps/api/.env
+  docker compose -f infra/e2b/compose.yaml down                      # stop
+  docker compose -f infra/e2b/compose.yaml down -v && \
+    docker compose -f infra/e2b/compose.yaml --profile purge run --rm host-teardown   # undo everything
+  ```
+
+  Its services listen on this machine only by intent (one control port has no authentication):
+  never run it on a host reachable from outside.
 - A provider failure answers 502 `{ error, reason }`, never the provider's own error. Everything
   else (manual rules, generations) works without a provider.
 - Providers: `anthropic`, `openai`, `mistral` (fixed URLs, a key is required, a `baseUrl` is
