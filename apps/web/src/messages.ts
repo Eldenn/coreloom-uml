@@ -1164,6 +1164,9 @@ export const en = {
       `${model} is reading the pages… This can take up to a minute and a half.`,
     researchWriting: (model: string) => `${model} is writing the proposals…`,
     researchSources: 'Pages read',
+    researchSteps: 'What the model is doing',
+    researchStepKind: { page: 'Reading', command: 'Running' },
+    researchStepState: { running: 'In progress', done: 'Done', failed: 'Failed' },
     researchNoSources: 'No page was read: the model worked from commands only.',
     researchNoSubscription:
       'The ChatGPT subscription cannot read the web here yet: choose another provider.',
@@ -2385,6 +2388,9 @@ export const fr: Messages = {
       `${model} lit les pages… Cela peut prendre jusqu’à une minute et demie.`,
     researchWriting: (model: string) => `${model} rédige les propositions…`,
     researchSources: 'Pages lues',
+    researchSteps: 'Ce que fait le modèle',
+    researchStepKind: { page: 'Lecture de', command: 'Commande' },
+    researchStepState: { running: 'En cours', done: 'Terminé', failed: 'Échec' },
     researchNoSources:
       'Aucune page n’a été lue : le modèle a travaillé avec des commandes seulement.',
     researchNoSubscription:

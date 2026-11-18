@@ -402,6 +402,12 @@ const routes = {
     tokens: [{"old":"/agent-configs/:id/research","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/research","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/research","type":0,"val":"research","end":""}],
     types: placeholder as Registry['agent_configs.research.store']['types'],
   },
+  'agent_configs.research.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/agent-configs/:id/research',
+    tokens: [{"old":"/agent-configs/:id/research","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/research","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/research","type":0,"val":"research","end":""}],
+    types: placeholder as Registry['agent_configs.research.show']['types'],
+  },
   'agent_configs.imports.store': {
     methods: ["POST"],
     pattern: '/agent-configs/:id/imports',

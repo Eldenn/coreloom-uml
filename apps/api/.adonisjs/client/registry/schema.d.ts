@@ -799,6 +799,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-research-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'agent_configs.research.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/agent-configs/:id/research'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-research-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-research-controller').default['show']>>>
+    }
+  }
   'agent_configs.imports.store': {
     methods: ["POST"]
     pattern: '/agent-configs/:id/imports'

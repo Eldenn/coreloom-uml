@@ -547,7 +547,8 @@ minute per user (`llmThrottle`).
   to `POST …/imports` with `origin: 'research'`, and the owner accepts the proposals as for a
   file. Two requests on purpose: each stays under 80 seconds, below what a proxy such as
   Cloudflare allows. The model's key never reaches the sandbox, the research gets nothing of the
-  configuration, and nothing is stored or logged but counts. There is no search engine: the model
+  configuration, and nothing is stored or logged but counts. While it runs, `GET /agent-configs/:id/research` answers the addresses read and the commands
+  run so far, which the screen asks again every second; they are removed when it ends. There is no search engine: the model
   starts from the addresses given and may follow their links. The Claude subscription runs one
   more slowly (its binary is launched once a step and never gets a tool: it names which of ours to
   run); the ChatGPT subscription cannot run one yet. The sandboxes are E2B Cloud's with `E2B_API_KEY` alone, or

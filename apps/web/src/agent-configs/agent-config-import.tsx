@@ -3,7 +3,7 @@
 // of the owner's own (accepted one by one, as proposals). Nothing is stored before that.
 // Behind the `web-research` flag the text can also come from the web: the model reads the pages a
 // request names from a sandbox, and what it found goes through the same import and the same review.
-import { FileInputIcon, GlobeIcon } from 'lucide-react'
+import { CheckIcon, FileInputIcon, GlobeIcon, XIcon } from 'lucide-react'
 import * as React from 'react'
 
 import { ProposalsFailed, ProposalsReview } from '@/agent-configs/agent-config-proposals'
@@ -30,8 +30,10 @@ import { useFeature } from '@/lib/feature-flags'
 import {
   type ImportedReadyRule,
   type ResearchSource,
+  type ResearchStep,
   useAgentResearch,
   useImportAgentFile,
+  useResearchProgress,
   useStoredProvider,
 } from '@/lib/llm-provider'
 import { useLocale, useT } from '@/lib/locale'
@@ -191,6 +193,7 @@ export function AgentFileImport({
               step={importStep(research.isPending, read.isPending, web)}
               failure={failure}
             />
+            {research.isPending && <ResearchSteps configId={configId} />}
             {result && (
               <ImportReview
                 configId={configId}
@@ -431,6 +434,42 @@ function ImportAction({
 }
 
 /** The pages a web research read, so the owner can check where each proposal comes from. */
+/** What the model has done in the sandbox so far, while the research runs. */
+function ResearchSteps({ configId }: { configId: number }) {
+  const t = useT()
+  const steps = useResearchProgress(configId, true).data ?? []
+  if (steps.length === 0) return null
+  return (
+    <ol aria-label={t.llm.researchSteps} className="flex flex-col gap-1 text-sm">
+      {steps.map((step) => (
+        <li key={step.position} className="flex min-w-0 items-start gap-2">
+          <ResearchStepState state={step.state} />
+          <span className="min-w-0 break-all">
+            <span className="text-muted-foreground">{t.llm.researchStepKind[step.kind]}</span>{' '}
+            {step.kind === 'command' ? <code>{step.label}</code> : step.label}
+          </span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function ResearchStepState({ state }: { state: ResearchStep['state'] }) {
+  const t = useT()
+  const label = t.llm.researchStepState[state]
+  const icon = {
+    running: <Spinner />,
+    done: <CheckIcon aria-hidden className="size-4" />,
+    failed: <XIcon aria-hidden className="size-4 text-destructive" />,
+  }[state]
+  return (
+    <span className="mt-0.5 shrink-0">
+      {icon}
+      <span className="sr-only">{label}</span>
+    </span>
+  )
+}
+
 function ResearchSources({ sources }: { sources: ResearchSource[] }) {
   const t = useT()
   return (

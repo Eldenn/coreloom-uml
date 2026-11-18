@@ -13,6 +13,7 @@ import { updateFlag } from '#app/feature-flags/services/feature-flags'
 import LanguageModels from '#app/llm/services/language-models'
 import type { ResearchConfig } from '#app/research/services/research-config'
 import { acquireResearch, releaseResearch } from '#app/research/services/research-lock'
+import { type ResearchStep, readProgress } from '#app/research/services/research-progress'
 import ResearchSandbox from '#app/research/services/research-sandbox'
 import User from '#app/users/models/user'
 import env from '#start/env'
@@ -45,11 +46,14 @@ function useModel(model: LanguageModel) {
 }
 
 /** Every sandbox opened during a test is this one; records what happened to it. */
-function useSandbox(options: { fails?: boolean; breaks?: boolean } = {}) {
+function useSandbox(
+  options: { fails?: boolean; breaks?: boolean; whileReading?: () => Promise<void> } = {},
+) {
   const seen = { opened: [] as ResearchConfig[], closed: 0, read: [] as string[] }
   const tools: ResearchTools = {
     async readPage(url) {
       seen.read.push(url)
+      await options.whileReading?.()
       return url === PAGE_URL ? PAGE : null
     },
     async run() {
@@ -334,5 +338,71 @@ test.group('Agent configs - web research', (group) => {
     assert.equal(sandbox.closed, 1)
     assert.isTrue(await acquireResearch(user.id))
     await releaseResearch(user.id)
+  })
+
+  test('shows the steps while the research runs, and keeps none afterwards', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    const configId = await makeConfig(client, user)
+    await turnOn(user)
+    useModel(
+      toolCallingModel([
+        { calls: [{ tool: 'read_page', input: { url: 'https://missing.example/' } }] },
+        { calls: [{ tool: 'run', input: { command: 'git clone https://x.example/r' } }] },
+        ...READS_THE_PAGE,
+      ]),
+    )
+    const during: ResearchStep[][] = []
+    useSandbox({
+      whileReading: async () => {
+        const shown = await client
+          .get(`/agent-configs/${configId}/research`)
+          .headers(json)
+          .loginAs(user)
+        shown.assertStatus(200)
+        during.push(shown.body().steps)
+      },
+    })
+
+    const response = await research(client, user, configId)
+
+    response.assertStatus(200)
+    assert.deepEqual(during[0], [
+      { kind: 'page', label: 'https://missing.example/', state: 'running' },
+    ])
+    assert.deepEqual(during[1], [
+      { kind: 'page', label: 'https://missing.example/', state: 'failed' },
+      { kind: 'command', label: 'git clone https://x.example/r', state: 'done' },
+      { kind: 'page', label: PAGE_URL, state: 'running' },
+    ])
+    // The addresses and commands are gone with the research.
+    assert.deepEqual(await readProgress(user.id), [])
+    const after = await client
+      .get(`/agent-configs/${configId}/research`)
+      .headers(json)
+      .loginAs(user)
+    assert.deepEqual(after.body(), { steps: [] })
+  })
+
+  test("the steps are the owner's only, behind the flag", async ({ client, assert }) => {
+    const user = await makeUser()
+    const other = await makeUser()
+    const configId = await makeConfig(client, user)
+
+    const off = await client.get(`/agent-configs/${configId}/research`).headers(json).loginAs(user)
+    off.assertStatus(404)
+
+    await turnOn(user)
+    await turnOn(other)
+    const foreign = await client
+      .get(`/agent-configs/${configId}/research`)
+      .headers(json)
+      .loginAs(other)
+    foreign.assertStatus(404)
+    const anonymous = await client.get(`/agent-configs/${configId}/research`).headers(json)
+    anonymous.assertStatus(401)
+    assert.deepEqual(await readProgress(other.id), [])
   })
 })

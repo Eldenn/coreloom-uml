@@ -34,6 +34,9 @@ export const RESEARCH_DENIED_RANGES = [
   '169.254.0.0/16',
   '100.64.0.0/10',
 ] as const
+/** Steps shown to the owner while a research runs, and the longest address or command in one. */
+export const RESEARCH_STEPS_MAX = 40
+export const RESEARCH_STEP_LABEL_MAX_LENGTH = 300
 /** Links kept from one page. */
 export const RESEARCH_PAGE_LINKS_MAX = 100
 /** Exit code answered for a command that ran out of time, as `timeout(1)` does. */

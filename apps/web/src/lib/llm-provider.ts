@@ -165,6 +165,32 @@ export function useAgentResearch(configId: number) {
   })
 }
 
+/** How often the screen asks what a running research has done. */
+const RESEARCH_PROGRESS_INTERVAL_MS = 1000
+
+export type ResearchStep = Awaited<
+  ReturnType<typeof client.api.agentConfigs.research.show>
+>['steps'][number]
+
+/**
+ * `GET /agent-configs/:id/research`: the addresses read and the commands run so far, asked again
+ * while the research is pending. The server keeps none once it ends.
+ */
+export function useResearchProgress(configId: number, running: boolean) {
+  return useQuery({
+    queryKey: ['agent-configs', configId, 'research-progress'],
+    queryFn: async () =>
+      // Steps are only ever added at the end: the position is the identity.
+      (await client.api.agentConfigs.research.show({ params: { id: configId } })).steps.map(
+        (step, position) => ({ ...step, position }),
+      ),
+    enabled: running,
+    refetchInterval: running ? RESEARCH_PROGRESS_INTERVAL_MS : false,
+    // Each research starts from an empty list, not from the last one's steps.
+    gcTime: 0,
+  })
+}
+
 function refreshProviders() {
   return queryClient.invalidateQueries({ queryKey: PROVIDERS_KEY })
 }

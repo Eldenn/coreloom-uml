@@ -10,6 +10,7 @@ import type { AgentRuleSource, Target } from '#app/agent-configs/constants/agent
 import type { AgentGenerationSkills } from '#app/agent-configs/models/agent-config-generation'
 import type { AgentConfigImpact } from '#app/agent-configs/services/agent-context'
 import type { DiagramKind } from '#app/diagrams/constants/diagram'
+import type { ResearchStep } from '#app/research/services/research-progress'
 import type { Paginated } from '#app/shared/pagination/paginate'
 
 /** A ready-made rule of the catalog, as the screen shows it. */
@@ -131,6 +132,9 @@ export type AgentResearchOutput = {
   /** The pages the sandbox actually read, in order. */
   sources: { url: string; title: string | null }[]
 }
+
+/** `GET /agent-configs/:id/research`: the running research's steps, none when no research runs. */
+export type AgentResearchProgressOutput = { steps: ResearchStep[] }
 
 /** `GET /agent-configs/:id`: the configuration and everything it is rendered from. */
 export type AgentConfigDetailOutput = AgentConfigOutput & {

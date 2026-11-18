@@ -385,6 +385,15 @@ router
   .as('agent_configs.research.store')
   .where('id', router.matchers.number())
   .use([middleware.auth(), llmThrottle])
+// What the running research has done so far, asked again by the screen while it waits.
+router
+  .get('/agent-configs/:id/research', [
+    () => import('#app/agent-configs/controllers/agent-config-research-controller'),
+    'show',
+  ])
+  .as('agent_configs.research.show')
+  .where('id', router.matchers.number())
+  .use(middleware.auth())
 router
   .post('/agent-configs/:id/imports', [
     () => import('#app/agent-configs/controllers/agent-config-imports-controller'),
