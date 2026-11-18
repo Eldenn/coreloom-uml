@@ -9,9 +9,15 @@ export type Groups = Map<string, RulePack['groups'][number]>
 /** `slot/rule`, the key of a proposed ready-made rule. */
 export const readyKey = (item: { slot: string; rule: string }) => `${item.slot}/${item.rule}`
 
+/**
+ * A ready-made rule under review. Its evidence quotes what the model read: an import answers it,
+ * the proposals kept in a conversation do not.
+ */
+export type ReviewedReadyRule = Omit<ImportedReadyRule, 'evidence'> & { evidence?: string }
+
 /** What is left to review. */
 export interface ImportResult {
-  ready: ImportedReadyRule[]
+  ready: ReviewedReadyRule[]
   rules: { id: string; section: string; text: string; basedOn: null }[]
   truncated: boolean
   /** The pages a web research read; `null` for a file. */
@@ -27,7 +33,7 @@ export function groupsBySlot(packs: RulePack[]): Groups {
 export function withProposed(
   group: RulePack['groups'][number],
   held: readonly Choice[],
-  item: ImportedReadyRule,
+  item: ReviewedReadyRule,
 ) {
   return chooseRule(group, held, { rule: item.rule, chosen: true, value: item.value ?? '' })
 }
@@ -39,7 +45,7 @@ export function withProposed(
 export function safeReadyKeys(
   config: AgentConfig,
   groups: Groups,
-  ready: ImportedReadyRule[],
+  ready: ReviewedReadyRule[],
 ): Set<string> {
   const held = heldBySlot(config.readyRules)
   const safe = ready.filter((item) => {

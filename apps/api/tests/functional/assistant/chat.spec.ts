@@ -101,6 +101,17 @@ test.group('Assistant - messages about no architecture', (group) => {
     assert.equal(conversation.title, 'What can you do for me?')
   })
 
+  test('a blank answer is a failed call: nothing is stored', async ({ client, assert }) => {
+    const { user, conversation, path } = await setup('chat-blank@example.com')
+    useModel(recordingModel('   ').model)
+
+    const response = await client.post(path).headers(json).loginAs(user).json(chat)
+
+    response.assertStatus(502)
+    assert.equal(response.body().reason, 'unknown')
+    assert.lengthOf(await stored(conversation.id), 0)
+  })
+
   test('a failed call stores nothing and leaks no key', async ({ client, assert }) => {
     const { user, conversation, path } = await setup('chat-502@example.com')
     useModel(

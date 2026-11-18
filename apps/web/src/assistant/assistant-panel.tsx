@@ -119,7 +119,7 @@ export function AssistantLayout({
                   <XIcon />
                 </Button>
               </div>
-              <AssistantPanel {...panel} />
+              <AssistantPanel key={panel.architecture?.id ?? 'account'} {...panel} />
             </section>
           </ResizablePanel>
         </>
@@ -127,6 +127,10 @@ export function AssistantLayout({
     </ResizablePanelGroup>
   )
 }
+
+// Both mounts key the panel by the page's architecture: going from one architecture's page to
+// another (a change card links there) starts it over, so what a message is about and the views
+// picked are the new page's, never the previous one's.
 
 /** The assistant in a side sheet: on every page but an architecture's wide workspace. */
 export function AssistantSheet({
@@ -142,7 +146,7 @@ export function AssistantSheet({
           <SheetTitle>{t.title}</SheetTitle>
           <SheetDescription className="sr-only">{t.empty}</SheetDescription>
         </SheetHeader>
-        <AssistantPanel {...panel} />
+        <AssistantPanel key={panel.architecture?.id ?? 'account'} {...panel} />
       </SheetContent>
     </Sheet>
   )

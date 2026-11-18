@@ -242,6 +242,16 @@ test.group('Assistant conversations', (group) => {
       role: AssistantRole.User,
       content: 'Hello',
     })
+    const view = { kind: 'class', title: 'Secret design', classes: [], relations: [] }
+    const proposed = await AssistantMessage.create({
+      conversationId: created.body().conversation.id,
+      architectureId: architecture.id,
+      role: AssistantRole.Assistant,
+      content: 'Here.',
+      changes: [
+        { op: 'update', title: 'Orders', status: 'pending', before: view, after: view },
+      ] as never,
+    })
     const removed = await client
       .delete(`/architectures/${architecture.id}`)
       .headers(json)
@@ -250,6 +260,10 @@ test.group('Assistant conversations', (group) => {
     assert.isNotNull(await AssistantConversation.find(created.body().conversation.id))
     await message.refresh()
     assert.isNull(message.architectureId)
+    // The diagrams go with their architecture: a kept change holds neither of its two states.
+    await proposed.refresh()
+    assert.deepInclude(proposed.changes?.[0], { title: 'Orders', before: null, after: null })
+    assert.notInclude(JSON.stringify(proposed.changes), 'Secret design')
     const show = await client
       .get(`${base}/${created.body().conversation.id}`)
       .headers(json)
@@ -262,7 +276,10 @@ test.group('Assistant conversations', (group) => {
           item.content,
           item.architectureId,
         ]),
-      [['Hello', null]],
+      [
+        ['Hello', null],
+        ['Here.', null],
+      ],
     )
   })
 

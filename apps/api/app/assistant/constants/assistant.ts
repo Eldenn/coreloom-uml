@@ -72,6 +72,8 @@ export const ProposalsStatus = {
 export type ProposalsStatus = (typeof ProposalsStatus)[keyof typeof ProposalsStatus]
 
 /** Most pages a research's proposals keep, and the longest address and title of one. */
+/** Above anything one research can propose: the count a settle may report. */
+export const PROPOSALS_ADDED_MAX = 1000
 export const PROPOSAL_SOURCES_MAX = 50
 export const PROPOSAL_SOURCE_URL_MAX_LENGTH = 2000
 export const PROPOSAL_SOURCE_TITLE_MAX_LENGTH = 300
@@ -84,7 +86,8 @@ export const PROPOSAL_SOURCE_TITLE_MAX_LENGTH = 300
 export type StoredProposals = {
   agentConfigId: number
   sources: { url: string; title: string | null }[]
-  ready: AgentImportOutput['ready']
+  /** The ready-made rules proposed, without the evidence an import answers them with. */
+  ready: Omit<AgentImportOutput['ready'][number], 'evidence'>[]
   rules: AgentImportOutput['rules']
   truncated: boolean
   status: ProposalsStatus

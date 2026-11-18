@@ -215,7 +215,13 @@ export function useShowExchange(conversationId: number) {
   return (messages: AssistantMessage[]) => {
     queryClient.setQueryData<ConversationDetail>(
       assistantKeys.conversation(conversationId),
-      (detail) => detail && { ...detail, messages: [...detail.messages, ...messages] },
+      (detail) => {
+        if (!detail) return detail
+        // A refetch may already hold them: a message is shown once.
+        const held = new Set(detail.messages.map((message) => message.id))
+        const fresh = messages.filter((message) => !held.has(message.id))
+        return { ...detail, messages: [...detail.messages, ...fresh] }
+      },
     )
     return queryClient.invalidateQueries({ queryKey: assistantKeys.all })
   }

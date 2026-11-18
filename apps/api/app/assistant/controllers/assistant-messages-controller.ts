@@ -34,7 +34,7 @@ import { CodeMapStatus } from '#app/code-maps/constants/code-map'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
 import { CODE_MAP_NOT_FOUND, findOwnedCodeMap } from '#app/code-maps/services/owned-code-map'
 import { DIAGRAM_NOT_FOUND } from '#app/diagrams/services/owned-diagram'
-import { llmFailure, userLanguageModel } from '#app/llm/services/language-models'
+import { LlmFailureReason, llmFailure, userLanguageModel } from '#app/llm/services/language-models'
 import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
 
 const MESSAGE_NOT_FOUND = { error: { message: 'Message not found' } } as const
@@ -229,7 +229,13 @@ export default class AssistantMessagesController {
       logger.warn({ ...log, durationMs, reason: error.reason }, 'assistant chat failed')
       return response.badGateway(llmFailure(error.reason))
     }
-    logger.info({ ...log, durationMs: Math.round(performance.now() - started) }, 'assistant chat')
+    const durationMs = Math.round(performance.now() - started)
+    if (!reply.trim()) {
+      // A blank answer would be stored as an empty bubble: answered like any failed call.
+      logger.warn({ ...log, durationMs, reason: LlmFailureReason.Unknown }, 'assistant chat failed')
+      return response.badGateway(llmFailure(LlmFailureReason.Unknown))
+    }
+    logger.info({ ...log, durationMs }, 'assistant chat')
 
     const messages = await storeExchange(conversation, message, {
       architectureId: null,

@@ -10,6 +10,7 @@ import {
   type Groups,
   type ImportResult,
   readyKey,
+  type ReviewedReadyRule,
   withProposed,
 } from '@/agent-configs/import-rules'
 import { AppliedBadge, RuleText } from '@/agent-configs/rule-text'
@@ -21,12 +22,7 @@ import { toast } from '@/components/ui/sonner'
 import { Spinner } from '@/components/ui/spinner'
 import { type AgentConfig, useSaveReadyRules } from '@/lib/agent-configs'
 import { getErrorMessage } from '@/lib/client'
-import {
-  type ImportedReadyRule,
-  type ResearchSource,
-  type ResearchStep,
-  useResearchProgress,
-} from '@/lib/llm-provider'
+import { type ResearchSource, type ResearchStep, useResearchProgress } from '@/lib/llm-provider'
 import { useLocale, useT } from '@/lib/locale'
 import { type Choice, fillValue, heldBySlot } from '@/lib/ready-rules'
 
@@ -183,7 +179,7 @@ function ImportedReadyRules({
   configId: number
   config: AgentConfig
   groups: Groups
-  ready: ImportedReadyRule[]
+  ready: ReviewedReadyRule[]
   checked: Set<string>
   onCheckedChange: (checked: Set<string>) => void
   onApplied: (keys: Set<string>) => void

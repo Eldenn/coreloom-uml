@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
 import { RULE_PACKS, ruleSections } from '@coreloom-uml/catalog'
+import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import { ImportOrigin, importAgentFile, LlmCallError } from '@coreloom-uml/llm'
 import { currentInputs, render } from '#app/agent-configs/services/agent-context'
 import {
@@ -18,6 +19,7 @@ import {
   findOwnedConversation,
 } from '#app/assistant/services/owned-conversation'
 import { storeExchange } from '#app/assistant/services/store-exchange'
+import { isFeatureEnabled } from '#app/feature-flags/services/feature-flags'
 import { llmFailure, userLanguageModel } from '#app/llm/services/language-models'
 import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
 
@@ -50,7 +52,12 @@ export default class AgentConfigImportsController {
     if (conversation) {
       if (origin !== ImportOrigin.Research)
         return response.unprocessableEntity(CONVERSATION_NEEDS_RESEARCH)
-      if (!(await assistantEnabled(user))) return response.notFound(ASSISTANT_NOT_FOUND)
+      // The findings of a research, kept by the assistant: both features have to be on.
+      if (
+        !(await assistantEnabled(user)) ||
+        !(await isFeatureEnabled(FeatureFlagKey.WebResearch, user))
+      )
+        return response.notFound(ASSISTANT_NOT_FOUND)
       target = await findOwnedConversation(conversation.id, user)
       if (!target) return response.notFound(CONVERSATION_NOT_FOUND)
     }
@@ -95,7 +102,8 @@ export default class AgentConfigImportsController {
         proposals: {
           agentConfigId: config.id,
           sources: conversation.sources,
-          ready: result.ready,
+          // Without its evidence, which quotes the findings: those are never kept.
+          ready: result.ready.map(({ evidence: _evidence, ...rule }) => rule),
           rules: result.rules,
           truncated: result.truncated,
           status: ProposalsStatus.Pending,

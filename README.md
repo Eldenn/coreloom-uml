@@ -61,9 +61,11 @@ silently.
   each message says which architecture it is about. A message about an architecture
   (`POST /architectures/:id/assistant/conversations/:conversationId/messages`, with `…/context`
   for the gauge) reads its views and proposes view changes shown as diffs to accept, reject or
-  undo, only through that architecture's routes. Deleting an architecture keeps the conversations.
-  A web research launched from the assistant stores its request and proposals (rules and the
-  addresses of the pages read) in the conversation. It is behind the `diagram-assistant` feature
+  undo, only through that architecture's routes. Deleting an architecture keeps the conversations,
+  without the diagrams of the changes proposed for it (a database trigger empties them). A web
+  research launched from the assistant (the panel's « From the web », which also needs
+  `web-research`) stores its request and proposals (rules and the addresses of the pages read,
+  never a quote of what was read) in the conversation. It is behind the `diagram-assistant` feature
   flag, off by default; session only.
 - **MCP server.** `POST /mcp` is a Model Context Protocol endpoint (Streamable HTTP, stateless)
   for coding agents: with an account API key (`Authorization: Bearer clu_…`, the `read` ability

@@ -3,6 +3,7 @@ import {
   ASSISTANT_LOCALES,
   ASSISTANT_MESSAGE_MAX_LENGTH,
   ASSISTANT_TITLE_MAX_LENGTH,
+  PROPOSALS_ADDED_MAX,
 } from '#app/assistant/constants/assistant'
 import { llmCallFields } from '#app/llm/validators/llm-input'
 
@@ -64,5 +65,5 @@ export const chatInput = vine.create(
 
 /** `POST …/messages/:messageId/proposals/settle` — how many of the proposed rules were added. */
 export const settleProposalsInput = vine.create(
-  vine.object({ added: vine.number().withoutDecimals().min(0) }),
+  vine.object({ added: vine.number().withoutDecimals().min(0).max(PROPOSALS_ADDED_MAX) }),
 )

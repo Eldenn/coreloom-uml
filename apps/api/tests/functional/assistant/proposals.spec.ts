@@ -1,7 +1,7 @@
 import app from '@adonisjs/core/services/app'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import type { LanguageModel } from '@coreloom-uml/llm'
-import { answeringModel } from '@coreloom-uml/llm/testing'
+import { answeringModel, failingModel } from '@coreloom-uml/llm/testing'
 import { test } from '@japa/runner'
 import type { TestContext } from '@japa/runner/core'
 import { AssistantRole, type StoredProposals } from '#app/assistant/constants/assistant'
@@ -24,8 +24,16 @@ const SOURCES = [
   { url: 'https://docs.example/conventions', title: 'Conventions' },
   { url: 'http://docs.example/other', title: null },
 ]
+// The evidence quotes the findings, as the import asks the model to: it must not be kept.
 const PROPOSED = JSON.stringify({
-  ready: [{ slot: 'testing.levels', rule: 'unit', value: null, evidence: 'Write unit tests.' }],
+  ready: [
+    {
+      slot: 'testing.levels',
+      rule: 'unit',
+      value: null,
+      evidence: 'codename Quasar uses pnpm (https://docs.example/conventions)',
+    },
+  ],
   rules: [{ section: 'Workflow', text: 'Never push to main.' }],
 })
 
@@ -42,6 +50,7 @@ function useModel(model: LanguageModel) {
 async function setup(email: string, client: Client) {
   const user = await User.create({ email, password: 'a-very-strong-passphrase' })
   await updateFlag(FeatureFlagKey.DiagramAssistant, ON, user)
+  await updateFlag(FeatureFlagKey.WebResearch, ON, user)
   const created = await client
     .post('/agent-configs')
     .headers(json)
@@ -99,7 +108,8 @@ test.group('Assistant - proposals of a web research', (group) => {
     assert.deepEqual(answered.proposals, {
       agentConfigId: configId,
       sources: SOURCES,
-      ready: body.ready,
+      // What the import answered, without the quotes of the findings.
+      ready: body.ready.map(({ evidence: _evidence, ...rule }: { evidence: string }) => rule),
       rules: body.rules,
       truncated: false,
       status: 'pending',
@@ -180,9 +190,30 @@ test.group('Assistant - proposals of a web research', (group) => {
     await updateFlag(FeatureFlagKey.DiagramAssistant, OFF, user)
     const off = await importInto(client, user, configId, { conversation: target(conversation.id) })
     off.assertStatus(404)
+    // The findings of a research: not without the research's own flag either.
+    await updateFlag(FeatureFlagKey.DiagramAssistant, ON, user)
+    await updateFlag(FeatureFlagKey.WebResearch, OFF, user)
+    const noResearch = await importInto(client, user, configId, {
+      conversation: target(conversation.id),
+    })
+    noResearch.assertStatus(404)
 
     assert.lengthOf(model.doGenerateCalls, 0)
     assert.lengthOf(await AssistantMessage.query().where('conversationId', conversation.id), 0)
+  })
+
+  test('a failed import stores nothing in the conversation', async ({ client, assert }) => {
+    const { user, configId, conversation } = await setup('prop-502@example.com', client)
+    useModel(failingModel(new Error('The provider is down')))
+
+    const response = await importInto(client, user, configId, {
+      conversation: target(conversation.id),
+    })
+
+    response.assertStatus(502)
+    assert.lengthOf(await AssistantMessage.query().where('conversationId', conversation.id), 0)
+    await conversation.refresh()
+    assert.equal(conversation.title, '')
   })
 
   test('settles the proposals once', async ({ client, assert }) => {
@@ -230,7 +261,7 @@ test.group('Assistant - proposals of a web research', (group) => {
     const proposals: StoredProposals = {
       agentConfigId: 7,
       sources: SOURCES,
-      ready: [{ slot: 'testing.levels', rule: 'unit', value: null, evidence: 'Write unit tests.' }],
+      ready: [{ slot: 'testing.levels', rule: 'unit', value: null }],
       rules: [{ section: 'Workflow', text: 'Never push to main.' }],
       truncated: false,
       status: 'settled',
