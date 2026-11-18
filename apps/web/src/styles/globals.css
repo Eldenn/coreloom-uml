@@ -7,3 +7,8 @@
 @import './coreloom/accents.css';
 /* Surface presets (mineral, bone). */
 @import './coreloom/surfaces.css';
+
+/* The app's pages hold wide tables, diagrams and side-by-side panels: let them use large screens. */
+:root {
+  --container-app: 1600px;
+}

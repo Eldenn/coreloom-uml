@@ -36,6 +36,7 @@ function SettingsPage() {
       description={t.settings.description}
       nav={[{ id: 'account', label: t.settings.account }]}
       active="account"
+      className="max-w-5xl"
     >
       <ProfileSection />
       {user.managedByEnvironment ? (

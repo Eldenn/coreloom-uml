@@ -65,7 +65,7 @@ function SharedPage() {
 
 function SharedLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6">
+    <div className="mx-auto flex min-h-svh w-full max-w-(--container-app) flex-col gap-6 px-4 py-6 sm:px-6">
       <header>
         <Brand />
       </header>

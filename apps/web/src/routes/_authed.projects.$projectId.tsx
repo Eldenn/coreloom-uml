@@ -159,7 +159,7 @@ function ProjectView({ project }: { project: Project }) {
         }
       />
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList variant="line">
+        <TabsList variant="line" className="max-w-full justify-start overflow-x-auto">
           <TabsTrigger value="architectures">{t.agents.tabArchitectures}</TabsTrigger>
           <TabsTrigger value="agents">
             {t.agents.tab}
