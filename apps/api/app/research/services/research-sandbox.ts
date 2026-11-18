@@ -2,26 +2,15 @@ import { LlmCallError, LlmFailureReason, type ResearchTools } from '@coreloom-um
 import { CommandExitError, Sandbox, TimeoutError } from 'e2b'
 import {
   RESEARCH_COMMAND_TIMEOUT_MS,
-  RESEARCH_PAGE_MAX_BYTES,
-  RESEARCH_PAGE_TIMEOUT_SECONDS,
+  RESEARCH_DENIED_RANGES,
+  RESEARCH_SANDBOX_CLOSE_TIMEOUT_MS,
+  RESEARCH_SANDBOX_START_TIMEOUT_MS,
   RESEARCH_SANDBOX_TIMEOUT_MS,
   RESEARCH_TIMEOUT_EXIT_CODE,
 } from '#app/research/constants/research'
 import { isWebUrl, pageFromHtml } from '#app/research/services/page-text'
 import type { ResearchConfig } from '#app/research/services/research-config'
-
-/**
- * Fetches one page. The URL comes in as an environment variable of this one command, never as
- * part of the command line, so nothing a page or a model writes is ever read by the shell.
- * Redirects are followed only to http and https.
- */
-const FETCH_PAGE = [
-  'curl -sSL --compressed',
-  `--max-time ${RESEARCH_PAGE_TIMEOUT_SECONDS}`,
-  `--max-filesize ${RESEARCH_PAGE_MAX_BYTES}`,
-  "--proto '=http,https' --proto-redir '=http,https'",
-  '-- "$PAGE_URL"',
-].join(' ')
+import { FETCH_PAGE, RUN_COMMAND } from '#app/research/services/sandbox-commands'
 
 export type OpenSandbox = { tools: ResearchTools; close(): Promise<void> }
 
@@ -30,7 +19,9 @@ export type OpenSandbox = { tools: ResearchTools; close(): Promise<void> }
  * from the container, so tests swap it (`app.container.swap(ResearchSandbox, ...)`) and never
  * reach E2B.
  *
- * The sandbox gets no environment variable and no file of ours: it holds nothing worth taking,
+ * It runs two fixed command lines only (`sandbox-commands.ts`): a URL or the model's command
+ * reaches them as an environment variable of that one run. The sandbox itself gets no
+ * environment variable and no file of ours: it holds nothing worth taking,
  * and it is killed when the research ends (`close`), or by E2B itself after
  * `RESEARCH_SANDBOX_TIMEOUT_MS` should the API die first.
  */
@@ -44,17 +35,23 @@ export default class ResearchSandbox {
         ...(config.e2bApiUrl ? { apiUrl: config.e2bApiUrl } : {}),
         ...(config.e2bSandboxUrl ? { sandboxUrl: config.e2bSandboxUrl } : {}),
         timeoutMs: RESEARCH_SANDBOX_TIMEOUT_MS,
+        requestTimeoutMs: RESEARCH_SANDBOX_START_TIMEOUT_MS,
+        // The web, never a private network: on a self-hosted install that is the operator's.
+        network: { denyOut: [...RESEARCH_DENIED_RANGES] },
       })
     } catch {
       // The SDK's error may name the key or the install: only the reason leaves this file.
       throw new LlmCallError(LlmFailureReason.SandboxUnavailable)
     }
 
-    const run = async (command: string, envs?: Record<string, string>) => {
+    const run = async (command: string, envs: Record<string, string>, signal?: AbortSignal) => {
       try {
         const result = await sandbox.commands.run(command, {
           envs,
           timeoutMs: RESEARCH_COMMAND_TIMEOUT_MS,
+          // A sandbox that stopped answering is given up on with the command, not a minute later.
+          requestTimeoutMs: RESEARCH_COMMAND_TIMEOUT_MS,
+          signal,
         })
         return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr }
       } catch (error) {
@@ -71,15 +68,15 @@ export default class ResearchSandbox {
 
     return {
       tools: {
-        async readPage(url) {
+        async readPage(url, signal) {
           if (!isWebUrl(url)) return null
-          const fetched = await run(FETCH_PAGE, { PAGE_URL: url })
+          const fetched = await run(FETCH_PAGE, { PAGE_URL: url }, signal)
           // A binary body is not a page.
           if (fetched.exitCode !== 0 || fetched.stdout.includes('\u0000')) return null
           return pageFromHtml(fetched.stdout, url)
         },
-        async run(command) {
-          const outcome = await run(command)
+        async run(command, signal) {
+          const outcome = await run(RUN_COMMAND, { RESEARCH_COMMAND: command }, signal)
           return {
             exitCode: outcome.exitCode,
             output: [outcome.stdout, outcome.stderr].filter(Boolean).join('\n'),
@@ -87,7 +84,9 @@ export default class ResearchSandbox {
         },
       },
       async close() {
-        await sandbox.kill().catch(() => false)
+        await sandbox
+          .kill({ requestTimeoutMs: RESEARCH_SANDBOX_CLOSE_TIMEOUT_MS })
+          .catch(() => false)
       },
     }
   }

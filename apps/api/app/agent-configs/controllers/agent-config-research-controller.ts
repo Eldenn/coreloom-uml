@@ -2,7 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import app from '@adonisjs/core/services/app'
 import logger from '@adonisjs/core/services/logger'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
-import { LlmCallError, researchWeb } from '@coreloom-uml/llm'
+import { LlmCallError, LlmFailureReason, researchWeb } from '@coreloom-uml/llm'
 import {
   AGENT_CONFIG_NOT_FOUND,
   findOwnedAgentConfig,
@@ -16,11 +16,10 @@ import {
   SUBSCRIPTION_NOT_FOUND,
 } from '#app/llm-connections/constants/llm-connections'
 import {
-  RESEARCH_ANSWER_MARGIN_MS,
   RESEARCH_BUSY,
   RESEARCH_NEEDS_TOOLS,
   RESEARCH_NOT_FOUND,
-  RESEARCH_REQUEST_BUDGET_MS,
+  researchTimeLeft,
 } from '#app/research/constants/research'
 import { researchConfig } from '#app/research/services/research-config'
 import { acquireResearch, releaseResearch } from '#app/research/services/research-lock'
@@ -38,8 +37,9 @@ import ResearchSandbox, { type OpenSandbox } from '#app/research/services/resear
  * configuration and has no tool. The key (or the connected subscription) never reaches the
  * sandbox, and the request, the pages and the findings are never logged: counts only.
  *
- * The whole call fits in `RESEARCH_REQUEST_BUDGET_MS`, under what the production proxy allows,
- * and an account runs one research at a time.
+ * The whole call fits in `RESEARCH_REQUEST_BUDGET_MS`, under what the production proxy allows:
+ * the sandbox's start and end have their own short timeouts, the loop gets what is left
+ * (`researchTimeLeft`) and its tools stop with it. An account runs one research at a time.
  */
 export default class AgentConfigResearchController {
   async store({ params, request, auth, response }: HttpContext) {
@@ -53,8 +53,9 @@ export default class AgentConfigResearchController {
     if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
 
     const { provider, apiKey, request: asked } = await request.validateUsing(agentResearchInput)
-    // The `claude` binary runs without tools: it cannot drive the sandbox.
-    if (provider.kind === ProviderKind.ClaudeCode) {
+    // The `claude` binary runs without tools, and the ChatGPT subscription is not known to carry
+    // a tool call from one step to the next: neither drives the sandbox.
+    if (provider.kind === ProviderKind.ClaudeCode || provider.kind === ProviderKind.OpenAICodex) {
       return response.unprocessableEntity(RESEARCH_NEEDS_TOOLS)
     }
     const built = await userLanguageModel(provider, apiKey, user)
@@ -73,11 +74,13 @@ export default class AgentConfigResearchController {
     let sandbox: OpenSandbox | null = null
     try {
       sandbox = await (await app.container.make(ResearchSandbox)).open(sandboxConfig)
+      // What the sandbox took to start comes off the model's time, not on top of the budget.
+      const timeoutMs = researchTimeLeft(elapsed())
+      if (timeoutMs === null) throw new LlmCallError(LlmFailureReason.Timeout)
       const result: AgentResearchOutput = await researchWeb(
         built.model,
         { request: asked, tools: sandbox.tools },
-        // What the sandbox took to start comes off the model's time, not on top of the budget.
-        { timeoutMs: RESEARCH_REQUEST_BUDGET_MS - RESEARCH_ANSWER_MARGIN_MS - elapsed() },
+        { timeoutMs },
       )
       logger.info(
         {

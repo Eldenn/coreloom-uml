@@ -89,8 +89,8 @@ export function AgentFileImport({
 
   if (!provider) return null
 
-  // The `claude` binary runs without tools: it cannot read the web.
-  const canResearch = provider.kind !== 'claude-code'
+  // A subscription cannot drive the sandbox's tools: the API refuses both kinds.
+  const canResearch = provider.kind !== 'claude-code' && provider.kind !== 'openai-codex'
   const web = webResearch && mode === 'web'
   const pending = research.isPending || read.isPending
   const failure = research.error ?? read.error
@@ -126,6 +126,12 @@ export function AgentFileImport({
   const run = () => {
     if (!web) {
       propose(content, null)
+      return
+    }
+    // The pages were read and only the proposals failed: the same request keeps its findings
+    // instead of paying for the research again.
+    if (research.data && read.isError && research.variables.request === request) {
+      propose(research.data.findings, research.data.sources)
       return
     }
     read.reset()

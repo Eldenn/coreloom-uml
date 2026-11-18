@@ -547,8 +547,8 @@ minute per user (`llmThrottle`).
   file. Two requests on purpose: each stays under 80 seconds, below what a proxy such as
   Cloudflare allows. The model's key never reaches the sandbox, the research gets nothing of the
   configuration, and nothing is stored or logged but counts. There is no search engine: the model
-  starts from the addresses given and may follow their links. The Claude subscription cannot run
-  one (its binary runs without tools). The sandboxes are E2B Cloud's with `E2B_API_KEY` alone, or
+  starts from the addresses given and may follow their links. A subscription (Claude, ChatGPT)
+  cannot run one. The sandboxes are E2B Cloud's with `E2B_API_KEY` alone, or
   a self-hosted install's ([e2b-dev/runtime](https://github.com/e2b-dev/runtime), "Embed", which
   needs a Linux host with KVM) with `E2B_API_URL` and `E2B_SANDBOX_URL` as well.
 - A provider failure answers 502 `{ error, reason }`, never the provider's own error. Everything

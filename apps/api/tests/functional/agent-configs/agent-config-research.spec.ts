@@ -45,7 +45,7 @@ function useModel(model: LanguageModel) {
 }
 
 /** Every sandbox opened during a test is this one; records what happened to it. */
-function useSandbox(options: { fails?: boolean } = {}) {
+function useSandbox(options: { fails?: boolean; breaks?: boolean } = {}) {
   const seen = { opened: [] as ResearchConfig[], closed: 0, read: [] as string[] }
   const tools: ResearchTools = {
     async readPage(url) {
@@ -61,6 +61,7 @@ function useSandbox(options: { fails?: boolean } = {}) {
     fake.open = async (config) => {
       seen.opened.push(config)
       if (options.fails) throw new LlmCallError('sandbox_unavailable')
+      if (options.breaks) throw new TypeError('A bug, not a provider failure')
       return {
         tools,
         async close() {
@@ -237,6 +238,40 @@ test.group('Agent configs - web research', (group) => {
     response.assertStatus(422)
     assert.include(response.body().error.message, 'API key')
     assert.lengthOf(sandbox.opened, 0)
+  })
+
+  test('refuses the ChatGPT subscription until it is known to call tools', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    const configId = await makeConfig(client, user)
+    await turnOn(user)
+    const sandbox = useSandbox()
+
+    const response = await research(client, user, configId, {
+      provider: { kind: 'openai-codex', model: 'gpt-5' },
+      apiKey: null,
+    })
+
+    response.assertStatus(422)
+    assert.include(response.body().error.message, 'API key')
+    assert.lengthOf(sandbox.opened, 0)
+  })
+
+  test('an unexpected failure still frees the slot', async ({ client, assert }) => {
+    const user = await makeUser()
+    const configId = await makeConfig(client, user)
+    await turnOn(user)
+    useModel(toolCallingModel(READS_THE_PAGE))
+    const sandbox = useSandbox({ breaks: true })
+
+    const response = await research(client, user, configId)
+
+    response.assertStatus(500)
+    assert.lengthOf(sandbox.opened, 1)
+    assert.isTrue(await acquireResearch(user.id))
+    await releaseResearch(user.id)
   })
 
   test('validates the request', async ({ client }) => {

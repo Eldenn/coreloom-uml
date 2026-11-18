@@ -38,6 +38,23 @@ test.group('pageFromHtml', () => {
     assert.notMatch(text, /\s{2,}/)
   })
 
+  test('keeps the page after a script that writes a comment opening', ({ assert }) => {
+    const html =
+      '<html><body><p>Before.</p><script>var a = "<!--";</script><p>After.</p></body></html>'
+
+    assert.include(pageFromHtml(html, 'https://docs.example/').text, 'After.')
+  })
+
+  test('keeps the page after a custom element named like a dropped block', ({ assert }) => {
+    for (const name of ['styled-box', 'svg-icon', 'template-x', 'scripture']) {
+      const html = `<html><body><p>Before.</p><${name}>Inside.</${name}><p>After.</p></body></html>`
+      const { text } = pageFromHtml(html, 'https://docs.example/')
+
+      assert.include(text, 'Inside.', name)
+      assert.include(text, 'After.', name)
+    }
+  })
+
   test('returns plain text as it is', ({ assert }) => {
     const page = pageFromHtml('# Rules\n\n- Use pnpm.', 'https://raw.example/AGENTS.md')
 

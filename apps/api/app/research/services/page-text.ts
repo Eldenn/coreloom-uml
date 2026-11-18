@@ -62,19 +62,37 @@ function asciiLower(text: string): string {
   return text.replace(/[A-Z]+/g, (upper) => upper.toLowerCase())
 }
 
-/** Removes every `open … close` span; one left open takes the rest of the text with it. */
-function dropSpans(html: string, lower: string, open: string, close: string): [string, string] {
+/** What ends a tag's name: `<script>` and `<script src>` are scripts, `<scripture>` is not. */
+const NAME_END: ReadonlySet<string> = new Set([' ', '\t', '\n', '\r', '\f', '>', '/'])
+
+/**
+ * Removes every `open … close` span; one left open takes the rest of the text with it. With
+ * `tag`, `open` is a tag's name and only counts when the name ends there.
+ */
+function dropSpans(
+  html: string,
+  lower: string,
+  open: string,
+  close: string,
+  tag = false,
+): [string, string] {
   let kept = ''
   let keptLower = ''
   let position = 0
+  let from = 0
   while (position < html.length) {
-    const start = lower.indexOf(open, position)
+    const start = lower.indexOf(open, from)
     if (start === -1) break
+    if (tag && !NAME_END.has(lower.charAt(start + open.length))) {
+      from = start + open.length
+      continue
+    }
     kept += html.slice(position, start)
     keptLower += lower.slice(position, start)
     const end = lower.indexOf(close, start + open.length)
     if (end === -1) return [kept, keptLower]
     position = end + close.length
+    from = position
   }
   return [kept + html.slice(position), keptLower + lower.slice(position)]
 }
@@ -93,10 +111,11 @@ export function pageFromHtml(html: string, baseUrl: string): ResearchPage {
 
   let lower = asciiLower(html)
   let source = html
-  ;[source, lower] = dropSpans(source, lower, '<!--', '-->')
+  // Blocks first: a script may write `<!--` without ever closing it.
   for (const block of DROPPED_BLOCKS) {
-    ;[source, lower] = dropSpans(source, lower, `<${block}`, `</${block}>`)
+    ;[source, lower] = dropSpans(source, lower, `<${block}`, `</${block}>`, true)
   }
+  ;[source, lower] = dropSpans(source, lower, '<!--', '-->')
 
   const titleStart = lower.indexOf('<title')
   const titleOpen = titleStart === -1 ? -1 : lower.indexOf('>', titleStart)

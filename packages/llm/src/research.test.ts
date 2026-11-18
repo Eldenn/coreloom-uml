@@ -156,6 +156,31 @@ describe('researchWeb', () => {
     expect(result.findings).toContain('Use pnpm.')
   })
 
+  it('stops waiting for a tool when the time runs out', async () => {
+    const signals: (AbortSignal | undefined)[] = []
+    const tools: ResearchTools = {
+      async readPage(url, signal) {
+        signals.push(signal)
+        if (url === 'https://a.example/') return page('Use pnpm.')
+        // A sandbox that stopped answering, and a tool that ignores its signal.
+        await new Promise((resolve) => setTimeout(resolve, 3000))
+        return page('Too late.')
+      },
+      async run() {
+        return { exitCode: 0, output: '' }
+      },
+    }
+    const model = toolCallingModel([read('https://a.example/'), read('https://slow.example/')])
+    const started = performance.now()
+
+    const result = await researchWeb(model, { request: 'r', tools }, { timeoutMs: 200 })
+
+    expect(performance.now() - started).toBeLessThan(1500)
+    expect(result.sources.map((source) => source.url)).toEqual(['https://a.example/'])
+    expect(result.findings).toContain('Use pnpm.')
+    expect(signals[0]).toBeInstanceOf(AbortSignal)
+  })
+
   it('fails with timeout when the time runs out before anything was read', async () => {
     const { tools } = fakeTools()
     const model = toolCallingModel([{ hang: true }])

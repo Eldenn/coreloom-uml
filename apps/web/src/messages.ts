@@ -1166,7 +1166,7 @@ export const en = {
     researchSources: 'Pages read',
     researchNoSources: 'No page was read: the model worked from commands only.',
     researchNoSubscription:
-      'The Claude subscription cannot read the web here: choose a provider with an API key.',
+      'A subscription cannot read the web here: choose a provider with an API key.',
     importTruncated: 'The file was too long for the model: its end was left out.',
     importReady: 'Ready-made rules',
     importReadyHint:
@@ -2388,7 +2388,7 @@ export const fr: Messages = {
     researchNoSources:
       'Aucune page n’a été lue : le modèle a travaillé avec des commandes seulement.',
     researchNoSubscription:
-      'L’abonnement Claude ne peut pas lire le web ici : choisissez un fournisseur avec une clé API.',
+      'Un abonnement ne peut pas lire le web ici : choisissez un fournisseur avec une clé API.',
     importTruncated: 'Le fichier était trop long pour le modèle : sa fin a été laissée de côté.',
     importReady: 'Règles prêtes à l’emploi',
     importReadyHint:
