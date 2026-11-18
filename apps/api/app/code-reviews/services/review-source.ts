@@ -9,9 +9,9 @@ import type { ConformanceSource } from '@coreloom-uml/llm'
 import { toPlantUml, type UmlSpec } from '@coreloom-uml/uml'
 import type { CodeReviewEvidence } from '#app/code-reviews/constants/code-review'
 
-/** Element ids to their names, from whatever lists the diagram kind has. */
-export function elementNames(spec: UmlSpec): Map<string, string> {
-  const names = new Map<string, string>()
+/** Every element of the diagram, from whatever lists its kind has: its id, name and kind. */
+function elementsOf(spec: UmlSpec): { id: string; name: string; kind?: string }[] {
+  const elements: { id: string; name: string; kind?: string }[] = []
   for (const value of Object.values(spec)) {
     if (!Array.isArray(value)) continue
     for (const item of value as unknown[]) {
@@ -19,10 +19,20 @@ export function elementNames(spec: UmlSpec): Map<string, string> {
       const { id } = item
       if (typeof id !== 'string') continue
       const label = 'label' in item ? item.label : undefined
-      names.set(id, typeof label === 'string' && label ? label : id)
+      const kind = 'kind' in item ? item.kind : undefined
+      elements.push({
+        id,
+        name: typeof label === 'string' && label ? label : id,
+        ...(typeof kind === 'string' ? { kind } : {}),
+      })
     }
   }
-  return names
+  return elements
+}
+
+/** Element ids to their names. */
+export function elementNames(spec: UmlSpec): Map<string, string> {
+  return new Map(elementsOf(spec).map((element) => [element.id, element.name]))
 }
 
 /** One English sentence per deterministic finding, and per drawn relation found in the code. */
@@ -54,13 +64,13 @@ export function matchChecks(match: DiagramMatch, nameOf: (id: string) => string)
 /**
  * What `reviewConformance` reads about one diagram: its PlantUML text without layout, its
  * elements with the code they stand for, the deterministic checks, and the slice of the map
- * around the linked places. `evidence` turns a cited key into the place the finding stores.
+ * around the linked places (most relevant first: the files `readSource` reads are its first ones). `evidence` turns a cited key into the place the finding stores.
  */
 export function conformanceSource(
   diagram: { id: number; kind: string; title: string; content: UmlSpec },
   map: CodeMap,
   match: DiagramMatch,
-  options: { locale: 'en' | 'fr'; snippets?: readonly { key: string; text: string }[] },
+  locale: 'en' | 'fr',
 ): {
   source: ConformanceSource
   evidence: (key: string) => CodeReviewEvidence
@@ -68,6 +78,7 @@ export function conformanceSource(
   const names = elementNames(diagram.content)
   const nameOf = (id: string) => names.get(id) ?? id
   const slice = codeSlice(map, match)
+  const matched = new Set(match.elements.map((element) => element.elementId))
   const byKey = new Map<string, CodeSliceNode>(slice.nodes.map((node) => [node.key, node]))
   return {
     source: {
@@ -83,11 +94,11 @@ export function conformanceSource(
         status: element.status,
         codeKeys: element.candidates.map((candidate) => candidate.codeKey),
       })),
+      others: elementsOf(diagram.content).filter((element) => !matched.has(element.id)),
       checks: matchChecks(match, nameOf),
       nodes: slice.nodes,
       edges: slice.edges,
-      ...(options.snippets?.length ? { snippets: options.snippets } : {}),
-      locale: options.locale,
+      locale,
     },
     evidence: (key) => {
       const node = byKey.get(key)

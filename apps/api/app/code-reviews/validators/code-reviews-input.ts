@@ -20,7 +20,10 @@ export const createCodeReviewInput = vine.create(
       .minLength(1)
       .maxLength(CODE_REVIEW_LIMITS.diagramsPerReview)
       .distinct(),
-    /** The owner may send code excerpts with each call; nothing else ever sends code. */
+    /**
+     * The owner lets each call read the source of the diagram's files on GitHub
+     * (`SOURCE_REVIEW_KINDS` only) and send excerpts to the model. Off: names and links only.
+     */
     includeSnippets: vine.boolean().optional(),
     locale: vine.enum(CODE_REVIEW_LOCALES),
   }),
@@ -36,23 +39,9 @@ export const listCodeReviewsInput = vine.create(
 
 /**
  * `POST /code-reviews/:id/diagrams/:diagramId`: one model call with the user's provider. The
- * excerpts, by code key, are only taken when the review was started with `includeSnippets`; they
- * reach the model and are never stored.
+ * browser sends no code: the server reads it when the review was started with `includeSnippets`.
  */
-export const reviewDiagramInput = vine.create(
-  vine.object({
-    ...llmCallFields(),
-    snippets: vine
-      .array(
-        vine.object({
-          key: vine.string().minLength(1).maxLength(CODE_REVIEW_LIMITS.codeKey),
-          text: vine.string().minLength(1).maxLength(CODE_REVIEW_LIMITS.snippetLength),
-        }),
-      )
-      .maxLength(CODE_REVIEW_LIMITS.snippets)
-      .optional(),
-  }),
-)
+export const reviewDiagramInput = vine.create(vine.object({ ...llmCallFields() }))
 
 /** `PATCH /code-review-findings/:id` */
 export const updateCodeReviewFindingInput = vine.create(

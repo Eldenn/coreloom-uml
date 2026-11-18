@@ -37,6 +37,7 @@ export function diagramElementNames(diagram: MatchableDiagram): Map<string, stri
     case 'package':
     case 'component':
     case 'c4':
+    case 'activity':
       add(diagram.elements)
       break
     case 'class':

@@ -83,7 +83,7 @@ function printReport(
   if (report.notChecked > 0) {
     io.log(
       `${plural(report.notChecked, 'diagram')} not checked: a kind the map has no counterpart ` +
-        'for (state, ER, use case, activity, deployment), or nothing drawn yet.',
+        'for (state, ER, use case, deployment), or nothing drawn yet.',
     )
   }
   if (report.undocumentedProcesses > 0) {

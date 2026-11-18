@@ -9,6 +9,7 @@ import { test } from '@japa/runner'
 import type { TestContext } from '@japa/runner/core'
 import Architecture from '#app/architectures/models/architecture'
 import CodeMap from '#app/code-maps/models/code-map'
+import DiagramCodeLink from '#app/code-maps/models/diagram-code-link'
 import type { CodeMapOutput } from '#app/code-maps/validators/code-maps-output'
 import { CODE_REVIEW_LIMITS } from '#app/code-reviews/constants/code-review'
 import CodeReview from '#app/code-reviews/models/code-review'
@@ -19,6 +20,7 @@ import type {
 } from '#app/code-reviews/validators/code-reviews-output'
 import Diagram from '#app/diagrams/models/diagram'
 import { updateFlag } from '#app/feature-flags/services/feature-flags'
+import GithubApi, { type GithubResult } from '#app/github/services/github-api'
 import LanguageModels from '#app/llm/services/language-models'
 import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
@@ -45,6 +47,29 @@ function useModel(model: LanguageModel) {
 }
 
 const answer = (findings: unknown[]) => JSON.stringify({ findings })
+
+/** A line of the fake source: it reaches the model and nothing else. */
+const SOURCE_MARKER = 'SOURCE-MARKER-5d2e'
+
+/** GitHub is never called: every file read answers the same source, or `answer`. */
+class FakeGithubApi extends GithubApi {
+  reads: { commit: string; path: string }[] = []
+  answer: GithubResult<string | null> = {
+    ok: true,
+    value: `export default class X {\n  // ${SOURCE_MARKER}\n}\n`,
+  }
+
+  override async readFile(_repository: unknown, commit: string, path: string) {
+    this.reads.push({ commit, path })
+    return this.answer
+  }
+}
+
+function useGithub() {
+  const fake = new FakeGithubApi()
+  app.container.swap(GithubApi, () => fake)
+  return fake
+}
 
 async function setup(flag = true) {
   const user = await User.create({
@@ -382,12 +407,6 @@ test.group('Code reviews', (group) => {
     useModel(answeringModel(answer([])))
     // A diagram the review was not started with.
     ;(await reviewDiagram(client, user, review.id, states.id)).assertStatus(404)
-    // Excerpts only when the review was started with them.
-    ;(
-      await reviewDiagram(client, user, review.id, diagram.id, {
-        snippets: [{ key: `${APP}/projects/`, text: 'export class X {}' }],
-      })
-    ).assertStatus(422)
     // A hosted provider needs a key.
     ;(
       await client
@@ -404,26 +423,160 @@ test.group('Code reviews', (group) => {
     assert.isNull(stored.codeMapId)
   })
 
-  test('sends the excerpts of a review started with them, and stores none', async ({
+  test('reads the source of a class diagram in a review started with it, and keeps none', async ({
     client,
     assert,
+    cleanup,
   }) => {
-    const { user, project, diagram } = await setup()
+    const { user, project, architecture, diagram } = await setup()
+    const classes = await Diagram.create({
+      architectureId: architecture.id,
+      title: 'Models',
+      kind: 'class',
+      format: 'mermaid',
+      content: {
+        kind: 'class',
+        classes: [{ id: 'Architecture' }, { id: 'Project' }],
+        relations: [],
+      },
+      position: 2,
+      version: 1,
+    })
     const map = await uploadMap(client, user, project.id)
-    const review = await startReview(client, user, {
-      codeMapId: map.id,
-      diagramIds: [diagram.id],
-      includeSnippets: true,
+    const github = useGithub()
+    cleanup(() => {
+      app.container.restore(GithubApi)
     })
     const model = answeringModel(answer([]))
     useModel(model)
-    const excerpt = 'export const UNIQUE_EXCERPT_MARKER = 42'
-    const response = await reviewDiagram(client, user, review.id, diagram.id, {
-      snippets: [{ key: `${APP}/projects/`, text: excerpt }],
+    const entryOf = (response: { body(): unknown }, id: number) =>
+      (response.body() as CodeReviewDetailOutput).review.diagrams.find(
+        (entry) => entry.diagramId === id,
+      )
+
+    // Not asked for: nothing is read.
+    const plain = await startReview(client, user, { codeMapId: map.id, diagramIds: [classes.id] })
+    const unread = await reviewDiagram(client, user, plain.id, classes.id)
+    unread.assertStatus(200)
+    assert.lengthOf(github.reads, 0)
+    assert.isNull(entryOf(unread, classes.id)?.source)
+
+    const review = await startReview(client, user, {
+      codeMapId: map.id,
+      diagramIds: [classes.id, diagram.id],
+      includeSnippets: true,
     })
+    const logs = captureLogs()
+    let response: Awaited<ReturnType<typeof reviewDiagram>>
+    try {
+      response = await reviewDiagram(client, user, review.id, classes.id)
+    } finally {
+      logs.restore()
+    }
     response.assertStatus(200)
-    assert.include(JSON.stringify(model.doGenerateCalls[0]?.prompt), 'UNIQUE_EXCERPT_MARKER')
-    assert.notInclude(await dumpDatabase(), 'UNIQUE_EXCERPT_MARKER')
+    assert.isAbove(github.reads.length, 0)
+    assert.isTrue(github.reads.every((read) => read.commit === 'abc1234'))
+    const source = entryOf(response, classes.id)?.source
+    assert.equal(source?.files, github.reads.length)
+    assert.isNull(source?.absence)
+    assert.include(JSON.stringify(model.doGenerateCalls.at(-1)?.prompt), SOURCE_MARKER)
+    assert.notInclude(response.text(), SOURCE_MARKER)
+    assert.notInclude(logs.lines.join('\n'), SOURCE_MARKER)
+    assert.notInclude(await dumpDatabase(), SOURCE_MARKER)
+
+    // Folders say all a package diagram shows: no file is read for it.
+    const before = github.reads.length
+    const packages = await reviewDiagram(client, user, review.id, diagram.id)
+    packages.assertStatus(200)
+    assert.lengthOf(github.reads, before)
+    assert.isNull(entryOf(packages, diagram.id)?.source)
+
+    // GitHub refuses: the review goes on from the structure, and says why.
+    github.answer = { ok: false, failure: 'unreachable' }
+    const refused = await reviewDiagram(client, user, review.id, classes.id)
+    refused.assertStatus(200)
+    assert.deepEqual(entryOf(refused, classes.id)?.source, {
+      files: 0,
+      omitted: 0,
+      absence: 'unreadable',
+    })
+    assert.notInclude(JSON.stringify(model.doGenerateCalls.at(-1)?.prompt), '<source_file')
+  })
+
+  test('reviews an activity diagram from the code its actions are linked to', async ({
+    client,
+    assert,
+    cleanup,
+  }) => {
+    const { user, project, architecture } = await setup()
+    const activity = await Diagram.create({
+      architectureId: architecture.id,
+      title: 'Show an architecture',
+      kind: 'activity',
+      format: 'mermaid',
+      content: {
+        kind: 'activity',
+        elements: [
+          { id: 'start', kind: 'start' },
+          { id: 'load', kind: 'action', label: 'Load the architecture' },
+          { id: 'owned', kind: 'decision', label: 'Owned?' },
+          { id: 'serialize', kind: 'action', label: 'Serialize architecture' },
+          { id: 'end', kind: 'end' },
+        ],
+        relations: [
+          { from: 'start', to: 'load' },
+          { from: 'load', to: 'owned' },
+          { from: 'owned', to: 'serialize', label: 'yes' },
+          { from: 'serialize', to: 'end' },
+        ],
+      },
+      position: 2,
+      version: 1,
+    })
+    const show = `${APP}/architectures/controllers/architectures-controller.ts#ArchitecturesController.show`
+    await DiagramCodeLink.create({
+      diagramId: activity.id,
+      elementId: 'load',
+      codeKey: show,
+      status: 'confirmed',
+    })
+    const map = await uploadMap(client, user, project.id)
+    const github = useGithub()
+    cleanup(() => {
+      app.container.restore(GithubApi)
+    })
+    const model = answeringModel(
+      answer([
+        {
+          element: 'owned',
+          status: 'deviates',
+          severity: 'high',
+          comment: 'The code answers 404 when the caller does not own it; no such branch is drawn.',
+          evidence: ['n1'],
+        },
+      ]),
+    )
+    useModel(model)
+    const review = await startReview(client, user, {
+      codeMapId: map.id,
+      diagramIds: [activity.id],
+      includeSnippets: true,
+    })
+    const response = await reviewDiagram(client, user, review.id, activity.id)
+    response.assertStatus(200)
+    const body = response.body() as CodeReviewDetailOutput
+    const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt)
+    // The linked action and the one found by name, each with its code; the prose one with none.
+    assert.match(prompt, /load \| Load the architecture \| confirmed \| n\d+/)
+    assert.match(prompt, /serialize \| Serialize architecture \| suggested \| n\d+/)
+    assert.include(prompt, SOURCE_MARKER)
+    assert.include(
+      github.reads.map((read) => read.path),
+      `${APP}/architectures/controllers/architectures-controller.ts`,
+    )
+    assert.lengthOf(body.findings, 1)
+    assert.equal(body.findings[0]?.elementId, 'owned')
+    assert.equal(body.findings[0]?.evidence[0]?.key, show)
   })
 
   test('keeps the project’s newest reviews', async ({ client, assert }) => {

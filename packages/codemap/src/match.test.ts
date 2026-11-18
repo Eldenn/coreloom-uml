@@ -306,3 +306,62 @@ describe('linkedCodeKeys', () => {
     expect(linkedCodeKeys([matchDiagram(diagram, map)])).toEqual([ARCHITECTURES_CONTROLLER])
   })
 })
+
+describe('matchDiagram: activity diagrams', () => {
+  const SERIALIZE = `${APP}/architectures/serializers/architecture-serializer.ts#serializeArchitecture`
+  const diagram: UmlSpec = {
+    kind: 'activity',
+    elements: [
+      { id: 'start', kind: 'start' },
+      { id: 'lane', kind: 'partition', label: 'ArchitecturesController' },
+      { id: 'check', kind: 'action', label: 'Check that the caller owns it', parent: 'lane' },
+      { id: 'owned', kind: 'decision', label: 'Owned?' },
+      { id: 'serialize', kind: 'action', label: 'Serialize architecture', parent: 'lane' },
+      { id: 'handle', kind: 'action', label: 'handle()' },
+      { id: 'end', kind: 'end' },
+    ],
+    relations: [
+      { from: 'start', to: 'check' },
+      { from: 'check', to: 'owned' },
+      { from: 'owned', to: 'serialize', label: 'yes' },
+      { from: 'serialize', to: 'end' },
+    ],
+  }
+
+  it('matches actions by function name and partitions by class, and never calls prose missing', () => {
+    const result = matchDiagram(diagram, map)
+    expect(result.elements.map((element) => [element.elementId, element.status])).toEqual([
+      ['lane', 'suggested'],
+      ['check', 'missing'],
+      ['serialize', 'suggested'],
+      ['handle', 'suggested'],
+    ])
+    expect(result.elements[0]?.candidates).toEqual([
+      { codeKey: ARCHITECTURES_CONTROLLER, reason: 'class-name' },
+    ])
+    expect(result.elements[2]?.candidates).toEqual([
+      { codeKey: SERIALIZE, reason: 'function-name' },
+    ])
+    // A method is found by its own name, without its class.
+    expect(
+      result.elements[3]?.candidates.every((candidate) => candidate.codeKey.endsWith('.handle')),
+    ).toBe(true)
+    expect(result.relations).toEqual([])
+    expect(result.findings).toEqual([])
+  })
+
+  it('keeps a confirmed link, and says when its code is gone', () => {
+    const result = matchDiagram(diagram, map, [
+      { elementId: 'check', codeKey: `${ARCHITECTURES_CONTROLLER}.show`, status: 'confirmed' },
+      { elementId: 'serialize', codeKey: 'src/gone.ts#serialize', status: 'confirmed' },
+    ])
+    expect(result.elements[1]).toEqual({
+      elementId: 'check',
+      status: 'confirmed',
+      candidates: [{ codeKey: `${ARCHITECTURES_CONTROLLER}.show`, reason: 'confirmed' }],
+    })
+    expect(result.findings).toEqual([
+      { kind: 'stale-link', elementId: 'serialize', codeKey: 'src/gone.ts#serialize' },
+    ])
+  })
+})

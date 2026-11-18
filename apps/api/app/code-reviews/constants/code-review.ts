@@ -1,4 +1,5 @@
 import type { LlmFailureReason } from '@coreloom-uml/llm'
+import type { SourceAbsence } from '#app/code-maps/services/code-source'
 
 export {
   CONFORMANCE_SEVERITIES,
@@ -42,6 +43,11 @@ export type CodeReviewDiagram = {
   dropped: number
   /** Part of the code was left out to fit the model's budget. */
   truncated: boolean
+  /**
+   * What was read of the source for the last call: the files sent, those left out, or why none
+   * was read. Null when the review does not read the source, or the diagram's kind needs none.
+   */
+  source: { files: number; omitted: number; absence: SourceAbsence | null } | null
   reviewedAt: string | null
 }
 
@@ -49,7 +55,21 @@ export type CodeReviewDiagram = {
 export type CodeReviewEvidence = { key: string; path?: string; line?: number }
 
 /** The diagram kinds the code map has a counterpart for (see `matchDiagram`). */
-export const REVIEWABLE_DIAGRAM_KINDS = ['package', 'component', 'class', 'sequence', 'c4'] as const
+export const REVIEWABLE_DIAGRAM_KINDS = [
+  'package',
+  'component',
+  'class',
+  'sequence',
+  'activity',
+  'c4',
+] as const
+
+/**
+ * The kinds reviewed with the source of their files, in a review started with `includeSnippets`:
+ * those that draw what only the code shows (order, conditions, loops, attributes and types). An
+ * activity diagram says nothing else: without the source, only its links to the code are checked.
+ */
+export const SOURCE_REVIEW_KINDS: readonly string[] = ['class', 'sequence', 'activity']
 
 export const CODE_REVIEW_LOCALES = ['en', 'fr'] as const
 
@@ -57,8 +77,4 @@ export const CODE_REVIEW_LIMITS = {
   /** Reviews kept per project: starting an eleventh deletes the oldest, with its findings. */
   perProject: 10,
   diagramsPerReview: 50,
-  /** Excerpts one call may send, and the longest one (they are cut to 40 lines anyway). */
-  snippets: 40,
-  snippetLength: 8000,
-  codeKey: 1300,
 } as const
