@@ -486,6 +486,7 @@ export const en = {
     statusErrors: 'Contradicted by the code',
     statusWarnings: 'Behind the code',
     statusFailed: 'The state of the diagrams against this map could not be loaded.',
+    architectureAgrees: 'In step with the code',
     findingsLabel: (errors: number, warnings: number) =>
       `: ${String(errors)} contradicted by the code, ${String(warnings)} behind the code`,
     viewDiagrams: 'Diagrams',
@@ -1668,6 +1669,7 @@ export const fr: Messages = {
     statusErrors: 'Contredit par le code',
     statusWarnings: 'En retard sur le code',
     statusFailed: 'L’état des diagrammes face à cette carte n’a pas pu être chargé.',
+    architectureAgrees: 'En accord avec le code',
     findingsLabel: (errors: number, warnings: number) =>
       ` : ${String(errors)} contredit par le code, ${String(warnings)} en retard sur le code`,
     viewDiagrams: 'Diagrammes',
