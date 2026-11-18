@@ -89,8 +89,8 @@ export function AgentFileImport({
 
   if (!provider) return null
 
-  // A subscription cannot drive the sandbox's tools: the API refuses both kinds.
-  const canResearch = provider.kind !== 'claude-code' && provider.kind !== 'openai-codex'
+  // The API refuses the ChatGPT subscription: it is not known to drive the sandbox's tools.
+  const canResearch = provider.kind !== 'openai-codex'
   const web = webResearch && mode === 'web'
   const pending = research.isPending || read.isPending
   const failure = research.error ?? read.error

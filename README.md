@@ -548,8 +548,9 @@ minute per user (`llmThrottle`).
   file. Two requests on purpose: each stays under 80 seconds, below what a proxy such as
   Cloudflare allows. The model's key never reaches the sandbox, the research gets nothing of the
   configuration, and nothing is stored or logged but counts. There is no search engine: the model
-  starts from the addresses given and may follow their links. A subscription (Claude, ChatGPT)
-  cannot run one. The sandboxes are E2B Cloud's with `E2B_API_KEY` alone, or
+  starts from the addresses given and may follow their links. The Claude subscription runs one
+  more slowly (its binary is launched once a step and never gets a tool: it names which of ours to
+  run); the ChatGPT subscription cannot run one yet. The sandboxes are E2B Cloud's with `E2B_API_KEY` alone, or
   a self-hosted install's ([e2b-dev/runtime](https://github.com/e2b-dev/runtime), "Embed") with
   `E2B_API_URL` and `E2B_SANDBOX_URL` as well. `infra/e2b/` is that install, kept apart from the
   dev stack because it needs a Linux host with KVM and a kernel 6.8 or newer (on WSL2,

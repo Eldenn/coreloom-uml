@@ -47,7 +47,7 @@ export const RESEARCH_BUSY = {
 } as const
 export const RESEARCH_NEEDS_TOOLS = {
   error: {
-    message: 'A subscription cannot run a web research: use a provider with an API key.',
+    message: 'The ChatGPT subscription cannot run a web research yet: use another provider.',
   },
 } as const
 

@@ -53,9 +53,9 @@ export default class AgentConfigResearchController {
     if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
 
     const { provider, apiKey, request: asked } = await request.validateUsing(agentResearchInput)
-    // The `claude` binary runs without tools, and the ChatGPT subscription is not known to carry
-    // a tool call from one step to the next: neither drives the sandbox.
-    if (provider.kind === ProviderKind.ClaudeCode || provider.kind === ProviderKind.OpenAICodex) {
+    // The ChatGPT subscription is not known to carry a tool call from one step to the next. The
+    // Claude one works: its binary has no tool, and names ours one step at a time.
+    if (provider.kind === ProviderKind.OpenAICodex) {
       return response.unprocessableEntity(RESEARCH_NEEDS_TOOLS)
     }
     const built = await userLanguageModel(provider, apiKey, user)

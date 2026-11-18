@@ -1166,7 +1166,7 @@ export const en = {
     researchSources: 'Pages read',
     researchNoSources: 'No page was read: the model worked from commands only.',
     researchNoSubscription:
-      'A subscription cannot read the web here: choose a provider with an API key.',
+      'The ChatGPT subscription cannot read the web here yet: choose another provider.',
     importTruncated: 'The file was too long for the model: its end was left out.',
     importReady: 'Ready-made rules',
     importReadyHint:
@@ -2388,7 +2388,7 @@ export const fr: Messages = {
     researchNoSources:
       'Aucune page n’a été lue : le modèle a travaillé avec des commandes seulement.',
     researchNoSubscription:
-      'Un abonnement ne peut pas lire le web ici : choisissez un fournisseur avec une clé API.',
+      'L’abonnement ChatGPT ne peut pas encore lire le web ici : choisissez un autre fournisseur.',
     importTruncated: 'Le fichier était trop long pour le modèle : sa fin a été laissée de côté.',
     importReady: 'Règles prêtes à l’emploi',
     importReadyHint:

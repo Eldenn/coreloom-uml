@@ -224,7 +224,7 @@ test.group('Agent configs - web research', (group) => {
     response.assertStatus(401)
   })
 
-  test('refuses the Claude subscription, which cannot call tools', async ({ client, assert }) => {
+  test('lets the Claude subscription through to its connection', async ({ client, assert }) => {
     const user = await makeUser()
     const configId = await makeConfig(client, user)
     await turnOn(user)
@@ -235,8 +235,8 @@ test.group('Agent configs - web research', (group) => {
       apiKey: null,
     })
 
-    response.assertStatus(422)
-    assert.include(response.body().error.message, 'API key')
+    // Not refused as a kind: this account simply has no Claude subscription connected.
+    response.assertStatus(404)
     assert.lengthOf(sandbox.opened, 0)
   })
 
@@ -255,7 +255,7 @@ test.group('Agent configs - web research', (group) => {
     })
 
     response.assertStatus(422)
-    assert.include(response.body().error.message, 'API key')
+    assert.include(response.body().error.message, 'ChatGPT')
     assert.lengthOf(sandbox.opened, 0)
   })
 
