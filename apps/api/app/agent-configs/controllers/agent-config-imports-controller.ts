@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
 import { RULE_PACKS, ruleSections } from '@coreloom-uml/catalog'
-import { importAgentFile, LlmCallError } from '@coreloom-uml/llm'
+import { ImportOrigin, importAgentFile, LlmCallError } from '@coreloom-uml/llm'
 import { currentInputs, render } from '#app/agent-configs/services/agent-context'
 import {
   AGENT_CONFIG_NOT_FOUND,
@@ -9,8 +9,21 @@ import {
 } from '#app/agent-configs/services/owned-agent-config'
 import { agentImportInput } from '#app/agent-configs/validators/agent-configs-input'
 import type { AgentImportOutput } from '#app/agent-configs/validators/agent-configs-output'
+import { ProposalsStatus } from '#app/assistant/constants/assistant'
+import type AssistantConversation from '#app/assistant/models/assistant-conversation'
+import { serializeMessage } from '#app/assistant/serializers/assistant-serializer'
+import { ASSISTANT_NOT_FOUND, assistantEnabled } from '#app/assistant/services/assistant-flag'
+import {
+  CONVERSATION_NOT_FOUND,
+  findOwnedConversation,
+} from '#app/assistant/services/owned-conversation'
+import { storeExchange } from '#app/assistant/services/store-exchange'
 import { llmFailure, userLanguageModel } from '#app/llm/services/language-models'
 import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
+
+const CONVERSATION_NEEDS_RESEARCH = {
+  error: { message: 'A conversation is only accepted with the proposals of a web research.' },
+} as const
 
 /**
  * `POST /agent-configs/:id/imports`: the user's own model reads an existing conventions
@@ -19,6 +32,10 @@ import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-conne
  * `PUT …/ready-rules/:slot` and the others with `POST …/rules`. The file is never logged, only
  * counts. Session only. With `origin: 'research'` the text is the findings of a web research
  * (`POST …/research`): the model is told so, and nothing else changes.
+ *
+ * With `conversation` too (behind `diagram-assistant`), the research was asked in that assistant
+ * conversation: once the model answered, the request and the proposals (rules and the addresses
+ * of the pages read, never the findings) are stored there, for the owner to add.
  */
 export default class AgentConfigImportsController {
   async store({ params, request, auth, response }: HttpContext) {
@@ -26,7 +43,17 @@ export default class AgentConfigImportsController {
     const config = await findOwnedAgentConfig(params.id, user)
     if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
 
-    const { provider, apiKey, content, origin } = await request.validateUsing(agentImportInput)
+    const { provider, apiKey, content, origin, conversation } =
+      await request.validateUsing(agentImportInput)
+    // Checked before any model call: a foreign conversation costs the caller nothing.
+    let target: AssistantConversation | null = null
+    if (conversation) {
+      if (origin !== ImportOrigin.Research)
+        return response.unprocessableEntity(CONVERSATION_NEEDS_RESEARCH)
+      if (!(await assistantEnabled(user))) return response.notFound(ASSISTANT_NOT_FOUND)
+      target = await findOwnedConversation(conversation.id, user)
+      if (!target) return response.notFound(CONVERSATION_NOT_FOUND)
+    }
     const built = await userLanguageModel(provider, apiKey, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
@@ -61,7 +88,21 @@ export default class AgentConfigImportsController {
         },
         'agent file import',
       )
-      return response.ok(result)
+      if (!conversation || !target) return response.ok(result)
+      const messages = await storeExchange(target, conversation.request, {
+        architectureId: null,
+        content: '',
+        proposals: {
+          agentConfigId: config.id,
+          sources: conversation.sources,
+          ready: result.ready,
+          rules: result.rules,
+          truncated: result.truncated,
+          status: ProposalsStatus.Pending,
+          added: null,
+        },
+      })
+      return response.ok({ ...result, messages: messages.map(serializeMessage) })
     } catch (error) {
       if (!(error instanceof LlmCallError)) throw error
       logger.warn(

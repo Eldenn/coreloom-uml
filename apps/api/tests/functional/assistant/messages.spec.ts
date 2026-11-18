@@ -102,7 +102,6 @@ async function setup(email: string) {
     version: 1,
   })
   const conversation = await AssistantConversation.create({
-    architectureId: architecture.id,
     userId: user.id,
     title: '',
   })
@@ -181,11 +180,88 @@ test.group('Assistant messages', (group) => {
     await conversation.refresh()
     assert.equal(conversation.title, 'Replace B with C in the domain view.')
 
-    const show = await client.get(base).headers(json).loginAs(user)
+    assert.deepEqual(
+      stored.map((message) => message.architectureId),
+      [diagram.architectureId, diagram.architectureId],
+    )
+    assert.equal(asked.architectureId, diagram.architectureId)
+    assert.equal(answered.architectureId, diagram.architectureId)
+    assert.isNull(answered.proposals)
+
+    const show = await client
+      .get(`/assistant/conversations/${conversation.id}`)
+      .headers(json)
+      .loginAs(user)
     show.assertStatus(200)
     assert.lengthOf(show.body().messages, 2)
-    assert.equal(show.body().budget.max, 32_000)
-    assert.isAbove(show.body().budget.history, 0)
+  })
+
+  test('one conversation holds exchanges about two architectures', async ({ client, assert }) => {
+    const { user, diagram, conversation } = await setup('assist-msg-two@example.com')
+    const second = await Architecture.create({
+      userId: user.id,
+      title: 'Billing',
+      visibility: 'private',
+    })
+    const invoice = await Diagram.create({
+      architectureId: second.id,
+      title: 'Invoices',
+      kind: 'class',
+      format: 'mermaid',
+      content: { kind: 'class', classes: [{ id: 'Invoice' }], relations: [] },
+      position: 0,
+      version: 1,
+    })
+    const prompts: string[] = []
+    useModel(
+      new MockLanguageModelV4({
+        doGenerate: async (options) => {
+          prompts.push(JSON.stringify(options.prompt))
+          return {
+            content: [{ type: 'text', text: answer([], 'Seen.') }],
+            finishReason: { unified: 'stop', raw: 'stop' },
+            usage: {
+              inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
+              outputTokens: { total: 10, text: 10, reasoning: undefined },
+            },
+            warnings: [],
+          }
+        },
+      }),
+    )
+    const path = (architectureId: number) =>
+      `/architectures/${architectureId}/assistant/conversations/${conversation.id}/messages`
+
+    const first = await client
+      .post(path(diagram.architectureId))
+      .headers(json)
+      .loginAs(user)
+      .json(ask(diagram.id))
+    first.assertStatus(200)
+    const next = await client
+      .post(path(second.id))
+      .headers(json)
+      .loginAs(user)
+      .json({ ...ask(invoice.id), message: 'And the invoices?' })
+    next.assertStatus(200)
+    // A view of the first architecture through the second's route is refused.
+    const crossed = await client
+      .post(path(second.id))
+      .headers(json)
+      .loginAs(user)
+      .json(ask(diagram.id))
+    crossed.assertStatus(404)
+
+    assert.deepEqual(
+      (await storedMessages(conversation.id)).map((message) => message.architectureId),
+      [diagram.architectureId, diagram.architectureId, second.id, second.id],
+    )
+    // The second call sees the whole conversation, but only the second architecture's views.
+    assert.include(prompts[1], 'Replace B with C in the domain view.')
+    assert.include(prompts[1], 'Invoice')
+    assert.include(prompts[1], '<architecture>Billing</architecture>')
+    assert.notInclude(prompts[1], '<architecture>Shop</architecture>')
+    assert.notInclude(prompts[1], 'Domain')
   })
 
   test('never changes a diagram', async ({ client, assert }) => {

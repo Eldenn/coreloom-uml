@@ -6,7 +6,7 @@ import {
   CHANGE_NOT_FOUND,
 } from '#app/assistant/services/apply-change'
 import { ASSISTANT_NOT_FOUND, assistantEnabled } from '#app/assistant/services/assistant-flag'
-import { findOwnedConversation } from '#app/assistant/services/owned-conversation'
+import { findArchitectureConversation } from '#app/assistant/services/owned-conversation'
 import { serializeDiagram } from '#app/diagrams/serializers/diagram-serializer'
 import { invalidDiagram } from '#app/diagrams/services/diagram-content'
 
@@ -30,7 +30,7 @@ export default class AssistantChangesController {
   private async answer({ params, auth, response }: HttpContext, action: ApplyChangeAction) {
     const user = auth.getUserOrFail()
     if (!(await assistantEnabled(user))) return response.notFound(ASSISTANT_NOT_FOUND)
-    const found = await findOwnedConversation(params.id, params.conversationId, user)
+    const found = await findArchitectureConversation(params.id, params.conversationId, user)
     if (!found) return response.notFound(CHANGE_NOT_FOUND)
 
     const index = Number(params.index)

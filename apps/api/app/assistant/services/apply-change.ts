@@ -81,6 +81,8 @@ export function applyChange(action: ApplyChangeAction, target: Target): Promise<
     const message = await AssistantMessage.query({ client: trx })
       .where('id', target.messageId)
       .where('conversationId', target.conversationId)
+      // A change applies only through the route of the architecture its message is about.
+      .where('architectureId', target.architectureId)
       .where('role', AssistantRole.Assistant)
       .forUpdate()
       .first()

@@ -601,8 +601,10 @@ router
 
 /*
 |--------------------------------------------------------------------------
-| Workspace assistant: conversations about an architecture (behind `diagram-assistant`)
+| Workspace assistant (behind `diagram-assistant`)
 |--------------------------------------------------------------------------
+| A conversation is the account's; a message about an architecture goes through that
+| architecture's routes, and a change applies only through the architecture its message is about.
 | Session only, unlike the architectures group: an API token never reaches the assistant.
 */
 const assistantConversationsController = () =>
@@ -611,30 +613,48 @@ const assistantMessagesController = () =>
   import('#app/assistant/controllers/assistant-messages-controller')
 const assistantChangesController = () =>
   import('#app/assistant/controllers/assistant-changes-controller')
+const assistantProposalsController = () =>
+  import('#app/assistant/controllers/assistant-proposals-controller')
 router
   .group(() => {
+    router.get('/', [assistantConversationsController, 'index']).as('assistant.conversations.index')
     router
-      .get('/conversations', [assistantConversationsController, 'index'])
-      .as('architectures.assistant.conversations.index')
+      .post('/', [assistantConversationsController, 'store'])
+      .as('assistant.conversations.store')
     router
-      .post('/conversations', [assistantConversationsController, 'store'])
-      .as('architectures.assistant.conversations.store')
+      .get('/:conversationId', [assistantConversationsController, 'show'])
+      .as('assistant.conversations.show')
     router
-      .get('/conversations/:conversationId', [assistantConversationsController, 'show'])
-      .as('architectures.assistant.conversations.show')
+      .patch('/:conversationId', [assistantConversationsController, 'update'])
+      .as('assistant.conversations.update')
     router
-      .patch('/conversations/:conversationId', [assistantConversationsController, 'update'])
-      .as('architectures.assistant.conversations.update')
+      .delete('/:conversationId', [assistantConversationsController, 'destroy'])
+      .as('assistant.conversations.destroy')
     router
-      .delete('/conversations/:conversationId', [assistantConversationsController, 'destroy'])
-      .as('architectures.assistant.conversations.destroy')
-    router
-      .post('/conversations/:conversationId/continue', [
-        assistantConversationsController,
-        'continue',
-      ])
-      .as('architectures.assistant.conversations.continue')
+      .post('/:conversationId/continue', [assistantConversationsController, 'continue'])
+      .as('assistant.conversations.continue')
       .use(llmThrottle)
+    router
+      .post('/:conversationId/messages', [assistantMessagesController, 'chat'])
+      .as('assistant.messages.store')
+      .use(llmThrottle)
+    router
+      .delete('/:conversationId/messages/:messageId', [assistantMessagesController, 'destroy'])
+      .as('assistant.messages.destroy')
+    router
+      .post('/:conversationId/messages/:messageId/proposals/settle', [
+        assistantProposalsController,
+        'settle',
+      ])
+      .as('assistant.proposals.settle')
+  })
+  .prefix('/assistant/conversations')
+  .where('conversationId', router.matchers.number())
+  .where('messageId', router.matchers.number())
+  .use(middleware.auth())
+
+router
+  .group(() => {
     router
       .post('/conversations/:conversationId/messages', [assistantMessagesController, 'store'])
       .as('architectures.assistant.messages.store')
@@ -642,12 +662,6 @@ router
     router
       .post('/conversations/:conversationId/context', [assistantMessagesController, 'context'])
       .as('architectures.assistant.context')
-    router
-      .delete('/conversations/:conversationId/messages/:messageId', [
-        assistantMessagesController,
-        'destroy',
-      ])
-      .as('architectures.assistant.messages.destroy')
     router
       .post('/conversations/:conversationId/messages/:messageId/changes/:index/accept', [
         assistantChangesController,

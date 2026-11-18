@@ -8,7 +8,7 @@ import { llmCallFields } from '#app/llm/validators/llm-input'
 
 const titleInput = () => vine.string().trim().minLength(1).maxLength(ASSISTANT_TITLE_MAX_LENGTH)
 
-/** `GET …/assistant/conversations` query params. */
+/** `GET /assistant/conversations` query params. */
 export const listConversationsInput = vine.create(
   vine.object({
     page: vine.number().withoutDecimals().min(1).optional(),
@@ -16,10 +16,10 @@ export const listConversationsInput = vine.create(
   }),
 )
 
-/** `POST …/assistant/conversations` — an empty conversation; the title may come later. */
+/** `POST /assistant/conversations` — an empty conversation; the title may come later. */
 export const createConversationInput = vine.create(vine.object({ title: titleInput().optional() }))
 
-/** `PATCH …/assistant/conversations/:conversationId` */
+/** `PATCH /assistant/conversations/:conversationId` */
 export const renameConversationInput = vine.create(vine.object({ title: titleInput() }))
 
 /** The views the next message would send: the current one first, `diagramIds` (all when absent). */
@@ -29,7 +29,7 @@ const viewSelection = () => ({
   locale: vine.enum(ASSISTANT_LOCALES),
 })
 
-/** `POST …/assistant/conversations/:conversationId/messages` */
+/** `POST /architectures/:id/assistant/conversations/:conversationId/messages` */
 export const askAssistantInput = vine.create(
   vine.object({
     ...llmCallFields(),
@@ -40,7 +40,7 @@ export const askAssistantInput = vine.create(
   }),
 )
 
-/** `POST …/assistant/conversations/:conversationId/context` — no model call. */
+/** `POST /architectures/:id/assistant/conversations/:conversationId/context` — no model call. */
 export const assistantContextInput = vine.create(
   vine.object({
     message: vine.string().trim().maxLength(ASSISTANT_MESSAGE_MAX_LENGTH).optional(),
@@ -48,7 +48,21 @@ export const assistantContextInput = vine.create(
   }),
 )
 
-/** `POST …/assistant/conversations/:conversationId/continue` — the model summarizes the history. */
+/** `POST /assistant/conversations/:conversationId/continue` — the model summarizes the history. */
 export const continueConversationInput = vine.create(
   vine.object({ ...llmCallFields(), locale: vine.enum(ASSISTANT_LOCALES) }),
+)
+
+/** `POST /assistant/conversations/:conversationId/messages` — a message about no architecture. */
+export const chatInput = vine.create(
+  vine.object({
+    ...llmCallFields(),
+    message: vine.string().trim().minLength(1).maxLength(ASSISTANT_MESSAGE_MAX_LENGTH),
+    locale: vine.enum(ASSISTANT_LOCALES),
+  }),
+)
+
+/** `POST …/messages/:messageId/proposals/settle` — how many of the proposed rules were added. */
+export const settleProposalsInput = vine.create(
+  vine.object({ added: vine.number().withoutDecimals().min(0) }),
 )

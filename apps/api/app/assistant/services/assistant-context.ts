@@ -1,6 +1,6 @@
 import { type AssistantSource, type AssistantTurn, changeLine } from '@coreloom-uml/llm'
 import type Architecture from '#app/architectures/models/architecture'
-import { AssistantRole } from '#app/assistant/constants/assistant'
+import { AssistantRole, type StoredProposals } from '#app/assistant/constants/assistant'
 import type AssistantConversation from '#app/assistant/models/assistant-conversation'
 import AssistantMessage from '#app/assistant/models/assistant-message'
 
@@ -50,7 +50,10 @@ export async function assistantSource(
   }
 }
 
-/** The stored conversation as the model reads it: a proposed change is one `changeLine`. */
+/**
+ * The stored conversation as the model reads it, whatever architecture each message is about: a
+ * proposed change is one `changeLine`, a research's proposals one `proposalsLine`.
+ */
 export async function conversationHistory(
   conversation: AssistantConversation,
 ): Promise<AssistantTurn[]> {
@@ -65,5 +68,13 @@ function historyTurn(message: AssistantMessage): AssistantTurn {
   const lines = (message.changes ?? []).map((change) =>
     changeLine({ ...change, diagramId: change.diagramId ?? undefined }),
   )
-  return { role: message.role, text: [message.content, ...lines].join('\n') }
+  if (message.proposals) lines.push(proposalsLine(message.proposals))
+  return { role: message.role, text: [message.content, ...lines].filter(Boolean).join('\n') }
+}
+
+/** One history line for a research's proposals: counts only, never a rule's text or a page. */
+export function proposalsLine(proposals: StoredProposals): string {
+  const { ready, rules, sources, status, added, agentConfigId } = proposals
+  const outcome = added === null ? status : `${status}, ${String(added)} added`
+  return `proposed from a web research (${String(sources.length)} pages read): ${String(ready.length)} ready-made rules and ${String(rules.length)} other rules for agent conventions #${String(agentConfigId)} (${outcome})`
 }

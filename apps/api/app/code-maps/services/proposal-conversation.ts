@@ -38,8 +38,8 @@ export function proposedChange(
 }
 
 /**
- * A new conversation of the architecture's assistant holding the request and the proposed view,
- * where the owner accepts or rejects it like any other change.
+ * A new conversation of the account's assistant holding the request and the proposed view, both
+ * about the architecture, where the owner accepts or rejects it like any other change.
  */
 export function createProposalConversation(input: {
   architecture: Architecture
@@ -52,19 +52,24 @@ export function createProposalConversation(input: {
   return db.transaction(async (trx) => {
     const conversation = await AssistantConversation.create(
       {
-        architectureId: input.architecture.id,
         userId: input.userId,
         title: input.title.slice(0, ASSISTANT_TITLE_MAX_LENGTH),
       },
       { client: trx },
     )
     const asked = await AssistantMessage.create(
-      { conversationId: conversation.id, role: AssistantRole.User, content: input.request },
+      {
+        conversationId: conversation.id,
+        architectureId: input.architecture.id,
+        role: AssistantRole.User,
+        content: input.request,
+      },
       { client: trx },
     )
     const answered = await AssistantMessage.create(
       {
         conversationId: conversation.id,
+        architectureId: input.architecture.id,
         role: AssistantRole.Assistant,
         content: input.summary,
         changes: [input.change],

@@ -50,7 +50,6 @@ async function setup(email: string) {
     version: 1,
   })
   const conversation = await AssistantConversation.create({
-    architectureId: architecture.id,
     userId: user.id,
     title: '',
   })
@@ -59,6 +58,7 @@ async function setup(email: string) {
   async function propose(changes: Partial<StoredChange>[]) {
     const message = await AssistantMessage.create({
       conversationId: conversation.id,
+      architectureId: architecture.id,
       role: AssistantRole.Assistant,
       content: 'Done.',
       changes: changes.map((change) => ({
@@ -381,6 +381,37 @@ test.group('Assistant changes', (group) => {
     const response = await client.post(`${prefix}/0/accept`).headers(json).loginAs(stranger)
 
     response.assertStatus(404)
+  })
+
+  test("404 through another architecture's route, even the caller's own", async ({
+    client,
+    assert,
+  }) => {
+    const { user, architecture, diagram, propose, updateOf } = await setup(
+      'assist-chg-crossed@example.com',
+    )
+    const { message, prefix } = await propose([updateOf(diagram)])
+    const second = await Architecture.create({
+      userId: user.id,
+      title: 'Billing',
+      visibility: 'private',
+    })
+    const crossed = prefix.replace(
+      `/architectures/${architecture.id}/`,
+      `/architectures/${second.id}/`,
+    )
+
+    const response = await client.post(`${crossed}/0/accept`).headers(json).loginAs(user)
+    response.assertStatus(404)
+    assert.equal(response.body().error.message, 'Change not found')
+
+    // A message about no architecture (or one deleted since) applies through no route.
+    message.architectureId = null
+    await message.save()
+    const orphan = await client.post(`${prefix}/0/accept`).headers(json).loginAs(user)
+    orphan.assertStatus(404)
+    await message.refresh()
+    assert.equal(message.changes?.[0].status, 'pending')
   })
 
   test('404 for an index outside the message', async ({ client }) => {

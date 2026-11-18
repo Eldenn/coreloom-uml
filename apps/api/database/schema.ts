@@ -158,10 +158,8 @@ export class ArchitectureSchema extends BaseModel {
 }
 
 export class AssistantConversationSchema extends BaseModel {
-  static $columns = ['architectureId', 'createdAt', 'id', 'title', 'updatedAt', 'userId'] as const
+  static $columns = ['createdAt', 'id', 'title', 'updatedAt', 'userId'] as const
   $columns = AssistantConversationSchema.$columns
-  @column()
-  declare architectureId: number
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column({ isPrimary: true })
@@ -175,8 +173,10 @@ export class AssistantConversationSchema extends BaseModel {
 }
 
 export class AssistantMessageSchema extends BaseModel {
-  static $columns = ['changes', 'content', 'conversationId', 'createdAt', 'id', 'role'] as const
+  static $columns = ['architectureId', 'changes', 'content', 'conversationId', 'createdAt', 'id', 'proposals', 'role'] as const
   $columns = AssistantMessageSchema.$columns
+  @column()
+  declare architectureId: number | null
   @column()
   declare changes: any | null
   @column()
@@ -187,6 +187,8 @@ export class AssistantMessageSchema extends BaseModel {
   declare createdAt: DateTime
   @column({ isPrimary: true })
   declare id: number
+  @column()
+  declare proposals: any | null
   @column()
   declare role: string
 }
