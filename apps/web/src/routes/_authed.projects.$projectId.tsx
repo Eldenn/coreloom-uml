@@ -107,6 +107,12 @@ function ProjectView({ project }: { project: Project }) {
     }
   }, [search])
   const architectures = useArchitectures(project.id, query)
+  // The same read as the Code tab's badge: one request for both.
+  const conformance = useCodeConformance(
+    project.id,
+    undefined,
+    codeMaps && project.codeMapCount > 0,
+  )
   const setCreating = (open: boolean) =>
     void navigate({ search: open ? { new: true } : {}, replace: true })
   const setTab = (next: string) =>
@@ -181,6 +187,7 @@ function ProjectView({ project }: { project: Project }) {
             query={architectures}
             searching={query !== ''}
             emptyDescription={t.architectures.emptyDescription}
+            conformance={conformance.data}
             onCreate={() => {
               setCreating(true)
             }}

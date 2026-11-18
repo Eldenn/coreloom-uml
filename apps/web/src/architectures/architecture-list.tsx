@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -40,6 +41,7 @@ import {
   useMoveArchitecture,
 } from '@/lib/architectures'
 import { getErrorMessage } from '@/lib/client'
+import type { CodeConformance } from '@/lib/code-maps'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { useT } from '@/lib/locale'
 import { NO_PROJECT, type Project, toProjectId, useProjectOptions } from '@/lib/projects'
@@ -50,6 +52,7 @@ export function ArchitectureList({
   onCreate,
   emptyDescription,
   projects,
+  conformance,
 }: {
   query: ReturnType<typeof useArchitectures>
   searching: boolean
@@ -57,6 +60,8 @@ export function ArchitectureList({
   emptyDescription: string
   /** When given, each card says which project holds it. */
   projects?: readonly Project[]
+  /** When given, each card says where its diagrams stand against the project's code map. */
+  conformance?: CodeConformance | undefined
 }) {
   const t = useT()
   if (query.isPending)
@@ -101,9 +106,52 @@ export function ArchitectureList({
         <li key={architecture.id} className="flex flex-col gap-1.5">
           <ArchitectureCard architecture={architecture} />
           {projects && <ProjectLabel projects={projects} projectId={architecture.projectId} />}
+          {conformance && <CodeStanding architecture={architecture} conformance={conformance} />}
         </li>
       ))}
     </ul>
+  )
+}
+
+/**
+ * Where an architecture's diagrams stand against the project's code map, under its card: a link to
+ * the first diagram the code disagrees with. Nothing when the map can check none of its diagrams.
+ */
+function CodeStanding({
+  architecture,
+  conformance,
+}: {
+  architecture: ArchitectureSummary
+  conformance: CodeConformance
+}) {
+  const t = useT()
+  const diagrams = conformance.diagrams.filter((d) => d.architectureId === architecture.id)
+  const first = diagrams.find((d) => d.counts.error > 0) ?? diagrams.find((d) => d.counts.warning)
+  if (architecture.projectId === null || diagrams.length === 0) return null
+  if (!first)
+    return (
+      <Badge variant="success" className="self-start">
+        {t.code.architectureAgrees}
+      </Badge>
+    )
+  const errors = diagrams.reduce((sum, d) => sum + d.counts.error, 0)
+  const warnings = diagrams.reduce((sum, d) => sum + d.counts.warning, 0)
+  return (
+    <Badge asChild variant={errors > 0 ? 'destructive' : 'warning'} className="self-start">
+      <Link
+        to="/projects/$projectId"
+        params={{ projectId: architecture.projectId }}
+        search={{
+          tab: 'code',
+          view: 'diagrams',
+          map: conformance.codeMap.id,
+          diagram: first.diagramId,
+        }}
+        className="underline-offset-4 hover:underline"
+      >
+        {errors > 0 ? t.code.statusErrors : t.code.statusWarnings} · {errors || warnings}
+      </Link>
+    </Badge>
   )
 }
 
