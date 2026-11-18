@@ -38,7 +38,7 @@ const MAP_GONE = {
 /**
  * One diagram of a review checked by the user's own model: one call, the findings it returns
  * replace the diagram's earlier ones in this review. The key is used for this call only, never
- * stored or logged. In a review started with `includeSnippets`, a class or sequence diagram is
+ * stored or logged. In a review started with `includeSnippets`, a class, sequence or activity diagram is
  * checked with the source of its files, read on GitHub for this call (`readSource`): never stored,
  * logged or returned, and a read that fails leaves the review on the structure. Session only.
  */

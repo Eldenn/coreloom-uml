@@ -9,6 +9,7 @@ import { test } from '@japa/runner'
 import type { TestContext } from '@japa/runner/core'
 import Architecture from '#app/architectures/models/architecture'
 import CodeMap from '#app/code-maps/models/code-map'
+import DiagramCodeLink from '#app/code-maps/models/diagram-code-link'
 import type { CodeMapOutput } from '#app/code-maps/validators/code-maps-output'
 import { CODE_REVIEW_LIMITS } from '#app/code-reviews/constants/code-review'
 import CodeReview from '#app/code-reviews/models/code-review'
@@ -500,6 +501,82 @@ test.group('Code reviews', (group) => {
       absence: 'unreadable',
     })
     assert.notInclude(JSON.stringify(model.doGenerateCalls.at(-1)?.prompt), '<source_file')
+  })
+
+  test('reviews an activity diagram from the code its actions are linked to', async ({
+    client,
+    assert,
+    cleanup,
+  }) => {
+    const { user, project, architecture } = await setup()
+    const activity = await Diagram.create({
+      architectureId: architecture.id,
+      title: 'Show an architecture',
+      kind: 'activity',
+      format: 'mermaid',
+      content: {
+        kind: 'activity',
+        elements: [
+          { id: 'start', kind: 'start' },
+          { id: 'load', kind: 'action', label: 'Load the architecture' },
+          { id: 'owned', kind: 'decision', label: 'Owned?' },
+          { id: 'serialize', kind: 'action', label: 'Serialize architecture' },
+          { id: 'end', kind: 'end' },
+        ],
+        relations: [
+          { from: 'start', to: 'load' },
+          { from: 'load', to: 'owned' },
+          { from: 'owned', to: 'serialize', label: 'yes' },
+          { from: 'serialize', to: 'end' },
+        ],
+      },
+      position: 2,
+      version: 1,
+    })
+    const show = `${APP}/architectures/controllers/architectures-controller.ts#ArchitecturesController.show`
+    await DiagramCodeLink.create({
+      diagramId: activity.id,
+      elementId: 'load',
+      codeKey: show,
+      status: 'confirmed',
+    })
+    const map = await uploadMap(client, user, project.id)
+    const github = useGithub()
+    cleanup(() => {
+      app.container.restore(GithubApi)
+    })
+    const model = answeringModel(
+      answer([
+        {
+          element: 'owned',
+          status: 'deviates',
+          severity: 'high',
+          comment: 'The code answers 404 when the caller does not own it; no such branch is drawn.',
+          evidence: ['n1'],
+        },
+      ]),
+    )
+    useModel(model)
+    const review = await startReview(client, user, {
+      codeMapId: map.id,
+      diagramIds: [activity.id],
+      includeSnippets: true,
+    })
+    const response = await reviewDiagram(client, user, review.id, activity.id)
+    response.assertStatus(200)
+    const body = response.body() as CodeReviewDetailOutput
+    const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt)
+    // The linked action and the one found by name, each with its code; the prose one with none.
+    assert.match(prompt, /load \| Load the architecture \| confirmed \| n\d+/)
+    assert.match(prompt, /serialize \| Serialize architecture \| suggested \| n\d+/)
+    assert.include(prompt, SOURCE_MARKER)
+    assert.include(
+      github.reads.map((read) => read.path),
+      `${APP}/architectures/controllers/architectures-controller.ts`,
+    )
+    assert.lengthOf(body.findings, 1)
+    assert.equal(body.findings[0]?.elementId, 'owned')
+    assert.equal(body.findings[0]?.evidence[0]?.key, show)
   })
 
   test('keeps the project’s newest reviews', async ({ client, assert }) => {

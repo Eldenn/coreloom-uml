@@ -55,13 +55,21 @@ export type CodeReviewDiagram = {
 export type CodeReviewEvidence = { key: string; path?: string; line?: number }
 
 /** The diagram kinds the code map has a counterpart for (see `matchDiagram`). */
-export const REVIEWABLE_DIAGRAM_KINDS = ['package', 'component', 'class', 'sequence', 'c4'] as const
+export const REVIEWABLE_DIAGRAM_KINDS = [
+  'package',
+  'component',
+  'class',
+  'sequence',
+  'activity',
+  'c4',
+] as const
 
 /**
  * The kinds reviewed with the source of their files, in a review started with `includeSnippets`:
- * those that draw what only the code shows (order, conditions, loops, attributes and types).
+ * those that draw what only the code shows (order, conditions, loops, attributes and types). An
+ * activity diagram says nothing else: without the source, only its links to the code are checked.
  */
-export const SOURCE_REVIEW_KINDS: readonly string[] = ['class', 'sequence']
+export const SOURCE_REVIEW_KINDS: readonly string[] = ['class', 'sequence', 'activity']
 
 export const CODE_REVIEW_LOCALES = ['en', 'fr'] as const
 

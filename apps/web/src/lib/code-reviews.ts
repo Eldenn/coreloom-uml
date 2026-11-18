@@ -21,6 +21,7 @@ export const REVIEWABLE_KINDS: readonly string[] = [
   'component',
   'class',
   'sequence',
+  'activity',
   'c4',
 ]
 

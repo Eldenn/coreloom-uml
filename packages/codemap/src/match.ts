@@ -26,7 +26,10 @@ import {
  *   are checked against calls, not their order.
  * - C4: containers and components by folder name (`apps/api` for `api`); people and systems are
  *   left out.
- * - State, ER, use case, activity and deployment diagrams have no counterpart the map can show.
+ * - Activity diagrams: actions by function or method name, partitions by class, file or folder
+ *   name. Their labels are often prose, so one nothing matches is no finding, and flows are not
+ *   checked: conditions and order are in the source, which only the conformance review reads.
+ * - State, ER, use case and deployment diagrams have no counterpart the map can show.
  */
 
 /** What the matcher reads of a diagram: a `UmlSpec` from `@coreloom-uml/uml` fits. */
@@ -51,7 +54,11 @@ export type MatchableDiagram =
       elements: readonly { id: string; kind: string; label?: string }[]
       relations: readonly { from: string; to: string }[]
     }
-  | { kind: 'state' | 'er' | 'usecase' | 'activity' | 'deployment' }
+  | {
+      kind: 'activity'
+      elements: readonly { id: string; kind: string; label?: string; parent?: string }[]
+    }
+  | { kind: 'state' | 'er' | 'usecase' | 'deployment' }
 
 type SequenceStepShape = {
   type: string
@@ -66,7 +73,13 @@ export type LinkStatus = 'suggested' | 'confirmed' | 'ignored'
 /** A link the user already reviewed, kept from one map to the next by its code key. */
 export type DiagramCodeLink = { elementId: string; codeKey: string; status: LinkStatus }
 
-export type MatchReason = 'confirmed' | 'folder-path' | 'folder-name' | 'class-name' | 'file-name'
+export type MatchReason =
+  | 'confirmed'
+  | 'folder-path'
+  | 'folder-name'
+  | 'class-name'
+  | 'file-name'
+  | 'function-name'
 
 export type ElementMatch = {
   elementId: string
@@ -136,6 +149,7 @@ type MapIndex = {
   foldersByName: ReadonlyMap<string, string[]>
   classesByName: ReadonlyMap<string, CodeNode[]>
   filesByStem: ReadonlyMap<string, CodeNode[]>
+  functionsByName: ReadonlyMap<string, CodeNode[]>
 }
 
 function add<V>(map: Map<string, V[]>, key: string, value: V) {
@@ -151,6 +165,7 @@ function indexMap(map: CodeMap): MapIndex {
   const foldersByName = new Map<string, string[]>()
   const classesByName = new Map<string, CodeNode[]>()
   const filesByStem = new Map<string, CodeNode[]>()
+  const functionsByName = new Map<string, CodeNode[]>()
   for (const node of map.nodes) {
     if (node.path === undefined) continue
     for (
@@ -162,10 +177,16 @@ function indexMap(map: CodeMap): MapIndex {
       add(foldersByName, normalizeName(folder.slice(folder.lastIndexOf('/') + 1)), folder)
     }
     if (node.kind === 'class') add(classesByName, normalizeName(node.name), node)
+    if (node.kind === 'function' || node.kind === 'method') {
+      // A method is named `Class.method`: an action names it either way.
+      const short = node.name.slice(node.name.lastIndexOf('.') + 1)
+      add(functionsByName, normalizeName(node.name), node)
+      if (short !== node.name) add(functionsByName, normalizeName(short), node)
+    }
     if (node.kind === 'file')
       add(filesByStem, normalizeName(node.name.replace(/\.[^.]+$/, '')), node)
   }
-  return { graph, folders, foldersByName, classesByName, filesByStem }
+  return { graph, folders, foldersByName, classesByName, filesByStem, functionsByName }
 }
 
 /** Shallow folders first, then path order; at most `MAX_CANDIDATES`. */
@@ -237,6 +258,22 @@ function fileCandidates(index: MapIndex, name: string): ElementMatch['candidates
     .map((node) => ({ codeKey: node.key, reason: 'file-name' as const }))
 }
 
+/** Functions and methods named like an action: `serializeArchitecture()`, `Serialize architecture`. */
+function functionCandidates(index: MapIndex, name: string): ElementMatch['candidates'] {
+  return [...(index.functionsByName.get(normalizeName(name)) ?? [])]
+    .sort((a, b) => compare(a.key, b.key))
+    .slice(0, MAX_CANDIDATES)
+    .map((node) => ({ codeKey: node.key, reason: 'function-name' as const }))
+}
+
+/** A class, else a file, else a folder of that name: what a participant or a partition names. */
+function ownerCandidates(index: MapIndex, name: string): ElementMatch['candidates'] {
+  const classes = classCandidates(index, name)
+  if (classes.length > 0) return classes
+  const files = fileCandidates(index, name)
+  return files.length > 0 ? files : folderCandidates(index, name)
+}
+
 /** The elements to match, each with what the matcher proposes for it. */
 type Wanted = {
   id: string
@@ -280,14 +317,19 @@ function wantedElements(diagram: MatchableDiagram, index: MapIndex): Wanted[] {
         .filter((participant) => participant.kind !== 'actor')
         .map((participant) => ({
           id: participant.id,
-          propose: () => {
-            const name = participant.label ?? participant.id
-            const classes = classCandidates(index, name)
-            if (classes.length > 0) return classes
-            const files = fileCandidates(index, name)
-            return files.length > 0 ? files : folderCandidates(index, name)
-          },
+          propose: () => ownerCandidates(index, participant.label ?? participant.id),
         }))
+    case 'activity':
+      return diagram.elements.flatMap((element): Wanted[] => {
+        const name = element.label ?? element.id
+        if (element.kind === 'action') {
+          return [{ id: element.id, propose: () => functionCandidates(index, name) }]
+        }
+        if (element.kind === 'partition') {
+          return [{ id: element.id, propose: () => ownerCandidates(index, name) }]
+        }
+        return []
+      })
     case 'c4':
       return diagram.elements
         .filter((element) => element.kind === 'container' || element.kind === 'component')
@@ -448,7 +490,8 @@ export function matchDiagram(
     return match
   }
   for (const item of wanted) resolve(item)
-  for (const match of elements.values()) {
+  // An action or a partition is often named in prose: nothing found says nothing.
+  for (const match of diagram.kind === 'activity' ? [] : elements.values()) {
     if (match.status === 'missing') {
       findings.push({ kind: 'missing-in-code', elementId: match.elementId })
     }

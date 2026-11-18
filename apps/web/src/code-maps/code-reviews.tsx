@@ -1,6 +1,6 @@
 // Conformance reviews: the user's own model (set in Settings, kept in this browser) checks
 // diagrams of the project against the code map, one call per diagram, and the findings are kept.
-// The model reads names, paths and links, and the source of a class or sequence diagram's files
+// The model reads names, paths and links, and the source of a class, sequence or activity diagram's files
 // when the owner lets the review read it. Each diagram shows its findings as
 // badges on the drawing and as cards to mark done or dismiss.
 import { Link } from '@tanstack/react-router'

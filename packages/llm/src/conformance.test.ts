@@ -137,6 +137,18 @@ describe('reviewConformance', () => {
     expect(result.findings).toHaveLength(1)
   })
 
+  it('lists the elements without code, and keeps a finding about one', async () => {
+    const model = answeringModel(
+      answer([finding({ element: 'paid', comment: 'The code tests the stock, not the payment.' })]),
+    )
+    const result = await reviewConformance(
+      model,
+      source({ others: [{ id: 'paid', name: 'Paid?', kind: 'decision' }] }),
+    )
+    expect(JSON.stringify(model.doGenerateCalls[0]?.prompt)).toContain('paid | Paid? | decision')
+    expect(result.findings[0]?.elementId).toBe('paid')
+  })
+
   it('sends the source files it is given, outside the budget of the nodes', async () => {
     const model = answeringModel(answer([]))
     const result = await reviewConformance(
