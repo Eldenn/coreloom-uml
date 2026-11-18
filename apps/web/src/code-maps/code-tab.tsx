@@ -2,7 +2,7 @@
 // newest, or one picked among the five kept), in five views: what the map holds, the diagrams the
 // user's own model proposes for it, how each diagram matches it, the conformance reviews of the
 // diagrams by that model, and the processes no diagram documents.
-import { PlusIcon, Trash2Icon } from 'lucide-react'
+import { EllipsisIcon, PlusIcon, RefreshCwIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 
 import { OpenAssistantButton } from '@/code-maps/code-assistant'
@@ -14,6 +14,16 @@ import { CodeReviews } from '@/code-maps/code-reviews'
 import { AutoSuggest, CodeSuggestions, SuggestionsCount } from '@/code-maps/code-suggestions'
 import { ConformanceBadge } from '@/code-maps/conformance-badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,8 +34,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Label } from '@/components/ui/label'
-import { Popconfirm } from '@/components/ui/popconfirm'
+import { RelativeTime } from '@/components/ui/relative-time'
 import {
   Select,
   SelectContent,
@@ -48,6 +64,7 @@ import {
   useCodeMaps,
   useDeleteCodeMap,
 } from '@/lib/code-maps'
+import { useGithubFollow } from '@/lib/github'
 import { useLocale, useT } from '@/lib/locale'
 
 export function CodeTab({
@@ -139,18 +156,8 @@ function CodeMapPanel({
             onStateChange({ ...state, map: id })
           }}
         />
+        <FollowBadge projectId={projectId} />
         <div className="ml-auto flex flex-wrap gap-2">
-          <Popconfirm
-            title={t.code.deleteTitle}
-            description={t.code.deleteText}
-            confirmLabel={t.code.deleteConfirm}
-            destructive
-            onConfirm={deleteShown}
-          >
-            <Button variant="outline">
-              <Trash2Icon /> {t.code.delete}
-            </Button>
-          </Popconfirm>
           <OpenAssistantButton map={shown} />
           <Button
             variant="outline"
@@ -160,6 +167,7 @@ function CodeMapPanel({
           >
             <PlusIcon /> {t.code.addMap}
           </Button>
+          <MapActions onDelete={deleteShown} />
         </div>
       </div>
       <Tabs
@@ -248,6 +256,47 @@ function CodeMapPanel({
   )
 }
 
+/** The rarer actions on the shown map, behind a menu; deleting asks first. */
+function MapActions({ onDelete }: { onDelete: () => Promise<void> }) {
+  const t = useT()
+  const [deleting, setDeleting] = React.useState(false)
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="icon" aria-label={t.code.moreActions}>
+            <EllipsisIcon />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={() => {
+              setDeleting(true)
+            }}
+          >
+            <Trash2Icon /> {t.code.delete}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <AlertDialog open={deleting} onOpenChange={setDeleting}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.code.deleteTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.code.deleteText}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.code.cancel}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={onDelete}>
+              {t.code.deleteConfirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}
+
 /** The shown map's details, once it is read; a map still being read, or that failed, says so. */
 function ShownMap({
   id,
@@ -276,14 +325,49 @@ function ShownMap({
         <AlertDescription>{t.code.failed(map.data.failureReason)}</AlertDescription>
       </Alert>
     )
-  if (map.data.status !== 'ready' || !map.data.summary)
+  if (map.data.status !== 'ready' || !map.data.summary) {
+    const repository = map.data.repositoryUrl?.replace(/^https?:\/\/(?:www\.)?github\.com\//, '')
     return (
       <Alert className="mt-2">
         <Spinner />
-        <AlertDescription>{t.code.notReady}</AlertDescription>
+        <AlertTitle>
+          {map.data.status === 'pending' ? t.code.readingQueued : t.code.readingRunning}
+        </AlertTitle>
+        <AlertDescription className="flex flex-col gap-1">
+          <span>
+            {repository && (
+              <span className="font-mono text-[12.5px] break-all">
+                {repository}
+                {map.data.branch ? `@${map.data.branch}` : ''} ·{' '}
+              </span>
+            )}
+            {t.code.added} <RelativeTime date={map.data.createdAt} />
+          </span>
+          <span>{t.code.notReady}</span>
+        </AlertDescription>
       </Alert>
     )
+  }
   return children(map.data)
+}
+
+/** The repository the project reads again on each push, beside the version it produced. */
+function FollowBadge({ projectId }: { projectId: number }) {
+  const t = useT()
+  const follow = useGithubFollow(projectId)
+  if (!follow.data) return null
+  const { repositoryUrl, branch, active } = follow.data
+  const name = repositoryUrl.replace(/^https:\/\/github\.com\//, '')
+  return (
+    <Badge variant={active ? 'secondary' : 'warning'} className="mb-1.5 max-w-full">
+      <RefreshCwIcon aria-hidden />
+      <span className="truncate">
+        {active
+          ? t.code.followBadge(name, branch ?? t.code.githubDefaultBranch)
+          : t.code.followBadgeLost(name)}
+      </span>
+    </Badge>
+  )
 }
 
 function MapPicker({
