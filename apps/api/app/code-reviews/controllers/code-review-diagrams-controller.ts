@@ -1,7 +1,12 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
 import db from '@adonisjs/lucid/services/db'
-import { LlmCallError, type LlmFailureReason, reviewConformance } from '@coreloom-uml/llm'
+import {
+  type ConformanceResult,
+  LlmCallError,
+  type LlmFailureReason,
+  reviewConformance,
+} from '@coreloom-uml/llm'
 import { DateTime } from 'luxon'
 import { CodeMapStatus } from '#app/code-maps/constants/code-map'
 import CodeMap from '#app/code-maps/models/code-map'
@@ -14,6 +19,7 @@ import {
   CodeReviewDiagramStatus,
   CodeReviewResolution,
   SOURCE_REVIEW_KINDS,
+  UNLINKED_ACTIVITY_COMMENT,
 } from '#app/code-reviews/constants/code-review'
 import CodeReview from '#app/code-reviews/models/code-review'
 import CodeReviewFinding from '#app/code-reviews/models/code-review-finding'
@@ -89,13 +95,31 @@ export default class CodeReviewDiagramsController {
     )
 
     const started = performance.now()
+    // An activity diagram is compared through its links alone: with none, nothing is read or asked.
+    const unlinked =
+      diagram.kind === 'activity' && source.elements.every((element) => !element.codeKeys.length)
     const reading =
-      review.includeSnippets && SOURCE_REVIEW_KINDS.includes(diagram.kind)
+      !unlinked && review.includeSnippets && SOURCE_REVIEW_KINDS.includes(diagram.kind)
         ? await readSource(codeMap, user, source.nodes)
         : null
-    let result: Awaited<ReturnType<typeof reviewConformance>>
+    let result: ConformanceResult
     try {
-      result = await reviewConformance(built.model, { ...source, sources: reading?.excerpts })
+      result = unlinked
+        ? {
+            findings: [
+              {
+                elementId: null,
+                status: 'uncertain',
+                severity: 'low',
+                comment: UNLINKED_ACTIVITY_COMMENT[review.locale],
+                evidence: [],
+              },
+            ],
+            dropped: 0,
+            omittedNodes: 0,
+            truncated: false,
+          }
+        : await reviewConformance(built.model, { ...source, sources: reading?.excerpts })
     } catch (error) {
       if (!(error instanceof LlmCallError)) throw error
       const durationMs = Math.round(performance.now() - started)
