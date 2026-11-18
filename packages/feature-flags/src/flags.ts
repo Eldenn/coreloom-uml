@@ -10,6 +10,7 @@ export const FeatureFlagKey = {
   McpServer: 'mcp-server',
   AgentRoles: 'agent-roles',
   CodeMaps: 'code-maps',
+  WebResearch: 'web-research',
 } as const
 
 export type FeatureFlagKey = (typeof FeatureFlagKey)[keyof typeof FeatureFlagKey]
@@ -71,6 +72,14 @@ export const FEATURE_FLAGS: readonly FeatureFlagDeclaration[] = [
     description:
       'Lets people store maps of their code in a project and match its diagrams against them.',
     tags: ['code'],
+    defaultState: OFF,
+  },
+  {
+    key: FeatureFlagKey.WebResearch,
+    name: 'Web research',
+    description:
+      'Lets people make agent conventions from web pages their own model reads in a sandbox. Needs E2B_API_KEY on the server.',
+    tags: ['agents'],
     defaultState: OFF,
   },
 ]

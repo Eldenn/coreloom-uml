@@ -201,4 +201,17 @@ export default await Env.create(new URL('../', import.meta.url), {
   GITHUB_APP_CLIENT_SECRET: Env.schema.string.optional(),
   GITHUB_APP_PRIVATE_KEY: Env.schema.string.optional(),
   GITHUB_APP_WEBHOOK_SECRET: Env.schema.string.optional(),
+
+  /*
+  |--------------------------------------------------------------------------
+  | Web research (E2B sandboxes)
+  |--------------------------------------------------------------------------
+  | A web research runs its tools in an E2B sandbox. Without E2B_API_KEY the
+  | research routes answer 404. With the key alone the sandboxes are E2B
+  | Cloud's; E2B_API_URL and E2B_SANDBOX_URL point at a self-hosted install
+  | (e2b-dev/runtime, "Embed"), which prints all three when it starts.
+  */
+  E2B_API_KEY: Env.schema.string.optional(),
+  E2B_API_URL: Env.schema.string.optional({ format: 'url', tld: false }),
+  E2B_SANDBOX_URL: Env.schema.string.optional({ format: 'url', tld: false }),
 })
