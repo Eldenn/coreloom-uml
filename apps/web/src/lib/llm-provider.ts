@@ -125,22 +125,31 @@ export type ImportedReadyRule = Awaited<
   ReturnType<typeof client.api.agentConfigs.imports.store>
 >['ready'][number]
 
-/** `POST /agent-configs/:id/imports`: ready-made and own rules read from a conventions file, nothing stored. */
+/**
+ * `POST /agent-configs/:id/imports`: ready-made and own rules read from a conventions file. Nothing
+ * is stored, but the exchange of a research asked in an assistant conversation.
+ */
 export function useImportAgentFile(configId: number) {
   return useMutation({
     mutationFn: ({
       provider,
       content,
       origin,
+      conversation,
     }: {
       provider: StoredProvider
       content: string
       /** `research` when the text is the findings of a web research. */
       origin?: 'file' | 'research'
+      /**
+       * With `research` only: the assistant conversation the research was asked in. The server
+       * then stores the exchange there and answers its `messages`.
+       */
+      conversation?: { id: number; request: string; sources: ResearchSource[] }
     }) =>
       client.api.agentConfigs.imports.store({
         params: { id: configId },
-        body: { ...callBody(provider), content, origin },
+        body: { ...callBody(provider), content, origin, conversation },
         ...MODEL_CALL,
       }),
   })
