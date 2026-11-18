@@ -122,6 +122,9 @@ export interface ApiDefinition {
     proposals: {
       store: typeof routes['agent_configs.proposals.store']
     }
+    research: {
+      store: typeof routes['agent_configs.research.store']
+    }
     imports: {
       store: typeof routes['agent_configs.imports.store']
     }

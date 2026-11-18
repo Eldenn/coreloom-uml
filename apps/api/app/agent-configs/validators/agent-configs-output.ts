@@ -124,6 +124,14 @@ export type AgentImportOutput = {
   truncated: boolean
 }
 
+/** `POST /agent-configs/:id/research`: nothing is stored. */
+export type AgentResearchOutput = {
+  /** What the model found, to hand to `POST …/imports` with `origin: 'research'`. */
+  findings: string
+  /** The pages the sandbox actually read, in order. */
+  sources: { url: string; title: string | null }[]
+}
+
 /** `GET /agent-configs/:id`: the configuration and everything it is rendered from. */
 export type AgentConfigDetailOutput = AgentConfigOutput & {
   /** The sections one of the owner's own rules may go to, in render order. */
