@@ -476,6 +476,11 @@ export const en = {
       'Its file is deleted. The links you reviewed stay on the diagrams and apply to the next map.',
     deleteConfirm: 'Delete',
     deleted: 'Code map deleted.',
+    moreActions: 'More actions on this map',
+    followBadge: (repository: string, branch: string) => `Follows ${repository} (${branch})`,
+    followBadgeLost: (repository: string) => `No longer reaches ${repository}`,
+    readingQueued: 'Waiting for its turn to be read',
+    readingRunning: 'Reading the repository',
     notReady:
       'This map is still being read: a repository takes a minute or two. This page updates on its own.',
     failed: (reason: string | null) => `This map could not be read${reason ? `: ${reason}` : '.'}`,
@@ -1656,6 +1661,11 @@ export const fr: Messages = {
       'Son fichier est supprimé. Les liens que vous avez revus restent sur les diagrammes et valent pour la carte suivante.',
     deleteConfirm: 'Supprimer',
     deleted: 'Carte du code supprimée.',
+    moreActions: 'Autres actions sur cette carte',
+    followBadge: (repository: string, branch: string) => `Suit ${repository} (${branch})`,
+    followBadgeLost: (repository: string) => `N’atteint plus ${repository}`,
+    readingQueued: 'En attente de lecture',
+    readingRunning: 'Lecture du dépôt en cours',
     notReady:
       'Cette carte est encore en cours de lecture : un dépôt prend une minute ou deux. Cette page se met à jour toute seule.',
     failed: (reason: string | null) =>
