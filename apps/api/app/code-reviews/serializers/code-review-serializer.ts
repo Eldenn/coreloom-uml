@@ -21,7 +21,8 @@ export function serializeCodeReview(review: CodeReview, openCount: number): Code
     status: review.diagrams.some((diagram) => diagram.status === CodeReviewDiagramStatus.Pending)
       ? CodeReviewStatus.Running
       : CodeReviewStatus.Done,
-    diagrams: review.diagrams,
+    // A review stored before the source was read has no `source` on its diagrams.
+    diagrams: review.diagrams.map((diagram) => ({ ...diagram, source: diagram.source ?? null })),
     openCount,
     createdAt: review.createdAt.toISO() ?? '',
     updatedAt: review.updatedAt.toISO() ?? '',

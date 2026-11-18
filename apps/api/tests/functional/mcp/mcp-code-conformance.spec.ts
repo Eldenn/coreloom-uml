@@ -107,6 +107,7 @@ async function review(
         findingCount: findings.length,
         dropped: 0,
         truncated: false,
+        source: null,
         reviewedAt: '2026-11-17T05:00:00.000Z',
       },
     ],

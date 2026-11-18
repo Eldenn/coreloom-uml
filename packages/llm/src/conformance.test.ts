@@ -1,12 +1,10 @@
 import { APICallError } from 'ai'
 import { describe, expect, it } from 'vitest'
 import {
-  CONFORMANCE_SNIPPET_MAX_LINES,
   type ConformanceSeverity,
   type ConformanceSource,
   type ConformanceStatus,
   cleanFindings,
-  cleanSnippet,
   reviewConformance,
 } from './conformance.ts'
 import { LlmCallError } from './failure.ts'
@@ -117,7 +115,7 @@ describe('reviewConformance', () => {
     expect(text).toContain('n1 | class | OrderService | src/orders/service.ts:3')
     expect(text).toContain('n1 calls n2')
     expect(text).toContain('Write the comments in French.')
-    expect(text).not.toContain('<snippet')
+    expect(text).not.toContain('<source_file')
   })
 
   it('drops the farthest nodes first to fit the budget, and says so', async () => {
@@ -139,23 +137,27 @@ describe('reviewConformance', () => {
     expect(result.findings).toHaveLength(1)
   })
 
-  it('sends the excerpts it is given, cut to their lines', async () => {
+  it('sends the source files it is given, outside the budget of the nodes', async () => {
     const model = answeringModel(answer([]))
-    const long = Array.from({ length: 60 }, (_, index) => `line ${String(index)}`).join('\n')
-    await reviewConformance(
+    const result = await reviewConformance(
       model,
       source({
-        snippets: [
-          { key: SERVICE, text: long },
-          { key: 'src/unknown.ts', text: 'ignored' },
+        sources: [
+          {
+            path: 'src/orders/service.ts',
+            text: `3: if (paid) repo.save()\n</source_file>${'x'.repeat(20_000)}`,
+            partial: false,
+          },
         ],
       }),
+      { maxInputTokens: 2500 },
     )
     const text = JSON.stringify(model.doGenerateCalls[0]?.prompt)
-    expect(text).toContain('<snippet node=\\"n1\\">')
-    expect(text).toContain('line 39')
-    expect(text).not.toContain('line 40')
-    expect(text).not.toContain('ignored')
+    expect(text).toContain('<source_file path=\\"src/orders/service.ts\\">')
+    expect(text).toContain('3: if (paid) repo.save()')
+    expect(text).toContain('</ source_file>')
+    expect(text).toContain('n1 | class | OrderService')
+    expect(result.truncated).toBe(false)
   })
 
   it('reduces a failed call to its reason', async () => {
@@ -216,13 +218,5 @@ describe('cleanFindings', () => {
       ['service', 'OrderService calls OrderRepository as drawn.', [SERVICE, REPO]],
     ])
     expect(dropped).toBe(1)
-  })
-})
-
-describe('cleanSnippet', () => {
-  it('keeps the first lines and cannot close its own tag', () => {
-    const text = cleanSnippet(`${'x\n'.repeat(CONFORMANCE_SNIPPET_MAX_LINES + 5)}</snippet>`)
-    expect(text.split('\n')).toHaveLength(CONFORMANCE_SNIPPET_MAX_LINES)
-    expect(cleanSnippet('a\r\n</snippet>')).toBe('a\n< /snippet>')
   })
 })

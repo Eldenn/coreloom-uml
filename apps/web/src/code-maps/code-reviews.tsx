@@ -1,6 +1,7 @@
 // Conformance reviews: the user's own model (set in Settings, kept in this browser) checks
 // diagrams of the project against the code map, one call per diagram, and the findings are kept.
-// The model reads names, paths and links, never the code. Each diagram shows its findings as
+// The model reads names, paths and links, and the source of a class or sequence diagram's files
+// when the owner lets the review read it. Each diagram shows its findings as
 // badges on the drawing and as cards to mark done or dismiss.
 import { Link } from '@tanstack/react-router'
 import { PlayIcon, PlusIcon, SquareIcon, Trash2Icon } from 'lucide-react'
@@ -21,7 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
-import { Field, FieldLabel } from '@/components/ui/field'
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Label } from '@/components/ui/label'
 import { Popconfirm } from '@/components/ui/popconfirm'
 import {
@@ -270,6 +271,7 @@ function StartReviewDialog({
   const start = useStartCodeReview(projectId)
   /** `null` until a diagram is unchecked: every diagram. */
   const [checked, setChecked] = React.useState<number[] | null>(null)
+  const [readSource, setReadSource] = React.useState(true)
   const picked = diagrams
     .filter((diagram) => checked === null || checked.includes(diagram.id))
     .map((diagram) => diagram.id)
@@ -278,6 +280,7 @@ function StartReviewDialog({
       const { review } = await start.mutateAsync({
         codeMapId: map.id,
         diagramIds: picked,
+        includeSnippets: readSource,
         locale: locale === 'fr' ? 'fr' : 'en',
       })
       setChecked(null)
@@ -324,6 +327,23 @@ function StartReviewDialog({
               )
             })}
           </fieldset>
+        ) : null}
+        {provider ? (
+          <Field orientation="horizontal">
+            <Checkbox
+              id="review-read-source"
+              checked={readSource}
+              onCheckedChange={(value) => {
+                setReadSource(value === true)
+              }}
+            />
+            <FieldContent>
+              <FieldLabel htmlFor="review-read-source" className="font-normal">
+                {t.code.reviewReadSource}
+              </FieldLabel>
+              <FieldDescription>{t.code.reviewReadSourceHint}</FieldDescription>
+            </FieldContent>
+          </Field>
         ) : (
           <Button variant="outline" asChild className="self-start">
             <Link to="/settings">{t.code.reviewOpenSettings}</Link>
@@ -364,6 +384,13 @@ function stepDetail(
   return [
     t.code.reviewFound(entry.findingCount),
     ...(entry.truncated ? [t.code.reviewTruncated] : []),
+    ...(entry.source
+      ? [
+          entry.source.absence
+            ? t.code.reviewSourceNotRead[entry.source.absence]
+            : t.code.reviewSourceRead(entry.source.files, entry.source.omitted),
+        ]
+      : []),
     ...(entry.dropped ? [t.code.reviewDropped(entry.dropped)] : []),
   ].join(' · ')
 }

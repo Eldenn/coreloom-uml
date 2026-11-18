@@ -108,6 +108,7 @@ export default class CodeReviewsController {
         findingCount: 0,
         dropped: 0,
         truncated: false,
+        source: null,
         reviewedAt: null,
       })
     }

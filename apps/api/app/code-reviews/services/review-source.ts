@@ -54,13 +54,13 @@ export function matchChecks(match: DiagramMatch, nameOf: (id: string) => string)
 /**
  * What `reviewConformance` reads about one diagram: its PlantUML text without layout, its
  * elements with the code they stand for, the deterministic checks, and the slice of the map
- * around the linked places. `evidence` turns a cited key into the place the finding stores.
+ * around the linked places (most relevant first: the files `readSource` reads are its first ones). `evidence` turns a cited key into the place the finding stores.
  */
 export function conformanceSource(
   diagram: { id: number; kind: string; title: string; content: UmlSpec },
   map: CodeMap,
   match: DiagramMatch,
-  options: { locale: 'en' | 'fr'; snippets?: readonly { key: string; text: string }[] },
+  locale: 'en' | 'fr',
 ): {
   source: ConformanceSource
   evidence: (key: string) => CodeReviewEvidence
@@ -86,8 +86,7 @@ export function conformanceSource(
       checks: matchChecks(match, nameOf),
       nodes: slice.nodes,
       edges: slice.edges,
-      ...(options.snippets?.length ? { snippets: options.snippets } : {}),
-      locale: options.locale,
+      locale,
     },
     evidence: (key) => {
       const node = byKey.get(key)

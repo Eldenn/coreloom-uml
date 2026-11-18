@@ -7,11 +7,13 @@ import { CodeMapStatus } from '#app/code-maps/constants/code-map'
 import CodeMap from '#app/code-maps/models/code-map'
 import { readCodeMapFile } from '#app/code-maps/services/code-map-storage'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
+import { readSource } from '#app/code-maps/services/code-source'
 import { diagramLinks, matchStoredDiagram } from '#app/code-maps/services/diagram-code-links'
 import {
   type CodeReviewDiagram,
   CodeReviewDiagramStatus,
   CodeReviewResolution,
+  SOURCE_REVIEW_KINDS,
 } from '#app/code-reviews/constants/code-review'
 import CodeReview from '#app/code-reviews/models/code-review'
 import CodeReviewFinding from '#app/code-reviews/models/code-review-finding'
@@ -36,7 +38,9 @@ const MAP_GONE = {
 /**
  * One diagram of a review checked by the user's own model: one call, the findings it returns
  * replace the diagram's earlier ones in this review. The key is used for this call only, never
- * stored or logged; the code itself is never sent, unless the owner sends excerpts. Session only.
+ * stored or logged. In a review started with `includeSnippets`, a class or sequence diagram is
+ * checked with the source of its files, read on GitHub for this call (`readSource`): never stored,
+ * logged or returned, and a read that fails leaves the review on the structure. Session only.
  */
 export default class CodeReviewDiagramsController {
   /** `POST /code-reviews/:id/diagrams/:diagramId` */
@@ -58,12 +62,7 @@ export default class CodeReviewDiagramsController {
       return response.notFound(DIAGRAM_NOT_FOUND)
     }
 
-    const { provider, apiKey, snippets } = await request.validateUsing(reviewDiagramInput)
-    if (snippets?.length && !review.includeSnippets) {
-      return response.unprocessableEntity({
-        error: { message: 'This review was started without code excerpts.' },
-      })
-    }
+    const { provider, apiKey } = await request.validateUsing(reviewDiagramInput)
     const codeMap = review.codeMapId ? await CodeMap.find(review.codeMapId) : null
     if (!codeMap || codeMap.status !== CodeMapStatus.Ready || !codeMap.storageKey) {
       return response.conflict(MAP_GONE)
@@ -86,13 +85,17 @@ export default class CodeReviewDiagramsController {
       { id: diagram.id, kind: diagram.kind, title: diagram.title, content: diagram.content },
       map,
       match,
-      { locale: review.locale, ...(snippets ? { snippets } : {}) },
+      review.locale,
     )
 
     const started = performance.now()
+    const reading =
+      review.includeSnippets && SOURCE_REVIEW_KINDS.includes(diagram.kind)
+        ? await readSource(codeMap, user, source.nodes)
+        : null
     let result: Awaited<ReturnType<typeof reviewConformance>>
     try {
-      result = await reviewConformance(built.model, source)
+      result = await reviewConformance(built.model, { ...source, sources: reading?.excerpts })
     } catch (error) {
       if (!(error instanceof LlmCallError)) throw error
       const durationMs = Math.round(performance.now() - started)
@@ -107,7 +110,7 @@ export default class CodeReviewDiagramsController {
         findings: result.findings.length,
         dropped: result.dropped,
         omittedNodes: result.omittedNodes,
-        snippets: snippets?.length ?? 0,
+        sourceFiles: reading?.excerpts.length ?? 0,
       },
       'code review',
     )
@@ -142,6 +145,11 @@ export default class CodeReviewDiagramsController {
         findingCount: created.length,
         dropped: result.dropped,
         truncated: result.truncated,
+        source: reading && {
+          files: reading.excerpts.length,
+          omitted: reading.omitted,
+          absence: reading.absence,
+        },
         reviewedAt: DateTime.now().toISO(),
       })
       locked.providerKind = provider.kind

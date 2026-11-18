@@ -76,8 +76,12 @@ export function useCodeReview(id: number | undefined) {
 export function useStartCodeReview(projectId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { codeMapId: number; diagramIds: number[]; locale: 'en' | 'fr' }) =>
-      client.api.codeReviews.store({ body }),
+    mutationFn: (body: {
+      codeMapId: number
+      diagramIds: number[]
+      includeSnippets: boolean
+      locale: 'en' | 'fr'
+    }) => client.api.codeReviews.store({ body }),
     onSuccess: (detail) => {
       queryClient.setQueryData(codeReviewKeys.detail(detail.review.id), detail)
       return queryClient.invalidateQueries({ queryKey: codeReviewKeys.list(projectId) })

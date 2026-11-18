@@ -634,7 +634,7 @@ export const en = {
     reviewFailed: 'The review could not be loaded or started.',
     reviewTitle: 'Conformance review',
     reviewHint:
-      'Your own model checks each diagram against the code map: one call per diagram, with the provider set in this browser. It reads names, paths and links, never your code. The findings are kept with the review.',
+      'Your own model checks each diagram against the code map: one call per diagram, with the provider set in this browser. It reads names, paths and links, and the source of a class or sequence diagram’s files when you let it. The findings are kept with the review.',
     reviewStart: 'New review',
     reviewNothing:
       'Only package, component, class, sequence and C4 diagrams can be compared with the code.',
@@ -649,7 +649,10 @@ export const en = {
       'Start one to have your model compare the diagrams with this map. The project keeps its ten newest reviews.',
     reviewStartTitle: 'Review the diagrams against the code',
     reviewStartText: (model: string) =>
-      `${model} receives each diagram, how it is linked to the code and the part of the map around it: names, paths and links only. One call per diagram.`,
+      `${model} receives each diagram, how it is linked to the code and the part of the map around it: names, paths and links. One call per diagram.`,
+    reviewReadSource: 'Read the source code of class and sequence diagrams',
+    reviewReadSourceHint:
+      'Their files are read on GitHub at the map’s commit and sent to your model, to check the order of calls, conditions and loops. Nothing of it is kept.',
     reviewNoProvider:
       'Set your LLM provider in Settings first: the review calls your own model, with your key.',
     reviewOpenSettings: 'Open Settings',
@@ -659,6 +662,14 @@ export const en = {
     reviewPlan: (model: string | null) => (model ? `Review with ${model}` : 'Review'),
     reviewFound: (n: number) => `${String(n)} ${n === 1 ? 'finding' : 'findings'}`,
     reviewTruncated: 'part of the map left out to fit the model',
+    reviewSourceRead: (files: number, omitted: number) =>
+      `source code read: ${String(files)} ${files === 1 ? 'file' : 'files'}${omitted ? `, ${String(omitted)} left out` : ''}`,
+    reviewSourceNotRead: {
+      no_repository: 'source code not read: this map names no GitHub repository',
+      no_commit: 'source code not read: this map has no commit',
+      unreadable: 'source code not read: the repository could not be read on GitHub',
+      not_found: 'source code not read: the files were not found at this commit',
+    },
     reviewDropped: (n: number) =>
       `${String(n)} ${n === 1 ? 'finding' : 'findings'} without evidence set aside`,
     reviewStop: 'Stop',
@@ -1823,7 +1834,7 @@ export const fr: Messages = {
     reviewFailed: 'La revue n’a pas pu être chargée ou lancée.',
     reviewTitle: 'Revue de conformité',
     reviewHint:
-      'Votre propre modèle compare chaque diagramme à la carte du code : un appel par diagramme, avec le fournisseur réglé dans ce navigateur. Il lit des noms, des chemins et des liens, jamais votre code. Les constats sont gardés avec la revue.',
+      'Votre propre modèle compare chaque diagramme à la carte du code : un appel par diagramme, avec le fournisseur réglé dans ce navigateur. Il lit des noms, des chemins et des liens, et le code source des fichiers d’un diagramme de classes ou de séquence quand vous l’y autorisez. Les constats sont gardés avec la revue.',
     reviewStart: 'Nouvelle revue',
     reviewNothing:
       'Seuls les diagrammes de paquets, de composants, de classes, de séquence et C4 se comparent au code.',
@@ -1838,7 +1849,10 @@ export const fr: Messages = {
       'Lancez-en une pour que votre modèle compare les diagrammes à cette carte. Le projet garde ses dix revues les plus récentes.',
     reviewStartTitle: 'Comparer les diagrammes au code',
     reviewStartText: (model: string) =>
-      `${model} reçoit chaque diagramme, ses liens avec le code et la partie de la carte qui l’entoure : des noms, des chemins et des liens seulement. Un appel par diagramme.`,
+      `${model} reçoit chaque diagramme, ses liens avec le code et la partie de la carte qui l’entoure : des noms, des chemins et des liens. Un appel par diagramme.`,
+    reviewReadSource: 'Lire le code source des diagrammes de classes et de séquence',
+    reviewReadSourceHint:
+      'Leurs fichiers sont lus sur GitHub au commit de la carte et envoyés à votre modèle, pour vérifier l’ordre des appels, les conditions et les boucles. Rien n’en est gardé.',
     reviewNoProvider:
       'Réglez d’abord votre fournisseur LLM dans les Réglages : la revue appelle votre propre modèle, avec votre clé.',
     reviewOpenSettings: 'Ouvrir les Réglages',
@@ -1848,6 +1862,14 @@ export const fr: Messages = {
     reviewPlan: (model: string | null) => (model ? `Revue avec ${model}` : 'Revue'),
     reviewFound: (n: number) => `${String(n)} constat${n > 1 ? 's' : ''}`,
     reviewTruncated: 'une partie de la carte laissée de côté pour tenir dans le modèle',
+    reviewSourceRead: (files: number, omitted: number) =>
+      `code source lu : ${String(files)} fichier${files > 1 ? 's' : ''}${omitted ? `, ${String(omitted)} laissé${omitted > 1 ? 's' : ''} de côté` : ''}`,
+    reviewSourceNotRead: {
+      no_repository: 'code source non lu : cette carte ne nomme aucun dépôt GitHub',
+      no_commit: 'code source non lu : cette carte n’a pas de commit',
+      unreadable: 'code source non lu : le dépôt n’a pas pu être lu sur GitHub',
+      not_found: 'code source non lu : les fichiers sont introuvables à ce commit',
+    },
     reviewDropped: (n: number) =>
       `${String(n)} constat${n > 1 ? 's' : ''} sans preuve écarté${n > 1 ? 's' : ''}`,
     reviewStop: 'Arrêter',
