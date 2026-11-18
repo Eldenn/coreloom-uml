@@ -175,6 +175,13 @@ export {
   takesBaseUrl,
 } from './provider.ts'
 export {
+  excerptSource,
+  SOURCE_LIMITS,
+  type SourceExcerpt,
+  type SourceFile,
+  sourcePaths,
+} from './source-excerpts.ts'
+export {
   proposeStructureDiagram,
   STRUCTURE_DIAGRAM_KINDS,
   STRUCTURE_INSTRUCTIONS,

@@ -4,6 +4,7 @@ import {
   type LanguageModel,
   proposeProcessDiagram,
   proposeStructureDiagram,
+  type SourceExcerpt,
   type SuggestedDiagramKind,
 } from '@coreloom-uml/llm'
 import Architecture from '#app/architectures/models/architecture'
@@ -19,6 +20,14 @@ export type DrawingTarget = {
   focus: readonly string[]
 }
 
+/** What a drawing covers and how to draw it, with the source of its files when it was read. */
+export type DrawingSource = {
+  nodes: number
+  /** The nodes whose files are worth reading: none for a package or a component diagram. */
+  sourceNodes: readonly { kind: string; path?: string; line?: number }[]
+  draw: (model: LanguageModel, sources?: readonly SourceExcerpt[]) => Promise<DrawingResult>
+}
+
 /**
  * What the model reads to draw `target` as a new view of `architecture` (diagrams preloaded), or
  * null when the code it covers is not in the map.
@@ -28,7 +37,7 @@ export function drawingSource(
   target: DrawingTarget,
   architecture: Architecture,
   locale: 'en' | 'fr',
-): { nodes: number; draw: (model: LanguageModel) => Promise<DrawingResult> } | null {
+): DrawingSource | null {
   const common = {
     architecture: architecture.title,
     titles: architecture.diagrams.map((diagram) => diagram.title),
@@ -42,9 +51,11 @@ export function drawingSource(
     if (!slice) return null
     return {
       nodes: slice.nodes.length,
-      draw: (model) =>
+      sourceNodes: slice.nodes,
+      draw: (model, sources) =>
         proposeProcessDiagram(model, {
           ...common,
+          sources,
           entry: slice.entry,
           entryKind: slice.entryKind,
           kind,
@@ -57,8 +68,16 @@ export function drawingSource(
   if (slice.nodes.length === 0) return null
   return {
     nodes: slice.nodes.length,
-    draw: (model) =>
-      proposeStructureDiagram(model, { ...common, kind, nodes: slice.nodes, edges: slice.edges }),
+    // Folders and their imports say all a package or component diagram shows.
+    sourceNodes: kind === 'class' ? slice.nodes.filter((node) => !node.context) : [],
+    draw: (model, sources) =>
+      proposeStructureDiagram(model, {
+        ...common,
+        kind,
+        nodes: slice.nodes,
+        edges: slice.edges,
+        sources,
+      }),
   }
 }
 

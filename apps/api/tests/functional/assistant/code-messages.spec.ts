@@ -264,7 +264,11 @@ test.group('Assistant - messages drawn from the code map', (group) => {
       body.messages.map((message) => [message.role, message.content]),
       [
         ['user', MESSAGE],
-        ['assistant', 'The update route, drawn from the code map.'],
+        [
+          'assistant',
+          // An uploaded map names no repository: nothing of the source is read.
+          'The update route, drawn from the code map.\n\nSource code not read: this map names no GitHub repository. Drawn from the structure only.',
+        ],
       ],
     )
     assert.deepEqual(body.skipped, [])

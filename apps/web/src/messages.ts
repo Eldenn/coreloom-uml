@@ -401,7 +401,7 @@ export const en = {
     retry: 'Retry',
     introTitle: 'Compare the diagrams with the code',
     intro:
-      'A code map is the structure of a repository: folders, classes, functions and the calls between them, read by graphify without running the code or calling a model. Your source code is never sent: only names, paths and links.',
+      'A code map is the structure of a repository: folders, classes, functions and the calls between them, read by graphify without running the code or calling a model. The map holds only names, paths and links, never your code; drawing a diagram from it can read the files concerned on GitHub.',
     cliTitle: 'From the CLI',
     cliText:
       'Run it at the root of the repository, with graphify installed. It sends the map, never the code.',
@@ -580,7 +580,7 @@ export const en = {
     proposeDiagram: 'Propose a diagram',
     proposeTitle: 'Draw this process as a new view',
     proposeText: (entry: string, model: string) =>
-      `${model} receives the calls followed from ${entry}: names, paths and links only, never your code. The view it draws is proposed in the architecture’s assistant, where you accept or reject it.`,
+      `${model} receives the calls followed from ${entry}: names, paths and links, and the code of the files concerned when the repository can be read on GitHub. The view it draws is proposed in the architecture’s assistant, where you accept or reject it.`,
     proposeNoProvider:
       'Set your LLM provider in Settings first: the diagram is drawn by your own model, with your key.',
     proposeNoArchitecture: 'Add an architecture to this project first: the new view goes into one.',
@@ -618,7 +618,7 @@ export const en = {
     suggestionRoot: 'function nothing calls',
     draftTitle: 'Draw this proposal as a new view',
     draftText: (title: string, model: string) =>
-      `${model} receives the part of the map “${title}” covers: names, paths and links only, never your code. The view it draws is proposed in the architecture’s assistant, where you accept or reject it.`,
+      `${model} receives the part of the map “${title}” covers: names, paths and links, and the code of the files concerned when the repository can be read on GitHub. The view it draws is proposed in the architecture’s assistant, where you accept or reject it.`,
     processesNoEntries:
       'No entry point was recognised in this map (HTTP routes, jobs, CLI commands, event handlers), so there is no process to follow from one. The proposed diagrams also start from the functions nothing in the repository calls.',
     processesSeeSuggestions: 'See the proposed diagrams',
@@ -979,7 +979,7 @@ export const en = {
     placeholder: 'Ask about this architecture',
     code: 'Draw from the code',
     codeHint:
-      'Each message is a request for one new diagram. Your model reads names, paths and links from the code map, never your code.',
+      'Each message is a request for one new diagram. Your model reads names, paths and links from the code map and, when the repository can be read on GitHub, the code of the files concerned.',
     codePlaceholder: 'For example: a sequence diagram of the GitHub import',
     you: 'You',
     summary: 'Summary of the previous conversation',
@@ -1571,7 +1571,7 @@ export const fr: Messages = {
     retry: 'Réessayer',
     introTitle: 'Comparer les diagrammes au code',
     intro:
-      'Une carte du code est la structure d’un dépôt : dossiers, classes, fonctions et appels entre eux, lus par graphify sans exécuter le code ni appeler de modèle. Votre code source n’est jamais envoyé : seulement des noms, des chemins et des liens.',
+      'Une carte du code est la structure d’un dépôt : dossiers, classes, fonctions et appels entre eux, lus par graphify sans exécuter le code ni appeler de modèle. La carte ne contient que des noms, des chemins et des liens, jamais votre code ; dessiner un diagramme à partir d’elle peut lire les fichiers concernés sur GitHub.',
     cliTitle: 'Depuis le CLI',
     cliText:
       'À lancer à la racine du dépôt, avec graphify installé. Il envoie la carte, jamais le code.',
@@ -1762,7 +1762,7 @@ export const fr: Messages = {
     proposeDiagram: 'Proposer un diagramme',
     proposeTitle: 'Dessiner ce processus dans une nouvelle vue',
     proposeText: (entry: string, model: string) =>
-      `${model} reçoit les appels suivis depuis ${entry} : des noms, des chemins et des liens seulement, jamais votre code. La vue dessinée est proposée dans l’assistant de l’architecture, où vous l’acceptez ou la refusez.`,
+      `${model} reçoit les appels suivis depuis ${entry} : des noms, des chemins et des liens, ainsi que le code des fichiers concernés quand le dépôt est lisible sur GitHub. La vue dessinée est proposée dans l’assistant de l’architecture, où vous l’acceptez ou la refusez.`,
     proposeNoProvider:
       'Réglez d’abord votre fournisseur LLM dans les Réglages : le diagramme est dessiné par votre propre modèle, avec votre clé.',
     proposeNoArchitecture:
@@ -1801,7 +1801,7 @@ export const fr: Messages = {
     suggestionRoot: 'fonction que rien n’appelle',
     draftTitle: 'Dessiner cette proposition dans une nouvelle vue',
     draftText: (title: string, model: string) =>
-      `${model} reçoit la partie de la carte que couvre « ${title} » : des noms, des chemins et des liens seulement, jamais votre code. La vue dessinée est proposée dans l’assistant de l’architecture, où vous l’acceptez ou la refusez.`,
+      `${model} reçoit la partie de la carte que couvre « ${title} » : des noms, des chemins et des liens, ainsi que le code des fichiers concernés quand le dépôt est lisible sur GitHub. La vue dessinée est proposée dans l’assistant de l’architecture, où vous l’acceptez ou la refusez.`,
     processesNoEntries:
       'Aucun point d’entrée n’a été reconnu dans cette carte (routes HTTP, jobs, commandes CLI, gestionnaires d’événements) : il n’y a donc aucun processus à suivre depuis l’un d’eux. Les diagrammes proposés partent aussi des fonctions que rien n’appelle dans le dépôt.',
     processesSeeSuggestions: 'Voir les diagrammes proposés',
@@ -2169,7 +2169,7 @@ export const fr: Messages = {
     placeholder: 'Posez une question sur cette architecture',
     code: 'Dessiner depuis le code',
     codeHint:
-      'Chaque message demande un nouveau diagramme. Votre modèle lit les noms, chemins et liens de la carte du code, jamais votre code.',
+      'Chaque message demande un nouveau diagramme. Votre modèle lit les noms, chemins et liens de la carte du code et, quand le dépôt est lisible sur GitHub, le code des fichiers concernés.',
     codePlaceholder: 'Par exemple : un diagramme de séquence de l’import GitHub',
     you: 'Vous',
     summary: 'Résumé de la conversation précédente',

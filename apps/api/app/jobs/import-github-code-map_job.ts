@@ -1,4 +1,3 @@
-import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
 import { defaultGraphifyIgnore } from '@coreloom-uml/codemap'
 import { Job } from '@nemoventures/adonis-jobs'
@@ -16,9 +15,7 @@ import { pruneCodeMaps } from '#app/code-maps/services/code-map-pruning'
 import { deleteCodeMapFiles, storeCodeMapFile } from '#app/code-maps/services/code-map-storage'
 import { readCodeMapValue } from '#app/code-maps/services/code-map-upload'
 import { GithubFailure } from '#app/github/constants/github'
-import GithubApi from '#app/github/services/github-api'
-import { githubAppConfig } from '#app/github/services/github-app-config'
-import { findGrant } from '#app/github/services/github-grants'
+import { repositoryToken } from '#app/github/services/repository-token'
 
 /**
  * Maps a GitHub repository for a `pending` code map (`POST /projects/:id/code-maps/github`, or a
@@ -63,7 +60,7 @@ export default class ImportGithubCodeMapJob extends Job<ImportGithubCodeMapJobDa
     codeMap.status = CodeMapStatus.Running
     await codeMap.save()
 
-    const access = await this.githubToken(codeMap.userId, codeMap.repositoryUrl)
+    const access = await repositoryToken(codeMap.userId, codeMap.repositoryUrl)
     if (access === GithubFailure.Denied)
       return this.markFailed(codeMap, GITHUB_IMPORT_FAILURES.githubAccess)
     if (typeof access === 'string') {
@@ -160,24 +157,6 @@ export default class ImportGithubCodeMapJob extends Job<ImportGithubCodeMapJobDa
           : GITHUB_IMPORT_FAILURES.unexpected
       await this.markFailed(codeMap, reason)
     }
-  }
-
-  /**
-   * A read-only token for this one repository when the owner reaches it through the GitHub App,
-   * null for a repository read anonymously (public, or no App on this server), or why GitHub
-   * refused one.
-   */
-  private async githubToken(
-    userId: number,
-    repositoryUrl: string,
-  ): Promise<{ github: GithubApi; token: string } | null | GithubFailure> {
-    const config = await githubAppConfig()
-    if (!config) return null
-    const grant = await findGrant(userId, repositoryUrl)
-    if (!grant) return null
-    const github = await app.container.make(GithubApi)
-    const token = await github.installationToken(config, grant.installationId, grant.repositoryId)
-    return token.ok ? { github, token: token.value } : token.failure
   }
 
   private async markFailed(codeMap: CodeMap, reason: string): Promise<void> {

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { APICallError } from 'ai'
 import { MockLanguageModelV4 } from 'ai/test'
 import { describe, expect, it } from 'vitest'
@@ -9,6 +10,7 @@ import {
   processPrompt,
   proposeProcessDiagram,
 } from './process-diagram.ts'
+import { SOURCE_INSTRUCTIONS } from './source-excerpts.ts'
 import { answeringModel, failingModel } from './testing/mock-model.ts'
 
 const CONTROLLER = 'app/orders/orders-controller.ts#OrdersController'
@@ -236,5 +238,71 @@ describe('processPrompt', () => {
     expect(text).toContain('n1 calls n2')
     expect(text).toContain('Entry point: n1 (route)')
     expect(text).not.toContain('<all>')
+  })
+})
+
+describe('proposeProcessDiagram with sources', () => {
+  const sources = [
+    {
+      path: 'app/orders/orders-controller.ts',
+      text: '1: export class OrdersController {}',
+      partial: false,
+    },
+  ]
+  const sent = (model: ReturnType<typeof answeringModel>) =>
+    JSON.stringify(model.doGenerateCalls[0]?.prompt)
+
+  it('with sources, the prompt holds the files and the instructions say how to read them', async () => {
+    const model = answeringModel(answer())
+    await proposeProcessDiagram(model, source({ sources }))
+    const [system, user] = model.doGenerateCalls[0]?.prompt ?? []
+    expect(JSON.stringify(system)).toContain(JSON.stringify(SOURCE_INSTRUCTIONS).slice(1, -1))
+    expect(JSON.stringify(system)).not.toContain('You never see the source code.')
+    expect(JSON.stringify(user)).toContain(
+      '<source_file path=\\"app/orders/orders-controller.ts\\">',
+    )
+    expect(JSON.stringify(user)).toContain('1: export class')
+  })
+
+  it('without sources, the instructions and the prompt are what they were', async () => {
+    for (const extra of [{}, { sources: [] }]) {
+      const model = answeringModel(answer())
+      await proposeProcessDiagram(model, source(extra))
+      const text = sent(model)
+      expect(text).toContain('You never see the source code.')
+      expect(text).not.toContain('<source_file')
+      expect(text).not.toContain(SOURCE_INSTRUCTIONS.slice(0, 40))
+      expect(createHash('sha256').update(text).digest('hex')).toBe(
+        '074b71dfccfad1a7c06f735fdaf79f95f8e9dd6a52cc5391c79b826420bc274b',
+      )
+    }
+    expect(processPrompt(source({ sources: [] }), source().nodes)).toBe(
+      processPrompt(source(), source().nodes),
+    )
+  })
+
+  it('sources do not count against the nodes: the same nodes are kept with and without them', async () => {
+    const many = Array.from({ length: 200 }, (_, index) => ({
+      key: `app/deep/f${String(index)}.ts#helper${String(index)}`,
+      name: `helper${String(index)}`,
+      kind: 'function',
+      path: `app/deep/f${String(index)}.ts`,
+    }))
+    const base = source()
+    const nodes = [base.nodes[0] as ProcessNode, ...many]
+    const big = [{ path: 'app/x.ts', text: 'x'.repeat(40_000), partial: false }]
+    const without = answeringModel(answer())
+    const withSources = answeringModel(answer())
+    const a = await proposeProcessDiagram(without, { ...base, nodes }, { maxInputTokens: 2500 })
+    const b = await proposeProcessDiagram(
+      withSources,
+      { ...base, nodes, sources: big },
+      { maxInputTokens: 2500 },
+    )
+    expect(a.omittedNodes).toBeGreaterThan(0)
+    expect(b.omittedNodes).toBe(a.omittedNodes)
+    const codeNodes = (text: string) =>
+      text.slice(text.indexOf('<code_nodes>'), text.indexOf('</code_nodes>'))
+    expect(codeNodes(sent(withSources))).toBe(codeNodes(sent(without)))
   })
 })
