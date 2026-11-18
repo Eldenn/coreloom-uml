@@ -107,7 +107,14 @@ export async function researchWeb(
   }
 
   if (pages.length === 0 && !ran) throw new LlmCallError(LlmFailureReason.ToolsUnused)
-  const findings = text || pages.map(({ url, page }) => `${url}\n${page.text}`).join('\n\n')
+  const findings =
+    text ||
+    pages
+      .filter(({ page }) => page.text.trim())
+      .map(({ url, page }) => `${url}\n${page.text}`)
+      .join('\n\n')
+  // Pages without a word (an empty page, an application drawn by scripts) are nothing read.
+  if (!findings) throw new LlmCallError(LlmFailureReason.ToolsUnused)
   return {
     findings: cut(findings, RESEARCH_FINDINGS_MAX_LENGTH),
     sources: pages.map(({ url, page }) => ({ url, title: page.title })),

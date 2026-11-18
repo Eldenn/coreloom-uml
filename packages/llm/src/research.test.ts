@@ -186,6 +186,13 @@ describe('researchWeb', () => {
     expect(await reasonOf(researchWeb(model, { request: 'r', tools }))).toBe('tools_unused')
   })
 
+  it('fails with tools_unused when the pages read hold no text and the model says nothing', async () => {
+    const { tools } = fakeTools({ 'https://a.example/': page('') })
+    const model = toolCallingModel([read('https://a.example/'), { text: '  ' }])
+
+    expect(await reasonOf(researchWeb(model, { request: 'r', tools }))).toBe('tools_unused')
+  })
+
   it('reduces a provider error to its reason', async () => {
     const { tools } = fakeTools()
     const error = new APICallError({
