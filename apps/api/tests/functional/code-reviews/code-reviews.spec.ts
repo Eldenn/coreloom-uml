@@ -579,6 +579,45 @@ test.group('Code reviews', (group) => {
     assert.equal(body.findings[0]?.evidence[0]?.key, show)
   })
 
+  test('asks no model about an activity diagram with no link to the code', async ({
+    client,
+    assert,
+  }) => {
+    const { user, project, architecture } = await setup()
+    const activity = await Diagram.create({
+      architectureId: architecture.id,
+      title: 'Onboarding',
+      kind: 'activity',
+      format: 'mermaid',
+      content: {
+        kind: 'activity',
+        elements: [
+          { id: 'welcome', kind: 'action', label: 'Greet the newcomer warmly' },
+          { id: 'tour', kind: 'action', label: 'Walk through the office' },
+        ],
+        relations: [{ from: 'welcome', to: 'tour' }],
+      },
+      position: 2,
+      version: 1,
+    })
+    const map = await uploadMap(client, user, project.id)
+    const model = answeringModel(answer([]))
+    useModel(model)
+    const review = await startReview(client, user, {
+      codeMapId: map.id,
+      diagramIds: [activity.id],
+      includeSnippets: true,
+    })
+    const response = await reviewDiagram(client, user, review.id, activity.id)
+    response.assertStatus(200)
+    const body = response.body() as CodeReviewDetailOutput
+    assert.lengthOf(model.doGenerateCalls, 0)
+    assert.lengthOf(body.findings, 1)
+    assert.equal(body.findings[0]?.status, 'uncertain')
+    assert.isNull(body.findings[0]?.elementId)
+    assert.isNull(body.review.diagrams[0]?.source)
+  })
+
   test('keeps the project’s newest reviews', async ({ client, assert }) => {
     const { user, project, diagram } = await setup()
     const map = await uploadMap(client, user, project.id)

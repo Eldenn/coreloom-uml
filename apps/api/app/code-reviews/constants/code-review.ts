@@ -71,6 +71,15 @@ export const REVIEWABLE_DIAGRAM_KINDS = [
  */
 export const SOURCE_REVIEW_KINDS: readonly string[] = ['class', 'sequence', 'activity']
 
+/**
+ * The one finding of an activity diagram none of whose elements is linked to the code: there is
+ * nothing to compare, so no model is called.
+ */
+export const UNLINKED_ACTIVITY_COMMENT = {
+  en: 'No action of this diagram is linked to the code: link its actions to their functions in the Code tab, then review it again.',
+  fr: 'Aucune action de ce diagramme n’est reliée au code : reliez ses actions à leurs fonctions dans l’onglet Code, puis relancez la revue.',
+} as const
+
 export const CODE_REVIEW_LOCALES = ['en', 'fr'] as const
 
 export const CODE_REVIEW_LIMITS = {
