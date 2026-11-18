@@ -41,7 +41,7 @@ export function ReviewedDiagram({
   const pickerId = React.useId()
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-      <Card className="min-w-0">
+      <Card className="min-w-0 xl:sticky xl:top-18 xl:self-start">
         <CardHeader className="gap-3">
           <div className="flex flex-col gap-2 sm:w-96">
             <Label htmlFor={pickerId}>{t.code.diagram}</Label>
@@ -71,7 +71,7 @@ export function ReviewedDiagram({
             <UmlDiagram
               diagram={diagram.content}
               label={diagram.title}
-              height={460}
+              height="max(460px, calc(100svh - 18rem))"
               highlighted={focus === null ? [] : [focus]}
               annotations={annotationsOf(findings, t)}
               onAnnotationSelect={setFocus}

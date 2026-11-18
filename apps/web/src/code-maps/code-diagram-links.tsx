@@ -159,23 +159,31 @@ function DiagramMatchView({ map, diagram }: { map: CodeMapDetail; diagram: Proje
   const names = elementNames(diagram.content)
   const nameOf = (id: string) => names.get(id) ?? id
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-      <MatchDiagram diagram={diagram} match={match} onSelect={setFocus} />
-      <div className="flex min-w-0 flex-col gap-4">
-        <LinkSuggestions
-          map={map}
-          diagramId={diagram.id}
-          links={links.data.links}
-          match={match}
-          nameOf={nameOf}
-          focus={focus}
-          onClearFocus={() => {
-            setFocus(null)
-          }}
-        />
-        <ReviewedLinks map={map} diagramId={diagram.id} links={links.data.links} nameOf={nameOf} />
+    <div className="flex flex-col gap-4">
+      {/* The grid holds one row only: the sticky diagram stops where its row ends. */}
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <MatchDiagram diagram={diagram} match={match} onSelect={setFocus} />
+        <div className="flex min-w-0 flex-col gap-4">
+          <LinkSuggestions
+            map={map}
+            diagramId={diagram.id}
+            links={links.data.links}
+            match={match}
+            nameOf={nameOf}
+            focus={focus}
+            onClearFocus={() => {
+              setFocus(null)
+            }}
+          />
+          <ReviewedLinks
+            map={map}
+            diagramId={diagram.id}
+            links={links.data.links}
+            nameOf={nameOf}
+          />
+        </div>
       </div>
-      <Findings findings={match.findings} nameOf={nameOf} className="xl:col-span-2" />
+      <Findings findings={match.findings} nameOf={nameOf} />
     </div>
   )
 }
@@ -202,7 +210,7 @@ function MatchDiagram({
   }))
   const found = match.elements.filter((element) => element.status !== 'missing').length
   return (
-    <Card className="min-w-0">
+    <Card className="min-w-0 xl:sticky xl:top-18 xl:self-start">
       <CardHeader>
         <CardTitle>{diagram.title}</CardTitle>
         <CardDescription>{t.code.matched(found, match.elements.length)}</CardDescription>
@@ -212,7 +220,7 @@ function MatchDiagram({
           <UmlDiagram
             diagram={diagram.content}
             label={diagram.title}
-            height={460}
+            height="max(460px, calc(100svh - 15rem))"
             annotations={annotations}
             onAnnotationSelect={onSelect}
           />
@@ -440,11 +448,14 @@ function Findings({
         {findings.length === 0 ? (
           <p className="m-0 text-[13px] text-muted-foreground">{t.code.noFindings}</p>
         ) : (
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          <ul className="m-0 list-none p-0 xl:columns-2 xl:gap-8">
             {findings.map((finding) => {
               const text = findingText(finding, nameOf, t)
               return (
-                <li key={`${finding.kind}:${text}`} className="flex items-start gap-2 text-[13px]">
+                <li
+                  key={`${finding.kind}:${text}`}
+                  className="mb-2 flex break-inside-avoid items-start gap-2 text-[13px]"
+                >
                   {finding.kind === 'dependency-not-drawn' ? (
                     <TriangleAlertIcon
                       className="mt-0.5 size-4 shrink-0 text-warning"

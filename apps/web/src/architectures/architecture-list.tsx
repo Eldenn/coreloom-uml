@@ -66,7 +66,7 @@ export function ArchitectureList({
   const t = useT()
   if (query.isPending)
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 min-[1800px]:grid-cols-4 sm:grid-cols-2 xl:grid-cols-3">
         {[0, 1, 2].map((i) => (
           <Skeleton key={i} className="h-36" />
         ))}
@@ -101,7 +101,7 @@ export function ArchitectureList({
       </Empty>
     )
   return (
-    <ul className="m-0 grid list-none gap-4 p-0 sm:grid-cols-2 xl:grid-cols-3">
+    <ul className="m-0 grid list-none gap-4 p-0 min-[1800px]:grid-cols-4 sm:grid-cols-2 xl:grid-cols-3">
       {query.data.data.map((architecture) => (
         <li key={architecture.id} className="flex flex-col gap-1.5">
           <ArchitectureCard architecture={architecture} />

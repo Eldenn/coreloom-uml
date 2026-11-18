@@ -148,52 +148,55 @@ function CodeMapPanel({
   }
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <MapPicker
-          maps={maps}
-          value={shown.id}
-          onChange={(id) => {
-            onStateChange({ ...state, map: id })
-          }}
-        />
-        <FollowBadge projectId={projectId} />
-        <div className="ml-auto flex flex-wrap gap-2">
-          <OpenAssistantButton map={shown} />
-          <Button
-            variant="outline"
-            onClick={() => {
-              setAdding(true)
-            }}
-          >
-            <PlusIcon /> {t.code.addMap}
-          </Button>
-          <MapActions onDelete={deleteShown} />
-        </div>
-      </div>
       <Tabs
         value={view}
         onValueChange={(next) => {
           onStateChange({ ...state, view: next as CodeView })
         }}
       >
-        <TabsList className="max-w-full justify-start overflow-x-auto">
-          <TabsTrigger value="map">{t.code.viewOverview}</TabsTrigger>
-          <TabsTrigger value="suggestions">
-            {t.code.viewSuggestions}
-            {shown.status === 'ready' && <SuggestionsCount mapId={shown.id} />}
-          </TabsTrigger>
-          <TabsTrigger value="diagrams">
-            {t.code.viewDiagrams}
-            <ConformanceBadge counts={conformance.data?.counts} />
-          </TabsTrigger>
-          <TabsTrigger value="review">{t.code.viewReview}</TabsTrigger>
-          <TabsTrigger value="processes">
-            {t.code.viewProcesses}
-            {!!conformance.data?.undocumentedProcesses && (
-              <Badge variant="secondary">{conformance.data.undocumentedProcesses}</Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
+        {/* One row for the whole tab: its views on the left, the map they read on the right. */}
+        <div className="flex flex-wrap items-center gap-3">
+          <TabsList className="max-w-full justify-start overflow-x-auto">
+            <TabsTrigger value="map">{t.code.viewOverview}</TabsTrigger>
+            <TabsTrigger value="suggestions">
+              {t.code.viewSuggestions}
+              {shown.status === 'ready' && <SuggestionsCount mapId={shown.id} />}
+            </TabsTrigger>
+            <TabsTrigger value="diagrams">
+              {t.code.viewDiagrams}
+              <ConformanceBadge counts={conformance.data?.counts} />
+            </TabsTrigger>
+            <TabsTrigger value="review">{t.code.viewReview}</TabsTrigger>
+            <TabsTrigger value="processes">
+              {t.code.viewProcesses}
+              {!!conformance.data?.undocumentedProcesses && (
+                <Badge variant="secondary">{conformance.data.undocumentedProcesses}</Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+          <div className="ml-auto flex flex-wrap items-center gap-3">
+            <MapPicker
+              maps={maps}
+              value={shown.id}
+              onChange={(id) => {
+                onStateChange({ ...state, map: id })
+              }}
+            />
+            <FollowBadge projectId={projectId} />
+            <div className="flex flex-wrap gap-2">
+              <OpenAssistantButton map={shown} />
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setAdding(true)
+                }}
+              >
+                <PlusIcon /> {t.code.addMap}
+              </Button>
+              <MapActions onDelete={deleteShown} />
+            </div>
+          </div>
+        </div>
         <ShownMap id={shown.id}>
           {(map) => (
             <>
@@ -385,7 +388,9 @@ function MapPicker({
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' })
   return (
     <div className="flex flex-col gap-2">
-      <Label htmlFor={id}>{t.code.version}</Label>
+      <Label htmlFor={id} className="sr-only">
+        {t.code.version}
+      </Label>
       <Select
         value={String(value)}
         onValueChange={(next) => {
