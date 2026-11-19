@@ -607,6 +607,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'agent_configs.merges.store': {
+    methods: ["POST"]
+    pattern: '/agent-configs/merge'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').mergeAgentConfigsInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').mergeAgentConfigsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-merges-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-merges-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'agent_configs.show': {
     methods: ["GET","HEAD"]
     pattern: '/agent-configs/:id'

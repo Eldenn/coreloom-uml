@@ -126,6 +126,21 @@ export const en = {
     moveDescription:
       'Move them to another project, or out of their project. A project holds at most one set of agent conventions.',
     moved: 'Agent conventions moved.',
+    merge: 'Merge',
+    mergeTitle: 'Merge agent conventions',
+    mergeDescription:
+      'Creates new agent conventions from the ones you pick, outside any project. The ones you pick stay as they are.',
+    mergeSources: 'Conventions to merge',
+    mergeSourcesPlaceholder: 'Pick at least two',
+    mergeNeedTwo: 'Pick at least two.',
+    mergeConflicts: (count: number) =>
+      count === 1 ? '1 conflict to settle' : `${count} conflicts to settle`,
+    mergeConflictsHelp: 'These cannot be held together. Choose which to keep.',
+    mergeOneRule: 'one choice only',
+    mergeRole: (slug: string) => `Role “${slug}”`,
+    mergeFrom: (what: string, source: string) => `${what} (from “${source}”)`,
+    mergeChoose: 'Choose what to keep for each conflict.',
+    merged: 'Agent conventions merged.',
     badge: 'Agent conventions',
     stale: 'Needs regenerating',
     loadFailed: 'The agent conventions could not be loaded.',
@@ -1411,6 +1426,22 @@ export const fr: Messages = {
     moveDescription:
       'Déplacez-les vers un autre projet, ou sortez-les de leur projet. Un projet contient au plus un jeu de conventions d’agents.',
     moved: 'Conventions d’agents déplacées.',
+    merge: 'Fusionner',
+    mergeTitle: 'Fusionner des conventions d’agents',
+    mergeDescription:
+      'Crée de nouvelles conventions d’agents à partir de celles que vous choisissez, hors de tout projet. Celles que vous choisissez restent telles quelles.',
+    mergeSources: 'Conventions à fusionner',
+    mergeSourcesPlaceholder: 'Choisissez-en au moins deux',
+    mergeNeedTwo: 'Choisissez-en au moins deux.',
+    mergeConflicts: (count: number) =>
+      count === 1 ? '1 conflit à trancher' : `${count} conflits à trancher`,
+    mergeConflictsHelp:
+      'Ces éléments ne peuvent pas être gardés ensemble. Choisissez lequel garder.',
+    mergeOneRule: 'un seul choix',
+    mergeRole: (slug: string) => `Rôle « ${slug} »`,
+    mergeFrom: (what: string, source: string) => `${what} (de « ${source} »)`,
+    mergeChoose: 'Choisissez quoi garder pour chaque conflit.',
+    merged: 'Conventions d’agents fusionnées.',
     badge: 'Conventions d’agents',
     stale: 'À régénérer',
     loadFailed: 'Les conventions d’agents n’ont pas pu être chargées.',

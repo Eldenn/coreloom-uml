@@ -306,6 +306,12 @@ const routes = {
     tokens: [{"old":"/agent-configs","type":0,"val":"agent-configs","end":""}],
     types: placeholder as Registry['agent_configs.store']['types'],
   },
+  'agent_configs.merges.store': {
+    methods: ["POST"],
+    pattern: '/agent-configs/merge',
+    tokens: [{"old":"/agent-configs/merge","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/merge","type":0,"val":"merge","end":""}],
+    types: placeholder as Registry['agent_configs.merges.store']['types'],
+  },
   'agent_configs.show': {
     methods: ["GET","HEAD"],
     pattern: '/agent-configs/:id',

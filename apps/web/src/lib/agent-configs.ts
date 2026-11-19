@@ -148,6 +148,34 @@ export function useCreateAgentConfig() {
   })
 }
 
+type MergeBody = Awaited<ReturnType<typeof client.api.agentConfigs.merges.store>>
+/** What the picked configurations cannot hold together, each with the sources to choose from. */
+export type MergeConflicts = Extract<MergeBody, { conflicts: unknown }>['conflicts']
+
+/**
+ * Makes a new configuration from several, which stay as they are. While a conflict has no choice
+ * the API creates nothing and answers `conflicts`, to send again with `choices`.
+ */
+export function useMergeAgentConfigs() {
+  const queryClient = useQueryClient()
+  const invalidate = useInvalidateSets()
+  return useMutation({
+    mutationFn: (body: {
+      name: string
+      sourceIds: number[]
+      choices?: {
+        readyRules: { slot: string; sourceId: number }[]
+        roles: { slug: string; sourceId: number }[]
+      }
+    }) => client.api.agentConfigs.merges.store({ body }),
+    onSuccess: (body) => {
+      if (!('config' in body)) return
+      queryClient.setQueryData(agentConfigKeys.detail(body.config.id), body)
+      return invalidate()
+    },
+  })
+}
+
 /** Renames it, moves it (`projectId`, `null` out of its project) or changes its source. */
 export function useUpdateAgentConfig(id: number) {
   const setConfig = useSetConfig(id)
