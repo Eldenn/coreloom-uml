@@ -7,11 +7,13 @@ import * as React from 'react'
 import { AnswerButtons, ProposalCard } from '@/assistant/assistant-change-card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/sonner'
+import { useRolePresets } from '@/lib/agent-roles'
 import { type AssistantAction, useActionAnswer } from '@/lib/assistant'
-import { actionImpact, actionRows } from '@/lib/assistant-actions'
+import { actionImpact, type ActionRowLabel, actionRows } from '@/lib/assistant-actions'
 import { getErrorMessage, TuyauError } from '@/lib/client'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { useT } from '@/lib/locale'
+import { cn } from '@/lib/utils'
 
 const LINK =
   'w-fit text-[13px] text-primary-text underline underline-offset-2 outline-none focus-visible:ring-[3px] focus-visible:ring-ring'
@@ -45,6 +47,32 @@ function ResultLink({ result }: { result: NonNullable<AssistantAction['result']>
   )
 }
 
+/**
+ * How a card shows a row's value: a visibility, a right or a preset by its localized or full name,
+ * an empty scope as the whole repository.
+ */
+function useShownValue(action: AssistantAction) {
+  const t = useT()
+  const visibilities: Record<string, string> = useCoreloomI18n().messages.diagramCard.visibility
+  const rights: Record<string, string> = t.roles.rightNames
+  const presets = useRolePresets(action.name === 'add_role_from_preset').data
+  const named = (names: Record<string, string>, value: string) =>
+    Object.hasOwn(names, value) ? names[value] : value
+  return (label: ActionRowLabel, value: string): string => {
+    if (label === 'visibility') return named(visibilities, value)
+    if (label === 'rights')
+      return value
+        .split(', ')
+        .map((right) => named(rights, right))
+        .join(', ')
+    if (label === 'scope' && value === '') return t.assistant.actionWholeRepository
+    // A field the action empties.
+    if (value === '') return t.assistant.actionNone
+    if (label === 'preset') return presets?.find((item) => item.slug === value)?.name ?? value
+    return value
+  }
+}
+
 export function AssistantActionCard({
   conversationId,
   messageId,
@@ -55,11 +83,10 @@ export function AssistantActionCard({
   action: AssistantAction
 }) {
   const t = useT().assistant
-  const visibilities: Record<string, string> = useCoreloomI18n().messages.diagramCard.visibility
-  // A visibility is shown by its localized name.
-  const shown = (label: string, value: string) =>
-    label === 'visibility' && Object.hasOwn(visibilities, value) ? visibilities[value] : value
+  const shown = useShownValue(action)
   const impact = actionImpact(action.impact)
+  // A new generation drops the oldest ones: nothing is deleted with it.
+  const impactLabel = action.name === 'generate_files' ? t.actionDroppedLabel : t.actionImpactLabel
   const answer = useActionAnswer(conversationId)
   const card = React.useRef<HTMLDivElement>(null)
   // The server refused to apply a card that no longer said what it would do, and refreshed it.
@@ -91,7 +118,15 @@ export function AssistantActionCard({
         {actionRows(action).map((row) => (
           <React.Fragment key={row.label}>
             <dt className="text-muted-foreground">{t.actionRows[row.label]}</dt>
-            <dd className="m-0 min-w-0 break-words whitespace-pre-wrap text-foreground">
+            <dd
+              className={cn(
+                'm-0 min-w-0 break-words whitespace-pre-wrap text-foreground',
+                // A mission can run to pages, and all of it is what the agent is told: it scrolls.
+                row.label === 'mission' && 'max-h-40 overflow-y-auto',
+              )}
+              // A region that scrolls is reached by keyboard.
+              tabIndex={row.label === 'mission' ? 0 : undefined}
+            >
               {row.from !== undefined && (
                 <>
                   <span className="text-muted-foreground">{shown(row.label, row.from)}</span>{' '}
@@ -105,7 +140,7 @@ export function AssistantActionCard({
         ))}
         {impact.length > 0 && (
           <>
-            <dt className="text-muted-foreground">{t.actionImpactLabel}</dt>
+            <dt className="text-muted-foreground">{impactLabel}</dt>
             <dd className="m-0 min-w-0 text-foreground">
               {impact.map(({ kind, count }) => t.actionImpact[kind](count)).join(', ')}
             </dd>

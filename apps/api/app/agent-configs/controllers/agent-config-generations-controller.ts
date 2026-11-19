@@ -1,14 +1,11 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import db from '@adonisjs/lucid/services/db'
-import { CATALOG_VERSION } from '@coreloom-uml/catalog'
-import { AGENT_GENERATIONS_KEPT } from '#app/agent-configs/constants/agent-config'
 import AgentConfig from '#app/agent-configs/models/agent-config'
 import AgentConfigGeneration from '#app/agent-configs/models/agent-config-generation'
 import {
   serializeAgentGeneration,
   serializeAgentGenerationSummary,
 } from '#app/agent-configs/serializers/agent-config-serializer'
-import { currentInputs, render, suggestSkills } from '#app/agent-configs/services/agent-context'
+import { createGeneration } from '#app/agent-configs/services/agent-generations'
 import {
   AGENT_CONFIG_NOT_FOUND,
   AGENT_GENERATION_NOT_FOUND,
@@ -19,7 +16,6 @@ import { listAgentGenerationsInput } from '#app/agent-configs/validators/agent-c
 import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
 import { assertOwner } from '#app/shared/authorization/assert-owner'
 import { paginate } from '#app/shared/pagination/paginate'
-import { suggestableSkills } from '#app/skills/services/skills-catalog'
 
 /**
  * Generations: frozen renders of a configuration. A new one is always rendered from the current
@@ -33,39 +29,7 @@ export default class AgentConfigGenerationsController {
   async store({ params, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
 
-    const skills = await suggestableSkills()
-    const generation = await db.transaction(async (trx) => {
-      const config = await findOwnedAgentConfig(params.id, user, trx)
-      if (!config) return null
-      const inputs = await currentInputs(config)
-      const output = render(inputs)
-
-      const created = await AgentConfigGeneration.create(
-        {
-          agentConfigId: config.id,
-          revision: config.revision,
-          catalogVersion: CATALOG_VERSION,
-          inputs,
-          files: output.files,
-          recommendations: output.recommendations,
-          roles: output.roles,
-          skills: suggestSkills(inputs, skills),
-        },
-        { client: trx },
-      )
-
-      const kept = AgentConfigGeneration.query({ client: trx })
-        .select('id')
-        .where('agentConfigId', config.id)
-        .orderBy('id', 'desc')
-        .limit(AGENT_GENERATIONS_KEPT)
-      await AgentConfigGeneration.query({ client: trx })
-        .where('agentConfigId', config.id)
-        .whereNotIn('id', kept)
-        .delete()
-
-      return created
-    })
+    const generation = await createGeneration(params.id, user)
     if (!generation) return response.notFound(AGENT_CONFIG_NOT_FOUND)
 
     return response.created({ generation: serializeAgentGeneration(generation) })

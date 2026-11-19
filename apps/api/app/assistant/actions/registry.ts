@@ -34,23 +34,31 @@ export async function currentState(
   // Only what goes with it: a count of zero says nothing.
   const counts = Object.entries(await action.impact(input, user)).filter(([, count]) => count > 0)
   const before = await action.before(input, user)
+  const impact = counts.length > 0 ? Object.fromEntries(counts) : null
   return {
-    impact: counts.length > 0 ? Object.fromEntries(counts) : null,
+    impact,
     before,
     destructive:
       typeof action.destructive === 'function'
-        ? action.destructive(before)
+        ? action.destructive(before, impact ?? {})
         : action.destructive === true,
   }
 }
 
+/** Whether `user` may use the action now (its feature flag). */
+export async function isAvailable(action: AssistantAction, user: User): Promise<boolean> {
+  return (await action.available?.(user)) ?? true
+}
+
 /**
- * The actions as the loop's tools, bound to `user`. A write records its proposal in `proposals`
- * (with the target's current name), or tells the model why not: its target does not exist, or
- * its input can never be applied.
+ * The actions available to `user` as the loop's tools, bound to them. A write records its
+ * proposal in `proposals` (with the target's current name), or tells the model why not: its
+ * target does not exist, or its input can never be applied.
  */
-export function actionTools(user: User, proposals: StoredAction[]): AssistantTool[] {
-  return ASSISTANT_ACTIONS.map((action): AssistantTool => {
+export async function actionTools(user: User, proposals: StoredAction[]): Promise<AssistantTool[]> {
+  const available = await Promise.all(ASSISTANT_ACTIONS.map((action) => isAvailable(action, user)))
+  const actions = ASSISTANT_ACTIONS.filter((_action, index) => available[index])
+  return actions.map((action): AssistantTool => {
     const { name, description, input: inputSchema } = action
     if (action.kind === AssistantToolKind.Read) {
       return {

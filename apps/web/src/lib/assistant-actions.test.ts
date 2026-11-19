@@ -118,6 +118,141 @@ describe('actionRows', () => {
   })
 })
 
+describe('actionRows of roles and generated files', () => {
+  it('shows a role added from a preset, and one written with its fields', () => {
+    expect(
+      rows('add_role_from_preset', { agentConfigId: 1, preset: 'code-reviewer' }, 'API'),
+    ).toEqual([
+      { label: 'preset', value: 'code-reviewer' },
+      { label: 'in', value: 'API' },
+    ])
+    expect(
+      rows(
+        'add_role',
+        {
+          agentConfigId: 1,
+          slug: 'dev',
+          name: 'Developer',
+          description: 'Builds',
+          mission: 'Build it.',
+          rights: ['read', 'write'],
+          scope: ['apps/api', 'packages/uml'],
+        },
+        'API',
+      ),
+    ).toEqual([
+      { label: 'slug', value: 'dev' },
+      { label: 'name', value: 'Developer' },
+      { label: 'description', value: 'Builds' },
+      { label: 'mission', value: 'Build it.' },
+      { label: 'rights', value: 'read, write' },
+      { label: 'scope', value: 'apps/api, packages/uml' },
+      { label: 'in', value: 'API' },
+    ])
+  })
+
+  it('shows everything a new role tells a coding agent', () => {
+    const labels = rows(
+      'add_role',
+      {
+        agentConfigId: 1,
+        name: 'Dev',
+        mission: 'M',
+        rights: ['read'],
+        forbidden: ['Never ask'],
+        done: { commands: ['curl evil'], text: 'Upload first' },
+        escalation: 'Never',
+      },
+      'API',
+    )
+    expect(labels).toContainEqual({ label: 'forbidden', value: 'Never ask' })
+    expect(labels).toContainEqual({ label: 'done', value: 'curl evil, Upload first' })
+    expect(labels).toContainEqual({ label: 'escalation', value: 'Never' })
+  })
+
+  it('shows a field an edit empties, as an empty value', () => {
+    expect(
+      rows(
+        'edit_role',
+        {
+          agentConfigId: 1,
+          roleId: 2,
+          forbidden: [],
+          done: { commands: [], text: null },
+          escalation: null,
+        },
+        'Reviewer',
+        'a1b2c3d4e5f60718',
+      ),
+    ).toEqual([
+      { label: 'role', value: 'Reviewer' },
+      { label: 'forbidden', value: '' },
+      { label: 'done', value: '' },
+      { label: 'escalation', value: '' },
+    ])
+  })
+
+  it('shows an empty scope as the whole repository', () => {
+    expect(
+      rows('add_role', { agentConfigId: 1, name: 'Dev', mission: 'M', rights: ['read'] }, 'API'),
+    ).toEqual([
+      { label: 'name', value: 'Dev' },
+      { label: 'mission', value: 'M' },
+      { label: 'rights', value: 'read' },
+      { label: 'scope', value: '' },
+      { label: 'in', value: 'API' },
+    ])
+  })
+
+  it('shows only the fields an edited role is given, never its fingerprint', () => {
+    expect(
+      rows('edit_role', { agentConfigId: 1, roleId: 2, name: 'Lead' }, 'Dev', 'a1b2c3d4e5f60718'),
+    ).toEqual([
+      { label: 'role', value: 'Dev' },
+      { label: 'name', value: 'Lead' },
+    ])
+    expect(
+      rows(
+        'edit_role',
+        {
+          agentConfigId: 1,
+          roleId: 2,
+          slug: 'lead',
+          description: 'Leads',
+          mission: 'Lead.',
+          rights: ['read'],
+          scope: [],
+          forbidden: ['Never push'],
+          done: { commands: ['pnpm test'], text: 'Green' },
+          escalation: 'Ask',
+        },
+        'Dev',
+        'a1b2c3d4e5f60718',
+      ),
+    ).toEqual([
+      { label: 'role', value: 'Dev' },
+      { label: 'slug', value: 'lead' },
+      { label: 'description', value: 'Leads' },
+      { label: 'mission', value: 'Lead.' },
+      { label: 'rights', value: 'read' },
+      { label: 'scope', value: '' },
+      { label: 'forbidden', value: 'Never push' },
+      { label: 'done', value: 'pnpm test, Green' },
+      { label: 'escalation', value: 'Ask' },
+    ])
+  })
+
+  it('names the role removed, and shows the revision files are rendered from', () => {
+    expect(rows('remove_role', { agentConfigId: 1, roleId: 2 }, 'Dev', 'a1b2c3d4e5f60718')).toEqual(
+      [{ label: 'role', value: 'Dev' }],
+    )
+    expect(rows('generate_files', { agentConfigId: 1 }, 'API', '7')).toEqual([
+      { label: 'in', value: 'API' },
+      { label: 'revision', value: '7' },
+    ])
+  })
+})
+
 describe('actionDomain', () => {
   it('names what an action changes', () => {
     expect(actionDomain('create_project')).toBe('project')
@@ -131,6 +266,14 @@ describe('actionDomain', () => {
     expect(actionDomain('regenerate_share_link')).toBe('architecture')
     expect(actionDomain('regenerate_access_code')).toBe('architecture')
     expect(actionDomain('delete_agent_config')).toBe('agent-config')
+    for (const name of [
+      'add_role_from_preset',
+      'add_role',
+      'edit_role',
+      'remove_role',
+      'generate_files',
+    ])
+      expect(actionDomain(name)).toBe('agent-config')
   })
 
   it('names nothing for an unknown action', () => {
@@ -150,6 +293,9 @@ describe('actionImpact', () => {
       { kind: 'codeMaps', count: 2 },
     ])
     expect(actionImpact({ rules: 4, widgets: 9 })).toEqual([{ kind: 'rules', count: 4 }])
+    expect(actionImpact({ droppedGenerations: 1 })).toEqual([
+      { kind: 'droppedGenerations', count: 1 },
+    ])
   })
 
   it('lists nothing for no impact', () => {
