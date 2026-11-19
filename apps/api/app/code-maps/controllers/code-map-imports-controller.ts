@@ -1,27 +1,28 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import db from '@adonisjs/lucid/services/db'
 import GithubCodeMapFollow from '#app/code-maps/models/github-code-map-follow'
 import { serializeCodeMap } from '#app/code-maps/serializers/code-map-serializer'
-import { analyzerUrl } from '#app/code-maps/services/code-map-analyzer'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
-import { startGithubImport } from '#app/code-maps/services/github-import'
-import { parseGithubRepository } from '#app/code-maps/services/github-repository'
+import {
+  GITHUB_IMPORT_REFUSALS,
+  GithubImportRefusal,
+  importGithubRepository,
+  stopFollowing,
+} from '#app/code-maps/services/github-import'
 import { importGithubCodeMapInput } from '#app/code-maps/validators/code-maps-input'
 import type { GithubFollowOutput } from '#app/code-maps/validators/code-maps-output'
 import { githubAppConfig } from '#app/github/services/github-app-config'
-import { findGrant, findGrantById } from '#app/github/services/github-grants'
+import { findGrantById } from '#app/github/services/github-grants'
 import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
 
 export const GITHUB_IMPORT_OFF = {
-  error: { message: 'Importing from GitHub is not set up on this server.' },
+  error: { message: GITHUB_IMPORT_REFUSALS[GithubImportRefusal.Off] },
 } as const
 export const GITHUB_IMPORT_RUNNING = {
-  error: { message: 'A repository is already being read for this project.' },
+  error: { message: GITHUB_IMPORT_REFUSALS[GithubImportRefusal.Running] },
 } as const
 export const GITHUB_FOLLOW_REFUSED = {
-  error: {
-    message:
-      'Following pushes needs the GitHub App: install it on this repository, then connect GitHub.',
-  },
+  error: { message: GITHUB_IMPORT_REFUSALS[GithubImportRefusal.FollowRefused] },
 } as const
 export const GITHUB_FOLLOW_NOT_FOUND = {
   error: { message: 'This project follows no GitHub repository.' },
@@ -48,39 +49,25 @@ export default class CodeMapImportsController {
     const project = await findOwnedProject(params.id, user)
     if (!project) return response.notFound(PROJECT_NOT_FOUND)
 
-    const { url, branch, follow } = await request.validateUsing(importGithubCodeMapInput)
-    if (!analyzerUrl()) return response.serviceUnavailable(GITHUB_IMPORT_OFF)
-    // The validator accepted it, so it parses; checked again for the type only.
-    const repository = parseGithubRepository(url)
-    if (!repository)
-      return response.unprocessableEntity({ error: { message: 'Not a GitHub repository' } })
-
-    const grant = (await githubAppConfig()) ? await findGrant(user.id, repository.url) : null
-    if (follow === true && !grant) return response.unprocessableEntity(GITHUB_FOLLOW_REFUSED)
-    // The name as GitHub spells it, when the App lists the repository.
-    const repositoryUrl = grant?.url ?? repository.url
-
-    const codeMap = await startGithubImport({
-      projectId: project.id,
-      userId: user.id,
-      repositoryUrl,
-      branch: branch ?? null,
-    })
-    if (!codeMap) return response.conflict(GITHUB_IMPORT_RUNNING)
-
-    if (follow === true && grant) {
-      await GithubCodeMapFollow.updateOrCreate(
-        { projectId: project.id },
-        {
-          userId: user.id,
-          repositoryId: grant.repositoryId,
-          repositoryUrl,
-          branch: branch ?? null,
-        },
-      )
-    } else if (follow === false) {
-      await GithubCodeMapFollow.query().where('projectId', project.id).delete()
+    const input = await request.validateUsing(importGithubCodeMapInput)
+    const outcome = await db.transaction((trx) => importGithubRepository(project, user, input, trx))
+    if ('refused' in outcome) {
+      switch (outcome.refused) {
+        case GithubImportRefusal.Off:
+          return response.serviceUnavailable(GITHUB_IMPORT_OFF)
+        case GithubImportRefusal.NotGithub:
+          // The validator accepted it, so it parses: checked again for the type only.
+          return response.unprocessableEntity({
+            error: { message: GITHUB_IMPORT_REFUSALS[GithubImportRefusal.NotGithub] },
+          })
+        case GithubImportRefusal.FollowRefused:
+          return response.unprocessableEntity(GITHUB_FOLLOW_REFUSED)
+        default:
+          return response.conflict(GITHUB_IMPORT_RUNNING)
+      }
     }
+    await outcome.queue()
+    const { codeMap } = outcome
 
     return response.accepted({ codeMap: serializeCodeMap(codeMap) })
   }
@@ -112,9 +99,7 @@ export default class CodeMapImportsController {
     if (!(await codeMapsEnabled(user))) return response.notFound(CODE_MAPS_NOT_FOUND)
     const project = await findOwnedProject(params.id, user)
     if (!project) return response.notFound(PROJECT_NOT_FOUND)
-    const follow = await GithubCodeMapFollow.findBy('projectId', project.id)
-    if (!follow) return response.notFound(GITHUB_FOLLOW_NOT_FOUND)
-    await follow.delete()
+    if (!(await stopFollowing(project))) return response.notFound(GITHUB_FOLLOW_NOT_FOUND)
     return response.noContent()
   }
 }

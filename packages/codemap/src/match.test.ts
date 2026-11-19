@@ -1,7 +1,7 @@
 import type { UmlSpec } from '@coreloom-uml/uml'
 import { describe, expect, it } from 'vitest'
 
-import { linkedCodeKeys, matchDiagram } from './match.ts'
+import { linkedCodeKeys, matchDiagram, missingCodeKeys } from './match.ts'
 import { fixtureMap } from './test-fixtures.ts'
 
 const map = fixtureMap('adonis')
@@ -363,5 +363,19 @@ describe('matchDiagram: activity diagrams', () => {
     expect(result.findings).toEqual([
       { kind: 'stale-link', elementId: 'serialize', codeKey: 'src/gone.ts#serialize' },
     ])
+  })
+})
+
+describe('missingCodeKeys', () => {
+  it('answers the keys that are neither a node nor a folder of the map', () => {
+    expect(
+      missingCodeKeys(map, [
+        PROJECTS_CONTROLLER,
+        `${APP}/projects/`,
+        `${APP}/billing/`,
+        `${APP}/projects`,
+        'nowhere.ts#Nothing',
+      ]),
+    ).toEqual([`${APP}/billing/`, `${APP}/projects`, 'nowhere.ts#Nothing'])
   })
 })

@@ -13,6 +13,7 @@ export type GithubConnectionTarget = 'install' | 'authorize'
 
 export const githubKeys = {
   connection: ['github', 'connection'] as const,
+  follows: ['github', 'follow'] as const,
   follow: (projectId: number) => ['github', 'follow', projectId] as const,
 }
 

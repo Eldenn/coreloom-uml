@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import app from '@adonisjs/core/services/app'
 import drive from '@adonisjs/drive/services/main'
 import { CATALOG_VERSION, MARKER_PREFIX } from '@coreloom-uml/catalog'
@@ -19,7 +20,14 @@ import AssistantConversation from '#app/assistant/models/assistant-conversation'
 import AssistantMessage from '#app/assistant/models/assistant-message'
 import { conversationHistory } from '#app/assistant/services/assistant-context'
 import CodeMap from '#app/code-maps/models/code-map'
+import CodeMapSuggestion from '#app/code-maps/models/code-map-suggestion'
+import DiagramCodeLink from '#app/code-maps/models/diagram-code-link'
+import GithubCodeMapFollow from '#app/code-maps/models/github-code-map-follow'
+import CodeReview from '#app/code-reviews/models/code-review'
+import CodeReviewFinding from '#app/code-reviews/models/code-review-finding'
+import Diagram from '#app/diagrams/models/diagram'
 import { updateFlag } from '#app/feature-flags/services/feature-flags'
+import ImportGithubCodeMapJob from '#app/jobs/import-github-code-map_job'
 import LanguageModels from '#app/llm/services/language-models'
 import { saveCodexTokens } from '#app/llm-connections/services/codex-connections'
 import Project from '#app/projects/models/project'
@@ -43,6 +51,8 @@ const chat = {
 }
 const SECTION = 'Architecture'
 const E2B_KEY = env.get('E2B_API_KEY')
+/** graphify's own output on part of this repository (see `packages/codemap/fixtures`). */
+const GRAPH = readFileSync(app.makePath('../../packages/codemap/fixtures/adonis-graph.json'))
 
 const call = (tool: string, input: unknown): ModelStep => ({ calls: [{ tool, input }] })
 
@@ -1644,5 +1654,665 @@ test.group('Assistant actions - roles and generations', (group) => {
     const hidden = toolResults(off.model)
     assert.notInclude(hidden, 'reviewer')
     assert.include(hidden, 'revision')
+  })
+})
+
+test.group('Assistant actions - code maps', (group) => {
+  group.each.setup(() => withDefaultFlags())
+  group.each.setup(() => {
+    drive.fake()
+    return () => drive.restore()
+  })
+  group.each.setup(() => {
+    const previous = env.get('ANALYZER_URL')
+    env.set('ANALYZER_URL', 'http://analyzer.test:8080')
+    return () => env.set('ANALYZER_URL', previous ?? '')
+  })
+  /** The import job is never queued for real: the calls are recorded instead. */
+  let dispatched: unknown[] = []
+  group.each.setup(() => {
+    dispatched = []
+    const own = Object.getOwnPropertyDescriptor(ImportGithubCodeMapJob, 'dispatch')
+    Object.defineProperty(ImportGithubCodeMapJob, 'dispatch', {
+      configurable: true,
+      writable: true,
+      value: async (data: unknown) => {
+        dispatched.push(data)
+      },
+    })
+    return () => {
+      if (own) Object.defineProperty(ImportGithubCodeMapJob, 'dispatch', own)
+      else delete (ImportGithubCodeMapJob as unknown as Record<string, unknown>).dispatch
+    }
+  })
+  group.each.teardown(() => app.container.restore(LanguageModels))
+
+  const CODE_TOOLS = [
+    'list_code_maps',
+    'read_code_conformance',
+    'list_diagram_code_links',
+    'import_code_map_from_github',
+    'delete_code_map',
+    'stop_following_repository',
+    'set_diagram_code_links',
+    'resolve_review_finding',
+    'delete_code_review',
+  ]
+  const APP_DIR = 'apps/api/app'
+
+  /** The fixture with `code-maps` on, a map of this repository's API and a package diagram. */
+  async function withCode(client: ApiClient, email: string) {
+    const f = await setup(email)
+    await updateFlag(FeatureFlagKey.CodeMaps, ON, f.user)
+    const uploaded = await client
+      .post(`/projects/${f.project.id}/code-maps`)
+      .headers(json)
+      .loginAs(f.user)
+      .file('file', GRAPH, { filename: 'graph.json' })
+      .field('repositoryUrl', 'https://github.com/acme/shop')
+      .field('commitSha', 'abc1234def')
+    uploaded.assertStatus(201)
+    const codeMap = await CodeMap.findOrFail(uploaded.body().codeMap.id)
+    const diagram = await Diagram.create({
+      architectureId: f.architecture.id,
+      title: 'Packages',
+      kind: 'package',
+      format: 'mermaid',
+      content: {
+        kind: 'package',
+        elements: [
+          { id: 'app', kind: 'package', label: 'apps/api/app' },
+          { id: 'architectures', kind: 'package', label: 'architectures', parent: 'app' },
+          { id: 'projects', kind: 'package', label: 'projects', parent: 'app' },
+          { id: 'billing', kind: 'package', label: 'billing', parent: 'app' },
+        ],
+        relations: [],
+      },
+      position: 1,
+      version: 1,
+    })
+    return { ...f, codeMap, diagram }
+  }
+  type CodeFixture = Awaited<ReturnType<typeof withCode>>
+
+  /** A done review of the diagram with one open finding per comment. */
+  async function reviewOf(f: CodeFixture, comments = ['Projects reach into architectures.']) {
+    const review = await CodeReview.create({
+      projectId: f.project.id,
+      userId: f.user.id,
+      codeMapId: f.codeMap.id,
+      repositoryUrl: 'https://github.com/acme/shop',
+      branch: 'main',
+      commitSha: 'abc1234',
+      providerKind: 'mistral',
+      model: 'test-model',
+      includeSnippets: false,
+      locale: 'en',
+      diagrams: [
+        {
+          diagramId: f.diagram.id,
+          title: f.diagram.title,
+          kind: f.diagram.kind,
+          status: 'done',
+          reason: null,
+          findingCount: comments.length,
+          dropped: 0,
+          truncated: false,
+          source: null,
+          reviewedAt: '2026-11-17T05:00:00.000Z',
+        },
+      ],
+    })
+    const findings = []
+    for (const comment of comments) {
+      findings.push(
+        await CodeReviewFinding.create({
+          codeReviewId: review.id,
+          diagramId: f.diagram.id,
+          elementId: 'projects',
+          status: 'deviates',
+          severity: 'high',
+          comment,
+          evidence: [{ key: `${APP_DIR}/projects/` }],
+          resolution: 'open',
+        }),
+      )
+    }
+    return { review, findings }
+  }
+
+  async function propose(client: ApiClient, f: Fixture, tool: string, input: object) {
+    const { response, model } = await send(client, f, [call(tool, input), { text: 'Proposed.' }])
+    response.assertStatus(200)
+    const message = response.body().messages[1]
+    const answer = (decision: 'accept' | 'reject') =>
+      client
+        .post(answerPath(f.conversation.id, message.id, 0, decision))
+        .headers(json)
+        .loginAs(f.user)
+    return { message, action: message.actions?.[0], model, answer }
+  }
+
+  /** Proposes calls that must all be refused: no action is stored, the model is told. */
+  async function refused(client: ApiClient, f: Fixture, calls: { tool: string; input: unknown }[]) {
+    const { response, model } = await send(client, f, [{ calls }, { text: 'None.' }])
+    response.assertStatus(200)
+    return { actions: response.body().messages[1].actions, told: toolResults(model) }
+  }
+
+  const linksOf = async (diagram: Diagram) =>
+    (await DiagramCodeLink.query().where('diagramId', diagram.id).orderBy('elementId')).map(
+      (link) => [link.elementId, link.codeKey, link.status],
+    )
+
+  test('with code-maps off, none of the nine tools is offered', async ({ client, assert }) => {
+    const f = await setup('code-off@example.com')
+    const { model } = await send(client, f, [{ text: 'Nothing.' }])
+    const offered = model.doGenerateCalls[0]?.tools?.map((item) => item.name) ?? []
+    for (const name of CODE_TOOLS) assert.notInclude(offered, name)
+    assert.include(offered, 'list_projects')
+  })
+
+  test('a code action accepted after code-maps was turned off fails not_found', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-off-later@example.com')
+    const { answer } = await propose(client, f, 'delete_code_map', { codeMapId: f.codeMap.id })
+    await updateFlag(FeatureFlagKey.CodeMaps, { enabled: false, rollout: 0, rules: [] }, f.user)
+
+    const response = await answer('accept')
+    response.assertStatus(409)
+    assert.equal(response.body().action.failure, 'not_found')
+    assert.isNotNull(await CodeMap.find(f.codeMap.id))
+  })
+
+  test("the reads answer the caller's maps, conformance and links, never another account's", async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-reads@example.com')
+    const other = await withCode(client, 'code-reads-other@example.com')
+    await GithubCodeMapFollow.create({
+      projectId: f.project.id,
+      userId: f.user.id,
+      repositoryId: 42,
+      repositoryUrl: 'https://github.com/acme/followed',
+      branch: 'main',
+    })
+    const { findings } = await reviewOf(f)
+    await reviewOf(other, ['OTHER-ACCOUNT-FINDING'])
+    await DiagramCodeLink.create({
+      diagramId: f.diagram.id,
+      elementId: 'projects',
+      codeKey: `${APP_DIR}/projects/`,
+      status: 'confirmed',
+    })
+
+    const { model } = await send(client, f, [
+      {
+        calls: [
+          { tool: 'list_code_maps', input: { projectId: f.project.id } },
+          { tool: 'read_code_conformance', input: { projectId: f.project.id } },
+          {
+            tool: 'list_diagram_code_links',
+            input: { codeMapId: f.codeMap.id, diagramId: f.diagram.id },
+          },
+        ],
+      },
+      { text: 'Read.' },
+    ])
+    const shown = toolResults(model)
+    assert.include(shown, 'https://github.com/acme/shop')
+    assert.include(shown, 'abc1234def')
+    assert.include(shown, 'https://github.com/acme/followed')
+    // The open finding of the newest review, by id, and the match's own sentences and levels.
+    assert.include(shown, 'Projects reach into architectures.')
+    assert.include(shown, `\\"id\\":${findings[0]?.id}`)
+    assert.include(shown, '\\"level\\":\\"error\\"')
+    assert.include(shown, `${APP_DIR}/projects/`)
+    assert.include(shown, `${APP_DIR}/architectures/`)
+    assert.notInclude(shown, 'OTHER-ACCOUNT-FINDING')
+
+    const foreign = await send(client, f, [
+      {
+        calls: [
+          { tool: 'list_code_maps', input: { projectId: other.project.id } },
+          { tool: 'read_code_conformance', input: { projectId: other.project.id } },
+          {
+            tool: 'list_diagram_code_links',
+            input: { codeMapId: other.codeMap.id, diagramId: other.diagram.id },
+          },
+          // A diagram of another account against the caller's own map.
+          {
+            tool: 'list_diagram_code_links',
+            input: { codeMapId: f.codeMap.id, diagramId: other.diagram.id },
+          },
+        ],
+      },
+      { text: 'Read.' },
+    ])
+    const hidden = toolResults(foreign.model)
+    assert.notInclude(hidden, 'OTHER-ACCOUNT-FINDING')
+    assert.notInclude(hidden, 'abc1234def')
+    assert.equal(hidden.split('Not found').length - 1, 4)
+  })
+
+  test('import_code_map_from_github: stores the clean URL, queues the job only on accept', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-import@example.com')
+    const { action, answer } = await propose(client, f, 'import_code_map_from_github', {
+      projectId: f.project.id,
+      url: ' https://github.com/acme/shop.git ',
+      branch: 'develop',
+      follow: false,
+    })
+    assert.equal(action.subject, 'Shop')
+    assert.isFalse(action.destructive)
+    assert.deepEqual(action.input, {
+      projectId: f.project.id,
+      url: 'https://github.com/acme/shop',
+      branch: 'develop',
+      follow: false,
+    })
+    assert.lengthOf(dispatched, 0)
+    assert.lengthOf(await CodeMap.query().where('projectId', f.project.id), 1)
+
+    const accepted = await answer('accept')
+    accepted.assertStatus(200)
+    assert.deepEqual(accepted.body().action.result, { kind: 'project', id: f.project.id })
+    const pending = await CodeMap.query()
+      .where('projectId', f.project.id)
+      .where('status', 'pending')
+      .firstOrFail()
+    assert.equal(pending.repositoryUrl, 'https://github.com/acme/shop')
+    assert.equal(pending.branch, 'develop')
+    assert.equal(pending.source, 'github')
+    // What the route queues.
+    assert.deepEqual(dispatched, [{ codeMapId: pending.id }])
+  })
+
+  test('a rejected import or deletion writes nothing and queues nothing', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-reject@example.com')
+    const imported = await propose(client, f, 'import_code_map_from_github', {
+      projectId: f.project.id,
+      url: 'https://github.com/acme/shop',
+    })
+    ;(await imported.answer('reject')).assertStatus(200)
+    const deleted = await propose(client, f, 'delete_code_map', { codeMapId: f.codeMap.id })
+    ;(await deleted.answer('reject')).assertStatus(200)
+
+    assert.lengthOf(dispatched, 0)
+    assert.lengthOf(await CodeMap.query().where('projectId', f.project.id), 1)
+    assert.isTrue(await drive.use().exists(f.codeMap.storageKey as string))
+  })
+
+  test('a URL the route refuses is never proposed, and a token in it never stored', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-import-refused@example.com')
+    const logs = captureLogs()
+    const { actions, told } = await refused(client, f, [
+      {
+        tool: 'import_code_map_from_github',
+        input: {
+          projectId: f.project.id,
+          url: 'https://octo:ghp_SECRETTOKEN42@github.com/acme/shop',
+        },
+      },
+      {
+        tool: 'import_code_map_from_github',
+        input: { projectId: f.project.id, url: 'https://gitlab.com/acme/shop' },
+      },
+      {
+        tool: 'import_code_map_from_github',
+        input: { projectId: f.project.id, url: 'https://github.com/acme/shop/tree/main' },
+      },
+      {
+        tool: 'import_code_map_from_github',
+        input: {
+          projectId: f.project.id,
+          url: 'https://github.com/acme/shop',
+          branch: '--upload-pack=x',
+        },
+      },
+    ])
+    logs.restore()
+    assert.isNull(actions)
+    assert.include(told, 'Not a GitHub repository')
+    assert.include(told, 'Not a branch name')
+    assert.notInclude(logs.lines.join('\n'), 'ghp_SECRETTOKEN42')
+    assert.notInclude(await dumpDatabase(), 'ghp_SECRETTOKEN42')
+    assert.lengthOf(dispatched, 0)
+  })
+
+  test('an import is refused at proposal without an analyzer, or to follow without the App', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-import-off@example.com')
+    const follow = await refused(client, f, [
+      {
+        tool: 'import_code_map_from_github',
+        input: { projectId: f.project.id, url: 'https://github.com/acme/shop', follow: true },
+      },
+    ])
+    assert.isNull(follow.actions)
+    assert.include(follow.told, 'GitHub App')
+
+    env.set('ANALYZER_URL', '')
+    const off = await refused(client, f, [
+      {
+        tool: 'import_code_map_from_github',
+        input: { projectId: f.project.id, url: 'https://github.com/acme/shop' },
+      },
+    ])
+    assert.isNull(off.actions)
+    assert.include(off.told, 'not set up')
+  })
+
+  test('an import accepted while the project is being read fails conflict and queues nothing', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-import-running@example.com')
+    const { answer } = await propose(client, f, 'import_code_map_from_github', {
+      projectId: f.project.id,
+      url: 'https://github.com/acme/shop',
+    })
+    await CodeMap.create({
+      projectId: f.project.id,
+      userId: f.user.id,
+      source: 'github',
+      repositoryUrl: 'https://github.com/acme/shop',
+      extractor: 'graphify',
+      extractorVersion: '0.9.108',
+      status: 'pending',
+      nodeCount: 0,
+      edgeCount: 0,
+      storageKey: null,
+    })
+
+    const response = await answer('accept')
+    response.assertStatus(409)
+    assert.equal(response.body().action.failure, 'conflict')
+    assert.lengthOf(dispatched, 0)
+    assert.lengthOf(await CodeMap.query().where('projectId', f.project.id), 2)
+  })
+
+  test('delete_code_map: says what goes with it, deletes the file only on accept', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-delete-map@example.com')
+    await CodeMapSuggestion.create({
+      codeMapId: f.codeMap.id,
+      kind: 'sequence',
+      title: 'Login',
+      reason: 'The main flow',
+      focus: [],
+      status: 'open',
+      position: 0,
+    })
+    await DiagramCodeLink.create({
+      diagramId: f.diagram.id,
+      elementId: 'projects',
+      codeKey: `${APP_DIR}/projects/`,
+      status: 'confirmed',
+    })
+    const { action, answer } = await propose(client, f, 'delete_code_map', {
+      codeMapId: f.codeMap.id,
+    })
+    assert.isTrue(action.destructive)
+    assert.include(action.subject, 'https://github.com/acme/shop')
+    assert.include(action.subject, 'abc1234')
+    assert.deepEqual(action.impact, { suggestions: 1 })
+    const key = f.codeMap.storageKey as string
+    assert.isTrue(await drive.use().exists(key))
+
+    const accepted = await answer('accept')
+    accepted.assertStatus(200)
+    assert.isNull(accepted.body().action.result)
+    assert.isNull(await CodeMap.find(f.codeMap.id))
+    assert.isFalse(await drive.use().exists(key))
+    // Links are the diagram's, not the map's: they stay.
+    assert.lengthOf(await linksOf(f.diagram), 1)
+  })
+
+  test('stop_following_repository: shows the repository, then the follow is gone', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-unfollow@example.com')
+    const none = await refused(client, f, [
+      { tool: 'stop_following_repository', input: { projectId: f.project.id } },
+    ])
+    assert.isNull(none.actions)
+    assert.include(none.told, 'follows no GitHub repository')
+
+    await GithubCodeMapFollow.create({
+      projectId: f.project.id,
+      userId: f.user.id,
+      repositoryId: 42,
+      repositoryUrl: 'https://github.com/acme/shop',
+      branch: null,
+    })
+    const { action, answer } = await propose(client, f, 'stop_following_repository', {
+      projectId: f.project.id,
+    })
+    assert.equal(action.subject, 'Shop')
+    assert.deepEqual(JSON.parse(action.before), ['https://github.com/acme/shop', null])
+
+    const accepted = await answer('accept')
+    accepted.assertStatus(200)
+    assert.deepEqual(accepted.body().action.result, { kind: 'project', id: f.project.id })
+    assert.isNull(await GithubCodeMapFollow.findBy('projectId', f.project.id))
+  })
+
+  test('set_diagram_code_links: only the links named change, the others stay', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-links@example.com')
+    await DiagramCodeLink.createMany([
+      { diagramId: f.diagram.id, elementId: 'app', codeKey: `${APP_DIR}/`, status: 'confirmed' },
+      {
+        diagramId: f.diagram.id,
+        elementId: 'projects',
+        codeKey: `${APP_DIR}/projects/`,
+        status: 'confirmed',
+      },
+    ])
+    const { action, answer } = await propose(client, f, 'set_diagram_code_links', {
+      codeMapId: f.codeMap.id,
+      diagramId: f.diagram.id,
+      add: [{ elementId: 'architectures', codeKey: `${APP_DIR}/architectures/` }],
+      remove: [{ elementId: 'app', codeKey: `${APP_DIR}/` }],
+    })
+    assert.equal(action.subject, 'Packages')
+    assert.isFalse(action.destructive)
+    assert.match(action.before, /^[0-9a-f]{16}$/)
+    assert.lengthOf(await linksOf(f.diagram), 2)
+
+    const accepted = await answer('accept')
+    accepted.assertStatus(200)
+    assert.deepEqual(accepted.body().action.result, { kind: 'project', id: f.project.id })
+    assert.deepEqual(await linksOf(f.diagram), [
+      ['architectures', `${APP_DIR}/architectures/`, 'confirmed'],
+      ['projects', `${APP_DIR}/projects/`, 'confirmed'],
+    ])
+  })
+
+  test('set_diagram_code_links: what could never apply is not proposed', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-links-refused@example.com')
+    await DiagramCodeLink.create({
+      diagramId: f.diagram.id,
+      elementId: 'projects',
+      codeKey: `${APP_DIR}/projects/`,
+      status: 'confirmed',
+    })
+    const target = { codeMapId: f.codeMap.id, diagramId: f.diagram.id }
+    const { actions, told } = await refused(client, f, [
+      { tool: 'set_diagram_code_links', input: { ...target } },
+      {
+        tool: 'set_diagram_code_links',
+        input: { ...target, add: [{ elementId: 'projects', codeKey: 'nowhere/' }] },
+      },
+      {
+        tool: 'set_diagram_code_links',
+        input: { ...target, add: [{ elementId: 'ghost', codeKey: `${APP_DIR}/projects/` }] },
+      },
+      {
+        tool: 'set_diagram_code_links',
+        input: { ...target, add: [{ elementId: 'projects', codeKey: `${APP_DIR}/projects/` }] },
+      },
+      {
+        tool: 'set_diagram_code_links',
+        input: { ...target, remove: [{ elementId: 'app', codeKey: `${APP_DIR}/` }] },
+      },
+    ])
+    assert.isNull(actions)
+    assert.include(told, 'at least one link')
+    assert.include(told, 'not in this code map')
+    assert.include(told, 'not an element of this diagram')
+    assert.include(told, 'already linked')
+    assert.include(told, 'no such link')
+  })
+
+  test('set_diagram_code_links: links changed by hand since are not overwritten (409 changed)', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-links-changed@example.com')
+    const { answer } = await propose(client, f, 'set_diagram_code_links', {
+      codeMapId: f.codeMap.id,
+      diagramId: f.diagram.id,
+      add: [{ elementId: 'architectures', codeKey: `${APP_DIR}/architectures/` }],
+    })
+    await DiagramCodeLink.create({
+      diagramId: f.diagram.id,
+      elementId: 'projects',
+      codeKey: `${APP_DIR}/projects/`,
+      status: 'ignored',
+    })
+
+    const response = await answer('accept')
+    response.assertStatus(409)
+    assert.equal(response.body().error.code, 'changed')
+    assert.equal(response.body().action.status, 'pending')
+    assert.deepEqual(await linksOf(f.diagram), [['projects', `${APP_DIR}/projects/`, 'ignored']])
+  })
+
+  test('resolve_review_finding: before → after, refused as a no-op, stale when resolved by hand', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-finding@example.com')
+    const long = `The projects folder reaches into architectures. ${'More detail. '.repeat(30)}`
+    const { findings } = await reviewOf(f, [long, 'Second finding'])
+    const [first, second] = findings as [CodeReviewFinding, CodeReviewFinding]
+
+    const { action, answer } = await propose(client, f, 'resolve_review_finding', {
+      findingId: first.id,
+      resolution: 'done',
+    })
+    assert.equal(action.subject, long)
+    assert.equal(action.before, 'open')
+    const accepted = await answer('accept')
+    accepted.assertStatus(200)
+    await first.refresh()
+    assert.equal(first.resolution, 'done')
+
+    const noop = await refused(client, f, [
+      { tool: 'resolve_review_finding', input: { findingId: first.id, resolution: 'done' } },
+    ])
+    assert.isNull(noop.actions)
+    assert.include(noop.told, 'already')
+
+    const stale = await propose(client, f, 'resolve_review_finding', {
+      findingId: second.id,
+      resolution: 'done',
+    })
+    second.resolution = 'dismissed'
+    await second.save()
+    const response = await stale.answer('accept')
+    response.assertStatus(409)
+    assert.equal(response.body().error.code, 'changed')
+    assert.equal(response.body().action.before, 'dismissed')
+    await second.refresh()
+    assert.equal(second.resolution, 'dismissed')
+  })
+
+  test('delete_code_review: counts its findings, then they are gone', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-delete-review@example.com')
+    const { review } = await reviewOf(f, ['One', 'Two'])
+    const { action, answer } = await propose(client, f, 'delete_code_review', {
+      codeReviewId: review.id,
+    })
+    assert.isTrue(action.destructive)
+    assert.include(action.subject, review.createdAt.toISODate() as string)
+    assert.deepEqual(action.impact, { findings: 2 })
+
+    const accepted = await answer('accept')
+    accepted.assertStatus(200)
+    assert.isNull(await CodeReview.find(review.id))
+    assert.lengthOf(await CodeReviewFinding.query().where('codeReviewId', review.id), 0)
+  })
+
+  test("another account's project, map, review or finding is never proposed nor applied", async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-own@example.com')
+    const other = await withCode(client, 'code-own-other@example.com')
+    const { review, findings } = await reviewOf(other)
+    const { actions, told } = await refused(client, f, [
+      {
+        tool: 'import_code_map_from_github',
+        input: { projectId: other.project.id, url: 'https://github.com/acme/shop' },
+      },
+      { tool: 'delete_code_map', input: { codeMapId: other.codeMap.id } },
+      { tool: 'stop_following_repository', input: { projectId: other.project.id } },
+      {
+        tool: 'set_diagram_code_links',
+        input: {
+          codeMapId: f.codeMap.id,
+          diagramId: other.diagram.id,
+          add: [{ elementId: 'projects', codeKey: `${APP_DIR}/projects/` }],
+        },
+      },
+      {
+        tool: 'resolve_review_finding',
+        input: { findingId: findings[0]?.id, resolution: 'done' },
+      },
+      { tool: 'delete_code_review', input: { codeReviewId: review.id } },
+    ])
+    assert.isNull(actions)
+    assert.equal(told.split('Not found').length - 1, 6)
+
+    // A stored action retargeted to another account's map fails, and nothing is deleted.
+    const { message, answer } = await propose(client, f, 'delete_code_map', {
+      codeMapId: f.codeMap.id,
+    })
+    const row = await AssistantMessage.findOrFail(message.id)
+    row.actions = [{ ...firstAction(row), input: { codeMapId: other.codeMap.id } }]
+    await row.save()
+    const response = await answer('accept')
+    response.assertStatus(409)
+    assert.equal(response.body().error.code, 'not_found')
+    assert.isNotNull(await CodeMap.find(other.codeMap.id))
+    assert.isTrue(await drive.use().exists(other.codeMap.storageKey as string))
   })
 })

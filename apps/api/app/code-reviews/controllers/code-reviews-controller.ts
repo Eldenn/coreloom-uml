@@ -16,6 +16,7 @@ import {
   serializeCodeReview,
   serializeCodeReviewFinding,
 } from '#app/code-reviews/serializers/code-review-serializer'
+import { deleteCodeReview } from '#app/code-reviews/services/code-review-writes'
 import {
   CODE_REVIEW_NOT_FOUND,
   findOwnedCodeReview,
@@ -176,7 +177,7 @@ export default class CodeReviewsController {
     if (!(await codeMapsEnabled(user))) return response.notFound(CODE_MAPS_NOT_FOUND)
     const review = await findOwnedCodeReview(params.id, user)
     if (!review) return response.notFound(CODE_REVIEW_NOT_FOUND)
-    await review.delete()
+    await deleteCodeReview(review)
     return response.noContent()
   }
 }

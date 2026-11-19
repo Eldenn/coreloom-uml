@@ -1,5 +1,5 @@
 // Pure helpers of the actions the assistant proposes on the account's work (a project, an
-// architecture, agent conventions): what a card shows of one and what accepting it changes. Kept
+// architecture, agent conventions, code maps and reviews): what a card shows of one and what accepting it changes. Kept
 // free of the API client so they run in Node tests.
 
 /** What a card reads of an action: its name, the input the model gave, the target's name. */
@@ -36,6 +36,18 @@ export type ActionRowLabel =
   | 'done'
   | 'escalation'
   | 'revision'
+  | 'repository'
+  | 'branch'
+  | 'follow'
+  | 'codeMap'
+  | 'diagram'
+  | 'linkAdded'
+  | 'linkIgnored'
+  | 'linkSuggested'
+  | 'linkRemoved'
+  | 'finding'
+  | 'resolution'
+  | 'codeReview'
 
 /**
  * One line of a card; with `from`, the value replaces it. A list is one text, comma-separated;
@@ -94,6 +106,37 @@ const roleRows = (input: Record<string, unknown>): Draft[] =>
     given: true,
   }))
 
+/** The repository a project follows, stored as `[url, branch]`; an empty branch is the default. */
+function followed(before: string | null): Draft[] {
+  try {
+    const [url, branch] = JSON.parse(before ?? '') as [unknown, unknown]
+    return [
+      { label: 'repository', value: url },
+      { label: 'branch', value: branch ?? '', given: true },
+    ]
+  } catch {
+    return []
+  }
+}
+
+/** Whether an import makes the project follow the repository, stop, or leaves it as it is. */
+const FOLLOW = { true: 'follow', false: 'stop', undefined: 'unchanged' } as const
+
+const LINK_LABELS: Record<string, ActionRowLabel> = {
+  confirmed: 'linkAdded',
+  ignored: 'linkIgnored',
+  suggested: 'linkSuggested',
+}
+
+/** Each link named, on its own line: as many as there are, none cut. */
+function linkRows(value: unknown, label: (link: { status?: unknown }) => ActionRowLabel): Draft[] {
+  if (!Array.isArray(value)) return []
+  return (value as { elementId?: unknown; codeKey?: unknown; status?: unknown }[]).map((link) => ({
+    label: label(link),
+    value: `${String(link.elementId)} → ${String(link.codeKey)}`,
+  }))
+}
+
 /** What the owner would otherwise have to open the target to know. */
 const ROWS: Record<
   string,
@@ -151,6 +194,34 @@ const ROWS: Record<
     { label: 'in', value: subject },
     { label: 'revision', value: before },
   ],
+  // A model that may have read hostile text chose the address: all of it is shown.
+  import_code_map_from_github: (input, subject) => [
+    { label: 'repository', value: input.url },
+    // Left out, the repository's default branch.
+    { label: 'branch', value: input.branch ?? '', given: true },
+    { label: 'follow', value: FOLLOW[String(input.follow) as keyof typeof FOLLOW] },
+    { label: 'in', value: subject },
+  ],
+  delete_code_map: (_input, subject) => [{ label: 'codeMap', value: subject }],
+  stop_following_repository: (_input, subject, before) => [
+    ...followed(before),
+    { label: 'in', value: subject },
+  ],
+  // `before` is a fingerprint of the diagram's links: never shown.
+  set_diagram_code_links: (input, subject) => [
+    { label: 'diagram', value: subject },
+    ...linkRows(input.add, (link) =>
+      typeof link.status === 'string' && Object.hasOwn(LINK_LABELS, link.status)
+        ? LINK_LABELS[link.status]
+        : 'linkAdded',
+    ),
+    ...linkRows(input.remove, () => 'linkRemoved'),
+  ],
+  resolve_review_finding: (input, subject, before) => [
+    { label: 'finding', value: subject },
+    { label: 'resolution', value: input.resolution, from: before },
+  ],
+  delete_code_review: (_input, subject) => [{ label: 'codeReview', value: subject }],
 }
 
 /** Whether a row is shown: a text, or an empty one the input names. */
@@ -168,7 +239,7 @@ export function actionRows({ name, input, subject, before }: ProposedAction): Ac
   })
 }
 
-export type ActionDomain = 'project' | 'architecture' | 'agent-config'
+export type ActionDomain = 'project' | 'architecture' | 'agent-config' | 'code'
 
 const DOMAINS: Record<string, ActionDomain> = {
   create_project: 'project',
@@ -191,6 +262,12 @@ const DOMAINS: Record<string, ActionDomain> = {
   edit_role: 'agent-config',
   remove_role: 'agent-config',
   generate_files: 'agent-config',
+  import_code_map_from_github: 'code',
+  delete_code_map: 'code',
+  stop_following_repository: 'code',
+  set_diagram_code_links: 'code',
+  resolve_review_finding: 'code',
+  delete_code_review: 'code',
 }
 
 /** What accepting an action changes, so its lists and pages are read again; `null` when unknown. */
@@ -210,6 +287,8 @@ const IMPACT_KINDS = [
   'roles',
   'generations',
   'droppedGenerations',
+  'suggestions',
+  'findings',
 ] as const
 export type ImpactKind = (typeof IMPACT_KINDS)[number]
 

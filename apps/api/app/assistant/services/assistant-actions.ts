@@ -125,7 +125,8 @@ export type ActionOutcome =
  * Accepting parses the stored input again and applies it through the route's own service, with
  * the caller's ownership checked again, in the same transaction as the new status; a failure is
  * stored (`failed`) with its reason, and whatever the service wrote is rolled back with its
- * savepoint. What cannot be rolled back (a deleted project's files) runs after the commit.
+ * savepoint. What cannot be rolled back (a deleted project's files) or must wait for the rows (a
+ * queued job) runs after the commit.
  */
 export async function answerAction(
   decision: ActionDecision,
@@ -164,7 +165,7 @@ export async function answerAction(
   })
   // The rows are gone and the action is stored: a file left behind must not turn that into a failure.
   await afterCommit?.().catch((error) =>
-    logger.error({ err: error }, 'assistant action cleanup failed'),
+    logger.error({ err: error }, 'assistant action after-commit work failed'),
   )
   return outcome
 }
@@ -217,5 +218,10 @@ async function apply(
       afterCommit: applied.afterCommit,
     }
   }
-  return { next: { ...action, status: ActionStatus.Accepted, result: applied }, problem: null }
+  const { afterCommit, ...result } = applied
+  return {
+    next: { ...action, status: ActionStatus.Accepted, result },
+    problem: null,
+    afterCommit,
+  }
 }

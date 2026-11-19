@@ -253,6 +253,106 @@ describe('actionRows of roles and generated files', () => {
   })
 })
 
+describe('actionRows: code maps and reviews', () => {
+  it('shows the whole repository address, the branch and the follow of an import', () => {
+    const url = 'https://github.com/acme/a-repository-with-a-rather-long-name-that-is-never-cut'
+    expect(
+      rows(
+        'import_code_map_from_github',
+        { projectId: 1, url, branch: 'develop', follow: true },
+        'Shop',
+      ),
+    ).toEqual([
+      { label: 'repository', value: url },
+      { label: 'branch', value: 'develop' },
+      { label: 'follow', value: 'follow' },
+      { label: 'in', value: 'Shop' },
+    ])
+    // No branch is the default one; no follow leaves it as it is.
+    expect(rows('import_code_map_from_github', { projectId: 1, url }, 'Shop')).toEqual([
+      { label: 'repository', value: url },
+      { label: 'branch', value: '' },
+      { label: 'follow', value: 'unchanged' },
+      { label: 'in', value: 'Shop' },
+    ])
+    expect(
+      rows('import_code_map_from_github', { projectId: 1, url, follow: false }, 'Shop')[2],
+    ).toEqual({ label: 'follow', value: 'stop' })
+  })
+
+  it('shows the repository a project stops following, from what it followed', () => {
+    expect(
+      rows(
+        'stop_following_repository',
+        { projectId: 1 },
+        'Shop',
+        JSON.stringify(['https://github.com/acme/shop', 'main']),
+      ),
+    ).toEqual([
+      { label: 'repository', value: 'https://github.com/acme/shop' },
+      { label: 'branch', value: 'main' },
+      { label: 'in', value: 'Shop' },
+    ])
+    expect(
+      rows(
+        'stop_following_repository',
+        { projectId: 1 },
+        'Shop',
+        JSON.stringify(['https://github.com/acme/shop', null]),
+      ),
+    ).toEqual([
+      { label: 'repository', value: 'https://github.com/acme/shop' },
+      { label: 'branch', value: '' },
+      { label: 'in', value: 'Shop' },
+    ])
+  })
+
+  it('lists every link added and removed, each on its own line', () => {
+    const add = Array.from({ length: 30 }, (_, i) => ({
+      elementId: `e${String(i)}`,
+      codeKey: `src/m${String(i)}/`,
+      status: 'confirmed',
+    }))
+    const shown = rows(
+      'set_diagram_code_links',
+      {
+        codeMapId: 1,
+        diagramId: 2,
+        add: [...add, { elementId: 'x', codeKey: 'src/x.ts#X', status: 'ignored' }],
+        remove: [{ elementId: 'app', codeKey: 'apps/api/app/' }],
+      },
+      'Packages',
+      'a1b2c3d4e5f60718',
+    )
+    expect(shown[0]).toEqual({ label: 'diagram', value: 'Packages' })
+    expect(shown).toHaveLength(1 + 30 + 1 + 1)
+    expect(shown[1]).toEqual({ label: 'linkAdded', value: 'e0 → src/m0/' })
+    expect(shown[31]).toEqual({ label: 'linkIgnored', value: 'x → src/x.ts#X' })
+    expect(shown[32]).toEqual({ label: 'linkRemoved', value: 'app → apps/api/app/' })
+    // The fingerprint of the links is never shown.
+    expect(JSON.stringify(shown)).not.toContain('a1b2c3d4e5f60718')
+  })
+
+  it('shows a finding whole and its resolution before → after', () => {
+    const comment = 'The projects folder reaches into architectures. '.repeat(20)
+    expect(
+      rows('resolve_review_finding', { findingId: 3, resolution: 'done' }, comment, 'open'),
+    ).toEqual([
+      { label: 'finding', value: comment },
+      { label: 'resolution', value: 'done', from: 'open' },
+    ])
+  })
+
+  it('names the map or the review deleted', () => {
+    expect(
+      rows('delete_code_map', { codeMapId: 1 }, 'https://github.com/acme/shop @ abc1234'),
+    ).toEqual([{ label: 'codeMap', value: 'https://github.com/acme/shop @ abc1234' }])
+    expect(rows('delete_code_review', { codeReviewId: 1 }, '2026-11-19 · 3 diagrams')).toEqual([
+      { label: 'codeReview', value: '2026-11-19 · 3 diagrams' },
+    ])
+  })
+})
+
 describe('actionDomain', () => {
   it('names what an action changes', () => {
     expect(actionDomain('create_project')).toBe('project')
@@ -276,6 +376,18 @@ describe('actionDomain', () => {
       expect(actionDomain(name)).toBe('agent-config')
   })
 
+  it('names the code domain for the code map and review actions', () => {
+    for (const name of [
+      'import_code_map_from_github',
+      'delete_code_map',
+      'stop_following_repository',
+      'set_diagram_code_links',
+      'resolve_review_finding',
+      'delete_code_review',
+    ])
+      expect(actionDomain(name)).toBe('code')
+  })
+
   it('names nothing for an unknown action', () => {
     expect(actionDomain('launch_rocket')).toBeNull()
     expect(actionDomain('toString')).toBeNull()
@@ -293,6 +405,10 @@ describe('actionImpact', () => {
       { kind: 'codeMaps', count: 2 },
     ])
     expect(actionImpact({ rules: 4, widgets: 9 })).toEqual([{ kind: 'rules', count: 4 }])
+    expect(actionImpact({ findings: 3, suggestions: 2 })).toEqual([
+      { kind: 'suggestions', count: 2 },
+      { kind: 'findings', count: 3 },
+    ])
     expect(actionImpact({ droppedGenerations: 1 })).toEqual([
       { kind: 'droppedGenerations', count: 1 },
     ])

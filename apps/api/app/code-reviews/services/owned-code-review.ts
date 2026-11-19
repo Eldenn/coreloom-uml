@@ -16,6 +16,16 @@ export async function findOwnedCodeReview(id: number, user: User): Promise<CodeR
   return review
 }
 
+/**
+ * The finding with this id, its review preloaded, if `user` owns that review, else null: callers
+ * answer 404 either way.
+ */
+export async function findOwnedFinding(id: number, user: User): Promise<CodeReviewFinding | null> {
+  const finding = await CodeReviewFinding.query().where('id', id).preload('review').first()
+  if (!finding || !assertOwner(finding.review, user)) return null
+  return finding
+}
+
 /** Open findings per review, for the ids given. */
 export async function openCounts(ids: readonly number[]): Promise<Map<number, number>> {
   if (ids.length === 0) return new Map()
