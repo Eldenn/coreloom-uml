@@ -3,6 +3,7 @@ import db from '@adonisjs/lucid/services/db'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import AgentConfig from '#app/agent-configs/models/agent-config'
 import { serializeAgentConfig } from '#app/agent-configs/serializers/agent-config-serializer'
+import { deleteAgentConfig } from '#app/agent-configs/services/agent-config-writes'
 import {
   AGENT_CONFIG_NOT_FOUND,
   describeAgentConfig,
@@ -122,7 +123,7 @@ export default class AgentConfigController {
     const config = await findOwnedAgentConfig(params.id, auth.getUserOrFail())
     if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
 
-    await config.delete()
+    await deleteAgentConfig(config)
 
     return response.noContent()
   }

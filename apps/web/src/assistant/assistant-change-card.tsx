@@ -71,10 +71,13 @@ export function ProposalCard({
 /** Accept or reject, while a proposal is pending. */
 export function AnswerButtons({
   busy,
+  destructive = false,
   onAnswer,
 }: {
   /** Another answer is on its way: the buttons wait. */
   busy: boolean
+  /** Accepting cannot be undone: the card is the confirmation, its accept button says so. */
+  destructive?: boolean
   onAnswer: (answer: 'accept' | 'reject') => void
 }) {
   const t = useT().assistant
@@ -82,7 +85,7 @@ export function AnswerButtons({
     <div className="flex gap-2">
       <Button
         size="sm"
-        variant="secondary"
+        variant={destructive ? 'destructive' : 'secondary'}
         disabled={busy}
         onClick={() => {
           onAnswer('accept')

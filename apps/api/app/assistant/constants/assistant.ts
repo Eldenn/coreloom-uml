@@ -123,9 +123,27 @@ export const ActionFailure = {
 export type ActionFailure = (typeof ActionFailure)[keyof typeof ActionFailure]
 
 /**
+ * What a deletion takes with it, counted when it is proposed and again when it is accepted: a
+ * card never deletes more than it says.
+ */
+export const ActionImpact = {
+  Architectures: 'architectures',
+  Diagrams: 'diagrams',
+  AgentConfigs: 'agentConfigs',
+  CodeMaps: 'codeMaps',
+  CodeReviews: 'codeReviews',
+  Rules: 'rules',
+  ReadyRules: 'readyRules',
+  Roles: 'roles',
+  Generations: 'generations',
+} as const
+export type ActionImpact = (typeof ActionImpact)[keyof typeof ActionImpact]
+
+/**
  * A change the assistant proposed on a project, an architecture or agent conventions, as stored
  * in `assistant_messages.actions`: nothing is written before the owner accepts it. `subject` is
- * the display name of what it targeted when proposed (null for a creation).
+ * the display name of what it targeted when proposed (null for a creation). It never holds a
+ * share link, a share token or an access code.
  */
 export type StoredAction = {
   name: string
@@ -133,9 +151,13 @@ export type StoredAction = {
   subject: string | null
   destructive: boolean
   status: ActionStatus
-  /** What an accepted action created or changed. */
+  /** What an accepted action created or changed; null for a deletion (its target is gone). */
   result: { kind: AssistantTargetKind; id: number } | null
   failure: ActionFailure | null
+  /** Non-zero counts of what goes with a deletion; absent from actions stored before it existed. */
+  impact?: Partial<Record<ActionImpact, number>> | null
+  /** The state the action changes, when proposed (a visibility); absent before it existed. */
+  before?: string | null
 }
 
 /** Where a plain message goes instead when the model hands it over (a route tool). */

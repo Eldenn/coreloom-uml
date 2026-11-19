@@ -118,3 +118,15 @@ export function duplicateArchitecture(
     return created
   })
 }
+
+/**
+ * Deletes an owned architecture: its diagrams and share link go with it. The one code path of
+ * `DELETE /architectures/:id` and `delete_architecture`.
+ */
+export async function deleteArchitecture(
+  architecture: Architecture,
+  client?: TransactionClientContract,
+) {
+  if (client) architecture.useTransaction(client)
+  await architecture.delete()
+}

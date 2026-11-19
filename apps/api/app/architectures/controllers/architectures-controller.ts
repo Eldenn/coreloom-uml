@@ -6,6 +6,7 @@ import {
 } from '#app/architectures/serializers/architecture-serializer'
 import {
   createArchitecture,
+  deleteArchitecture,
   updateArchitecture,
 } from '#app/architectures/services/architecture-writes'
 import {
@@ -77,7 +78,7 @@ export default class ArchitecturesController {
     const architecture = await findOwnedArchitecture(params.id, auth.getUserOrFail())
     if (!architecture) return response.notFound(ARCHITECTURE_NOT_FOUND)
 
-    await architecture.delete()
+    await deleteArchitecture(architecture)
 
     return response.noContent()
   }

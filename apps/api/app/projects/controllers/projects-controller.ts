@@ -1,10 +1,8 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import CodeMap from '#app/code-maps/models/code-map'
-import { deleteCodeMapFiles } from '#app/code-maps/services/code-map-storage'
 import Project from '#app/projects/models/project'
 import { serializeProject } from '#app/projects/serializers/project-serializer'
 import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
-import { createProject, updateProject } from '#app/projects/services/project-writes'
+import { createProject, deleteProject, updateProject } from '#app/projects/services/project-writes'
 import {
   createProjectInput,
   listProjectsInput,
@@ -64,9 +62,8 @@ export default class ProjectsController {
     const project = await findOwnedProject(params.id, auth.getUserOrFail())
     if (!project) return response.notFound(PROJECT_NOT_FOUND)
 
-    const codeMaps = await CodeMap.query().where('projectId', project.id).select('storageKey')
-    await project.delete()
-    await deleteCodeMapFiles(codeMaps.map((codeMap) => codeMap.storageKey))
+    const deleteFiles = await deleteProject(project)
+    await deleteFiles()
 
     return response.noContent()
   }

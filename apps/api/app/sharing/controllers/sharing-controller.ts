@@ -1,15 +1,14 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { ArchitectureVisibility } from '#app/architectures/constants/visibility'
 import {
   ARCHITECTURE_NOT_FOUND,
   findOwnedArchitecture,
 } from '#app/architectures/services/owned-architecture'
 import { serializeSharing } from '#app/sharing/serializers/sharing-serializer'
 import {
-  applyVisibility,
-  encryptAccessCode,
-  generateAccessCode,
-  generateShareToken,
+  NOT_PROTECTED_MESSAGE,
+  regenerateAccessCode,
+  regenerateShareLink,
+  setVisibility,
 } from '#app/sharing/services/sharing'
 import { updateSharingInput } from '#app/sharing/validators/sharing-input'
 
@@ -27,8 +26,7 @@ export default class SharingController {
     if (!architecture) return response.notFound(ARCHITECTURE_NOT_FOUND)
 
     const { visibility } = await request.validateUsing(updateSharingInput)
-    applyVisibility(architecture, visibility)
-    await architecture.save()
+    await setVisibility(architecture, visibility)
 
     return response.ok({ sharing: serializeSharing(architecture) })
   }
@@ -38,8 +36,7 @@ export default class SharingController {
     const architecture = await findOwnedArchitecture(params.id, auth.getUserOrFail())
     if (!architecture) return response.notFound(ARCHITECTURE_NOT_FOUND)
 
-    architecture.shareToken = generateShareToken()
-    await architecture.save()
+    await regenerateShareLink(architecture)
 
     return response.ok({ sharing: serializeSharing(architecture) })
   }
@@ -49,15 +46,9 @@ export default class SharingController {
     const architecture = await findOwnedArchitecture(params.id, auth.getUserOrFail())
     if (!architecture) return response.notFound(ARCHITECTURE_NOT_FOUND)
 
-    if (architecture.visibility !== ArchitectureVisibility.Protected) {
-      return response.conflict({
-        error: { message: 'Only a protected architecture has an access code.' },
-      })
+    if (!(await regenerateAccessCode(architecture))) {
+      return response.conflict({ error: { message: NOT_PROTECTED_MESSAGE } })
     }
-
-    architecture.accessCode = encryptAccessCode(generateAccessCode())
-    architecture.accessVersion += 1
-    await architecture.save()
 
     return response.ok({ sharing: serializeSharing(architecture) })
   }

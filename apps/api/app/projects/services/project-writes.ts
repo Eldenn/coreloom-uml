@@ -1,4 +1,6 @@
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
+import CodeMap from '#app/code-maps/models/code-map'
+import { deleteCodeMapFiles } from '#app/code-maps/services/code-map-storage'
 import Project from '#app/projects/models/project'
 import type User from '#app/users/models/user'
 
@@ -28,4 +30,23 @@ export async function updateProject(
   if (fields.description !== undefined) project.description = fields.description
   await project.save()
   return project
+}
+
+/**
+ * Deletes an owned project: its architectures go with it (cascade), and with them their diagrams
+ * and share links; its agent conventions and code maps too. The one code path of
+ * `DELETE /projects/:id` and `delete_project`. It answers the deletion of the code maps' files,
+ * which the cascade cannot reach and nothing can roll back: run it once the row is gone for good
+ * (after `client` commits).
+ */
+export async function deleteProject(
+  project: Project,
+  client?: TransactionClientContract,
+): Promise<() => Promise<void>> {
+  const codeMaps = await CodeMap.query({ client })
+    .where('projectId', project.id)
+    .select('storageKey')
+  if (client) project.useTransaction(client)
+  await project.delete()
+  return () => deleteCodeMapFiles(codeMaps.map((codeMap) => codeMap.storageKey))
 }

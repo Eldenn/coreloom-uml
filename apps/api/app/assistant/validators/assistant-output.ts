@@ -36,8 +36,12 @@ export type MessageOutput = {
   createdAt: string
 }
 
-/** A stored action plus its position in the message. */
-export type ActionOutput = StoredAction & { index: number }
+/** A stored action plus its position in the message, `impact` and `before` always present. */
+export type ActionOutput = Omit<StoredAction, 'impact' | 'before'> & {
+  impact: NonNullable<StoredAction['impact']> | null
+  before: string | null
+  index: number
+}
 
 /** Where the plain message goes instead, when the model hands it over. */
 export type HandoffOutput =
