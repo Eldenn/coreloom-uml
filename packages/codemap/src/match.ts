@@ -347,6 +347,12 @@ function codeKeyExists(index: MapIndex, key: string): boolean {
   return isFolderKey(key) ? index.folders.has(key.slice(0, -1)) : index.graph.byKey.has(key)
 }
 
+/** The keys of `keys` that are neither a node nor a folder of the map, in their order. */
+export function missingCodeKeys(map: CodeMap, keys: readonly string[]): string[] {
+  const index = indexMap(map)
+  return keys.filter((key) => !codeKeyExists(index, key))
+}
+
 /** The node keys a code key stands for: a folder's nodes, a file's, a class with its members. */
 function scopeOf(index: MapIndex, key: string): Set<string> {
   if (isFolderKey(key)) {

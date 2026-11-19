@@ -6,10 +6,16 @@ import * as React from 'react'
 
 import { AnswerButtons, ProposalCard } from '@/assistant/assistant-change-card'
 import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { toast } from '@/components/ui/sonner'
 import { useRolePresets } from '@/lib/agent-roles'
 import { type AssistantAction, useActionAnswer } from '@/lib/assistant'
-import { actionImpact, type ActionRowLabel, actionRows } from '@/lib/assistant-actions'
+import {
+  actionDomain,
+  actionImpact,
+  type ActionRowLabel,
+  actionRows,
+} from '@/lib/assistant-actions'
 import { getErrorMessage, TuyauError } from '@/lib/client'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { useT } from '@/lib/locale'
@@ -25,9 +31,26 @@ function wasChanged(error: unknown): boolean {
   return body?.error?.code === 'changed'
 }
 
-/** The page of what an accepted action made or changed. */
-function ResultLink({ result }: { result: NonNullable<AssistantAction['result']> }) {
+/** The page of what an accepted action made or changed: a code action's, the project's Code tab. */
+function ResultLink({
+  result,
+  code,
+}: {
+  result: NonNullable<AssistantAction['result']>
+  code: boolean
+}) {
   const t = useT().assistant.actionOpen
+  if (result.kind === 'project' && code)
+    return (
+      <Link
+        to="/projects/$projectId"
+        params={{ projectId: result.id }}
+        search={{ tab: 'code' }}
+        className={LINK}
+      >
+        {t.code}
+      </Link>
+    )
   if (result.kind === 'project')
     return (
       <Link to="/projects/$projectId" params={{ projectId: result.id }} className={LINK}>
@@ -48,30 +71,97 @@ function ResultLink({ result }: { result: NonNullable<AssistantAction['result']>
 }
 
 /**
- * How a card shows a row's value: a visibility, a right or a preset by its localized or full name,
- * an empty scope as the whole repository.
+ * How a card shows a row's value: a visibility, a right, a follow, a finding's resolution or a
+ * preset by its localized or full name, an empty scope as the whole repository and an empty
+ * branch as the default one.
  */
 function useShownValue(action: AssistantAction) {
   const t = useT()
-  const visibilities: Record<string, string> = useCoreloomI18n().messages.diagramCard.visibility
+  const i18n = useCoreloomI18n().messages
+  const names: Partial<Record<ActionRowLabel, Record<string, string>>> = {
+    visibility: i18n.diagramCard.visibility,
+    follow: t.assistant.actionFollow,
+    resolution: { open: t.assistant.actionResolutionOpen, ...i18n.findingCard.resolved },
+  }
+  const empty: Partial<Record<ActionRowLabel, string>> = {
+    scope: t.assistant.actionWholeRepository,
+    branch: t.assistant.actionDefaultBranch,
+  }
   const rights: Record<string, string> = t.roles.rightNames
   const presets = useRolePresets(action.name === 'add_role_from_preset').data
-  const named = (names: Record<string, string>, value: string) =>
-    Object.hasOwn(names, value) ? names[value] : value
+  const named = (known: Record<string, string>, value: string) =>
+    Object.hasOwn(known, value) ? known[value] : value
   return (label: ActionRowLabel, value: string): string => {
-    if (label === 'visibility') return named(visibilities, value)
+    const known = names[label]
+    if (known) return named(known, value)
     if (label === 'rights')
       return value
         .split(', ')
         .map((right) => named(rights, right))
         .join(', ')
-    if (label === 'scope' && value === '') return t.assistant.actionWholeRepository
+    if (value === '' && empty[label] !== undefined) return empty[label]
     // A field the action empties.
     if (value === '') return t.assistant.actionNone
     if (label === 'preset') return presets?.find((item) => item.slug === value)?.name ?? value
     return value
   }
 }
+
+/** What the action would do, line by line, then what goes with it. */
+function ActionDetails({ action }: { action: AssistantAction }) {
+  const t = useT().assistant
+  const shown = useShownValue(action)
+  const impact = actionImpact(action.impact)
+  // A new generation drops the oldest ones: nothing is deleted with it.
+  const impactLabel = DROPS.has(action.name) ? t.actionDroppedLabel : t.actionImpactLabel
+  // The links can be many, and none is cut: the list scrolls.
+  const scrolls = action.name === 'set_diagram_code_links'
+  const list = (
+    <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px] empty:hidden">
+      {actionRows(action).map((row, index) => (
+        // Links repeat their label.
+        <React.Fragment key={`${row.label}-${String(index)}`}>
+          <dt className="text-muted-foreground">{t.actionRows[row.label]}</dt>
+          <dd
+            className={cn(
+              'm-0 min-w-0 break-words whitespace-pre-wrap text-foreground',
+              // A mission can run to pages, and all of it is what the agent is told: it scrolls.
+              row.label === 'mission' && 'max-h-40 overflow-y-auto',
+            )}
+            // A region that scrolls is reached by keyboard.
+            tabIndex={row.label === 'mission' ? 0 : undefined}
+          >
+            {row.from !== undefined && (
+              <>
+                <span className="text-muted-foreground">{shown(row.label, row.from)}</span>{' '}
+                <span aria-hidden="true">→</span>
+                <span className="sr-only">{t.becomes}</span>{' '}
+              </>
+            )}
+            {shown(row.label, row.value)}
+          </dd>
+        </React.Fragment>
+      ))}
+      {impact.length > 0 && (
+        <>
+          <dt className="text-muted-foreground">{impactLabel}</dt>
+          <dd className="m-0 min-w-0 text-foreground">
+            {impact.map(({ kind, count }) => t.actionImpact[kind](count)).join(', ')}
+          </dd>
+        </>
+      )}
+    </dl>
+  )
+  // The scroll area's viewport is reached by keyboard.
+  return scrolls ? (
+    <ScrollArea className="[&>[data-slot=scroll-area-viewport]]:max-h-80">{list}</ScrollArea>
+  ) : (
+    list
+  )
+}
+
+/** Actions that create something and push the oldest out: nothing is deleted "with" them. */
+const DROPS = new Set(['generate_files', 'import_code_map_from_github'])
 
 export function AssistantActionCard({
   conversationId,
@@ -83,10 +173,6 @@ export function AssistantActionCard({
   action: AssistantAction
 }) {
   const t = useT().assistant
-  const shown = useShownValue(action)
-  const impact = actionImpact(action.impact)
-  // A new generation drops the oldest ones: nothing is deleted with it.
-  const impactLabel = action.name === 'generate_files' ? t.actionDroppedLabel : t.actionImpactLabel
   const answer = useActionAnswer(conversationId)
   const card = React.useRef<HTMLDivElement>(null)
   // The server refused to apply a card that no longer said what it would do, and refreshed it.
@@ -114,39 +200,7 @@ export function AssistantActionCard({
       title={known ? undefined : <code>{action.name}</code>}
       status={action.status}
     >
-      <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px] empty:hidden">
-        {actionRows(action).map((row) => (
-          <React.Fragment key={row.label}>
-            <dt className="text-muted-foreground">{t.actionRows[row.label]}</dt>
-            <dd
-              className={cn(
-                'm-0 min-w-0 break-words whitespace-pre-wrap text-foreground',
-                // A mission can run to pages, and all of it is what the agent is told: it scrolls.
-                row.label === 'mission' && 'max-h-40 overflow-y-auto',
-              )}
-              // A region that scrolls is reached by keyboard.
-              tabIndex={row.label === 'mission' ? 0 : undefined}
-            >
-              {row.from !== undefined && (
-                <>
-                  <span className="text-muted-foreground">{shown(row.label, row.from)}</span>{' '}
-                  <span aria-hidden="true">→</span>
-                  <span className="sr-only">{t.becomes}</span>{' '}
-                </>
-              )}
-              {shown(row.label, row.value)}
-            </dd>
-          </React.Fragment>
-        ))}
-        {impact.length > 0 && (
-          <>
-            <dt className="text-muted-foreground">{impactLabel}</dt>
-            <dd className="m-0 min-w-0 text-foreground">
-              {impact.map(({ kind, count }) => t.actionImpact[kind](count)).join(', ')}
-            </dd>
-          </>
-        )}
-      </dl>
+      <ActionDetails action={action} />
       {action.status === 'failed' && action.failure !== null && (
         <p className="m-0 text-[13px] text-destructive">
           {t.actionFailures[action.failure]}
@@ -162,7 +216,9 @@ export function AssistantActionCard({
         </p>
       )}
       {/* A deletion's result is null: its target is gone, so there is nothing to open. */}
-      {action.status === 'accepted' && action.result && <ResultLink result={action.result} />}
+      {action.status === 'accepted' && action.result && (
+        <ResultLink result={action.result} code={actionDomain(action.name) === 'code'} />
+      )}
       {action.status === 'pending' && (
         <AnswerButtons
           busy={answer.isPending}

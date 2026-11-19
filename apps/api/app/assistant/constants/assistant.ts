@@ -119,6 +119,8 @@ export const ActionFailure = {
   /** Its input no longer passes the checks of the route it goes through. */
   Invalid: 'invalid',
   Conflict: 'conflict',
+  /** It was accepted, but what it starts could not be started (a queue that is down). */
+  Unavailable: 'unavailable',
 } as const
 export type ActionFailure = (typeof ActionFailure)[keyof typeof ActionFailure]
 
@@ -138,6 +140,12 @@ export const ActionImpact = {
   Generations: 'generations',
   /** The oldest generations a new one drops, past `AGENT_GENERATIONS_KEPT`. */
   DroppedGenerations: 'droppedGenerations',
+  /** The oldest code maps an import drops, past `CODE_MAP_LIMITS.perProject`. */
+  DroppedCodeMaps: 'droppedCodeMaps',
+  /** The diagrams the model proposed for a code map. */
+  Suggestions: 'suggestions',
+  /** The findings of a conformance review. */
+  Findings: 'findings',
 } as const
 export type ActionImpact = (typeof ActionImpact)[keyof typeof ActionImpact]
 

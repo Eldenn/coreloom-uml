@@ -1,16 +1,17 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import db from '@adonisjs/lucid/services/db'
 import { CodeMapStatus } from '#app/code-maps/constants/code-map'
 import type CodeMap from '#app/code-maps/models/code-map'
-import DiagramCodeLink from '#app/code-maps/models/diagram-code-link'
+import type DiagramCodeLink from '#app/code-maps/models/diagram-code-link'
 import { serializeDiagramCodeLink } from '#app/code-maps/serializers/code-map-serializer'
 import { readCodeMapFile } from '#app/code-maps/services/code-map-storage'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
 import {
   DIAGRAM_NOT_FOUND,
   diagramLinks,
+  duplicateLink,
   findMatchableDiagram,
   matchStoredDiagram,
+  replaceDiagramLinks,
 } from '#app/code-maps/services/diagram-code-links'
 import { CODE_MAP_NOT_FOUND, findOwnedCodeMap } from '#app/code-maps/services/owned-code-map'
 import {
@@ -59,27 +60,14 @@ export default class CodeMapLinksController {
       return response.conflict(MAP_NOT_READY)
     }
 
-    const seen = new Set<string>()
-    for (const link of links) {
-      const pair = JSON.stringify([link.elementId, link.codeKey])
-      if (seen.has(pair)) {
-        return response.unprocessableEntity({
-          error: { message: `The link ${link.elementId} → ${link.codeKey} is listed twice` },
-        })
-      }
-      seen.add(pair)
+    const twice = duplicateLink(links)
+    if (twice) {
+      return response.unprocessableEntity({
+        error: { message: `The link ${twice.elementId} → ${twice.codeKey} is listed twice` },
+      })
     }
 
-    const stored = await db.transaction(async (trx) => {
-      await DiagramCodeLink.query({ client: trx }).where('diagramId', diagram.id).delete()
-      if (links.length > 0) {
-        await DiagramCodeLink.createMany(
-          links.map((link) => ({ diagramId: diagram.id, ...link })),
-          { client: trx },
-        )
-      }
-      return diagramLinks(diagram, trx)
-    })
+    const stored = await replaceDiagramLinks(diagram, links)
 
     return response.ok(await linksOutput(codeMap, diagram, stored))
   }

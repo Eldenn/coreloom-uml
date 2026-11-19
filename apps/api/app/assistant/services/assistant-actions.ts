@@ -111,6 +111,7 @@ const FAILURE_MESSAGES = {
   [ActionFailure.NotFound]: 'What this action targets no longer exists.',
   [ActionFailure.Invalid]: 'This action is not valid.',
   [ActionFailure.Conflict]: 'This action conflicts with the current state.',
+  [ActionFailure.Unavailable]: 'This action could not be started. Ask for it again later.',
 } as const
 
 export type ActionOutcome =
@@ -125,7 +126,8 @@ export type ActionOutcome =
  * Accepting parses the stored input again and applies it through the route's own service, with
  * the caller's ownership checked again, in the same transaction as the new status; a failure is
  * stored (`failed`) with its reason, and whatever the service wrote is rolled back with its
- * savepoint. What cannot be rolled back (a deleted project's files) runs after the commit.
+ * savepoint. What cannot be rolled back (a deleted project's files) or must wait for the rows (a
+ * queued job) runs after the commit.
  */
 export async function answerAction(
   decision: ActionDecision,
@@ -162,11 +164,47 @@ export async function answerAction(
     }
     return { action: output }
   })
-  // The rows are gone and the action is stored: a file left behind must not turn that into a failure.
-  await afterCommit?.().catch((error) =>
-    logger.error({ err: error }, 'assistant action cleanup failed'),
-  )
+  try {
+    await afterCommit?.()
+  } catch (error) {
+    logger.error({ err: error }, 'assistant action after-commit work failed')
+    // A deletion is done whatever became of its files. What an action was to start is not: an
+    // accepted card that started nothing would be a lie.
+    if ('action' in outcome && outcome.action.result !== null) return unstarted(target)
+  }
   return outcome
+}
+
+/** Stores an accepted action as `failed`: what it was to start after the commit did not start. */
+async function unstarted(target: {
+  conversationId: number
+  messageId: number
+  index: number
+}): Promise<ActionOutcome> {
+  return db.transaction(async (trx): Promise<ActionOutcome> => {
+    const message = await AssistantMessage.query({ client: trx })
+      .where('id', target.messageId)
+      .where('conversationId', target.conversationId)
+      .forUpdate()
+      .first()
+    const action = message?.actions?.[target.index]
+    if (!message?.actions || !action) return { notFound: true }
+    const next = {
+      ...action,
+      status: ActionStatus.Failed,
+      failure: ActionFailure.Unavailable,
+      result: null,
+    }
+    message.actions = message.actions.map((item, index) => (index === target.index ? next : item))
+    await message.save()
+    return {
+      failed: {
+        message: FAILURE_MESSAGES[ActionFailure.Unavailable],
+        code: ActionFailure.Unavailable,
+      },
+      action: serializeAction(next, target.index),
+    }
+  })
 }
 
 async function apply(
@@ -217,5 +255,10 @@ async function apply(
       afterCommit: applied.afterCommit,
     }
   }
-  return { next: { ...action, status: ActionStatus.Accepted, result: applied }, problem: null }
+  const { afterCommit, ...result } = applied
+  return {
+    next: { ...action, status: ActionStatus.Accepted, result },
+    problem: null,
+    afterCommit,
+  }
 }

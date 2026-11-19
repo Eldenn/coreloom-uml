@@ -23,11 +23,12 @@ export const TARGET_NOT_FOUND: unique symbol = Symbol('target not found')
 /**
  * What an accepted action created or changed, that it deleted its target, or why it could not be
  * applied. Never a share link, a share token or an access code: the owner reads those on the
- * sharing screen. `afterCommit` is work that cannot be rolled back (files in Drive), run once the
- * transaction that stores the new status has committed.
+ * sharing screen. `afterCommit` is work that cannot be rolled back or must not see the rows before
+ * they are committed (files in Drive, a queued job), run once the transaction that stores the new
+ * status has committed.
  */
 export type ActionApplied =
-  | { kind: AssistantTargetKind; id: number }
+  | { kind: AssistantTargetKind; id: number; afterCommit?: () => Promise<void> }
   | { deleted: true; afterCommit?: () => Promise<void> }
   | { failure: typeof ActionFailure.NotFound }
   | { failure: typeof ActionFailure.Invalid | typeof ActionFailure.Conflict; message: string }

@@ -26,6 +26,7 @@ export const REVIEWABLE_KINDS: readonly string[] = [
 ]
 
 export const codeReviewKeys = {
+  all: ['code-reviews'] as const,
   list: (projectId: number) => ['code-reviews', 'list', projectId] as const,
   detail: (id: number) => ['code-reviews', 'detail', id] as const,
 }

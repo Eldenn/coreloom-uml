@@ -6,6 +6,7 @@ import {
 } from '#app/assistant/actions/action'
 import { AGENT_CONFIG_ACTIONS } from '#app/assistant/actions/agent-config-actions'
 import { ARCHITECTURE_ACTIONS } from '#app/assistant/actions/architecture-actions'
+import { CODE_MAP_ACTIONS } from '#app/assistant/actions/code-map-actions'
 import { PROJECT_ACTIONS } from '#app/assistant/actions/project-actions'
 import { ActionStatus, type StoredAction } from '#app/assistant/constants/assistant'
 import type User from '#app/users/models/user'
@@ -15,6 +16,7 @@ export const ASSISTANT_ACTIONS: readonly AssistantAction[] = [
   ...PROJECT_ACTIONS,
   ...ARCHITECTURE_ACTIONS,
   ...AGENT_CONFIG_ACTIONS,
+  ...CODE_MAP_ACTIONS,
 ]
 
 export function findAction(name: string): AssistantAction | undefined {

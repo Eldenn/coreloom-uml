@@ -11,6 +11,7 @@ import {
   storeCodeMapFile,
 } from '#app/code-maps/services/code-map-storage'
 import { readUploadedCodeMap } from '#app/code-maps/services/code-map-upload'
+import { deleteCodeMap } from '#app/code-maps/services/code-map-writes'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
 import { CODE_MAP_NOT_FOUND, findOwnedCodeMap } from '#app/code-maps/services/owned-code-map'
 import { createCodeMapInput, listCodeMapsInput } from '#app/code-maps/validators/code-maps-input'
@@ -119,8 +120,8 @@ export default class CodeMapsController {
     const codeMap = await findOwnedCodeMap(params.id, user)
     if (!codeMap) return response.notFound(CODE_MAP_NOT_FOUND)
 
-    await codeMap.delete()
-    await deleteCodeMapFiles([codeMap.storageKey])
+    const deleteFile = await deleteCodeMap(codeMap)
+    await deleteFile()
 
     return response.noContent()
   }

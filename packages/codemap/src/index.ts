@@ -66,6 +66,7 @@ export {
   type MatchFinding,
   type MatchReason,
   matchDiagram,
+  missingCodeKeys,
   normalizeName,
   type RelationCheck,
 } from './match.ts'

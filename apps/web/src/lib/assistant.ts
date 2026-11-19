@@ -15,6 +15,8 @@ import { actionDomain } from '@/lib/assistant-actions'
 import type { ChangeAction } from '@/lib/assistant-changes'
 import type { AssistantPage } from '@/lib/assistant-subject'
 import { client, TuyauError } from '@/lib/client'
+import { codeReviewKeys } from '@/lib/code-reviews'
+import { githubKeys } from '@/lib/github'
 import { MODEL_CALL, type StoredProvider } from '@/lib/llm-provider'
 import { callBody } from '@/lib/llm-provider-body'
 import { useLocale } from '@/lib/locale'
@@ -324,6 +326,10 @@ const ACTION_KEYS = {
   architecture: [architectureKeys.all, projectKeys.all],
   // Projects count their agent conventions.
   'agent-config': [agentConfigKeys.all, projectKeys.all],
+  // Every code map read (lists, links, conformance; `codeMapKeys.all`, written out since
+  // `code-maps` imports this module), the reviews, the repository a project follows, and the
+  // projects' count of maps.
+  code: [['code-maps'], codeReviewKeys.all, githubKeys.follows, projectKeys.all],
 } as const
 
 /**
