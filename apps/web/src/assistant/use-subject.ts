@@ -1,17 +1,15 @@
 // What an assistant message is about: one of the account's architectures (its views go with the
 // message, or a diagram is drawn from its project's code map), agent conventions made from web
-// pages ("From the web"), or nothing. Held by the panel, so it stays from one conversation to the
-// next.
+// pages ("From the web"), nothing, or "Auto": the assistant then decides by itself what the
+// message needs. Held by the panel, so it stays from one conversation to the next.
 import * as React from 'react'
 
 import { useCodeMode } from '@/assistant/use-code-mode'
 import { useAgentConfigs } from '@/lib/agent-configs'
 import { useArchitectures } from '@/lib/architectures'
-import { defaultConventions } from '@/lib/assistant-subject'
+import { defaultConventions, pageOf, type SubjectMode, subjectMode } from '@/lib/assistant-subject'
 import { useFeature } from '@/lib/feature-flags'
 import type { StoredProvider } from '@/lib/llm-provider'
-
-type Mode = 'architecture' | 'web' | 'none'
 
 interface PageArchitecture {
   id: number
@@ -21,8 +19,8 @@ interface PageArchitecture {
 
 export type Subject = ReturnType<typeof useSubject>
 
-/** The API refuses the ChatGPT subscription: it is not known to drive the sandbox's tools. */
-function canResearch(provider: StoredProvider | null) {
+/** The API runs no tool with the ChatGPT subscription: it is not known to drive them. */
+function drivesTools(provider: StoredProvider | null) {
   return provider !== null && provider.kind !== 'openai-codex'
 }
 
@@ -62,11 +60,19 @@ export function useSubject({
   /** On a project's page: "From the web" targets its conventions first. */
   pageProjectId?: number | null
 }) {
-  const webOffered = useFeature('web-research') && canResearch(provider)
+  const webOffered = useFeature('web-research') && drivesTools(provider)
   const architectures = useArchitectureOptions(architecture)
-  const [wanted, setWanted] = React.useState<Mode>(architecture ? 'architecture' : 'none')
+  // The server routes a message by itself behind this flag, but for the ChatGPT subscription.
+  const autoOffered = useFeature('assistant-actions') && drivesTools(provider)
+  /** `null` until the owner chooses: the flags are not read yet when the panel opens. */
+  const [wanted, setWanted] = React.useState<SubjectMode | null>(null)
   const [architectureId, setArchitectureId] = React.useState(architecture?.id ?? null)
-  const mode: Mode = wanted === 'web' && !webOffered ? 'none' : wanted
+  const mode = subjectMode({
+    wanted,
+    autoOffered,
+    webOffered,
+    onArchitecture: architecture !== undefined,
+  })
   // Kept while the message is about something else: its project still names the conventions.
   const projectId = architectures.find((a) => a.id === architectureId)?.projectId ?? null
   const code = useCodeMode(mode === 'architecture' ? projectId : null, codeMapId)
@@ -80,9 +86,16 @@ export function useSubject({
     configId: conventions.configId,
     code,
     webOffered,
+    autoOffered,
+    /** Where the owner is, sent with a message in "Auto". */
+    page: pageOf({
+      architectureId: architecture?.id,
+      configId: pageConfigId,
+      projectId: pageProjectId,
+    }),
     architectures,
     configs: conventions.configs,
-    choose: (next: 'web' | 'none') => {
+    choose: (next: 'auto' | 'web' | 'none') => {
       setWanted(next)
     },
     chooseArchitecture: (id: number) => {

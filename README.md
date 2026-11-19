@@ -65,8 +65,15 @@ silently.
   without the diagrams of the changes proposed for it (a database trigger empties them). A web
   research launched from the assistant (the panel's « From the web », which also needs
   `web-research`) stores its request and proposals (rules and the addresses of the pages read,
-  never a quote of what was read) in the conversation. It is behind the `diagram-assistant` feature
-  flag, off by default; session only.
+  never a quote of what was read) in the conversation. With `assistant-actions` too, a plain
+  message sent with `auto` (the panel's « Auto ») lets the model read the account's projects, architectures and agent conventions and
+  propose actions on them (create or rename a project, create, rename or duplicate an
+  architecture, add, edit or remove an own rule, hold a ready-made rule): each is stored pending
+  and applied only when the owner accepts it (`…/messages/:messageId/actions/:index/accept` or
+  `/reject`), through the same code as the matching route. The model may instead hand the message
+  over to an architecture's diagram assistant or to a web research; nothing is stored then and the
+  panel sends it again down that path. It is behind the `diagram-assistant` feature flag, off by
+  default; session only.
 - **MCP server.** `POST /mcp` is a Model Context Protocol endpoint (Streamable HTTP, stateless)
   for coding agents: with an account API key (`Authorization: Bearer clu_…`, the `read` ability
   is enough) an agent lists the account's projects and their diagrams, reads a diagram as Mermaid,

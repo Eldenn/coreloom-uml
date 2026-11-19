@@ -11,6 +11,7 @@ export const FeatureFlagKey = {
   AgentRoles: 'agent-roles',
   CodeMaps: 'code-maps',
   WebResearch: 'web-research',
+  AssistantActions: 'assistant-actions',
 } as const
 
 export type FeatureFlagKey = (typeof FeatureFlagKey)[keyof typeof FeatureFlagKey]
@@ -80,6 +81,14 @@ export const FEATURE_FLAGS: readonly FeatureFlagDeclaration[] = [
     description:
       'Lets people make agent conventions from web pages their own model reads in a sandbox. Needs E2B_API_KEY on the server.',
     tags: ['agents'],
+    defaultState: OFF,
+  },
+  {
+    key: FeatureFlagKey.AssistantActions,
+    name: 'Assistant actions',
+    description:
+      'Lets the workspace assistant read projects, architectures and agent conventions, and propose changes the owner accepts one by one.',
+    tags: ['llm'],
     defaultState: OFF,
   },
 ]

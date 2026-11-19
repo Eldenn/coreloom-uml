@@ -4,6 +4,7 @@ import { deleteCodeMapFiles } from '#app/code-maps/services/code-map-storage'
 import Project from '#app/projects/models/project'
 import { serializeProject } from '#app/projects/serializers/project-serializer'
 import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
+import { createProject, updateProject } from '#app/projects/services/project-writes'
 import {
   createProjectInput,
   listProjectsInput,
@@ -34,11 +35,7 @@ export default class ProjectsController {
     const { name, description } = await request.validateUsing(createProjectInput)
     const user = auth.getUserOrFail()
 
-    const project = await Project.create({
-      userId: user.id,
-      name,
-      description: description ?? null,
-    })
+    const project = await createProject(user, { name, description })
 
     return response.created({ project: serializeProject(project) })
   }
@@ -54,10 +51,7 @@ export default class ProjectsController {
     const project = await findOwnedProject(params.id, auth.getUserOrFail(), { withCounts: true })
     if (!project) return response.notFound(PROJECT_NOT_FOUND)
 
-    const { name, description } = await request.validateUsing(updateProjectInput)
-    if (name !== undefined) project.name = name
-    if (description !== undefined) project.description = description
-    await project.save()
+    await updateProject(project, await request.validateUsing(updateProjectInput))
 
     return response.ok({ project: serializeProject(project) })
   }

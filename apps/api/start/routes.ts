@@ -615,6 +615,8 @@ const assistantChangesController = () =>
   import('#app/assistant/controllers/assistant-changes-controller')
 const assistantProposalsController = () =>
   import('#app/assistant/controllers/assistant-proposals-controller')
+const assistantActionsController = () =>
+  import('#app/assistant/controllers/assistant-actions-controller')
 router
   .group(() => {
     router.get('/', [assistantConversationsController, 'index']).as('assistant.conversations.index')
@@ -647,10 +649,23 @@ router
         'settle',
       ])
       .as('assistant.proposals.settle')
+    router
+      .post('/:conversationId/messages/:messageId/actions/:index/accept', [
+        assistantActionsController,
+        'accept',
+      ])
+      .as('assistant.actions.accept')
+    router
+      .post('/:conversationId/messages/:messageId/actions/:index/reject', [
+        assistantActionsController,
+        'reject',
+      ])
+      .as('assistant.actions.reject')
   })
   .prefix('/assistant/conversations')
   .where('conversationId', router.matchers.number())
   .where('messageId', router.matchers.number())
+  .where('index', router.matchers.number())
   .use(middleware.auth())
 
 router

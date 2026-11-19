@@ -1,5 +1,7 @@
 import type {
   AssistantRole,
+  HandoffKind,
+  StoredAction,
   StoredChange,
   StoredProposals,
 } from '#app/assistant/constants/assistant'
@@ -30,8 +32,20 @@ export type MessageOutput = {
   architectureId: number | null
   changes: ChangeOutput[] | null
   proposals: StoredProposals | null
+  actions: ActionOutput[] | null
   createdAt: string
 }
+
+/** A stored action plus its position in the message. */
+export type ActionOutput = StoredAction & { index: number }
+
+/** Where the plain message goes instead, when the model hands it over. */
+export type HandoffOutput =
+  | { kind: typeof HandoffKind.Diagrams; architectureId: number }
+  | { kind: typeof HandoffKind.Web; agentConfigId: number }
+
+/** `POST /assistant/conversations/:conversationId/messages` */
+export type ChatOutput = { messages: MessageOutput[]; handoff: HandoffOutput | null }
 
 /** The input the next message would use, in estimated tokens; `skipped` views did not fit. */
 export type BudgetOutput = {

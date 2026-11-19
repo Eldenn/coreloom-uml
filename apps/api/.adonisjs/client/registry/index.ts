@@ -654,6 +654,18 @@ const routes = {
     tokens: [{"old":"/assistant/conversations/:conversationId/messages/:messageId/proposals/settle","type":0,"val":"assistant","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/proposals/settle","type":0,"val":"conversations","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/proposals/settle","type":1,"val":"conversationId","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/proposals/settle","type":0,"val":"messages","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/proposals/settle","type":1,"val":"messageId","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/proposals/settle","type":0,"val":"proposals","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/proposals/settle","type":0,"val":"settle","end":""}],
     types: placeholder as Registry['assistant.proposals.settle']['types'],
   },
+  'assistant.actions.accept': {
+    methods: ["POST"],
+    pattern: '/assistant/conversations/:conversationId/messages/:messageId/actions/:index/accept',
+    tokens: [{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/accept","type":0,"val":"assistant","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/accept","type":0,"val":"conversations","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/accept","type":1,"val":"conversationId","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/accept","type":0,"val":"messages","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/accept","type":1,"val":"messageId","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/accept","type":0,"val":"actions","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/accept","type":1,"val":"index","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/accept","type":0,"val":"accept","end":""}],
+    types: placeholder as Registry['assistant.actions.accept']['types'],
+  },
+  'assistant.actions.reject': {
+    methods: ["POST"],
+    pattern: '/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject',
+    tokens: [{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject","type":0,"val":"assistant","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject","type":0,"val":"conversations","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject","type":1,"val":"conversationId","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject","type":0,"val":"messages","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject","type":1,"val":"messageId","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject","type":0,"val":"actions","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject","type":1,"val":"index","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject","type":0,"val":"reject","end":""}],
+    types: placeholder as Registry['assistant.actions.reject']['types'],
+  },
   'architectures.assistant.messages.store': {
     methods: ["POST"],
     pattern: '/architectures/:id/assistant/conversations/:conversationId/messages',

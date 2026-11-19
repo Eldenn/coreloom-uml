@@ -94,3 +94,50 @@ export type StoredProposals = {
   /** How many rules the owner added, once settled. */
   added: number | null
 }
+
+/** What an assistant action targets or created, and the pages a message can be written from. */
+export const AssistantTargetKind = {
+  Project: 'project',
+  Architecture: 'architecture',
+  AgentConfig: 'agent-config',
+} as const
+export type AssistantTargetKind = (typeof AssistantTargetKind)[keyof typeof AssistantTargetKind]
+export const ASSISTANT_TARGET_KINDS = Object.values(AssistantTargetKind)
+
+export const ActionStatus = {
+  Pending: 'pending',
+  Accepted: 'accepted',
+  Rejected: 'rejected',
+  Failed: 'failed',
+} as const
+export type ActionStatus = (typeof ActionStatus)[keyof typeof ActionStatus]
+
+/** Why an accepted action could not be applied. */
+export const ActionFailure = {
+  /** Its target is gone, or is not the caller's. */
+  NotFound: 'not_found',
+  /** Its input no longer passes the checks of the route it goes through. */
+  Invalid: 'invalid',
+  Conflict: 'conflict',
+} as const
+export type ActionFailure = (typeof ActionFailure)[keyof typeof ActionFailure]
+
+/**
+ * A change the assistant proposed on a project, an architecture or agent conventions, as stored
+ * in `assistant_messages.actions`: nothing is written before the owner accepts it. `subject` is
+ * the display name of what it targeted when proposed (null for a creation).
+ */
+export type StoredAction = {
+  name: string
+  input: Record<string, unknown>
+  subject: string | null
+  destructive: boolean
+  status: ActionStatus
+  /** What an accepted action created or changed. */
+  result: { kind: AssistantTargetKind; id: number } | null
+  failure: ActionFailure | null
+}
+
+/** Where a plain message goes instead when the model hands it over (a route tool). */
+export const HandoffKind = { Diagrams: 'diagrams', Web: 'web' } as const
+export type HandoffKind = (typeof HandoffKind)[keyof typeof HandoffKind]

@@ -1,7 +1,9 @@
 // One conversation of the assistant: what is sent with a message about the page's architecture
 // (the views, their cost), the messages, and the prompt with what the message is about. A message
 // about an architecture goes with its views, one "From the web" runs a research and stores the
-// rules proposed, any other is a plain question.
+// rules proposed, any other is a plain message. The server may hand a plain message over (to an
+// architecture's diagrams, to a web research): it is then sent again that way, with no new input,
+// which "Auto" relies on.
 import { Link } from '@tanstack/react-router'
 import * as React from 'react'
 
@@ -22,6 +24,7 @@ import { toast } from '@/components/ui/sonner'
 import { Spinner } from '@/components/ui/spinner'
 import type { ArchitectureDetail } from '@/lib/architectures'
 import {
+  type AssistantHandoff,
   type AutosaveControl,
   budgetLevel,
   useAskAssistant,
@@ -60,11 +63,17 @@ function useViews(workspace: Workspace | null, subject: Subject) {
   const [picked, setPicked] = React.useState<number[] | null>(null)
   const here =
     workspace !== null && architectureOf(subject) === workspace.architecture.id ? workspace : null
-  const selection: ViewSelection = here
-    ? { currentDiagramId: here.currentDiagramId, ...(picked ? { diagramIds: picked } : {}) }
-    : { currentDiagramId: null }
+  const onPage = (page: Workspace): ViewSelection => ({
+    currentDiagramId: page.currentDiagramId,
+    ...(picked ? { diagramIds: picked } : {}),
+  })
   return {
-    selection,
+    selection: here ? onPage(here) : { currentDiagramId: null },
+    /** The views of a message the assistant sends to an architecture by itself. */
+    selectionOf: (architectureId: number): ViewSelection =>
+      workspace?.architecture.id === architectureId
+        ? onPage(workspace)
+        : { currentDiagramId: null },
     versions: here ? here.architecture.diagrams.map((d) => d.version) : [],
     /** What the picker above the messages shows; `null` away from the architecture's page. */
     picker: here && {
@@ -108,6 +117,8 @@ export function Conversation({
     workspace && { architectureId: workspace.architecture.id, autosave: workspace.autosave },
   )
   const [draft, setDraft] = React.useState('')
+  /** A message the server handed over, from its answer until it was sent again that way. */
+  const [handed, setHanded] = React.useState<Handed | null>(null)
 
   const messages = detail.data?.messages ?? []
   const { budget, askError } = watched(fromCode, context.data, ask.error)
@@ -118,23 +129,39 @@ export function Conversation({
     const restore = () => {
       setDraft((now) => (now === '' ? text : now))
     }
-    if (subject.mode === 'web') {
-      void web.send(provider, text).then((stored) => {
+    const research = (configId?: number) =>
+      web.send(provider, text, configId).then((stored) => {
         if (!stored) restore()
       })
+    if (subject.mode === 'web') {
+      void research()
       return
     }
-    ask.mutate(
-      {
+    // A promise, not callbacks: a handed-over message is sent again even once the panel closed,
+    // since the server stored nothing of it. Sent once: a failure waits for the owner.
+    void ask
+      .mutateAsync({
         provider,
         message: text,
         architectureId: architectureOf(subject),
         ...views.selection,
         ...subject.code.sent,
-      },
-      { onError: restore },
-    )
+        ...(subject.mode === 'auto' ? { auto: true, page: subject.page } : {}),
+        onHandoff: (handoff) => {
+          setHanded({ handoff, message: text })
+        },
+        viewsOf: views.selectionOf,
+      })
+      .then(({ handoff }) =>
+        handoff?.kind === 'web' ? research(handoff.agentConfigId) : undefined,
+      )
+      // Told by `ask.error`.
+      .catch(restore)
+      .finally(() => {
+        setHanded(null)
+      })
   }
+  const pending = pendingOf(subject, ask, web, handed)
 
   return (
     <>
@@ -143,10 +170,24 @@ export function Conversation({
         conversationId={conversationId}
         messages={messages}
         loaded={detail.isSuccess}
-        asking={ask.isPending ? ask.variables.message : web.request}
-        waiting={ask.isPending || proceed.isPending}
+        asking={pending.text}
+        waiting={pending.typing || proceed.isPending}
         progress={
-          <WebProgress step={web.step} model={provider?.model} configId={subject.configId} />
+          <>
+            {pending.stage !== null && (
+              <Stage
+                stage={pending.stage}
+                title={
+                  subject.architectures.find((a) => a.id === pending.stage?.architectureId)?.title
+                }
+              />
+            )}
+            <WebProgress
+              step={pending.webStep}
+              model={provider?.model}
+              configId={pending.configId}
+            />
+          </>
         }
         pageArchitectureId={workspace ? workspace.architecture.id : null}
         changes={changes}
@@ -165,6 +206,7 @@ export function Conversation({
         fullness={fullness(budget, messages.length, askError)}
         ask={ask}
         web={web}
+        handing={handed !== null}
         proceed={proceed}
         onContinue={() => {
           if (!provider) return
@@ -193,6 +235,7 @@ function Composer({
   fullness: { full, tooLarge },
   ask,
   web,
+  handing,
   proceed,
   onContinue,
   onSend,
@@ -205,12 +248,14 @@ function Composer({
   fullness: ReturnType<typeof fullness>
   ask: ReturnType<typeof useAskAssistant>
   web: ReturnType<typeof useWebRequest>
+  /** A handed-over message is on its way to being sent again. */
+  handing: boolean
   proceed: ReturnType<typeof useContinueConversation>
   onContinue: () => void
   onSend: (text: string) => void
 }) {
   const t = useT().assistant
-  const sending = ask.isPending || web.step !== null
+  const sending = ask.isPending || web.step !== null || handing
   /** "From the web" with no agent conventions to add the rules to. */
   const noTarget = subject.mode === 'web' && subject.configId === null
   return (
@@ -226,7 +271,7 @@ function Composer({
         onContinue={onContinue}
       />
       {web.error !== null && <ProposalsFailed error={web.error} />}
-      {subject.webOffered && subject.mode !== 'web' && containsWebAddress(draft) && (
+      {subject.webOffered && manual(subject) && containsWebAddress(draft) && (
         <p className="m-0 flex flex-wrap items-center gap-x-2 text-[12px] text-muted-foreground">
           {t.addressFound}
           <Button
@@ -261,10 +306,72 @@ function Composer({
   )
 }
 
+/** Neither "From the web" nor "Auto", which reads a web page by itself when one is named. */
+function manual(subject: Subject) {
+  return subject.mode !== 'web' && subject.mode !== 'auto'
+}
+
 function placeholder(t: ReturnType<typeof useT>['assistant'], subject: Subject) {
   if (subject.mode === 'web') return t.webPlaceholder
+  if (subject.mode === 'auto') return t.autoPlaceholder
   if (subject.mode === 'none') return t.plainPlaceholder
   return subject.code.sent === undefined ? t.placeholder : t.codePlaceholder
+}
+
+interface Handed {
+  handoff: AssistantHandoff
+  message: string
+}
+
+/**
+ * What "Auto" is doing with the message being sent: deciding what it needs (`architectureId`
+ * undefined), then working on the diagrams of the architecture it chose. `null` when the typing
+ * indicator or the research's own steps say it.
+ */
+function stageOf(auto: boolean, asking: boolean, handed: Handed | null) {
+  if (!asking) return null
+  if (handed?.handoff.kind === 'diagrams') return { architectureId: handed.handoff.architectureId }
+  return auto && handed === null ? { architectureId: undefined } : null
+}
+
+/**
+ * What shows while a message is on its way: its text, then the typing indicator, or what "Auto" is
+ * doing, or the steps of a research. One of the three at a time, with no gap between the server's
+ * handoff and the call that follows it.
+ */
+function pendingOf(
+  subject: Subject,
+  ask: ReturnType<typeof useAskAssistant>,
+  web: ReturnType<typeof useWebRequest>,
+  handed: Handed | null,
+) {
+  const toWeb = handed?.handoff.kind === 'web' ? handed.handoff.agentConfigId : null
+  // The research's first step shows from the handoff on, before its own call starts.
+  const webStep = web.step ?? (toWeb === null ? null : 'researching')
+  const stage = stageOf(subject.mode === 'auto', ask.isPending, handed)
+  return {
+    text: ask.isPending ? ask.variables.message : (web.request ?? handed?.message ?? null),
+    typing: ask.isPending && stage === null && webStep === null,
+    stage,
+    webStep,
+    configId: toWeb ?? subject.configId,
+  }
+}
+
+function Stage({
+  stage,
+  title,
+}: {
+  stage: NonNullable<ReturnType<typeof stageOf>>
+  title: string | undefined
+}) {
+  const t = useT().assistant
+  return (
+    <p role="status" className="m-0 mr-6 flex items-center gap-2 text-[13px] text-muted-foreground">
+      <Spinner />
+      {stage.architectureId === undefined ? t.deciding : t.workingOnDiagrams(title ?? null)}
+    </p>
+  )
 }
 
 /** Under the message being sent: which of the two steps runs, and what the research has read. */

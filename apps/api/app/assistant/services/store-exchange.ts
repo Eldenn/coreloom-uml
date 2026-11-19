@@ -3,6 +3,7 @@ import { DateTime } from 'luxon'
 import {
   ASSISTANT_TITLE_FROM_MESSAGE,
   AssistantRole,
+  type StoredAction,
   type StoredChange,
   type StoredProposals,
 } from '#app/assistant/constants/assistant'
@@ -21,6 +22,7 @@ export function storeExchange(
     content: string
     changes?: StoredChange[]
     proposals?: StoredProposals
+    actions?: StoredAction[]
   },
 ) {
   const { architectureId } = answer
@@ -42,6 +44,7 @@ export function storeExchange(
         content: answer.content,
         changes: answer.changes?.length ? answer.changes : null,
         proposals: answer.proposals ?? null,
+        actions: answer.actions?.length ? answer.actions : null,
       },
       { client: trx },
     )

@@ -1,11 +1,13 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import db from '@adonisjs/lucid/services/db'
-import { ArchitectureVisibility } from '#app/architectures/constants/visibility'
 import Architecture from '#app/architectures/models/architecture'
 import {
   serializeArchitectureDetail,
   serializeArchitectureSummary,
 } from '#app/architectures/serializers/architecture-serializer'
+import {
+  createArchitecture,
+  updateArchitecture,
+} from '#app/architectures/services/architecture-writes'
 import {
   ARCHITECTURE_NOT_FOUND,
   findOwnedArchitecture,
@@ -15,8 +17,7 @@ import {
   listArchitecturesInput,
   updateArchitectureInput,
 } from '#app/architectures/validators/architectures-input'
-import { DEFAULT_DIAGRAM } from '#app/diagrams/constants/diagram'
-import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
+import { PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
 import { likePattern } from '#app/shared/database/like-pattern'
 import { paginate } from '#app/shared/pagination/paginate'
 
@@ -43,33 +44,9 @@ export default class ArchitecturesController {
   }
 
   async store({ request, auth, response }: HttpContext) {
-    const { projectId, title, description, diagram } =
-      await request.validateUsing(createArchitectureInput)
-    const user = auth.getUserOrFail()
-
-    const project = projectId ? await findOwnedProject(projectId, user) : null
-    if (projectId && !project) return response.notFound(PROJECT_NOT_FOUND)
-
-    const architecture = await db.transaction(async (trx) => {
-      const created = await Architecture.create(
-        {
-          userId: user.id,
-          projectId: project?.id ?? null,
-          title,
-          description: description ?? null,
-          visibility: ArchitectureVisibility.Private,
-        },
-        { client: trx },
-      )
-      await created.related('diagrams').create({
-        title: diagram?.title ?? DEFAULT_DIAGRAM.title,
-        kind: diagram?.kind ?? DEFAULT_DIAGRAM.kind,
-        content: null,
-        position: 0,
-      })
-      await created.load('diagrams')
-      return created
-    })
+    const fields = await request.validateUsing(createArchitectureInput)
+    const architecture = await createArchitecture(auth.getUserOrFail(), fields)
+    if (!architecture) return response.notFound(PROJECT_NOT_FOUND)
 
     return response.created({ architecture: serializeArchitectureDetail(architecture) })
   }
@@ -88,15 +65,9 @@ export default class ArchitecturesController {
     const architecture = await findOwnedArchitecture(params.id, user, { withDiagrams: true })
     if (!architecture) return response.notFound(ARCHITECTURE_NOT_FOUND)
 
-    const { projectId, title, description } = await request.validateUsing(updateArchitectureInput)
-    if (projectId !== undefined && projectId !== architecture.projectId) {
-      if (projectId !== null && !(await findOwnedProject(projectId, user)))
-        return response.notFound(PROJECT_NOT_FOUND)
-      architecture.projectId = projectId
-    }
-    if (title !== undefined) architecture.title = title
-    if (description !== undefined) architecture.description = description
-    await architecture.save()
+    const fields = await request.validateUsing(updateArchitectureInput)
+    if (!(await updateArchitecture(architecture, user, fields)))
+      return response.notFound(PROJECT_NOT_FOUND)
 
     return response.ok({ architecture: serializeArchitectureDetail(architecture) })
   }

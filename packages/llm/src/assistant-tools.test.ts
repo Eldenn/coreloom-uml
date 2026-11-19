@@ -1,0 +1,253 @@
+import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
+import { AssistantContextFull } from './assistant.ts'
+import {
+  ASSISTANT_PROPOSALS_MAX,
+  ASSISTANT_READ_RESULT_MAX_LENGTH,
+  type AssistantTool,
+  AssistantToolKind,
+  runAssistantTools,
+} from './assistant-tools.ts'
+import { LlmCallError } from './failure.ts'
+import { type ModelStep, toolCallingModel } from './testing/mock-model.ts'
+
+const call = (tool: string, input: unknown): ModelStep => ({ calls: [{ tool, input }] })
+
+function fakeTools() {
+  const ran: string[] = []
+  const tools: AssistantTool[] = [
+    {
+      name: 'list_projects',
+      description: 'Lists the projects.',
+      inputSchema: z.object({}),
+      kind: AssistantToolKind.Read,
+      run: async () => {
+        ran.push('list_projects')
+        return [{ id: 7, name: 'Shop' }]
+      },
+    },
+    {
+      name: 'rename_project',
+      description: 'Renames a project.',
+      inputSchema: z.object({ projectId: z.number().int().positive(), name: z.string().min(1) }),
+      kind: AssistantToolKind.Write,
+      run: async (input) => {
+        ran.push(`record rename_project ${JSON.stringify(input)}`)
+        return (input as { projectId: number }).projectId === 404 ? 'No project has this id.' : null
+      },
+    },
+    {
+      name: 'work_on_diagrams',
+      description: 'Hands over to the diagram assistant.',
+      inputSchema: z.object({ architectureId: z.number().int().positive() }),
+      kind: AssistantToolKind.Route,
+      run: async (input) => {
+        ran.push('route work_on_diagrams')
+        return (input as { architectureId: number }).architectureId === 404
+          ? 'No architecture has this id.'
+          : null
+      },
+    },
+  ]
+  return { tools, ran }
+}
+
+const base = { history: [], message: 'Rename Shop', locale: 'en' as const, page: null }
+
+function toolResults(model: ReturnType<typeof toolCallingModel>): string {
+  return JSON.stringify(
+    model.doGenerateCalls.flatMap((item) => item.prompt.filter((m) => m.role === 'tool')),
+  )
+}
+
+describe('runAssistantTools', () => {
+  it('reads with a read tool, then replies', async () => {
+    const { tools, ran } = fakeTools()
+    const model = toolCallingModel([call('list_projects', {}), { text: '  You have Shop.  ' }])
+
+    const result = await runAssistantTools(model, { ...base, tools })
+
+    expect(result).toEqual({ reply: 'You have Shop.', proposed: [], route: null })
+    expect(ran).toEqual(['list_projects'])
+    expect(toolResults(model)).toContain('Shop')
+  })
+
+  it('records a write as a proposal and tells the model it awaits the owner', async () => {
+    const { tools, ran } = fakeTools()
+    const model = toolCallingModel([
+      call('rename_project', { projectId: 7, name: 'Storefront' }),
+      { text: 'I proposed the new name.' },
+    ])
+
+    const result = await runAssistantTools(model, { ...base, tools })
+
+    expect(result.proposed).toEqual([
+      { name: 'rename_project', input: { projectId: 7, name: 'Storefront' } },
+    ])
+    expect(result.reply).toBe('I proposed the new name.')
+    expect(ran).toEqual(['record rename_project {"projectId":7,"name":"Storefront"}'])
+    expect(toolResults(model)).toContain('approval')
+  })
+
+  it('keeps nothing of a write the caller refuses, and tells the model why', async () => {
+    const { tools } = fakeTools()
+    const model = toolCallingModel([
+      call('rename_project', { projectId: 404, name: 'X' }),
+      { text: 'That project does not exist.' },
+    ])
+
+    const result = await runAssistantTools(model, { ...base, tools })
+
+    expect(result.proposed).toEqual([])
+    expect(toolResults(model)).toContain('No project has this id.')
+  })
+
+  it('caps the proposals of one message', async () => {
+    const { tools } = fakeTools()
+    const calls = Array.from({ length: ASSISTANT_PROPOSALS_MAX + 2 }, (_, n) => ({
+      tool: 'rename_project',
+      input: { projectId: n + 1, name: `P${n}` },
+    }))
+    const model = toolCallingModel([{ calls }, { text: 'Done.' }])
+
+    const result = await runAssistantTools(model, { ...base, tools })
+
+    expect(result.proposed).toHaveLength(ASSISTANT_PROPOSALS_MAX)
+    expect(toolResults(model)).toContain('Too many proposals')
+  })
+
+  it('ends at a route tool and drops the proposals made before it', async () => {
+    const { tools } = fakeTools()
+    const model = toolCallingModel([
+      call('rename_project', { projectId: 7, name: 'Storefront' }),
+      call('work_on_diagrams', { architectureId: 3 }),
+      { text: 'never reached' },
+    ])
+
+    const result = await runAssistantTools(model, { ...base, tools })
+
+    expect(result).toEqual({
+      reply: '',
+      proposed: [],
+      route: { name: 'work_on_diagrams', input: { architectureId: 3 } },
+    })
+    expect(model.doGenerateCalls).toHaveLength(2)
+  })
+
+  it('goes on after a route the caller refuses', async () => {
+    const { tools } = fakeTools()
+    const model = toolCallingModel([
+      call('work_on_diagrams', { architectureId: 404 }),
+      { text: 'No such architecture.' },
+    ])
+
+    const result = await runAssistantTools(model, { ...base, tools })
+
+    expect(result).toEqual({ reply: 'No such architecture.', proposed: [], route: null })
+    expect(toolResults(model)).toContain('No architecture has this id.')
+  })
+
+  it('answers the proposals collected when the time runs out', async () => {
+    const { tools } = fakeTools()
+    const model = toolCallingModel([
+      call('rename_project', { projectId: 7, name: 'Storefront' }),
+      { hang: true },
+    ])
+
+    const result = await runAssistantTools(model, { ...base, tools }, { timeoutMs: 100 })
+
+    expect(result).toEqual({
+      reply: '',
+      proposed: [{ name: 'rename_project', input: { projectId: 7, name: 'Storefront' } }],
+      route: null,
+    })
+  })
+
+  it('fails with timeout when the time runs out with nothing proposed', async () => {
+    const { tools } = fakeTools()
+    const model = toolCallingModel([{ hang: true }])
+
+    const failed = await runAssistantTools(model, { ...base, tools }, { timeoutMs: 50 }).catch(
+      (error: unknown) => error,
+    )
+
+    expect(failed).toBeInstanceOf(LlmCallError)
+    expect((failed as LlmCallError).reason).toBe('timeout')
+  })
+
+  it('the last step may only answer, so reads alone never use up the steps', async () => {
+    const model = toolCallingModel([call('list_projects', {})])
+    const { tools } = fakeTools()
+    await runAssistantTools(model, { ...base, tools }, { maxSteps: 3 }).catch(() => null)
+
+    expect(model.doGenerateCalls.map((item) => item.toolChoice?.type)).toEqual([
+      'auto',
+      'auto',
+      'none',
+    ])
+  })
+
+  it('survives an input the schema refuses and records nothing', async () => {
+    const { tools, ran } = fakeTools()
+    const model = toolCallingModel([
+      call('rename_project', { projectId: 'seven', name: '' }),
+      { text: 'Sorry.' },
+    ])
+
+    const result = await runAssistantTools(model, { ...base, tools })
+
+    expect(result).toEqual({ reply: 'Sorry.', proposed: [], route: null })
+    expect(ran).toEqual([])
+  })
+
+  it('cuts a long read result', async () => {
+    const tools: AssistantTool[] = [
+      {
+        name: 'list_projects',
+        description: 'Lists the projects.',
+        inputSchema: z.object({}),
+        kind: AssistantToolKind.Read,
+        run: async () => `${'a'.repeat(ASSISTANT_READ_RESULT_MAX_LENGTH * 2)}THE-END`,
+      },
+    ]
+    const model = toolCallingModel([call('list_projects', {}), { text: 'ok' }])
+
+    await runAssistantTools(model, { ...base, tools })
+
+    expect(toolResults(model)).not.toContain('THE-END')
+  })
+
+  it('puts the page the owner is on in the prompt', async () => {
+    const { tools } = fakeTools()
+    const model = toolCallingModel([{ text: 'ok' }])
+
+    await runAssistantTools(model, {
+      ...base,
+      tools,
+      page: { kind: 'project', id: 7, name: 'Shop' },
+    })
+
+    const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt)
+    expect(prompt).toContain('project')
+    expect(prompt).toContain('Shop')
+    expect(model.doGenerateCalls[0]?.tools?.map((tool) => tool.name).sort()).toEqual([
+      'list_projects',
+      'rename_project',
+      'work_on_diagrams',
+    ])
+  })
+
+  it('refuses a history that does not fit, without a call', async () => {
+    const { tools } = fakeTools()
+    const model = toolCallingModel([{ text: 'never' }])
+
+    await expect(
+      runAssistantTools(
+        model,
+        { ...base, tools, history: [{ role: 'user', text: 'x'.repeat(200) }] },
+        { maxInputTokens: 10 },
+      ),
+    ).rejects.toBeInstanceOf(AssistantContextFull)
+    expect(model.doGenerateCalls).toHaveLength(0)
+  })
+})

@@ -9,12 +9,16 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 
+import { agentConfigKeys } from '@/lib/agent-configs'
 import { architectureKeys } from '@/lib/architectures'
+import { actionDomain } from '@/lib/assistant-actions'
 import type { ChangeAction } from '@/lib/assistant-changes'
-import { client } from '@/lib/client'
+import type { AssistantPage } from '@/lib/assistant-subject'
+import { client, TuyauError } from '@/lib/client'
 import { MODEL_CALL, type StoredProvider } from '@/lib/llm-provider'
 import { callBody } from '@/lib/llm-provider-body'
 import { useLocale } from '@/lib/locale'
+import { projectKeys } from '@/lib/projects'
 
 export type { AutosaveControl, BudgetLevel, ChangeAction } from '@/lib/assistant-changes'
 export { applyChange, budgetLevel, viewTooLarge } from '@/lib/assistant-changes'
@@ -32,6 +36,12 @@ export type ConversationDetail = Awaited<ReturnType<typeof api.conversations.sho
 export type AssistantMessage = ConversationDetail['messages'][number]
 export type ProposedChange = NonNullable<AssistantMessage['changes']>[number]
 export type MessageProposals = NonNullable<AssistantMessage['proposals']>
+/** A change to the account's work the assistant proposed, for the owner to accept or reject. */
+export type AssistantAction = NonNullable<AssistantMessage['actions']>[number]
+/** Where the server sends a plain message instead of answering it. */
+export type AssistantHandoff = NonNullable<
+  Awaited<ReturnType<typeof api.messages.store>>['handoff']
+>
 
 export const assistantKeys = {
   all: ['assistant'] as const,
@@ -109,15 +119,24 @@ export function useDeleteConversation() {
  * `{ error: { code: 'context_full' } }` when the conversation must be continued from a summary.
  * About an architecture (`architectureId`), it goes with the views of the selection, or asks for a
  * diagram of a code map; about nothing (`null`), it is a plain message.
+ *
+ * The server may answer a plain message with a handoff instead of an exchange (it stored nothing):
+ * `onHandoff` hears of it first, then one about an architecture's diagrams is sent again here, as a
+ * message about that architecture with the views `viewsOf` gives, in the same pending call. One
+ * for a web research comes back as `handoff` with no message: the caller runs the research.
  */
 export function useAskAssistant(conversationId: number) {
   const { locale } = useLocale()
   const invalidate = useInvalidateAssistant()
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       provider,
       message,
       architectureId,
+      auto,
+      page,
+      onHandoff,
+      viewsOf,
       ...selection
     }: Partial<ViewSelection> & {
       provider: StoredProvider
@@ -125,24 +144,42 @@ export function useAskAssistant(conversationId: number) {
       architectureId: number | null
       /** A ready code map of the architecture's project: the message asks for a diagram of it. */
       codeMapId?: number
-    }): Promise<{ messages: AssistantMessage[] }> =>
-      architectureId === null
-        ? api.messages.store({
-            params: { conversationId },
-            body: { ...callBody(provider), message, locale },
-            ...MODEL_CALL,
-          })
-        : about.messages.store({
-            params: { id: architectureId, conversationId },
-            body: {
-              ...callBody(provider),
-              message,
-              currentDiagramId: null,
-              ...selection,
-              locale,
-            },
-            ...MODEL_CALL,
-          }),
+      /** With a plain message: the assistant decides what it needs, and may hand it over. */
+      auto?: boolean
+      /** With `auto`: where the owner is, so that "here" means something. */
+      page?: AssistantPage
+      onHandoff?: (handoff: AssistantHandoff) => void
+      viewsOf?: (architectureId: number) => ViewSelection
+    }): Promise<{ messages: AssistantMessage[]; handoff: AssistantHandoff | null }> => {
+      const aboutArchitecture = async (id: number, views: Partial<ViewSelection>) => {
+        const { messages } = await about.messages.store({
+          params: { id, conversationId },
+          body: { ...callBody(provider), message, currentDiagramId: null, ...views, locale },
+          ...MODEL_CALL,
+        })
+        return messages
+      }
+      if (architectureId !== null)
+        return { messages: await aboutArchitecture(architectureId, selection), handoff: null }
+      const plain = await api.messages.store({
+        params: { conversationId },
+        body: {
+          ...callBody(provider),
+          message,
+          locale,
+          ...(auto ? { auto: true, ...(page ? { page } : {}) } : {}),
+        },
+        ...MODEL_CALL,
+      })
+      if (plain.handoff === null) return plain
+      onHandoff?.(plain.handoff)
+      if (plain.handoff.kind === 'web') return plain
+      const { architectureId: handedTo } = plain.handoff
+      return {
+        messages: await aboutArchitecture(handedTo, viewsOf?.(handedTo) ?? {}),
+        handoff: plain.handoff,
+      }
+    },
     onSuccess: invalidate,
   })
 }
@@ -271,5 +308,68 @@ export function useChangeAction() {
         // A view drawn from a code map's process brings links to the code with it.
         queryClient.invalidateQueries({ queryKey: ['code-maps'] }),
       ]),
+  })
+}
+
+/** The action a refused answer (409, 422) carries: it tells its state as an accepted one does. */
+function answeredAction(error: unknown): AssistantAction | undefined {
+  if (!(error instanceof TuyauError)) return undefined
+  return (error.response as { action?: AssistantAction } | undefined)?.action
+}
+
+/** What an accepted action changed: its domain, and the projects' count of architectures. */
+const ACTION_KEYS = {
+  project: [projectKeys.all],
+  architecture: [architectureKeys.all, projectKeys.all],
+  'agent-config': [agentConfigKeys.all],
+} as const
+
+/**
+ * Accepts or rejects an action a message proposed on the account's work: `{ action }`, or 409 /
+ * 422 with the action as it now stands (already answered, target gone, refused as invalid). The
+ * conversation shows the returned action either way, and what an accepted one changed is read
+ * again.
+ */
+export function useActionAnswer(conversationId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      messageId,
+      index,
+      answer,
+    }: {
+      messageId: number
+      index: number
+      answer: 'accept' | 'reject'
+    }) => api.actions[answer]({ params: { conversationId, messageId, index } }),
+    onSettled: (data, error, { messageId }) => {
+      const action = data?.action ?? answeredAction(error)
+      // Nothing came back (the action is unknown, the call failed): the server's copy decides.
+      if (!action)
+        return queryClient.invalidateQueries({
+          queryKey: assistantKeys.conversation(conversationId),
+        })
+      queryClient.setQueryData<ConversationDetail>(
+        assistantKeys.conversation(conversationId),
+        (detail) =>
+          detail && {
+            ...detail,
+            messages: detail.messages.map((message) =>
+              message.id === messageId
+                ? {
+                    ...message,
+                    actions:
+                      message.actions?.map((a) => (a.index === action.index ? action : a)) ?? null,
+                  }
+                : message,
+            ),
+          },
+      )
+      const domain = action.status === 'accepted' ? actionDomain(action.name) : null
+      if (domain === null) return undefined
+      return Promise.all(
+        ACTION_KEYS[domain].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      )
+    },
   })
 }

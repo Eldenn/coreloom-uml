@@ -136,9 +136,12 @@ export function useImportAgentFile(configId: number) {
       content,
       origin,
       conversation,
+      target = configId,
     }: {
       provider: StoredProvider
       content: string
+      /** Other agent conventions than the hook's, when the caller learns them late. */
+      target?: number
       /** `research` when the text is the findings of a web research. */
       origin?: 'file' | 'research'
       /**
@@ -148,7 +151,7 @@ export function useImportAgentFile(configId: number) {
       conversation?: { id: number; request: string; sources: ResearchSource[] }
     }) =>
       client.api.agentConfigs.imports.store({
-        params: { id: configId },
+        params: { id: target },
         body: { ...callBody(provider), content, origin, conversation },
         ...MODEL_CALL,
       }),
@@ -165,9 +168,18 @@ export type ResearchSource = Awaited<
  */
 export function useAgentResearch(configId: number) {
   return useMutation({
-    mutationFn: ({ provider, request }: { provider: StoredProvider; request: string }) =>
+    mutationFn: ({
+      provider,
+      request,
+      target = configId,
+    }: {
+      provider: StoredProvider
+      request: string
+      /** Other agent conventions than the hook's, when the caller learns them late. */
+      target?: number
+    }) =>
       client.api.agentConfigs.research.store({
-        params: { id: configId },
+        params: { id: target },
         body: { ...callBody(provider), request },
         ...MODEL_CALL,
       }),

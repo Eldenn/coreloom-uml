@@ -32,6 +32,20 @@ export {
   summarizeConversation,
 } from './assistant.ts'
 export {
+  ASSISTANT_PROPOSALS_MAX,
+  ASSISTANT_READ_RESULT_MAX_LENGTH,
+  ASSISTANT_TOOLS_INSTRUCTIONS,
+  ASSISTANT_TOOLS_MAX_STEPS,
+  ASSISTANT_TOOLS_TIMEOUT_MS,
+  type AssistantPage,
+  type AssistantTool,
+  type AssistantToolCall,
+  AssistantToolKind,
+  type AssistantToolsInput,
+  type AssistantToolsResult,
+  runAssistantTools,
+} from './assistant-tools.ts'
+export {
   CLAUDE_CODE_TIMEOUT_MS,
   type ClaudeCodeCredential,
   type ClaudeRun,

@@ -212,6 +212,10 @@ export interface ApiDefinition {
     proposals: {
       settle: typeof routes['assistant.proposals.settle']
     }
+    actions: {
+      accept: typeof routes['assistant.actions.accept']
+      reject: typeof routes['assistant.actions.reject']
+    }
   }
   uml: {
     validate: typeof routes['uml.validate']

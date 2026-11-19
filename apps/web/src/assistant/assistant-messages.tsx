@@ -1,8 +1,9 @@
-// The messages of one assistant conversation: the owner's, the assistant's with the view changes
-// or the rules it proposed, and a summary carried over from an earlier conversation.
+// The messages of one assistant conversation: the owner's, the assistant's with the view changes,
+// the rules or the actions it proposed, and a summary carried over from an earlier conversation.
 import { Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 
+import { AssistantActionCard } from '@/assistant/assistant-action-card'
 import { AssistantChangeCard } from '@/assistant/assistant-change-card'
 import { MessageProposals } from '@/assistant/assistant-proposals'
 import { Button } from '@/components/ui/button'
@@ -138,6 +139,14 @@ function Message({
           proposals={message.proposals}
         />
       )}
+      {message.actions?.map((action) => (
+        <AssistantActionCard
+          key={action.index}
+          conversationId={conversationId}
+          messageId={message.id}
+          action={action}
+        />
+      ))}
       {changes.map((change) => (
         <AssistantChangeCard
           key={change.index}
