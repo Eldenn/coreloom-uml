@@ -7,6 +7,7 @@ import { APICallError, answeringModel, failingModel } from '@coreloom-uml/llm/te
 import { test } from '@japa/runner'
 import type { TestContext } from '@japa/runner/core'
 import Architecture from '#app/architectures/models/architecture'
+import AssistantConversation from '#app/assistant/models/assistant-conversation'
 import AssistantMessage from '#app/assistant/models/assistant-message'
 import DiagramCodeLink from '#app/code-maps/models/diagram-code-link'
 import type {
@@ -181,8 +182,11 @@ test.group('Code maps - process proposals', (group) => {
     assert.equal(body.architectureId, architecture.id)
     assert.equal(body.conversation.title, 'Update an architecture')
     assert.deepEqual(
-      body.messages.map((message) => message.role),
-      ['user', 'assistant'],
+      body.messages.map((message) => [message.role, message.architectureId]),
+      [
+        ['user', architecture.id],
+        ['assistant', architecture.id],
+      ],
     )
     assert.include(body.messages[0]?.content, '`ArchitecturesController.update` (route)')
     const change = body.messages[1]?.changes?.[0]
@@ -272,10 +276,8 @@ test.group('Code maps - process proposals', (group) => {
     )
     const response = await propose(client, user, map.id, { architectureId: architecture.id })
     response.assertStatus(502)
-    const conversations = await AssistantMessage.query()
-      .join('assistant_conversations', 'assistant_conversations.id', 'conversation_id')
-      .where('assistant_conversations.architecture_id', architecture.id)
-    assert.lengthOf(conversations, 0)
+    assert.lengthOf(await AssistantMessage.query().where('architectureId', architecture.id), 0)
+    assert.lengthOf(await AssistantConversation.query().where('userId', user.id), 0)
   })
 
   test('refuses an unknown entry point, another project’s architecture or a stranger', async ({

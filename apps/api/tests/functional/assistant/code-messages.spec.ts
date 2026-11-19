@@ -124,7 +124,6 @@ async function setup({ codeMaps = true, inProject = true } = {}) {
     version: 1,
   })
   const conversation = await AssistantConversation.create({
-    architectureId: architecture.id,
     userId: user.id,
     title: '',
   })

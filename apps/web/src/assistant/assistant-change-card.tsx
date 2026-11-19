@@ -1,6 +1,8 @@
 // One view change the assistant proposed: what it does, its diff in the view's own text format,
-// and the owner's answer (accept or reject while pending, undo once accepted).
+// and the owner's answer (accept or reject while pending, undo once accepted). Away from its
+// architecture's page it links there; once that architecture is deleted it only tells what it was.
 import type { UmlSpec } from '@coreloom-uml/uml'
+import { Link } from '@tanstack/react-router'
 
 import { canWrite, type DiagramFormat, writeDiagram } from '@/components/diagram-editor'
 import { Badge } from '@/components/ui/badge'
@@ -31,10 +33,16 @@ function diffText(spec: UmlSpec | null, format: DiagramFormat | null): string {
 
 export function AssistantChangeCard({
   change,
+  architectureId,
+  here,
   busy,
   onAction,
 }: {
   change: ProposedChange
+  /** The architecture the change is for; `null` once it was deleted. */
+  architectureId: number | null
+  /** The panel is on that architecture's page: the workspace beside it shows the view. */
+  here: boolean
   /** Another action is on its way: the buttons wait. */
   busy: boolean
   onAction: (action: ChangeAction) => void
@@ -78,7 +86,20 @@ export function AssistantChangeCard({
       {change.status === 'stale' && (
         <p className="m-0 text-[13px] text-muted-foreground">{t.staleHint}</p>
       )}
-      {change.status === 'pending' && (
+      {architectureId === null && (
+        <p className="m-0 text-[13px] text-muted-foreground">{t.changeGone}</p>
+      )}
+      {architectureId !== null && !here && (
+        <Link
+          to="/architectures/$id"
+          params={{ id: architectureId }}
+          search={change.diagramId === null ? {} : { diagram: change.diagramId }}
+          className="w-fit text-[13px] text-primary-text underline underline-offset-2 outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+        >
+          {change.diagramId === null ? t.openArchitecture : t.openView}
+        </Link>
+      )}
+      {architectureId !== null && change.status === 'pending' && (
         <div className="flex gap-2">
           <Button
             size="sm"
@@ -102,7 +123,7 @@ export function AssistantChangeCard({
           </Button>
         </div>
       )}
-      {change.status === 'accepted' && (
+      {architectureId !== null && change.status === 'accepted' && (
         <Button
           size="sm"
           variant="outline"

@@ -1,4 +1,5 @@
 import type { UmlProblem, UmlSpec } from '@coreloom-uml/uml'
+import type { AgentImportOutput } from '#app/agent-configs/validators/agent-configs-output'
 import type { DiagramFormat, DiagramKind } from '#app/diagrams/constants/diagram'
 
 export const AssistantRole = {
@@ -62,3 +63,34 @@ export type StoredChange = {
 
 /** The languages the assistant replies in: the interface's. */
 export const ASSISTANT_LOCALES = ['en', 'fr'] as const
+
+export const ProposalsStatus = {
+  Pending: 'pending',
+  /** The owner added the rules they kept (`added`, possibly none). */
+  Settled: 'settled',
+} as const
+export type ProposalsStatus = (typeof ProposalsStatus)[keyof typeof ProposalsStatus]
+
+/** Most pages a research's proposals keep, and the longest address and title of one. */
+/** Above anything one research can propose: the count a settle may report. */
+export const PROPOSALS_ADDED_MAX = 1000
+export const PROPOSAL_SOURCES_MAX = 50
+export const PROPOSAL_SOURCE_URL_MAX_LENGTH = 2000
+export const PROPOSAL_SOURCE_TITLE_MAX_LENGTH = 300
+
+/**
+ * What a web research launched from the assistant proposed, as stored in
+ * `assistant_messages.proposals`: the rules and the addresses of the pages read, never a page
+ * or the findings.
+ */
+export type StoredProposals = {
+  agentConfigId: number
+  sources: { url: string; title: string | null }[]
+  /** The ready-made rules proposed, without the evidence an import answers them with. */
+  ready: Omit<AgentImportOutput['ready'][number], 'evidence'>[]
+  rules: AgentImportOutput['rules']
+  truncated: boolean
+  status: ProposalsStatus
+  /** How many rules the owner added, once settled. */
+  added: number | null
+}

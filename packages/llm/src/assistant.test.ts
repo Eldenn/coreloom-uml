@@ -10,6 +10,7 @@ import {
   askAssistant,
   assistantBudget,
   changeLine,
+  chatWithAssistant,
   summarizeConversation,
 } from './assistant.ts'
 import { LlmCallError } from './failure.ts'
@@ -252,6 +253,45 @@ describe('summarizeConversation', () => {
     const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt)
     expect(prompt).not.toContain('<view')
     expect(prompt).toContain('What is in this view?')
+  })
+})
+
+describe('chatWithAssistant', () => {
+  it('answers from the history, with no view and no tool, in the locale', async () => {
+    const model = answeringModel('  Pick an architecture first.  ')
+    const reply = await chatWithAssistant(model, {
+      history: source().history,
+      message: 'Can you draw my login flow?',
+      locale: 'fr',
+    })
+    expect(reply).toBe('Pick an architecture first.')
+    const call = model.doGenerateCalls[0]
+    const prompt = JSON.stringify(call?.prompt)
+    expect(prompt).toContain('What is in this view?')
+    expect(prompt).toContain('Can you draw my login flow?')
+    expect(prompt).toContain('French')
+    expect(prompt).toContain('From the web')
+    expect(prompt).not.toContain('<view')
+    expect(call?.tools ?? []).toHaveLength(0)
+  })
+
+  it('refuses a history that does not fit', async () => {
+    const model = answeringModel('never')
+    await expect(
+      chatWithAssistant(
+        model,
+        { history: [{ role: 'user', text: 'x'.repeat(2000) }], message: 'hi', locale: 'en' },
+        { maxInputTokens: 100 },
+      ),
+    ).rejects.toBeInstanceOf(AssistantContextFull)
+    expect(model.doGenerateCalls).toHaveLength(0)
+  })
+
+  it('reduces a failure to an LlmCallError', async () => {
+    const model = failingModel(new Error('boom'))
+    await expect(
+      chatWithAssistant(model, { history: [], message: 'hi', locale: 'en' }),
+    ).rejects.toBeInstanceOf(LlmCallError)
   })
 })
 

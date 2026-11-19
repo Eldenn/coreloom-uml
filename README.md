@@ -55,11 +55,18 @@ silently.
 - **Sharing.** An architecture is private by default. It can be made **public** (anyone with the
   link sees it, read-only) or **protected** (the link plus an access code the server generates when
   the visibility is set; regenerating it shuts out everyone who entered the old one).
-- **Workspace assistant.** The architecture editor has an assistant panel: conversations kept per
-  architecture, answered by the user's own model (API key or subscription), that read the
-  architecture's views and propose view changes shown as diffs to accept, reject or undo. A gauge
-  shows how full the context is, and a long conversation can continue in a new one from its
-  summary. It is behind the `diagram-assistant` feature flag, off by default.
+- **Workspace assistant.** An assistant panel answered by the user's own model (API key or
+  subscription). Conversations belong to the account (`/assistant/conversations`: list, create,
+  show, rename, delete, continue from a summary, a plain message, settle a research's proposals);
+  each message says which architecture it is about. A message about an architecture
+  (`POST /architectures/:id/assistant/conversations/:conversationId/messages`, with `…/context`
+  for the gauge) reads its views and proposes view changes shown as diffs to accept, reject or
+  undo, only through that architecture's routes. Deleting an architecture keeps the conversations,
+  without the diagrams of the changes proposed for it (a database trigger empties them). A web
+  research launched from the assistant (the panel's « From the web », which also needs
+  `web-research`) stores its request and proposals (rules and the addresses of the pages read,
+  never a quote of what was read) in the conversation. It is behind the `diagram-assistant` feature
+  flag, off by default; session only.
 - **MCP server.** `POST /mcp` is a Model Context Protocol endpoint (Streamable HTTP, stateless)
   for coding agents: with an account API key (`Authorization: Bearer clu_…`, the `read` ability
   is enough) an agent lists the account's projects and their diagrams, reads a diagram as Mermaid,
@@ -547,7 +554,9 @@ minute per user (`llmThrottle`).
   to `POST …/imports` with `origin: 'research'`, and the owner accepts the proposals as for a
   file. Two requests on purpose: each stays under 80 seconds, below what a proxy such as
   Cloudflare allows. The model's key never reaches the sandbox, the research gets nothing of the
-  configuration, and nothing is stored or logged but counts. While it runs, `GET /agent-configs/:id/research` answers the addresses read and the commands
+  configuration, and nothing is stored or logged but counts (a research launched from the
+  assistant passes `conversation` to the import, which keeps the request, the rules proposed and
+  the addresses of the pages read in that conversation, never a page or the findings). While it runs, `GET /agent-configs/:id/research` answers the addresses read and the commands
   run so far, which the screen asks again every second; they are removed when it ends. There is no search engine: the model
   starts from the addresses given and may follow their links. The Claude subscription runs one
   more slowly (its binary is launched once a step and never gets a tool: it names which of ours to

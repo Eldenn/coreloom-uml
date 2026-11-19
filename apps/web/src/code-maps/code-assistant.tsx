@@ -1,4 +1,4 @@
-// Opens the assistant of one of the project's architectures on a new conversation, set to draw
+// Opens the assistant on one of the project's architectures, in a new conversation set to draw
 // from this code map: the user then asks for any diagram in their own words.
 import { useNavigate } from '@tanstack/react-router'
 import { SparklesIcon } from 'lucide-react'
@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Spinner } from '@/components/ui/spinner'
 import { useArchitectures } from '@/lib/architectures'
-import { useOpenConversation } from '@/lib/assistant'
+import { useCreateConversation } from '@/lib/assistant'
 import { getErrorMessage } from '@/lib/client'
 import type { CodeMapDetail } from '@/lib/code-maps'
 import { useFeature } from '@/lib/feature-flags'
@@ -62,26 +62,23 @@ function OpenAssistantDialog({
   const t = useT()
   const navigate = useNavigate()
   const architectures = useArchitectures(map.projectId, '')
-  const start = useOpenConversation()
+  const start = useCreateConversation()
   const list = architectures.data?.data ?? []
   const [chosen, setChosen] = React.useState<number | null>(null)
   const architectureId = chosen ?? list.at(0)?.id ?? null
 
   const submit = () => {
     if (architectureId === null) return
-    start.mutate(
-      { architectureId },
-      {
-        onSuccess: (conversation) => {
-          onOpenChange(false)
-          void navigate({
-            to: '/architectures/$id',
-            params: { id: architectureId },
-            search: { assistant: conversation.id, code: map.id },
-          })
-        },
+    start.mutate(undefined, {
+      onSuccess: ({ conversation }) => {
+        onOpenChange(false)
+        void navigate({
+          to: '/architectures/$id',
+          params: { id: architectureId },
+          search: { assistant: conversation.id, code: map.id },
+        })
       },
-    )
+    })
   }
 
   return (

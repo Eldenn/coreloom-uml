@@ -985,7 +985,8 @@ export const en = {
     conversationTitle: 'Conversation title',
     newConversation: 'New conversation',
     untitled: 'Untitled conversation',
-    noConversation: 'No conversation yet. Start one to ask about this architecture’s views.',
+    noConversation:
+      'No conversation yet. Start one to ask about your architectures or your agent conventions.',
     deleteConversation: 'Delete this conversation',
     deleteConversationConfirm: 'Delete this conversation?',
     delete: 'Delete',
@@ -993,8 +994,31 @@ export const en = {
     viewsHint: 'The open view is always read.',
     viewsSearch: 'Search views',
     skipped: (titles: string) => `Left out, too long to fit: ${titles}.`,
-    empty: 'Ask for a change, a new view or an explanation of this architecture.',
+    empty:
+      'Ask for a change or a new view of an architecture, for agent conventions from web pages, or anything else.',
     placeholder: 'Ask about this architecture',
+    plainPlaceholder: 'Ask anything',
+    webPlaceholder: 'For example: the testing rules of https://example.com/guide',
+    about: 'About',
+    aboutNothing: 'Nothing in particular',
+    aboutWeb: 'From the web',
+    aboutArchitectures: 'An architecture',
+    conventions: 'Agent conventions the rules are for',
+    chooseConventions: 'Choose agent conventions',
+    noConventions:
+      'Create agent conventions first: the rules found on the web are proposed for them.',
+    addressFound: 'This message names a web page.',
+    useWeb: 'Read it with “From the web”',
+    proposalsLoading: 'Loading the proposals…',
+    proposalsDone: 'Done with these proposals',
+    proposalsSettled: (n: number) => {
+      if (n === 0) return 'No rule added.'
+      return n === 1 ? '1 rule added.' : `${String(n)} rules added.`
+    },
+    conventionsGone: 'These agent conventions no longer exist: the proposed rules can’t be added.',
+    changeGone: 'The architecture of this change was deleted: it no longer applies.',
+    openArchitecture: 'Open the architecture',
+    openView: 'Open the view',
     code: 'Draw from the code',
     codeHint:
       'Each message is a request for one new diagram. Your model reads names, paths and links from the code map and, when the repository can be read on GitHub, the code of the files concerned.',
@@ -2215,7 +2239,7 @@ export const fr: Messages = {
     newConversation: 'Nouvelle conversation',
     untitled: 'Conversation sans titre',
     noConversation:
-      'Aucune conversation pour l’instant. Commencez-en une pour poser vos questions sur les vues de cette architecture.',
+      'Aucune conversation pour l’instant. Commencez-en une pour poser vos questions sur vos architectures ou vos conventions d’agents.',
     deleteConversation: 'Supprimer cette conversation',
     deleteConversationConfirm: 'Supprimer cette conversation ?',
     delete: 'Supprimer',
@@ -2223,8 +2247,32 @@ export const fr: Messages = {
     viewsHint: 'La vue ouverte est toujours lue.',
     viewsSearch: 'Rechercher une vue',
     skipped: (titles: string) => `Laissées de côté, trop longues : ${titles}.`,
-    empty: 'Demandez une modification, une nouvelle vue ou une explication de cette architecture.',
+    empty:
+      'Demandez une modification ou une nouvelle vue d’une architecture, des conventions d’agents à partir de pages web, ou autre chose.',
     placeholder: 'Posez une question sur cette architecture',
+    plainPlaceholder: 'Posez votre question',
+    webPlaceholder: 'Par exemple : les règles de test de https://example.com/guide',
+    about: 'Sujet',
+    aboutNothing: 'Rien de particulier',
+    aboutWeb: 'Depuis le web',
+    aboutArchitectures: 'Une architecture',
+    conventions: 'Conventions d’agents visées par les règles',
+    chooseConventions: 'Choisissez des conventions d’agents',
+    noConventions:
+      'Créez d’abord des conventions d’agents : les règles trouvées sur le web leur sont proposées.',
+    addressFound: 'Ce message cite une page web.',
+    useWeb: 'La lire avec « Depuis le web »',
+    proposalsLoading: 'Chargement des propositions…',
+    proposalsDone: 'J’ai fini avec ces propositions',
+    proposalsSettled: (n: number) => {
+      if (n === 0) return 'Aucune règle ajoutée.'
+      return n === 1 ? '1 règle ajoutée.' : `${String(n)} règles ajoutées.`
+    },
+    conventionsGone:
+      'Ces conventions d’agents n’existent plus : les règles proposées ne peuvent pas être ajoutées.',
+    changeGone: 'L’architecture de ce changement a été supprimée : il ne s’applique plus.',
+    openArchitecture: 'Ouvrir l’architecture',
+    openView: 'Ouvrir la vue',
     code: 'Dessiner depuis le code',
     codeHint:
       'Chaque message demande un nouveau diagramme. Votre modèle lit les noms, chemins et liens de la carte du code et, quand le dépôt est lisible sur GitHub, le code des fichiers concernés.',

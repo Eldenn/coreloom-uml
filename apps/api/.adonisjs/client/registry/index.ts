@@ -600,41 +600,59 @@ const routes = {
     tokens: [{"old":"/mcp","type":0,"val":"mcp","end":""}],
     types: placeholder as Registry['mcp']['types'],
   },
-  'architectures.assistant.conversations.index': {
+  'assistant.conversations.index': {
     methods: ["GET","HEAD"],
-    pattern: '/architectures/:id/assistant/conversations',
-    tokens: [{"old":"/architectures/:id/assistant/conversations","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations","type":0,"val":"conversations","end":""}],
-    types: placeholder as Registry['architectures.assistant.conversations.index']['types'],
+    pattern: '/assistant/conversations',
+    tokens: [{"old":"/assistant/conversations","type":0,"val":"assistant","end":""},{"old":"/assistant/conversations","type":0,"val":"conversations","end":""}],
+    types: placeholder as Registry['assistant.conversations.index']['types'],
   },
-  'architectures.assistant.conversations.store': {
+  'assistant.conversations.store': {
     methods: ["POST"],
-    pattern: '/architectures/:id/assistant/conversations',
-    tokens: [{"old":"/architectures/:id/assistant/conversations","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations","type":0,"val":"conversations","end":""}],
-    types: placeholder as Registry['architectures.assistant.conversations.store']['types'],
+    pattern: '/assistant/conversations',
+    tokens: [{"old":"/assistant/conversations","type":0,"val":"assistant","end":""},{"old":"/assistant/conversations","type":0,"val":"conversations","end":""}],
+    types: placeholder as Registry['assistant.conversations.store']['types'],
   },
-  'architectures.assistant.conversations.show': {
+  'assistant.conversations.show': {
     methods: ["GET","HEAD"],
-    pattern: '/architectures/:id/assistant/conversations/:conversationId',
-    tokens: [{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"conversations","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":1,"val":"conversationId","end":""}],
-    types: placeholder as Registry['architectures.assistant.conversations.show']['types'],
+    pattern: '/assistant/conversations/:conversationId',
+    tokens: [{"old":"/assistant/conversations/:conversationId","type":0,"val":"assistant","end":""},{"old":"/assistant/conversations/:conversationId","type":0,"val":"conversations","end":""},{"old":"/assistant/conversations/:conversationId","type":1,"val":"conversationId","end":""}],
+    types: placeholder as Registry['assistant.conversations.show']['types'],
   },
-  'architectures.assistant.conversations.update': {
+  'assistant.conversations.update': {
     methods: ["PATCH"],
-    pattern: '/architectures/:id/assistant/conversations/:conversationId',
-    tokens: [{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"conversations","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":1,"val":"conversationId","end":""}],
-    types: placeholder as Registry['architectures.assistant.conversations.update']['types'],
+    pattern: '/assistant/conversations/:conversationId',
+    tokens: [{"old":"/assistant/conversations/:conversationId","type":0,"val":"assistant","end":""},{"old":"/assistant/conversations/:conversationId","type":0,"val":"conversations","end":""},{"old":"/assistant/conversations/:conversationId","type":1,"val":"conversationId","end":""}],
+    types: placeholder as Registry['assistant.conversations.update']['types'],
   },
-  'architectures.assistant.conversations.destroy': {
+  'assistant.conversations.destroy': {
     methods: ["DELETE"],
-    pattern: '/architectures/:id/assistant/conversations/:conversationId',
-    tokens: [{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":0,"val":"conversations","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId","type":1,"val":"conversationId","end":""}],
-    types: placeholder as Registry['architectures.assistant.conversations.destroy']['types'],
+    pattern: '/assistant/conversations/:conversationId',
+    tokens: [{"old":"/assistant/conversations/:conversationId","type":0,"val":"assistant","end":""},{"old":"/assistant/conversations/:conversationId","type":0,"val":"conversations","end":""},{"old":"/assistant/conversations/:conversationId","type":1,"val":"conversationId","end":""}],
+    types: placeholder as Registry['assistant.conversations.destroy']['types'],
   },
-  'architectures.assistant.conversations.continue': {
+  'assistant.conversations.continue': {
     methods: ["POST"],
-    pattern: '/architectures/:id/assistant/conversations/:conversationId/continue',
-    tokens: [{"old":"/architectures/:id/assistant/conversations/:conversationId/continue","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/continue","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/continue","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/continue","type":0,"val":"conversations","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/continue","type":1,"val":"conversationId","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/continue","type":0,"val":"continue","end":""}],
-    types: placeholder as Registry['architectures.assistant.conversations.continue']['types'],
+    pattern: '/assistant/conversations/:conversationId/continue',
+    tokens: [{"old":"/assistant/conversations/:conversationId/continue","type":0,"val":"assistant","end":""},{"old":"/assistant/conversations/:conversationId/continue","type":0,"val":"conversations","end":""},{"old":"/assistant/conversations/:conversationId/continue","type":1,"val":"conversationId","end":""},{"old":"/assistant/conversations/:conversationId/continue","type":0,"val":"continue","end":""}],
+    types: placeholder as Registry['assistant.conversations.continue']['types'],
+  },
+  'assistant.messages.store': {
+    methods: ["POST"],
+    pattern: '/assistant/conversations/:conversationId/messages',
+    tokens: [{"old":"/assistant/conversations/:conversationId/messages","type":0,"val":"assistant","end":""},{"old":"/assistant/conversations/:conversationId/messages","type":0,"val":"conversations","end":""},{"old":"/assistant/conversations/:conversationId/messages","type":1,"val":"conversationId","end":""},{"old":"/assistant/conversations/:conversationId/messages","type":0,"val":"messages","end":""}],
+    types: placeholder as Registry['assistant.messages.store']['types'],
+  },
+  'assistant.messages.destroy': {
+    methods: ["DELETE"],
+    pattern: '/assistant/conversations/:conversationId/messages/:messageId',
+    tokens: [{"old":"/assistant/conversations/:conversationId/messages/:messageId","type":0,"val":"assistant","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId","type":0,"val":"conversations","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId","type":1,"val":"conversationId","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId","type":0,"val":"messages","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId","type":1,"val":"messageId","end":""}],
+    types: placeholder as Registry['assistant.messages.destroy']['types'],
+  },
+  'assistant.proposals.settle': {
+    methods: ["POST"],
+    pattern: '/assistant/conversations/:conversationId/messages/:messageId/proposals/settle',
+    tokens: [{"old":"/assistant/conversations/:conversationId/messages/:messageId/proposals/settle","type":0,"val":"assistant","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/proposals/settle","type":0,"val":"conversations","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/proposals/settle","type":1,"val":"conversationId","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/proposals/settle","type":0,"val":"messages","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/proposals/settle","type":1,"val":"messageId","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/proposals/settle","type":0,"val":"proposals","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/proposals/settle","type":0,"val":"settle","end":""}],
+    types: placeholder as Registry['assistant.proposals.settle']['types'],
   },
   'architectures.assistant.messages.store': {
     methods: ["POST"],
@@ -647,12 +665,6 @@ const routes = {
     pattern: '/architectures/:id/assistant/conversations/:conversationId/context',
     tokens: [{"old":"/architectures/:id/assistant/conversations/:conversationId/context","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/context","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/context","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/context","type":0,"val":"conversations","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/context","type":1,"val":"conversationId","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/context","type":0,"val":"context","end":""}],
     types: placeholder as Registry['architectures.assistant.context']['types'],
-  },
-  'architectures.assistant.messages.destroy': {
-    methods: ["DELETE"],
-    pattern: '/architectures/:id/assistant/conversations/:conversationId/messages/:messageId',
-    tokens: [{"old":"/architectures/:id/assistant/conversations/:conversationId/messages/:messageId","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages/:messageId","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages/:messageId","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages/:messageId","type":0,"val":"conversations","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages/:messageId","type":1,"val":"conversationId","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages/:messageId","type":0,"val":"messages","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages/:messageId","type":1,"val":"messageId","end":""}],
-    types: placeholder as Registry['architectures.assistant.messages.destroy']['types'],
   },
   'architectures.assistant.changes.accept': {
     methods: ["POST"],

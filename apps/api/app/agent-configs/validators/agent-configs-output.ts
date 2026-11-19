@@ -9,6 +9,7 @@ import type {
 import type { AgentRuleSource, Target } from '#app/agent-configs/constants/agent-config'
 import type { AgentGenerationSkills } from '#app/agent-configs/models/agent-config-generation'
 import type { AgentConfigImpact } from '#app/agent-configs/services/agent-context'
+import type { MessageOutput } from '#app/assistant/validators/assistant-output'
 import type { DiagramKind } from '#app/diagrams/constants/diagram'
 import type { ResearchStep } from '#app/research/services/research-progress'
 import type { Paginated } from '#app/shared/pagination/paginate'
@@ -116,13 +117,18 @@ export type AgentDiagramOutput = {
   architecture: string
 }
 
-/** `POST /agent-configs/:id/imports`: nothing is stored. */
+/**
+ * `POST /agent-configs/:id/imports`: nothing is stored, unless `conversation` was given: the
+ * exchange is then stored in that assistant conversation and answered as `messages`.
+ */
 export type AgentImportOutput = {
   /** Ready-made rules to accept: each fits its group and is not held yet. */
   ready: (AgentReadyRuleOutput & { evidence: string })[]
   rules: { section: string; text: string }[]
   /** The end of the file was cut to fit what the model can read. */
   truncated: boolean
+  /** Only with `conversation`: the request and the answer holding the proposals, as stored. */
+  messages?: MessageOutput[]
 }
 
 /** `POST /agent-configs/:id/research`: nothing is stored. */

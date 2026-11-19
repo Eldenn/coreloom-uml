@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import * as React from 'react'
 
+import { AssistantButton } from '@/assistant/assistant-button'
 import { meQueryOptions, useAuth } from '@/auth/auth-context'
 import { AppShell } from '@/components/app-shell'
 import { CatMark } from '@/components/brand'
@@ -264,7 +265,12 @@ function AuthedLayout() {
       ]}
       breadcrumbs={[{ label: t.brand, href: '/projects' }, ...crumbs]}
       commands={commands}
-      headerActions={<LanguageMenu />}
+      headerActions={
+        <>
+          <AssistantButton />
+          <LanguageMenu />
+        </>
+      }
       fullWidth={fullWidth}
     >
       <Outlet />

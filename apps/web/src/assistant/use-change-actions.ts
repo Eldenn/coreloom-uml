@@ -1,6 +1,6 @@
-// Accepting, rejecting and undoing the assistant's proposed changes from the panel: through
-// `applyChange` so the editor's text is kept, one action at a time, failures said in the UI's
-// language.
+// Accepting, rejecting and undoing the assistant's proposed changes from the panel, through the
+// architecture each message is about: with `applyChange` on that architecture's own page, so the
+// editor's text is kept; one action at a time, failures said in the UI's language.
 import * as React from 'react'
 
 import type { ChangeActions } from '@/assistant/assistant-messages'
@@ -30,21 +30,34 @@ export function changeErrorText(error: unknown, t: AssistantMessages): string {
 }
 
 export function useChangeActions(
-  architectureId: number,
   conversationId: number,
-  autosave: AutosaveControl,
+  /** The architecture whose page the panel is on, with its editor's autosave; `null` elsewhere. */
+  page: { architectureId: number; autosave: AutosaveControl } | null,
 ): ChangeActions {
   const t = useT().assistant
-  const changeAction = useChangeAction(architectureId)
+  const changeAction = useChangeAction()
   // Held from the save before an action to its answer, so a second click waits for the first.
   const running = React.useRef(false)
   const [busy, setBusy] = React.useState(false)
 
-  const run = async (messageId: number, change: ProposedChange, action: ChangeAction) => {
+  const run = async (message: AssistantMessage, change: ProposedChange, action: ChangeAction) => {
+    const architectureId = message.architectureId
+    // Its architecture was deleted: the card offers no action.
+    if (architectureId === null) return
+    const call = () =>
+      changeAction.mutateAsync({
+        architectureId,
+        conversationId,
+        messageId: message.id,
+        index: change.index,
+        action,
+      })
     try {
-      const result = await applyChange(autosave, action, change, () =>
-        changeAction.mutateAsync({ conversationId, messageId, index: change.index, action }),
-      )
+      // Elsewhere no editor holds unsaved text of that view: the server's version check decides.
+      const result =
+        page?.architectureId === architectureId
+          ? await applyChange(page.autosave, action, change, call)
+          : { done: await call() }
       if ('refused' in result)
         toast.error(result.refused === 'unreadable' ? t.fixEditsFirst : t.saveFirst)
     } catch (error) {
@@ -65,12 +78,12 @@ export function useChangeActions(
   }
 
   return {
-    act: (messageId, change, action) => exclusive(() => run(messageId, change, action)),
+    act: (message, change, action) => exclusive(() => run(message, change, action)),
     acceptAll: (message: AssistantMessage) =>
       exclusive(async () => {
         // One after the other: each one is applied, or turns stale, on its own.
         for (const change of message.changes ?? []) {
-          if (change.status === 'pending') await run(message.id, change, 'accept')
+          if (change.status === 'pending') await run(message, change, 'accept')
         }
       }),
     busy,

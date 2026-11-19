@@ -323,8 +323,7 @@ export function useProposeProcess(mapId: number) {
         body: { ...callBody(provider), ...body },
         ...MODEL_CALL,
       }),
-    onSuccess: (result) =>
-      queryClient.invalidateQueries({ queryKey: assistantKeys.list(result.architectureId) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: assistantKeys.list }),
   })
 }
 
@@ -403,10 +402,10 @@ export function useDraftSuggestion(mapId: number) {
         body: { ...callBody(provider), ...body },
         ...MODEL_CALL,
       }),
-    onSuccess: async (result) => {
+    onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: codeMapKeys.suggestions(mapId) }),
-        queryClient.invalidateQueries({ queryKey: assistantKeys.list(result.architectureId) }),
+        queryClient.invalidateQueries({ queryKey: assistantKeys.list }),
       ])
     },
   })

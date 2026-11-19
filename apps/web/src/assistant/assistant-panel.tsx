@@ -1,21 +1,16 @@
-// The workspace assistant of one architecture: its conversations, the views a message reads, the
-// context gauge, the messages with their proposed view changes, and the prompt. Model calls use the
+// The assistant, the same on every page: the account's conversations, what a message is about (an
+// architecture and the views it reads, agent conventions made from the web, or nothing), the
+// context gauge, the messages with the view changes or the rules proposed, and the prompt. On an
+// architecture's page it sits beside the workspace and knows the open view. Model calls use the
 // provider stored in this browser; without one the panel points to the settings.
-import { Link } from '@tanstack/react-router'
 import { PlusIcon, Trash2Icon, XIcon } from 'lucide-react'
 import * as React from 'react'
 
-import { CodeSwitch } from '@/assistant/assistant-code'
-import { MessageList } from '@/assistant/assistant-messages'
-import { useChangeActions } from '@/assistant/use-change-actions'
-import { useCodeMode } from '@/assistant/use-code-mode'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Conversation, NoProvider, type Workspace } from '@/assistant/assistant-conversation'
+import { useSubject } from '@/assistant/use-subject'
 import { Button } from '@/components/ui/button'
-import { ContextMeter } from '@/components/ui/context-meter'
 import { EditableText } from '@/components/ui/editable-text'
-import { MultiSelect } from '@/components/ui/multi-select'
 import { Popconfirm } from '@/components/ui/popconfirm'
-import { PromptInput } from '@/components/ui/prompt-input'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import {
   Select,
@@ -35,43 +30,16 @@ import { toast } from '@/components/ui/sonner'
 import type { ArchitectureDetail } from '@/lib/architectures'
 import {
   type AutosaveControl,
-  budgetLevel,
   type ConversationSummary,
-  useAskAssistant,
-  useContextBudget,
-  useContinueConversation,
-  useConversation,
   useConversations,
   useCreateConversation,
   useDeleteConversation,
-  useDeleteSummary,
   useRenameConversation,
-  type ViewSelection,
-  viewTooLarge,
 } from '@/lib/assistant'
-import type { ContextBudget } from '@/lib/assistant-changes'
-import { getErrorMessage, TuyauError } from '@/lib/client'
+import { getErrorMessage } from '@/lib/client'
 import { useFeature } from '@/lib/feature-flags'
-import { providerCallFailure, type StoredProvider, useStoredProvider } from '@/lib/llm-provider'
+import { useStoredProvider } from '@/lib/llm-provider'
 import { useT } from '@/lib/locale'
-import { useProviderFailureText } from '@/llm/provider-failure'
-
-/** A 422 `{ error: { code: 'context_full' } }`: the message would not fit the model's input. */
-function isContextFull(error: unknown) {
-  return (
-    error instanceof TuyauError &&
-    error.status === 422 &&
-    (error.response as { error?: { code?: string } } | undefined)?.error?.code === 'context_full'
-  )
-}
-
-/** Whether the next message can't be sent, and whether continuing in a new conversation helps. */
-function fullness(budget: ContextBudget | undefined, messageCount: number, askError: unknown) {
-  return {
-    full: (budget !== undefined && budgetLevel(budget) === 'full') || isContextFull(askError),
-    tooLarge: budget !== undefined && viewTooLarge(budget, messageCount),
-  }
-}
 
 /** As the API's `ASSISTANT_TITLE_MAX_LENGTH`. */
 const CONVERSATION_TITLE_MAX_LENGTH = 200
@@ -94,8 +62,6 @@ function useWideScreen() {
     () => false,
   )
 }
-
-type PanelProps = React.ComponentProps<typeof AssistantPanel>
 
 /**
  * The workspace (`children`) with the assistant: a resizable side panel on wide screens, a sheet
@@ -123,15 +89,7 @@ export function AssistantLayout({
     return (
       <>
         {children}
-        <Sheet open={open} onOpenChange={onOpenChange}>
-          <SheetContent className="w-full gap-0 sm:max-w-lg">
-            <SheetHeader className="border-b border-border">
-              <SheetTitle>{t.title}</SheetTitle>
-              <SheetDescription className="sr-only">{t.empty}</SheetDescription>
-            </SheetHeader>
-            <AssistantPanel {...panel} />
-          </SheetContent>
-        </Sheet>
+        <AssistantSheet open={open} onOpenChange={onOpenChange} {...panel} />
       </>
     )
   return (
@@ -161,7 +119,7 @@ export function AssistantLayout({
                   <XIcon />
                 </Button>
               </div>
-              <AssistantPanel {...panel} />
+              <AssistantPanel key={panel.architecture?.id ?? 'account'} {...panel} />
             </section>
           </ResizablePanel>
         </>
@@ -170,33 +128,57 @@ export function AssistantLayout({
   )
 }
 
-export function AssistantPanel({
-  architecture,
-  currentDiagramId,
-  autosave,
-  initialConversationId = null,
-  codeMapId,
-}: {
-  architecture: ArchitectureDetail
-  currentDiagramId: number | null
-  autosave: AutosaveControl
-  /** The conversation shown first, when it is one of the architecture's; else the newest. */
+// Both mounts key the panel by the page's architecture: going from one architecture's page to
+// another (a change card links there) starts it over, so what a message is about and the views
+// picked are the new page's, never the previous one's.
+
+/** The assistant in a side sheet: on every page but an architecture's wide workspace. */
+export function AssistantSheet({
+  open,
+  onOpenChange,
+  ...panel
+}: PanelProps & { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const t = useT().assistant
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full gap-0 sm:max-w-lg">
+        <SheetHeader className="border-b border-border">
+          <SheetTitle>{t.title}</SheetTitle>
+          <SheetDescription className="sr-only">{t.empty}</SheetDescription>
+        </SheetHeader>
+        <AssistantPanel key={panel.architecture?.id ?? 'account'} {...panel} />
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+type SubjectPage = Parameters<typeof useSubject>[0]
+
+interface PanelProps extends Omit<SubjectPage, 'provider' | 'architecture'> {
+  /** On an architecture's page: that architecture, its open view and its editor's autosave. */
+  architecture?: ArchitectureDetail
+  currentDiagramId?: number | null
+  autosave?: AutosaveControl
+  /** The conversation shown first, when it is among the account's newest; else the newest. */
   initialConversationId?: number | null
-  /** The code map `?code=` named: "Draw from the code" starts on when it is the project's. */
-  codeMapId?: number
-}) {
+}
+
+function workspaceOf({ architecture, currentDiagramId, autosave }: PanelProps): Workspace | null {
+  if (!architecture || !autosave) return null
+  return { architecture, currentDiagramId: currentDiagramId ?? null, autosave }
+}
+
+export function AssistantPanel(props: PanelProps) {
   const t = useT().assistant
   const provider = useStoredProvider()
-  const architectureId = architecture.id
-  const list = useConversations(architectureId)
-  const [chosen, setChosen] = React.useState<number | null>(initialConversationId)
+  const list = useConversations()
+  const [chosen, setChosen] = React.useState(props.initialConversationId ?? null)
   const conversations = list.data?.pages.flatMap((page) => page.data) ?? []
-  const conversationId =
-    conversations.find((c) => c.id === chosen)?.id ?? conversations.at(0)?.id ?? null
-  const create = useCreateConversation(architectureId)
-  // Held here, not in a conversation: switching it off holds when another conversation opens.
-  const code = useCodeMode(architecture.projectId, codeMapId)
-  const current = conversations.find((c) => c.id === conversationId)
+  const current = conversations.find((c) => c.id === chosen) ?? conversations.at(0)
+  const create = useCreateConversation()
+  // Held here, not in a conversation: what a message is about, and "Draw from the code" switched
+  // off, hold when another conversation opens.
+  const subject = useSubject({ ...props, provider })
   const startConversation = () => {
     create.mutate(undefined, {
       onSuccess: ({ conversation }) => {
@@ -209,7 +191,6 @@ export function AssistantPanel({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <ConversationHeader
-        architectureId={architectureId}
         list={list}
         conversations={conversations}
         current={current}
@@ -217,34 +198,32 @@ export function AssistantPanel({
         onStart={startConversation}
         starting={create.isPending}
       />
-      {conversationId === null ? (
-        <div className="flex flex-1 flex-col items-start gap-3 p-4">
-          {provider === null && <NoProvider />}
-          <p className="m-0 text-[13px] text-muted-foreground">
-            {list.isPending ? null : t.noConversation}
-          </p>
-          {!list.isPending && (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={create.isPending}
-              onClick={startConversation}
-            >
-              <PlusIcon /> {t.newConversation}
-            </Button>
-          )}
-        </div>
-      ) : (
+      {current ? (
         <Conversation
-          key={conversationId}
-          architecture={architecture}
-          conversationId={conversationId}
-          currentDiagramId={currentDiagramId}
-          autosave={autosave}
+          key={current.id}
+          workspace={workspaceOf(props)}
+          conversationId={current.id}
           provider={provider}
           onContinued={setChosen}
-          code={code}
+          subject={subject}
         />
+      ) : (
+        <div className="flex flex-1 flex-col items-start gap-3 p-4">
+          {provider === null && <NoProvider />}
+          {!list.isPending && (
+            <>
+              <p className="m-0 text-[13px] text-muted-foreground">{t.noConversation}</p>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={create.isPending}
+                onClick={startConversation}
+              >
+                <PlusIcon /> {t.newConversation}
+              </Button>
+            </>
+          )}
+        </div>
       )}
     </div>
   )
@@ -252,7 +231,6 @@ export function AssistantPanel({
 
 /** Which conversation is open, a new one, its title, deleting it; more pages when there are. */
 function ConversationHeader({
-  architectureId,
   list,
   conversations,
   current,
@@ -260,7 +238,6 @@ function ConversationHeader({
   onStart,
   starting,
 }: {
-  architectureId: number
   list: ReturnType<typeof useConversations>
   conversations: ConversationSummary[]
   current: ConversationSummary | undefined
@@ -269,8 +246,8 @@ function ConversationHeader({
   starting: boolean
 }) {
   const t = useT().assistant
-  const rename = useRenameConversation(architectureId)
-  const remove = useDeleteConversation(architectureId)
+  const rename = useRenameConversation()
+  const remove = useDeleteConversation()
   const failed = (error: unknown) => toast.error(getErrorMessage(error, t.actionFailed))
   const total = list.data?.pages.at(-1)?.meta.total ?? 0
   const conversationId = current?.id ?? null
@@ -357,269 +334,5 @@ function ConversationHeader({
         />
       )}
     </div>
-  )
-}
-
-function NoProvider() {
-  const t = useT().assistant
-  return (
-    <Alert>
-      <AlertDescription className="flex flex-col items-start gap-2">
-        {t.noProvider}
-        <Button size="sm" variant="outline" asChild>
-          <Link to="/settings">{t.openSettings}</Link>
-        </Button>
-      </AlertDescription>
-    </Alert>
-  )
-}
-
-function Conversation({
-  architecture,
-  conversationId,
-  currentDiagramId,
-  autosave,
-  provider,
-  onContinued,
-  code,
-}: {
-  architecture: ArchitectureDetail
-  conversationId: number
-  currentDiagramId: number | null
-  autosave: AutosaveControl
-  provider: StoredProvider | null
-  onContinued: (conversationId: number) => void
-  code: ReturnType<typeof useCodeMode>
-}) {
-  const t = useT().assistant
-  const architectureId = architecture.id
-  const detail = useConversation(architectureId, conversationId)
-  /** The views the owner picked; `null` until one is unchecked, meaning all of them. */
-  const [picked, setPicked] = React.useState<number[] | null>(null)
-  const selection: ViewSelection = { currentDiagramId, ...(picked ? { diagramIds: picked } : {}) }
-  const context = useContextBudget(
-    architectureId,
-    conversationId,
-    selection,
-    architecture.diagrams.map((d) => d.version),
-  )
-  const ask = useAskAssistant(architectureId, conversationId)
-  const proceed = useContinueConversation(architectureId)
-  const deleteSummary = useDeleteSummary(architectureId, conversationId)
-  const changes = useChangeActions(architectureId, conversationId, autosave)
-  const [draft, setDraft] = React.useState('')
-  const fromCode = code.sent !== undefined
-
-  const messages = detail.data?.messages ?? []
-  const { budget, askError } = watched(fromCode, context.data ?? detail.data?.budget, ask.error)
-  const { full, tooLarge } = fullness(budget, messages.length, askError)
-
-  const send = (text: string) => {
-    if (!provider) return
-    ask.mutate(
-      { provider, message: text, ...selection, ...code.sent },
-      {
-        onError: () => {
-          // The field cleared itself on submit: the text comes back so nothing is lost.
-          setDraft((now) => (now === '' ? text : now))
-        },
-      },
-    )
-  }
-
-  return (
-    <>
-      <WhatIsSent
-        code={code}
-        diagrams={architecture.diagrams}
-        currentDiagramId={currentDiagramId}
-        picked={picked}
-        onPickedChange={setPicked}
-        budget={budget}
-      />
-      <MessageList
-        messages={messages}
-        loaded={detail.isSuccess}
-        asking={ask.isPending ? ask.variables.message : null}
-        waiting={ask.isPending || proceed.isPending}
-        changes={changes}
-        onDeleteSummary={(messageId) => {
-          deleteSummary.mutate(messageId, {
-            onError: (error) => toast.error(getErrorMessage(error, t.actionFailed)),
-          })
-        }}
-      />
-      <div className="flex flex-col gap-2 border-t border-border p-3">
-        <Notices
-          provider={provider}
-          budget={budget}
-          full={full}
-          tooLarge={tooLarge}
-          askError={ask.isError && !isContextFull(ask.error) ? ask.error : null}
-          continueError={proceed.error}
-          continuing={proceed.isPending}
-          onContinue={() => {
-            if (!provider) return
-            proceed.mutate(
-              { conversationId, provider },
-              {
-                onSuccess: ({ conversation }) => {
-                  onContinued(conversation.id)
-                },
-              },
-            )
-          }}
-        />
-        <PromptInput
-          value={draft}
-          onValueChange={(value) => {
-            setDraft(value)
-            // A refused message is forgotten once edited, so the shortened one can be sent.
-            if (ask.isError) ask.reset()
-          }}
-          placeholder={fromCode ? t.codePlaceholder : t.placeholder}
-          status={ask.isPending ? 'submitted' : 'ready'}
-          disabled={!provider || full || proceed.isPending}
-          onSubmit={({ text }) => {
-            send(text)
-          }}
-        />
-      </div>
-    </>
-  )
-}
-
-/**
- * What the conversation watches before a message: nothing while it draws from the code, since
- * such a request sends an outline of the map, not the views.
- */
-function watched(fromCode: boolean, budget: ContextBudget | undefined, askError: unknown) {
-  return fromCode ? { budget: undefined, askError: null } : { budget, askError }
-}
-
-/** Above the messages: the switch to the code when it is offered, else the views and their cost. */
-function WhatIsSent({
-  code,
-  ...views
-}: React.ComponentProps<typeof ViewsAndBudget> & { code: ReturnType<typeof useCodeMode> }) {
-  const fromCode = code.sent !== undefined
-  return (
-    <>
-      {code.offered && <CodeSwitch checked={fromCode} onCheckedChange={code.set} />}
-      {!fromCode && <ViewsAndBudget {...views} />}
-    </>
-  )
-}
-
-/** The views a message reads (the open one always) and what the next message would cost. */
-function ViewsAndBudget({
-  diagrams,
-  currentDiagramId,
-  picked,
-  onPickedChange,
-  budget,
-}: {
-  diagrams: ArchitectureDetail['diagrams']
-  currentDiagramId: number | null
-  picked: number[] | null
-  onPickedChange: (ids: number[]) => void
-  budget: ContextBudget | undefined
-}) {
-  const t = useT().assistant
-  const titleOf = (id: number) => diagrams.find((d) => d.id === id)?.title ?? String(id)
-  const included = picked ?? diagrams.map((d) => d.id)
-  const value = [
-    ...new Set([...(currentDiagramId === null ? [] : [currentDiagramId]), ...included]),
-  ]
-  return (
-    <div className="flex flex-col gap-2 border-b border-border p-3">
-      <MultiSelect
-        aria-label={t.views}
-        placeholder={t.views}
-        searchPlaceholder={t.viewsSearch}
-        options={diagrams.map((d) => ({
-          value: String(d.id),
-          label: d.title,
-          disabled: d.id === currentDiagramId,
-        }))}
-        value={value.map(String)}
-        onValueChange={(values) => {
-          onPickedChange(values.map(Number))
-        }}
-      />
-      <p className="m-0 text-[12px] text-muted-foreground">{t.viewsHint}</p>
-      {budget && (
-        <div className="flex flex-wrap items-center gap-2">
-          <ContextMeter used={budget.system + budget.diagrams + budget.history} max={budget.max} />
-          {budget.skipped.length > 0 && (
-            <span className="text-[12px] text-warning">
-              {t.skipped(budget.skipped.map(titleOf).join(', '))}
-            </span>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/** Above the prompt: a missing provider, a failed call, a conversation getting too long. */
-function Notices({
-  provider,
-  budget,
-  full,
-  tooLarge,
-  askError,
-  continueError,
-  continuing,
-  onContinue,
-}: {
-  provider: StoredProvider | null
-  budget: ContextBudget | undefined
-  full: boolean
-  /** Full with nothing to summarize: continuing would not help. */
-  tooLarge: boolean
-  askError: unknown
-  continueError: unknown
-  continuing: boolean
-  onContinue: () => void
-}) {
-  const t = useT().assistant
-  const failureText = useProviderFailureText()
-  const long = full || (budget !== undefined && budgetLevel(budget) === 'warn')
-  return (
-    <>
-      {provider === null && <NoProvider />}
-      {askError !== null && (
-        <Alert variant="destructive">
-          <AlertDescription>{failureText(providerCallFailure(askError))}</AlertDescription>
-        </Alert>
-      )}
-      {continueError !== null && (
-        <Alert variant="destructive">
-          <AlertDescription>{failureText(providerCallFailure(continueError))}</AlertDescription>
-        </Alert>
-      )}
-      {tooLarge ? (
-        <Alert variant="destructive">
-          <AlertDescription>{t.viewTooLarge}</AlertDescription>
-        </Alert>
-      ) : (
-        long && (
-          <Alert variant={full ? 'destructive' : 'warning'}>
-            <AlertDescription className="flex flex-col items-start gap-2">
-              {full ? t.full : t.long}
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!provider || continuing}
-                onClick={onContinue}
-              >
-                {t.continue}
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )
-      )}
-    </>
   )
 }

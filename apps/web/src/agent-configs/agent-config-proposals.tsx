@@ -376,6 +376,7 @@ export function ProposalsReview({
   skipped,
   truncatedText,
   empty,
+  onAccepted,
   onHandled,
 }: {
   configId: number
@@ -387,6 +388,9 @@ export function ProposalsReview({
   /** Said when `truncated`; a general wording by default. */
   truncatedText?: string
   empty: string
+  /** A proposal was stored as a rule (it is then handled too). */
+  onAccepted?: () => void
+  /** A proposal was accepted or dismissed: it leaves the list. */
   onHandled: (id: string) => void
 }) {
   const t = useT()
@@ -452,6 +456,7 @@ export function ProposalsReview({
             throw error
           }
           toast.success(t.llm.accepted)
+          onAccepted?.()
           onHandled(suggestion.id)
         }}
         onDismiss={(suggestion) => {

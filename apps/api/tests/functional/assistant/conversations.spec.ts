@@ -53,7 +53,7 @@ function recordingModel(text: string) {
 
 /** A conversation too long for another message, about an architecture with one view. */
 async function longConversation(email: string) {
-  const { user, architecture, base } = await setup(email)
+  const { user, architecture, base, about } = await setup(email)
   const diagram = await Diagram.create({
     architectureId: architecture.id,
     title: 'Domain',
@@ -64,7 +64,6 @@ async function longConversation(email: string) {
     version: 1,
   })
   const conversation = await AssistantConversation.create({
-    architectureId: architecture.id,
     userId: user.id,
     title: 'Plan',
   })
@@ -72,7 +71,7 @@ async function longConversation(email: string) {
     { conversationId: conversation.id, role: AssistantRole.User, content: 'x'.repeat(130_000) },
     { conversationId: conversation.id, role: AssistantRole.Assistant, content: 'Noted.' },
   ])
-  return { user, architecture, diagram, conversation, base }
+  return { user, architecture, diagram, conversation, base, about }
 }
 
 function makeUser(email: string) {
@@ -87,7 +86,13 @@ async function setup(email: string) {
     title: 'Shop',
     visibility: 'private',
   })
-  return { user, architecture, base: `/architectures/${architecture.id}/assistant/conversations` }
+  return {
+    user,
+    architecture,
+    base: '/assistant/conversations',
+    /** Where a message about this architecture goes. */
+    about: `/architectures/${architecture.id}/assistant/conversations`,
+  }
 }
 
 test.group('Assistant conversations', (group) => {
@@ -95,9 +100,8 @@ test.group('Assistant conversations', (group) => {
   group.each.teardown(() => app.container.restore(LanguageModels))
 
   test('404 while the flag is off, on real conversations and messages', async ({ client }) => {
-    const { user, architecture, base } = await setup('assist-off@example.com')
+    const { user, base } = await setup('assist-off@example.com')
     const conversation = await AssistantConversation.create({
-      architectureId: architecture.id,
       userId: user.id,
       title: 'Plan',
     })
@@ -182,35 +186,28 @@ test.group('Assistant conversations', (group) => {
     assert.isNull(await AssistantConversation.find(id))
   })
 
-  test("hides another account's architecture and conversation behind 404", async ({ client }) => {
+  test("hides another account's conversation behind 404", async ({ client, assert }) => {
     const { user, base } = await setup('assist-owner@example.com')
-    const { user: other } = await setup('assist-other@example.com')
+    const { user: other, about: othersArchitecture } = await setup('assist-other@example.com')
     const created = await client.post(base).headers(json).loginAs(user).json({})
-    const path = `${base}/${created.body().conversation.id}`
+    const { id } = created.body().conversation
+    const path = `${base}/${id}`
 
+    const list = await client.get(base).headers(json).loginAs(other)
+    list.assertStatus(200)
+    assert.deepEqual(list.body().data, [])
     for (const response of [
-      await client.get(base).headers(json).loginAs(other),
-      await client.post(base).headers(json).loginAs(other).json({}),
       await client.get(path).headers(json).loginAs(other),
+      // Through the other account's own architecture: the conversation is still not theirs.
+      await client
+        .post(`${othersArchitecture}/${id}/context`)
+        .headers(json)
+        .loginAs(other)
+        .json({ currentDiagramId: null, locale: 'en' }),
       await client.patch(path).headers(json).loginAs(other).json({ title: 'x' }),
       await client.delete(path).headers(json).loginAs(other),
     ])
       response.assertStatus(404)
-  })
-
-  test("reads a conversation through another architecture's path as 404", async ({ client }) => {
-    const { user, base } = await setup('assist-mismatch@example.com')
-    const second = await Architecture.create({
-      userId: user.id,
-      title: 'Other',
-      visibility: 'private',
-    })
-    const created = await client.post(base).headers(json).loginAs(user).json({})
-    const response = await client
-      .get(`/architectures/${second.id}/assistant/conversations/${created.body().conversation.id}`)
-      .headers(json)
-      .loginAs(user)
-    response.assertStatus(404)
   })
 
   test('refuses an API token (401)', async ({ client }) => {
@@ -222,7 +219,18 @@ test.group('Assistant conversations', (group) => {
     response.assertStatus(401)
   })
 
-  test('deleting the architecture deletes its conversations and messages', async ({
+  test('refuses an API token on the routes about an architecture too (401)', async ({ client }) => {
+    const { user, base, about } = await setup('assist-token-about@example.com')
+    const created = await client.post(base).headers(json).loginAs(user).json({})
+    const token = await User.accessTokens.create(user, ['read', 'write'], { name: 'ci' })
+    const response = await client
+      .post(`${about}/${created.body().conversation.id}/context`)
+      .headers({ ...json, authorization: `Bearer ${token.value?.release()}` })
+      .json({ currentDiagramId: null, locale: 'en' })
+    response.assertStatus(401)
+  })
+
+  test('deleting an architecture keeps the conversation, its messages about no architecture', async ({
     client,
     assert,
   }) => {
@@ -230,30 +238,63 @@ test.group('Assistant conversations', (group) => {
     const created = await client.post(base).headers(json).loginAs(user).json({})
     const message = await AssistantMessage.create({
       conversationId: created.body().conversation.id,
+      architectureId: architecture.id,
       role: AssistantRole.User,
       content: 'Hello',
+    })
+    const view = { kind: 'class', title: 'Secret design', classes: [], relations: [] }
+    const proposed = await AssistantMessage.create({
+      conversationId: created.body().conversation.id,
+      architectureId: architecture.id,
+      role: AssistantRole.Assistant,
+      content: 'Here.',
+      changes: [
+        { op: 'update', title: 'Orders', status: 'pending', before: view, after: view },
+      ] as never,
     })
     const removed = await client
       .delete(`/architectures/${architecture.id}`)
       .headers(json)
       .loginAs(user)
     removed.assertStatus(204)
-    assert.isNull(await AssistantConversation.find(created.body().conversation.id))
-    assert.isNull(await AssistantMessage.find(message.id))
+    assert.isNotNull(await AssistantConversation.find(created.body().conversation.id))
+    await message.refresh()
+    assert.isNull(message.architectureId)
+    // The diagrams go with their architecture: a kept change holds neither of its two states.
+    await proposed.refresh()
+    assert.deepInclude(proposed.changes?.[0], { title: 'Orders', before: null, after: null })
+    assert.notInclude(JSON.stringify(proposed.changes), 'Secret design')
+    const show = await client
+      .get(`${base}/${created.body().conversation.id}`)
+      .headers(json)
+      .loginAs(user)
+    show.assertStatus(200)
+    assert.deepEqual(
+      show
+        .body()
+        .messages.map((item: { content: string; architectureId: number | null }) => [
+          item.content,
+          item.architectureId,
+        ]),
+      [
+        ['Hello', null],
+        ['Here.', null],
+      ],
+    )
   })
 
   test('continues a conversation that is over the budget, with its summary first', async ({
     client,
     assert,
   }) => {
-    const { user, diagram, conversation, base } = await longConversation(
+    const { user, diagram, conversation, base, about } = await longConversation(
       'assist-continue@example.com',
     )
     const { model, prompts } = recordingModel('  The plan so far.  ')
     useModel(model)
 
     const full = await client
-      .post(`${base}/${conversation.id}/messages`)
+      .post(`${about}/${conversation.id}/messages`)
       .headers(json)
       .loginAs(user)
       .json({ ...summarize, message: 'And now?', currentDiagramId: diagram.id })
@@ -282,8 +323,7 @@ test.group('Assistant conversations', (group) => {
         ]),
       [['summary', 'The plan so far.']],
     )
-    assert.equal(response.body().budget.max, 32_000)
-    assert.isBelow(response.body().budget.history, 1000)
+    assert.notProperty(response.body(), 'budget')
     assert.notInclude(JSON.stringify(response.body()), KEY)
 
     const old = await AssistantMessage.query().where('conversationId', conversation.id)
@@ -293,9 +333,7 @@ test.group('Assistant conversations', (group) => {
   })
 
   test('continue: 502 stores nothing', async ({ client, assert }) => {
-    const { user, architecture, conversation, base } = await longConversation(
-      'assist-continue-502@example.com',
-    )
+    const { user, conversation, base } = await longConversation('assist-continue-502@example.com')
     useModel(
       failingModel(
         new APICallError({
@@ -315,10 +353,7 @@ test.group('Assistant conversations', (group) => {
 
     response.assertStatus(502)
     assert.equal(response.body().reason, 'unauthorized')
-    const conversations = await AssistantConversation.query().where(
-      'architectureId',
-      architecture.id,
-    )
+    const conversations = await AssistantConversation.query().where('userId', user.id)
     assert.lengthOf(conversations, 1)
   })
 
@@ -326,9 +361,8 @@ test.group('Assistant conversations', (group) => {
     client,
     assert,
   }) => {
-    const { user, architecture, base } = await setup('assist-continue-blank@example.com')
+    const { user, base } = await setup('assist-continue-blank@example.com')
     const conversation = await AssistantConversation.create({
-      architectureId: architecture.id,
       userId: user.id,
       title: 'Plan',
     })
@@ -344,17 +378,12 @@ test.group('Assistant conversations', (group) => {
     response.assertStatus(409)
     assert.equal(response.body().error.code, 'nothing_to_summarize')
     assert.lengthOf(prompts, 0)
-    const conversations = await AssistantConversation.query().where(
-      'architectureId',
-      architecture.id,
-    )
+    const conversations = await AssistantConversation.query().where('userId', user.id)
     assert.lengthOf(conversations, 1)
   })
 
   test('continue: an empty summary is a 502 that stores nothing', async ({ client, assert }) => {
-    const { user, architecture, conversation, base } = await longConversation(
-      'assist-continue-empty@example.com',
-    )
+    const { user, conversation, base } = await longConversation('assist-continue-empty@example.com')
     useModel(recordingModel('   ').model)
 
     const response = await client
@@ -365,10 +394,7 @@ test.group('Assistant conversations', (group) => {
 
     response.assertStatus(502)
     assert.equal(response.body().reason, 'unknown')
-    const conversations = await AssistantConversation.query().where(
-      'architectureId',
-      architecture.id,
-    )
+    const conversations = await AssistantConversation.query().where('userId', user.id)
     assert.lengthOf(conversations, 1)
   })
 

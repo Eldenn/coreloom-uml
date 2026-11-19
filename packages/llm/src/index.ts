@@ -27,6 +27,7 @@ export {
   assistantBudget,
   assistantOutputSchema,
   changeLine,
+  chatWithAssistant,
   type ProposedChange,
   summarizeConversation,
 } from './assistant.ts'

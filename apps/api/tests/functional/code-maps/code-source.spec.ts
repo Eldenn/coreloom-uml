@@ -183,7 +183,6 @@ async function setup(
     title: 'API',
   })
   const conversation = await AssistantConversation.create({
-    architectureId: architecture.id,
     userId: user.id,
     title: '',
   })

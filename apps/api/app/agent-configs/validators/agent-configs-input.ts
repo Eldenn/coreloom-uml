@@ -26,8 +26,14 @@ import {
   AgentProposalSource,
   TARGETS,
 } from '#app/agent-configs/constants/agent-config'
+import {
+  PROPOSAL_SOURCE_TITLE_MAX_LENGTH,
+  PROPOSAL_SOURCE_URL_MAX_LENGTH,
+  PROPOSAL_SOURCES_MAX,
+} from '#app/assistant/constants/assistant'
 import { llmCallFields } from '#app/llm/validators/llm-input'
 import { RESEARCH_REQUEST_MAX_LENGTH } from '#app/research/constants/research'
+import { isWebUrl } from '#app/research/services/page-text'
 
 /** Longest rule, preset or section name accepted on the wire. */
 const CATALOG_ID_MAX_LENGTH = 64
@@ -44,6 +50,13 @@ const withoutMarkers = vine.createRule(
     }
   },
 )
+
+/** An http(s) address, as a web research reads them. */
+const webUrl = vine.createRule((value: unknown, _options: undefined, field: FieldContext) => {
+  if (typeof value === 'string' && !isWebUrl(value)) {
+    field.report('The {{ field }} field must be an http(s) address', 'webUrl', field)
+  }
+})
 
 const catalogId = () => vine.string().trim().minLength(1).maxLength(CATALOG_ID_MAX_LENGTH)
 
@@ -220,6 +233,24 @@ export const agentImportInput = vine.create(
     content: vine.string().trim().minLength(1).maxLength(AGENT_IMPORT_MAX_LENGTH),
     /** `research` when the text is the findings of a web research rather than the owner's file. */
     origin: vine.enum(IMPORT_ORIGINS).optional(),
+    /**
+     * With `origin: 'research'` only: the assistant conversation the research was asked in. The
+     * request and the proposals are then stored there, with the pages the research read.
+     */
+    conversation: vine
+      .object({
+        id: vine.number().withoutDecimals().positive(),
+        request: vine.string().trim().minLength(1).maxLength(RESEARCH_REQUEST_MAX_LENGTH),
+        sources: vine
+          .array(
+            vine.object({
+              url: vine.string().maxLength(PROPOSAL_SOURCE_URL_MAX_LENGTH).use(webUrl()),
+              title: vine.string().maxLength(PROPOSAL_SOURCE_TITLE_MAX_LENGTH).nullable(),
+            }),
+          )
+          .maxLength(PROPOSAL_SOURCES_MAX),
+      })
+      .optional(),
   }),
 )
 

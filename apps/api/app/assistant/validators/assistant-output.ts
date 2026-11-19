@@ -1,4 +1,8 @@
-import type { AssistantRole, StoredChange } from '#app/assistant/constants/assistant'
+import type {
+  AssistantRole,
+  StoredChange,
+  StoredProposals,
+} from '#app/assistant/constants/assistant'
 import type { Paginated } from '#app/shared/pagination/paginate'
 
 export type ConversationOutput = {
@@ -22,7 +26,10 @@ export type MessageOutput = {
   id: number
   role: AssistantRole
   content: string
+  /** The architecture the message is about; null for none. */
+  architectureId: number | null
   changes: ChangeOutput[] | null
+  proposals: StoredProposals | null
   createdAt: string
 }
 

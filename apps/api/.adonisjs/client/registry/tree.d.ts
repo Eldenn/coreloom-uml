@@ -184,17 +184,8 @@ export interface ApiDefinition {
       regenerateCode: typeof routes['architectures.sharing.regenerate_code']
     }
     assistant: {
-      conversations: {
-        index: typeof routes['architectures.assistant.conversations.index']
-        store: typeof routes['architectures.assistant.conversations.store']
-        show: typeof routes['architectures.assistant.conversations.show']
-        update: typeof routes['architectures.assistant.conversations.update']
-        destroy: typeof routes['architectures.assistant.conversations.destroy']
-        continue: typeof routes['architectures.assistant.conversations.continue']
-      }
       messages: {
         store: typeof routes['architectures.assistant.messages.store']
-        destroy: typeof routes['architectures.assistant.messages.destroy']
       }
       context: typeof routes['architectures.assistant.context']
       changes: {
@@ -205,6 +196,23 @@ export interface ApiDefinition {
     }
   }
   mcp: typeof routes['mcp']
+  assistant: {
+    conversations: {
+      index: typeof routes['assistant.conversations.index']
+      store: typeof routes['assistant.conversations.store']
+      show: typeof routes['assistant.conversations.show']
+      update: typeof routes['assistant.conversations.update']
+      destroy: typeof routes['assistant.conversations.destroy']
+      continue: typeof routes['assistant.conversations.continue']
+    }
+    messages: {
+      store: typeof routes['assistant.messages.store']
+      destroy: typeof routes['assistant.messages.destroy']
+    }
+    proposals: {
+      settle: typeof routes['assistant.proposals.settle']
+    }
+  }
   uml: {
     validate: typeof routes['uml.validate']
   }
