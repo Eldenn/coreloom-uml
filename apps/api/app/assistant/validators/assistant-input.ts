@@ -2,6 +2,7 @@ import vine from '@vinejs/vine'
 import {
   ASSISTANT_LOCALES,
   ASSISTANT_MESSAGE_MAX_LENGTH,
+  ASSISTANT_TARGET_KINDS,
   ASSISTANT_TITLE_MAX_LENGTH,
   PROPOSALS_ADDED_MAX,
 } from '#app/assistant/constants/assistant'
@@ -60,6 +61,13 @@ export const chatInput = vine.create(
     ...llmCallFields(),
     message: vine.string().trim().minLength(1).maxLength(ASSISTANT_MESSAGE_MAX_LENGTH),
     locale: vine.enum(ASSISTANT_LOCALES),
+    /** The page the message is written from, for "here" to mean something. */
+    page: vine
+      .object({
+        kind: vine.enum(ASSISTANT_TARGET_KINDS),
+        id: vine.number().withoutDecimals().positive(),
+      })
+      .optional(),
   }),
 )
 

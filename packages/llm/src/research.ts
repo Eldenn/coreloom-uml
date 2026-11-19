@@ -43,7 +43,7 @@ export const RESEARCH_INSTRUCTIONS = [
  * A tool's answer, or a rejection as soon as the research is out of time: the loop's timeout
  * does not interrupt a tool by itself, and a sandbox that stopped answering must not hold it.
  */
-function unlessAborted<T>(work: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
+export function unlessAborted<T>(work: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
   if (!signal) return work
   return new Promise<T>((resolve, reject) => {
     const abort = () => {
@@ -57,7 +57,7 @@ function unlessAborted<T>(work: Promise<T>, signal: AbortSignal | undefined): Pr
   })
 }
 
-function cut(text: string, max: number): string {
+export function cut(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`
 }
 

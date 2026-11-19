@@ -14,6 +14,7 @@ import { IMPORT_ORIGINS } from '@coreloom-uml/llm'
 import vine from '@vinejs/vine'
 import type { FieldContext } from '@vinejs/vine/types'
 import {
+  AGENT_CATALOG_ID_MAX_LENGTH,
   AGENT_CONFIG_NAME_MAX_LENGTH,
   AGENT_IMPORT_MAX_LENGTH,
   AGENT_NOTES_MAX_LENGTH,
@@ -35,9 +36,6 @@ import { llmCallFields } from '#app/llm/validators/llm-input'
 import { RESEARCH_REQUEST_MAX_LENGTH } from '#app/research/constants/research'
 import { isWebUrl } from '#app/research/services/page-text'
 
-/** Longest rule, preset or section name accepted on the wire. */
-const CATALOG_ID_MAX_LENGTH = 64
-
 /** No input may contain a managed-block marker: it could open or close a block in a file. */
 const withoutMarkers = vine.createRule(
   (value: unknown, _options: undefined, field: FieldContext) => {
@@ -58,7 +56,7 @@ const webUrl = vine.createRule((value: unknown, _options: undefined, field: Fiel
   }
 })
 
-const catalogId = () => vine.string().trim().minLength(1).maxLength(CATALOG_ID_MAX_LENGTH)
+const catalogId = () => vine.string().trim().minLength(1).maxLength(AGENT_CATALOG_ID_MAX_LENGTH)
 
 const nameInput = () =>
   vine.string().trim().minLength(1).maxLength(AGENT_CONFIG_NAME_MAX_LENGTH).use(withoutMarkers())

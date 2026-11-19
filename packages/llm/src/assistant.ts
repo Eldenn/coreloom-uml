@@ -12,7 +12,7 @@ export const ASSISTANT_TIMEOUT_MS = 120_000
 export const ASSISTANT_CHANGES_MAX = 10
 const ASSISTANT_TEMPERATURE = 0.2
 const SUMMARY_MAX_OUTPUT_TOKENS = 1000
-const CHARS_PER_TOKEN = 4
+export const CHARS_PER_TOKEN = 4
 
 /** One view (diagram) of the architecture. `content` is null for a view not drawn yet. */
 export type AssistantView = {
@@ -288,7 +288,7 @@ export const ASSISTANT_INSTRUCTIONS = [
   FORMAT_BLOCK,
 ].join('\n')
 
-const LANGUAGES = { en: 'English', fr: 'French' } as const
+export const LANGUAGES = { en: 'English', fr: 'French' } as const
 
 function instructions(locale: AssistantSource['locale']): string {
   return `${ASSISTANT_INSTRUCTIONS}\nWrite the reply in ${LANGUAGES[locale]}.`
@@ -309,13 +309,13 @@ function notSentBlock(views: readonly AssistantView[]): string {
   return `<views_not_sent>\n${lines.join('')}</views_not_sent>\n`
 }
 
-function historyBlock(history: readonly AssistantTurn[]): string {
+export function historyBlock(history: readonly AssistantTurn[]): string {
   const turns = history.map((turn) => `<turn role="${turn.role}">\n${turn.text}\n</turn>\n`)
   return `<history>\n${turns.join('')}</history>\n`
 }
 
 const architectureBlock = (name: string) => `<architecture>${name}</architecture>\n`
-const messageBlock = (message: string) => `<message>\n${message}\n</message>\n`
+export const messageBlock = (message: string) => `<message>\n${message}\n</message>\n`
 const tokens = (chars: number) => Math.ceil(chars / CHARS_PER_TOKEN)
 
 /** The one accounting both `assistantBudget` and `askAssistant` use. */

@@ -1303,6 +1303,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-proposals-controller').default['settle']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'assistant.actions.accept': {
+    methods: ["POST"]
+    pattern: '/assistant/conversations/:conversationId/messages/:messageId/actions/:index/accept'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue, ParamValue]
+      params: { conversationId: ParamValue; messageId: ParamValue; index: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-actions-controller').default['accept']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-actions-controller').default['accept']>>>
+    }
+  }
+  'assistant.actions.reject': {
+    methods: ["POST"]
+    pattern: '/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue, ParamValue]
+      params: { conversationId: ParamValue; messageId: ParamValue; index: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-actions-controller').default['reject']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-actions-controller').default['reject']>>>
+    }
+  }
   'architectures.assistant.messages.store': {
     methods: ["POST"]
     pattern: '/architectures/:id/assistant/conversations/:conversationId/messages'

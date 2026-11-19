@@ -6,10 +6,18 @@ import {
   assistantBudget,
   chatWithAssistant,
   LlmCallError,
+  runAssistantTools,
 } from '@coreloom-uml/llm'
-import { AssistantRole, ChangeStatus } from '#app/assistant/constants/assistant'
+import { actionTools } from '#app/assistant/actions/registry'
+import { AssistantRole, ChangeStatus, type StoredAction } from '#app/assistant/constants/assistant'
 import AssistantMessage from '#app/assistant/models/assistant-message'
 import { serializeMessage } from '#app/assistant/serializers/assistant-serializer'
+import {
+  assistantActionsEnabled,
+  handoffOf,
+  handoffTools,
+  resolvePage,
+} from '#app/assistant/services/assistant-actions'
 import {
   assistantSource,
   conversationHistory,
@@ -29,13 +37,20 @@ import {
   assistantContextInput,
   chatInput,
 } from '#app/assistant/validators/assistant-input'
-import type { AskAssistantOutput } from '#app/assistant/validators/assistant-output'
+import type {
+  AskAssistantOutput,
+  ChatOutput,
+  HandoffOutput,
+} from '#app/assistant/validators/assistant-output'
 import { CodeMapStatus } from '#app/code-maps/constants/code-map'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
 import { CODE_MAP_NOT_FOUND, findOwnedCodeMap } from '#app/code-maps/services/owned-code-map'
 import { DIAGRAM_NOT_FOUND } from '#app/diagrams/services/owned-diagram'
 import { LlmFailureReason, llmFailure, userLanguageModel } from '#app/llm/services/language-models'
-import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
+import {
+  ProviderKind,
+  SUBSCRIPTION_NOT_FOUND,
+} from '#app/llm-connections/constants/llm-connections'
 
 const MESSAGE_NOT_FOUND = { error: { message: 'Message not found' } } as const
 const NOT_A_SUMMARY = { error: { message: 'Only a summary can be deleted.' } } as const
@@ -195,7 +210,10 @@ export default class AssistantMessagesController {
 
   /**
    * `POST /assistant/conversations/:conversationId/messages` — a message about no architecture:
-   * the user's model answers from the conversation's history, with no view and no change.
+   * the user's model answers from the conversation's history. Behind `assistant-actions` too (and
+   * with a model that carries tool calls), it may read the account's work and propose actions,
+   * stored `pending` for the owner to accept, or hand the message over (`handoff`): then nothing
+   * is stored, and the screen sends the message again down that path.
    */
   async chat({ params, request, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
@@ -203,7 +221,7 @@ export default class AssistantMessagesController {
     const conversation = await findOwnedConversation(params.conversationId, user)
     if (!conversation) return response.notFound(CONVERSATION_NOT_FOUND)
 
-    const { provider, apiKey, message, locale } = await request.validateUsing(chatInput)
+    const { provider, apiKey, message, locale, page } = await request.validateUsing(chatInput)
     const built = await userLanguageModel(provider, apiKey, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
@@ -214,11 +232,32 @@ export default class AssistantMessagesController {
       logger.warn({ ...log, reason: built.reason }, 'assistant chat failed')
       return response.badGateway(llmFailure(built.reason))
     }
+    // The ChatGPT subscription is not known to carry a tool call from one step to the next.
+    const withTools =
+      provider.kind !== ProviderKind.OpenAICodex && (await assistantActionsEnabled(user))
     const history = await conversationHistory(conversation)
+    const recorded: StoredAction[] = []
+    let actions: StoredAction[] = []
     const started = performance.now()
     let reply: string
+    let handoff: HandoffOutput | null = null
     try {
-      reply = await chatWithAssistant(built.model, { history, message, locale })
+      if (withTools) {
+        const tools = [...actionTools(user, recorded), ...(await handoffTools(user))]
+        const result = await runAssistantTools(built.model, {
+          history,
+          message,
+          locale,
+          page: await resolvePage(page, user),
+          tools,
+        })
+        reply = result.reply
+        // Recorded by the tools as the loop went, in the same order: keep the ones the loop kept.
+        actions = recorded.slice(0, result.proposed.length)
+        if (result.route) handoff = handoffOf(result.route)
+      } else {
+        reply = await chatWithAssistant(built.model, { history, message, locale })
+      }
     } catch (error) {
       const durationMs = Math.round(performance.now() - started)
       if (error instanceof AssistantContextFull) {
@@ -230,18 +269,34 @@ export default class AssistantMessagesController {
       return response.badGateway(llmFailure(error.reason))
     }
     const durationMs = Math.round(performance.now() - started)
-    if (!reply.trim()) {
+    if (handoff) {
+      logger.info({ ...log, durationMs, handoff: handoff.kind }, 'assistant chat handed over')
+      return response.ok({ messages: [], handoff } satisfies ChatOutput)
+    }
+    if (!reply.trim() && actions.length === 0) {
       // A blank answer would be stored as an empty bubble: answered like any failed call.
       logger.warn({ ...log, durationMs, reason: LlmFailureReason.Unknown }, 'assistant chat failed')
       return response.badGateway(llmFailure(LlmFailureReason.Unknown))
     }
-    logger.info({ ...log, durationMs }, 'assistant chat')
+    logger.info(
+      {
+        ...log,
+        durationMs,
+        tools: withTools,
+        actions: actions.map((action) => action.name),
+      },
+      'assistant chat',
+    )
 
     const messages = await storeExchange(conversation, message, {
       architectureId: null,
       content: reply,
+      actions,
     })
-    return response.ok({ messages: messages.map(serializeMessage) })
+    return response.ok({
+      messages: messages.map(serializeMessage),
+      handoff: null,
+    } satisfies ChatOutput)
   }
 
   /** `DELETE /assistant/conversations/:conversationId/messages/:messageId` — a summary only. */

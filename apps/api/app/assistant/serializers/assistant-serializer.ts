@@ -24,6 +24,7 @@ export function serializeMessage(message: AssistantMessage): MessageOutput {
     architectureId: message.architectureId ?? null,
     changes: message.changes?.map(serializeChange) ?? null,
     proposals: message.proposals ?? null,
+    actions: message.actions?.map((action, index) => ({ ...action, index })) ?? null,
     createdAt: message.createdAt.toISO() ?? '',
   }
 }

@@ -11,6 +11,9 @@ export const AGENT_RULE_SOURCES = Object.values(AgentRuleSource)
 /** Longest configuration name (the `agent_configs.name` column). */
 export const AGENT_CONFIG_NAME_MAX_LENGTH = 120
 
+/** Longest rule, preset, slot or section name accepted on the wire. */
+export const AGENT_CATALOG_ID_MAX_LENGTH = 64
+
 /** Accepted rules one configuration can hold. */
 export const AGENT_RULES_MAX = 50
 /** Roles one configuration can hold. */

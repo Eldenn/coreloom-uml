@@ -173,8 +173,10 @@ export class AssistantConversationSchema extends BaseModel {
 }
 
 export class AssistantMessageSchema extends BaseModel {
-  static $columns = ['architectureId', 'changes', 'content', 'conversationId', 'createdAt', 'id', 'proposals', 'role'] as const
+  static $columns = ['actions', 'architectureId', 'changes', 'content', 'conversationId', 'createdAt', 'id', 'proposals', 'role'] as const
   $columns = AssistantMessageSchema.$columns
+  @column()
+  declare actions: any | null
   @column()
   declare architectureId: number | null
   @column()

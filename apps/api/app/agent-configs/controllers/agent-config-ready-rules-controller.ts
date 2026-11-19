@@ -1,10 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import db from '@adonisjs/lucid/services/db'
-import { acceptedProblem, findRuleGroup, RULE_PACKS } from '@coreloom-uml/catalog'
-import AgentConfigReadyRule from '#app/agent-configs/models/agent-config-ready-rule'
+import { replaceReadyRules } from '#app/agent-configs/services/agent-rules'
 import {
   AGENT_CONFIG_NOT_FOUND,
-  bumpRevision,
   describeAgentConfig,
   findOwnedAgentConfig,
 } from '#app/agent-configs/services/owned-agent-config'
@@ -24,38 +21,11 @@ export default class AgentConfigReadyRulesController {
     }
 
     const { rules } = await request.validateUsing(updateAgentReadyRulesInput)
-    const slot = String(params.slot)
-    const group = findRuleGroup(RULE_PACKS, slot)
-    if (!group) {
-      return response.unprocessableEntity({ error: { message: `Unknown slot: ${slot}` } })
-    }
-    const problem = acceptedProblem(group, rules)
-    if (problem) return response.unprocessableEntity({ error: { message: problem } })
     const next = rules.map(({ rule, value }) => ({ rule, value: value ?? null }))
+    const result = await replaceReadyRules(Number(params.id), user, String(params.slot), () => next)
+    if ('notFound' in result) return response.notFound(result.notFound)
+    if ('refused' in result) return response.unprocessableEntity(result.refused)
 
-    const config = await db.transaction(async (trx) => {
-      // Locked until the transaction ends, so two requests cannot both replace the group.
-      const locked = await findOwnedAgentConfig(params.id, user, trx)
-      if (!locked) return null
-      const held = () =>
-        AgentConfigReadyRule.query({ client: trx })
-          .where('agentConfigId', locked.id)
-          .where('slot', slot)
-      const rows = await held()
-      const same =
-        rows.length === next.length &&
-        next.every((item) => rows.some((row) => row.rule === item.rule && row.value === item.value))
-      if (same) return locked
-      await held().delete()
-      await AgentConfigReadyRule.createMany(
-        next.map((item) => ({ agentConfigId: locked.id, slot, ...item })),
-        { client: trx },
-      )
-      await bumpRevision(locked, trx)
-      return locked
-    })
-    if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
-
-    return response.ok(await describeAgentConfig(config))
+    return response.ok(await describeAgentConfig(result))
   }
 }

@@ -3,6 +3,7 @@ import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import type { DateTime } from 'luxon'
 import type {
   AssistantRole,
+  StoredAction,
   StoredChange,
   StoredProposals,
 } from '#app/assistant/constants/assistant'
@@ -37,6 +38,10 @@ export default class AssistantMessage extends BaseModel {
   /** What a web research proposed, for the owner to add; null on any other message. */
   @column(json)
   declare proposals: StoredProposals | null
+
+  /** The actions on the account's work this message proposed; null when it proposed none. */
+  @column(json)
+  declare actions: StoredAction[] | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
