@@ -164,7 +164,8 @@ export function createClaudeCodeModel(
     async doGenerate(options): Promise<LanguageModelV4GenerateResult> {
       const parts = promptParts(options.prompt)
       const stdin = parts.stdin
-      const tools = functionTools(options.tools)
+      // A caller that forbids tools for this call (the last step of a loop) gets a plain answer.
+      const tools = options.toolChoice?.type === 'none' ? [] : functionTools(options.tools)
       const system = tools.length
         ? [parts.system, actionInstructions(tools)].filter(Boolean).join('\n\n')
         : parts.system

@@ -32,6 +32,11 @@ export type ReadActionDefinition<S extends z.ZodType> = ActionBase<S> & {
 export type WriteActionDefinition<S extends z.ZodType> = ActionBase<S> & {
   kind: typeof AssistantToolKind.Write
   destructive?: true
+  /**
+   * Why the input can never be applied, read from the input alone (no query): the model is told
+   * and nothing is proposed, so the owner is not shown a card that can only fail.
+   */
+  problem?(input: z.output<S>): string | null
   /** The display name of the target now (null for a creation), or `TARGET_NOT_FOUND`. */
   subject(input: z.output<S>, user: User): Promise<string | null | typeof TARGET_NOT_FOUND>
   /** Runs inside the transaction (`client`) that stores the action's new status. */
@@ -47,6 +52,7 @@ export type AssistantAction =
   | (ActionBase<z.ZodType> & {
       kind: typeof AssistantToolKind.Write
       destructive?: true
+      problem?(input: unknown): string | null
       subject(input: unknown, user: User): Promise<string | null | typeof TARGET_NOT_FOUND>
       apply(input: unknown, user: User, client: TransactionClientContract): Promise<ActionApplied>
     })
@@ -65,6 +71,7 @@ export function writeAction<S extends z.ZodType>(
 ): AssistantAction {
   return {
     ...definition,
+    problem: (input) => definition.problem?.(definition.input.parse(input)) ?? null,
     subject: (input, user) => definition.subject(definition.input.parse(input), user),
     apply: (input, user, client) => definition.apply(definition.input.parse(input), user, client),
   }

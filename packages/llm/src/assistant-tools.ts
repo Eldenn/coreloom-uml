@@ -15,7 +15,7 @@ import { failureReason, LlmCallError, LlmFailureReason } from './failure.ts'
 import { cut, unlessAborted } from './research.ts'
 
 /** Calls to the model in one message. */
-export const ASSISTANT_TOOLS_MAX_STEPS = 8
+export const ASSISTANT_TOOLS_MAX_STEPS = 12
 /** The whole loop: well under what the API's proxy allows a request. */
 export const ASSISTANT_TOOLS_TIMEOUT_MS = 60_000
 /** Write calls one message can propose; past this, the model is told to stop. */
@@ -151,6 +151,7 @@ export async function runAssistantTools(
     ]),
   )
 
+  const maxSteps = options.maxSteps ?? ASSISTANT_TOOLS_MAX_STEPS
   let reply = ''
   try {
     const result = await generateText({
@@ -158,7 +159,10 @@ export async function runAssistantTools(
       instructions,
       prompt,
       tools,
-      stopWhen: [stepCountIs(options.maxSteps ?? ASSISTANT_TOOLS_MAX_STEPS), () => route !== null],
+      stopWhen: [stepCountIs(maxSteps), () => route !== null],
+      // The last step may only answer: a model that keeps reading still ends on a reply.
+      prepareStep: ({ stepNumber }) =>
+        stepNumber >= maxSteps - 1 ? { toolChoice: 'none' } : undefined,
       temperature: ASSISTANT_TOOLS_TEMPERATURE,
       maxOutputTokens: ASSISTANT_MAX_OUTPUT_TOKENS,
       timeout: options.timeoutMs ?? ASSISTANT_TOOLS_TIMEOUT_MS,

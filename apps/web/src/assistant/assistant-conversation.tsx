@@ -146,7 +146,7 @@ export function Conversation({
         architectureId: architectureOf(subject),
         ...views.selection,
         ...subject.code.sent,
-        ...(subject.mode === 'auto' ? { page: subject.page } : {}),
+        ...(subject.mode === 'auto' ? { auto: true, page: subject.page } : {}),
         onHandoff: (handoff) => {
           setHanded({ handoff, message: text })
         },

@@ -23,7 +23,8 @@ export function findAction(name: string): AssistantAction | undefined {
 
 /**
  * The actions as the loop's tools, bound to `user`. A write records its proposal in `proposals`
- * (with the target's current name), or tells the model its target does not exist.
+ * (with the target's current name), or tells the model why not: its target does not exist, or
+ * its input can never be applied.
  */
 export function actionTools(user: User, proposals: StoredAction[]): AssistantTool[] {
   return ASSISTANT_ACTIONS.map((action): AssistantTool => {
@@ -43,6 +44,8 @@ export function actionTools(user: User, proposals: StoredAction[]): AssistantToo
       inputSchema,
       kind: action.kind,
       run: async (input) => {
+        const problem = action.problem?.(input)
+        if (problem) return problem
         const subject = await action.subject(input, user)
         if (subject === TARGET_NOT_FOUND) return NOT_FOUND_SENTENCE
         proposals.push({

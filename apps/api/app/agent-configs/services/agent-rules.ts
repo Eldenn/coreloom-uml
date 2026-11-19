@@ -30,7 +30,7 @@ const TOO_MANY_RULES = {
   error: { message: `A configuration holds at most ${AGENT_RULES_MAX} rules.` },
 } as const
 
-function unknownSection(section: string): Refusal | null {
+export function unknownSection(section: string): Refusal | null {
   const sections = ruleSections(RULE_PACKS)
   return sections.includes(section)
     ? null

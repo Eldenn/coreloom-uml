@@ -32,6 +32,8 @@ const chat = {
   apiKey: KEY,
   message: 'Tidy up my work',
   locale: 'en',
+  // The owner let the assistant decide what the message needs.
+  auto: true,
 }
 const SECTION = 'Architecture'
 const E2B_KEY = env.get('E2B_API_KEY')
@@ -376,6 +378,42 @@ test.group('Assistant actions - proposing', (group) => {
     assert.equal(fixture.project.name, 'Shop')
   })
 
+  test('without `auto`, the message is a plain chat even with the flag on', async ({
+    client,
+    assert,
+  }) => {
+    const fixture = await setup('actions-not-auto@example.com')
+    const { response, model } = await send(client, fixture, [{ text: 'Hello.' }], {
+      auto: undefined,
+    })
+
+    response.assertStatus(200)
+    assert.isNull(response.body().handoff)
+    assert.lengthOf(model.doGenerateCalls[0]?.tools ?? [], 0)
+  })
+
+  test('a rule the catalog would refuse is not proposed: the model is told why', async ({
+    client,
+    assert,
+  }) => {
+    const fixture = await setup('actions-refused-early@example.com')
+    const agentConfigId = fixture.config.id
+    const { response, model } = await send(client, fixture, [
+      {
+        calls: [
+          { tool: 'add_rule', input: { agentConfigId, section: 'No such section', text: 'x' } },
+          { tool: 'set_ready_rule', input: { agentConfigId, slot: 'no.such-slot', rule: 'x' } },
+        ],
+      },
+      { text: 'Neither can be done.' },
+    ])
+
+    response.assertStatus(200)
+    assert.isNull(response.body().messages[1].actions)
+    assert.include(toolResults(model), 'Unknown section')
+    assert.include(toolResults(model), 'Unknown slot')
+  })
+
   test("an action on another account's work is never proposed", async ({ client, assert }) => {
     const fixture = await setup('actions-foreign@example.com')
     const other = await setup('actions-foreign-other@example.com')
@@ -586,11 +624,16 @@ test.group('Assistant actions - accepting', (group) => {
     client,
     assert,
   }) => {
-    const { accept } = await proposed(client, 'actions-section@example.com', 'add_rule', (f) => ({
-      agentConfigId: f.config.id,
-      section: 'Nowhere',
-      text: 'Fine',
-    }))
+    const { message, accept } = await proposed(
+      client,
+      'actions-section@example.com',
+      'add_rule',
+      (f) => ({ agentConfigId: f.config.id, section: SECTION, text: 'Fine' }),
+    )
+    // The catalog lost the section since the proposal.
+    const action = firstAction(message)
+    message.actions = [{ ...action, input: { ...action.input, section: 'Nowhere' } }]
+    await message.save()
 
     const response = await accept()
 

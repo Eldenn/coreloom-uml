@@ -1,4 +1,5 @@
 import {
+  acceptedProblem,
   findRuleGroup,
   MARKER_PREFIX,
   RULE_PACKS,
@@ -20,6 +21,7 @@ import {
   removeRule,
   replaceReadyRules,
   rulesOf,
+  unknownSection,
   updateRule,
 } from '#app/agent-configs/services/agent-rules'
 import { findOwnedAgentConfig } from '#app/agent-configs/services/owned-agent-config'
@@ -146,6 +148,7 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
       "Proposes to add one of the owner's own rules to agent conventions, in one of the sections read_agent_config lists.",
     input: z.object({ ...configId, section: catalogId(), text: ruleText() }),
     kind: AssistantToolKind.Write,
+    problem: ({ section }) => sectionProblem(section),
     subject: ({ agentConfigId }, user) => configName(agentConfigId, user),
     async apply({ agentConfigId, section, text }, user, client) {
       return applied(await addRule(agentConfigId, user, { section, text }, client))
@@ -166,6 +169,7 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
         message: 'Give a text or a section',
       }),
     kind: AssistantToolKind.Write,
+    problem: ({ section }) => sectionProblem(section),
     subject: ({ agentConfigId, ruleId }, user) => currentRuleText(agentConfigId, ruleId, user),
     async apply({ agentConfigId, ruleId, text, section }, user, client) {
       return applied(await updateRule(agentConfigId, ruleId, user, { text, section }, client))
@@ -195,6 +199,12 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
       value: withoutMarkers(z.string().trim().max(RULE_VALUE_MAX_LENGTH)).nullable().optional(),
     }),
     kind: AssistantToolKind.Write,
+    // The rule alone, as the catalog checks it; what the group already holds is checked on accept.
+    problem({ slot, rule, value }) {
+      const group = findRuleGroup(RULE_PACKS, slot)
+      if (!group) return `Unknown slot: ${slot}. Find one with find_ready_rules.`
+      return acceptedProblem(group, [{ rule, value: value ?? null }])
+    },
     subject: ({ agentConfigId }, user) => configName(agentConfigId, user),
     async apply({ agentConfigId, slot, rule, value }, user, client) {
       const chosen = { rule, value: value ?? null }
@@ -219,6 +229,11 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
     },
   }),
 ]
+
+/** As the rule routes: a section the catalog does not have is refused. */
+function sectionProblem(section: string | undefined): string | null {
+  return section === undefined ? null : (unknownSection(section)?.error.message ?? null)
+}
 
 /** The current text of one of the owner's rules, as the subject of an action on it. */
 async function currentRuleText(agentConfigId: number, ruleId: number, user: User) {

@@ -66,7 +66,7 @@ silently.
   research launched from the assistant (the panel's « From the web », which also needs
   `web-research`) stores its request and proposals (rules and the addresses of the pages read,
   never a quote of what was read) in the conversation. With `assistant-actions` too, a plain
-  message lets the model read the account's projects, architectures and agent conventions and
+  message sent with `auto` (the panel's « Auto ») lets the model read the account's projects, architectures and agent conventions and
   propose actions on them (create or rename a project, create, rename or duplicate an
   architecture, add, edit or remove an own rule, hold a ready-made rule): each is stored pending
   and applied only when the owner accepts it (`…/messages/:messageId/actions/:index/accept` or

@@ -175,6 +175,18 @@ describe('runAssistantTools', () => {
     expect((failed as LlmCallError).reason).toBe('timeout')
   })
 
+  it('the last step may only answer, so reads alone never use up the steps', async () => {
+    const model = toolCallingModel([call('list_projects', {})])
+    const { tools } = fakeTools()
+    await runAssistantTools(model, { ...base, tools }, { maxSteps: 3 }).catch(() => null)
+
+    expect(model.doGenerateCalls.map((item) => item.toolChoice?.type)).toEqual([
+      'auto',
+      'auto',
+      'none',
+    ])
+  })
+
   it('survives an input the schema refuses and records nothing', async () => {
     const { tools, ran } = fakeTools()
     const model = toolCallingModel([

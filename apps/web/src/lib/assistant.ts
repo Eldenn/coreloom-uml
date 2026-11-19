@@ -133,6 +133,7 @@ export function useAskAssistant(conversationId: number) {
       provider,
       message,
       architectureId,
+      auto,
       page,
       onHandoff,
       viewsOf,
@@ -143,7 +144,9 @@ export function useAskAssistant(conversationId: number) {
       architectureId: number | null
       /** A ready code map of the architecture's project: the message asks for a diagram of it. */
       codeMapId?: number
-      /** With a plain message: where the owner is, so that "here" means something. */
+      /** With a plain message: the assistant decides what it needs, and may hand it over. */
+      auto?: boolean
+      /** With `auto`: where the owner is, so that "here" means something. */
       page?: AssistantPage
       onHandoff?: (handoff: AssistantHandoff) => void
       viewsOf?: (architectureId: number) => ViewSelection
@@ -160,7 +163,12 @@ export function useAskAssistant(conversationId: number) {
         return { messages: await aboutArchitecture(architectureId, selection), handoff: null }
       const plain = await api.messages.store({
         params: { conversationId },
-        body: { ...callBody(provider), message, locale, ...(page ? { page } : {}) },
+        body: {
+          ...callBody(provider),
+          message,
+          locale,
+          ...(auto ? { auto: true, ...(page ? { page } : {}) } : {}),
+        },
         ...MODEL_CALL,
       })
       if (plain.handoff === null) return plain

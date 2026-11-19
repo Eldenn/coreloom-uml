@@ -61,6 +61,11 @@ export const chatInput = vine.create(
     ...llmCallFields(),
     message: vine.string().trim().minLength(1).maxLength(ASSISTANT_MESSAGE_MAX_LENGTH),
     locale: vine.enum(ASSISTANT_LOCALES),
+    /**
+     * The owner lets the assistant decide what the message needs (actions, diagrams, the web).
+     * Without it the message is a plain one, whatever the flags.
+     */
+    auto: vine.boolean().optional(),
     /** The page the message is written from, for "here" to mean something. */
     page: vine
       .object({

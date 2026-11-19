@@ -221,7 +221,7 @@ export default class AssistantMessagesController {
     const conversation = await findOwnedConversation(params.conversationId, user)
     if (!conversation) return response.notFound(CONVERSATION_NOT_FOUND)
 
-    const { provider, apiKey, message, locale, page } = await request.validateUsing(chatInput)
+    const { provider, apiKey, message, locale, page, auto } = await request.validateUsing(chatInput)
     const built = await userLanguageModel(provider, apiKey, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
@@ -234,7 +234,9 @@ export default class AssistantMessagesController {
     }
     // The ChatGPT subscription is not known to carry a tool call from one step to the next.
     const withTools =
-      provider.kind !== ProviderKind.OpenAICodex && (await assistantActionsEnabled(user))
+      auto === true &&
+      provider.kind !== ProviderKind.OpenAICodex &&
+      (await assistantActionsEnabled(user))
     const history = await conversationHistory(conversation)
     const recorded: StoredAction[] = []
     let actions: StoredAction[] = []
