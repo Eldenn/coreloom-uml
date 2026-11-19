@@ -31,7 +31,7 @@ export function SubjectPicker({ subject, disabled }: { subject: Subject; disable
           value={mode === 'architecture' ? `${ARCHITECTURE_PREFIX}${String(architectureId)}` : mode}
           disabled={disabled}
           onValueChange={(value) => {
-            if (value === 'web' || value === 'none') subject.choose(value)
+            if (value === 'auto' || value === 'web' || value === 'none') subject.choose(value)
             else subject.chooseArchitecture(Number(value.slice(ARCHITECTURE_PREFIX.length)))
           }}
         >
@@ -39,6 +39,7 @@ export function SubjectPicker({ subject, disabled }: { subject: Subject; disable
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            {subject.autoOffered && <SelectItem value="auto">{t.aboutAuto}</SelectItem>}
             <SelectItem value="none">{t.aboutNothing}</SelectItem>
             {subject.webOffered && <SelectItem value="web">{t.aboutWeb}</SelectItem>}
             {architectures.length > 0 && (

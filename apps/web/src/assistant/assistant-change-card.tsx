@@ -3,6 +3,7 @@
 // architecture's page it links there; once that architecture is deleted it only tells what it was.
 import type { UmlSpec } from '@coreloom-uml/uml'
 import { Link } from '@tanstack/react-router'
+import type * as React from 'react'
 
 import { canWrite, type DiagramFormat, writeDiagram } from '@/components/diagram-editor'
 import { Badge } from '@/components/ui/badge'
@@ -31,6 +32,78 @@ function diffText(spec: UmlSpec | null, format: DiagramFormat | null): string {
   return writeDiagram(spec, canWrite(spec.kind, wanted) ? wanted : 'json')
 }
 
+/**
+ * The frame of a proposal's card, shared with the actions on the account's work: what it does, a
+ * title, its state (announced when it changes), then its content.
+ */
+export function ProposalCard({
+  ref,
+  label,
+  title,
+  status,
+  children,
+}: {
+  ref?: React.Ref<HTMLDivElement>
+  label: React.ReactNode
+  title?: React.ReactNode
+  status: keyof typeof STATUS_VARIANT
+  children: React.ReactNode
+}) {
+  const t = useT().assistant
+  return (
+    <div
+      ref={ref}
+      tabIndex={-1}
+      className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        {label}
+        <span className="min-w-0 flex-1 truncate font-medium text-foreground">{title}</span>
+        <span role="status">
+          <Badge variant={STATUS_VARIANT[status]}>{t.statuses[status]}</Badge>
+        </span>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+/** Accept or reject, while a proposal is pending. */
+export function AnswerButtons({
+  busy,
+  onAnswer,
+}: {
+  /** Another answer is on its way: the buttons wait. */
+  busy: boolean
+  onAnswer: (answer: 'accept' | 'reject') => void
+}) {
+  const t = useT().assistant
+  return (
+    <div className="flex gap-2">
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled={busy}
+        onClick={() => {
+          onAnswer('accept')
+        }}
+      >
+        {t.accept}
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={busy}
+        onClick={() => {
+          onAnswer('reject')
+        }}
+      >
+        {t.reject}
+      </Button>
+    </div>
+  )
+}
+
 export function AssistantChangeCard({
   change,
   architectureId,
@@ -50,12 +123,11 @@ export function AssistantChangeCard({
   const t = useT().assistant
   const problemText = useCoreloomI18n().messages.diagramEditor.problem
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-border bg-card p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="outline">{t.ops[change.op]}</Badge>
-        <span className="min-w-0 flex-1 truncate font-medium text-foreground">{change.title}</span>
-        <Badge variant={STATUS_VARIANT[change.status]}>{t.statuses[change.status]}</Badge>
-      </div>
+    <ProposalCard
+      label={<Badge variant="outline">{t.ops[change.op]}</Badge>}
+      title={change.title}
+      status={change.status}
+    >
       {change.status === 'failed' ? (
         <div className="text-[13px] text-destructive">
           <p className="m-0">{t.failedHint}</p>
@@ -100,28 +172,7 @@ export function AssistantChangeCard({
         </Link>
       )}
       {architectureId !== null && change.status === 'pending' && (
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={busy}
-            onClick={() => {
-              onAction('accept')
-            }}
-          >
-            {t.accept}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => {
-              onAction('reject')
-            }}
-          >
-            {t.reject}
-          </Button>
-        </div>
+        <AnswerButtons busy={busy} onAnswer={onAction} />
       )}
       {architectureId !== null && change.status === 'accepted' && (
         <Button
@@ -136,6 +187,6 @@ export function AssistantChangeCard({
           {t.undo}
         </Button>
       )}
-    </div>
+    </ProposalCard>
   )
 }
