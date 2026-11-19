@@ -1,10 +1,11 @@
 // Every agent conventions configuration of the account, in a project or on its own.
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { PlusIcon } from 'lucide-react'
+import { MergeIcon, PlusIcon } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
 import { AgentConfigList, CreateAgentConfigDialog } from '@/agent-configs/agent-config-list'
+import { MergeAgentConfigsDialog } from '@/agent-configs/merge-agent-configs'
 import { PageHeader } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +26,7 @@ function AgentConfigsPage() {
   const { new: creating = false } = Route.useSearch()
   const [search, setSearch] = React.useState('')
   const [query, setQuery] = React.useState('')
+  const [merging, setMerging] = React.useState(false)
   React.useEffect(() => {
     const id = setTimeout(() => {
       setQuery(search.trim())
@@ -44,13 +46,23 @@ function AgentConfigsPage() {
         title={t.nav.agentConfigs}
         description={t.agents.allDescription}
         actions={
-          <Button
-            onClick={() => {
-              setCreating(true)
-            }}
-          >
-            <PlusIcon /> {t.agents.new}
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setMerging(true)
+              }}
+            >
+              <MergeIcon /> {t.agents.merge}
+            </Button>
+            <Button
+              onClick={() => {
+                setCreating(true)
+              }}
+            >
+              <PlusIcon /> {t.agents.new}
+            </Button>
+          </>
         }
       />
       <div className="flex flex-col gap-4">
@@ -74,6 +86,7 @@ function AgentConfigsPage() {
         />
       </div>
       <CreateAgentConfigDialog open={creating} onOpenChange={setCreating} />
+      <MergeAgentConfigsDialog open={merging} onOpenChange={setMerging} />
     </>
   )
 }

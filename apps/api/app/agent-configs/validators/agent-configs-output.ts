@@ -157,6 +157,20 @@ export type AgentConfigDetailOutput = AgentConfigOutput & {
   diagrams: AgentDiagramOutput[]
 }
 
+/**
+ * `POST /agent-configs/merge` while a conflict has no choice: what the sources cannot hold
+ * together, each with the sources to choose from (sources holding the same thing are listed once).
+ */
+export type AgentMergeConflictsOutput = {
+  /** A group whose rules cannot all be held: one source's rules are kept. */
+  readyRules: {
+    slot: string
+    options: { sourceId: number; rules: { rule: string; value: string | null }[] }[]
+  }[]
+  /** Different roles with one slug: one source's role is kept. */
+  roles: { slug: string; options: { sourceId: number; name: string; description: string }[] }[]
+}
+
 /** What regenerating now would change; `null` before the first generation. */
 export type AgentConfigImpactOutput = AgentConfigImpact | null
 

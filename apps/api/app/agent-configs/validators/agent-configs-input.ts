@@ -17,6 +17,8 @@ import {
   AGENT_CATALOG_ID_MAX_LENGTH,
   AGENT_CONFIG_NAME_MAX_LENGTH,
   AGENT_IMPORT_MAX_LENGTH,
+  AGENT_MERGE_CHOICES_MAX,
+  AGENT_MERGE_SOURCES_MAX,
   AGENT_NOTES_MAX_LENGTH,
   AGENT_PROPOSAL_DIAGRAMS_MAX,
   AGENT_PROPOSAL_FEEDBACK_MAX_LENGTH,
@@ -89,6 +91,39 @@ export const updateAgentConfigInput = vine.create(
     projectId: projectIdInput().nullable().optional(),
     targets: targetsInput().optional(),
     notes: notesInput().optional(),
+  }),
+)
+
+/**
+ * `POST /agent-configs/merge`: the caller's configurations to merge, in order, and the new one's
+ * name. `choices` settles the conflicts a first call answered: for a group of ready-made rules
+ * (`slot`) or a role (`slug`), the source whose version is kept.
+ */
+export const mergeAgentConfigsInput = vine.create(
+  vine.object({
+    name: nameInput(),
+    sourceIds: vine
+      .array(projectIdInput())
+      .minLength(2)
+      .maxLength(AGENT_MERGE_SOURCES_MAX)
+      .distinct(),
+    choices: vine
+      .object({
+        readyRules: vine
+          .array(vine.object({ slot: catalogId(), sourceId: projectIdInput() }))
+          .maxLength(AGENT_MERGE_CHOICES_MAX)
+          .optional(),
+        roles: vine
+          .array(
+            vine.object({
+              slug: vine.string().trim().minLength(1).maxLength(ROLE_SLUG_MAX_LENGTH),
+              sourceId: projectIdInput(),
+            }),
+          )
+          .maxLength(AGENT_MERGE_CHOICES_MAX)
+          .optional(),
+      })
+      .optional(),
   }),
 )
 

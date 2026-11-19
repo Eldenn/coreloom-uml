@@ -97,6 +97,9 @@ export interface ApiDefinition {
   agentConfigs: {
     index: typeof routes['agent_configs.index']
     store: typeof routes['agent_configs.store']
+    merges: {
+      store: typeof routes['agent_configs.merges.store']
+    }
     show: typeof routes['agent_configs.show']
     update: typeof routes['agent_configs.update']
     destroy: typeof routes['agent_configs.destroy']

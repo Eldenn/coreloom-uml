@@ -24,6 +24,10 @@ export const AGENT_RULE_TEXT_MAX_LENGTH = 300
 export const AGENT_NOTES_MAX_LENGTH = 10_000
 /** Ready-made rules one `PUT …/ready-rules/:slot` can carry: more than any group holds. */
 export const AGENT_READY_RULES_PER_GROUP_MAX = 50
+/** Configurations one merge can read. */
+export const AGENT_MERGE_SOURCES_MAX = 10
+/** Choices one merge can carry per kind of conflict: more than the catalog has groups. */
+export const AGENT_MERGE_CHOICES_MAX = 200
 /** Generations kept per configuration: past this, the oldest is deleted. */
 export const AGENT_GENERATIONS_KEPT = 50
 

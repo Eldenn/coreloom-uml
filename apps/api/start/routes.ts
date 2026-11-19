@@ -310,6 +310,13 @@ router
   .group(() => {
     router.get('/', [agentConfigController, 'index']).as('agent_configs.index')
     router.post('/', [agentConfigController, 'store']).as('agent_configs.store')
+    // A new configuration from several of the caller's, which stay as they are.
+    router
+      .post('/merge', [
+        () => import('#app/agent-configs/controllers/agent-config-merges-controller'),
+        'store',
+      ])
+      .as('agent_configs.merges.store')
     router.get('/:id', [agentConfigController, 'show']).as('agent_configs.show')
     router.patch('/:id', [agentConfigController, 'update']).as('agent_configs.update')
     router.delete('/:id', [agentConfigController, 'destroy']).as('agent_configs.destroy')
