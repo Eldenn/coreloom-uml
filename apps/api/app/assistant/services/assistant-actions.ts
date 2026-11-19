@@ -111,6 +111,7 @@ const FAILURE_MESSAGES = {
   [ActionFailure.NotFound]: 'What this action targets no longer exists.',
   [ActionFailure.Invalid]: 'This action is not valid.',
   [ActionFailure.Conflict]: 'This action conflicts with the current state.',
+  [ActionFailure.Unavailable]: 'This action could not be started. Ask for it again later.',
 } as const
 
 export type ActionOutcome =
@@ -163,11 +164,47 @@ export async function answerAction(
     }
     return { action: output }
   })
-  // The rows are gone and the action is stored: a file left behind must not turn that into a failure.
-  await afterCommit?.().catch((error) =>
-    logger.error({ err: error }, 'assistant action after-commit work failed'),
-  )
+  try {
+    await afterCommit?.()
+  } catch (error) {
+    logger.error({ err: error }, 'assistant action after-commit work failed')
+    // A deletion is done whatever became of its files. What an action was to start is not: an
+    // accepted card that started nothing would be a lie.
+    if ('action' in outcome && outcome.action.result !== null) return unstarted(target)
+  }
   return outcome
+}
+
+/** Stores an accepted action as `failed`: what it was to start after the commit did not start. */
+async function unstarted(target: {
+  conversationId: number
+  messageId: number
+  index: number
+}): Promise<ActionOutcome> {
+  return db.transaction(async (trx): Promise<ActionOutcome> => {
+    const message = await AssistantMessage.query({ client: trx })
+      .where('id', target.messageId)
+      .where('conversationId', target.conversationId)
+      .forUpdate()
+      .first()
+    const action = message?.actions?.[target.index]
+    if (!message?.actions || !action) return { notFound: true }
+    const next = {
+      ...action,
+      status: ActionStatus.Failed,
+      failure: ActionFailure.Unavailable,
+      result: null,
+    }
+    message.actions = message.actions.map((item, index) => (index === target.index ? next : item))
+    await message.save()
+    return {
+      failed: {
+        message: FAILURE_MESSAGES[ActionFailure.Unavailable],
+        code: ActionFailure.Unavailable,
+      },
+      action: serializeAction(next, target.index),
+    }
+  })
 }
 
 async function apply(

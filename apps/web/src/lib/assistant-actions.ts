@@ -39,6 +39,7 @@ export type ActionRowLabel =
   | 'repository'
   | 'branch'
   | 'follow'
+  | 'followedNow'
   | 'codeMap'
   | 'diagram'
   | 'linkAdded'
@@ -120,6 +121,15 @@ function followed(before: string | null): Draft[] {
 }
 
 /** Whether an import makes the project follow the repository, stop, or leaves it as it is. */
+/** The repository a project follows, with its branch when it names one, in one text. */
+function followedNow(before: string | null): unknown {
+  const rows = followed(before)
+  if (rows.length === 0) return undefined
+  const [repository, branch] = rows.map((row) => row.value)
+  if (typeof repository !== 'string') return undefined
+  return typeof branch === 'string' && branch !== '' ? `${repository} (${branch})` : repository
+}
+
 const FOLLOW = { true: 'follow', false: 'stop', undefined: 'unchanged' } as const
 
 const LINK_LABELS: Record<string, ActionRowLabel> = {
@@ -195,11 +205,13 @@ const ROWS: Record<
     { label: 'revision', value: before },
   ],
   // A model that may have read hostile text chose the address: all of it is shown.
-  import_code_map_from_github: (input, subject) => [
+  import_code_map_from_github: (input, subject, before) => [
     { label: 'repository', value: input.url },
     // Left out, the repository's default branch.
     { label: 'branch', value: input.branch ?? '', given: true },
     { label: 'follow', value: FOLLOW[String(input.follow) as keyof typeof FOLLOW] },
+    // `before` is what the project follows now, when the import changes it.
+    { label: 'followedNow', value: followedNow(before) },
     { label: 'in', value: subject },
   ],
   delete_code_map: (_input, subject) => [{ label: 'codeMap', value: subject }],
@@ -287,6 +299,7 @@ const IMPACT_KINDS = [
   'roles',
   'generations',
   'droppedGenerations',
+  'droppedCodeMaps',
   'suggestions',
   'findings',
 ] as const

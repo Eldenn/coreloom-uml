@@ -113,7 +113,7 @@ function ActionDetails({ action }: { action: AssistantAction }) {
   const shown = useShownValue(action)
   const impact = actionImpact(action.impact)
   // A new generation drops the oldest ones: nothing is deleted with it.
-  const impactLabel = action.name === 'generate_files' ? t.actionDroppedLabel : t.actionImpactLabel
+  const impactLabel = DROPS.has(action.name) ? t.actionDroppedLabel : t.actionImpactLabel
   // The links can be many, and none is cut: the list scrolls.
   const scrolls = action.name === 'set_diagram_code_links'
   const list = (
@@ -159,6 +159,9 @@ function ActionDetails({ action }: { action: AssistantAction }) {
     list
   )
 }
+
+/** Actions that create something and push the oldest out: nothing is deleted "with" them. */
+const DROPS = new Set(['generate_files', 'import_code_map_from_github'])
 
 export function AssistantActionCard({
   conversationId,

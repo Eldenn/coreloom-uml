@@ -74,6 +74,10 @@ const available = (user: User) => codeMapsEnabled(user)
 /** Findings, links or elements a read answers per diagram. */
 const READ_ITEMS_MAX = 50
 const READ_LINKS_MAX = 200
+/** Places in the code one element's candidates name, in a read. */
+const READ_CANDIDATES_MAX = 10
+/** Characters of a finding's comment kept as its action's subject. */
+const FINDING_SUBJECT_MAX_LENGTH = 500
 
 const NOT_GITHUB =
   'Not a GitHub repository: give https://github.com/<owner>/<name>, with no user name, token, port, query or deeper path.'
@@ -139,6 +143,12 @@ function linksProblem(
   if (current.length - remove.length + add.length > CODE_MAP_LIMITS.linksPerDiagram)
     return `A diagram holds at most ${String(CODE_MAP_LIMITS.linksPerDiagram)} links.`
   return null
+}
+
+/** The repository and branch a project follows, as `[url, branch]`; null when it follows none. */
+async function followedNow(projectId: number): Promise<string | null> {
+  const follow = await GithubCodeMapFollow.findBy('projectId', projectId)
+  return follow ? JSON.stringify([follow.repositoryUrl, follow.branch]) : null
 }
 
 const linkRef = () =>
@@ -242,7 +252,9 @@ export const CODE_MAP_ACTIONS: readonly AssistantAction[] = [
               elementId: element.elementId,
               name: names.get(element.elementId) ?? element.elementId,
               status: element.status,
-              candidates: element.candidates.map((candidate) => candidate.codeKey),
+              candidates: element.candidates
+                .slice(0, READ_CANDIDATES_MAX)
+                .map((candidate) => candidate.codeKey),
             }))
           : null,
         ...(match ? {} : { note: MAP_NOT_READY }),
@@ -261,7 +273,14 @@ export const CODE_MAP_ACTIONS: readonly AssistantAction[] = [
         .trim()
         .max(CODE_MAP_LIMITS.repositoryUrl)
         .overwrite((value) => parseGithubRepository(value)?.url ?? value),
-      branch: z.string().trim().min(1).max(CODE_MAP_LIMITS.branch).optional(),
+      // In the schema, so a stored input is checked again when it is accepted.
+      branch: z
+        .string()
+        .trim()
+        .min(1)
+        .max(CODE_MAP_LIMITS.branch)
+        .refine(isValidBranch, { message: NOT_A_BRANCH })
+        .optional(),
       follow: z.boolean().optional(),
     }),
     kind: AssistantToolKind.Write,
@@ -272,6 +291,15 @@ export const CODE_MAP_ACTIONS: readonly AssistantAction[] = [
       return null
     },
     subject: ({ projectId }, user) => projectName(projectId, user),
+    // A project keeps its newest maps only: one more may push the oldest out.
+    destructive: (_before, impact) => (impact[ActionImpact.DroppedCodeMaps] ?? 0) > 0,
+    async impact({ projectId }) {
+      const held = await countOf(CodeMap.query().where('projectId', projectId))
+      return { [ActionImpact.DroppedCodeMaps]: held - CODE_MAP_LIMITS.perProject + 1 }
+    },
+    // What the project follows now, when the import changes it: shown on the card.
+    before: ({ projectId, follow }) =>
+      follow === undefined ? Promise.resolve(null) : followedNow(projectId),
     async currentProblem({ url, follow }, user) {
       if (!analyzerUrl()) return GITHUB_IMPORT_REFUSALS[GithubImportRefusal.Off]
       if (follow === true && !((await githubAppConfig()) && (await findGrant(user.id, url))))
@@ -327,10 +355,7 @@ export const CODE_MAP_ACTIONS: readonly AssistantAction[] = [
         : 'This project follows no GitHub repository.'
     },
     // The repository and branch followed, as `[url, branch]`: shown on the card.
-    async before({ projectId }) {
-      const follow = await GithubCodeMapFollow.findBy('projectId', projectId)
-      return follow ? JSON.stringify([follow.repositoryUrl, follow.branch]) : null
-    },
+    before: ({ projectId }) => followedNow(projectId),
     async apply({ projectId }, user, client) {
       const project = await findOwnedProject(projectId, user)
       if (!project || !(await stopFollowing(project, client)))
@@ -342,25 +367,29 @@ export const CODE_MAP_ACTIONS: readonly AssistantAction[] = [
     name: 'set_diagram_code_links',
     description:
       "Proposes to add and remove links between elements of one of the owner's diagrams and places in the code of a map of the same project (a node key, or a folder key ending with `/`). Only the links named change: name each with the exact elementId and codeKey that list_diagram_code_links answers. An added link is `confirmed` unless a status is given (`ignored`: never propose this place again).",
-    input: z.object({
-      codeMapId: idInput(),
-      diagramId: idInput(),
-      add: z
-        .array(
-          linkRef().extend({
-            status: z.enum(DiagramCodeLinkStatus).default(DiagramCodeLinkStatus.Confirmed),
-          }),
-        )
-        .max(CODE_MAP_LIMITS.linksPerDiagram)
-        .optional(),
-      remove: z.array(linkRef()).max(CODE_MAP_LIMITS.linksPerDiagram).optional(),
-    }),
+    input: z
+      .object({
+        codeMapId: idInput(),
+        diagramId: idInput(),
+        add: z
+          .array(
+            linkRef().extend({
+              status: z.enum(DiagramCodeLinkStatus).default(DiagramCodeLinkStatus.Confirmed),
+            }),
+          )
+          .max(CODE_MAP_LIMITS.linksPerDiagram)
+          .optional(),
+        remove: z.array(linkRef()).max(CODE_MAP_LIMITS.linksPerDiagram).optional(),
+      })
+      // In the schema, so a stored input is checked again when it is accepted.
+      .superRefine(({ add = [], remove = [] }, context) => {
+        const twice = duplicateLink(add) ?? duplicateLink(remove)
+        if (twice) context.addIssue({ code: 'custom', message: `${pairs([twice])}: listed twice.` })
+      }),
     kind: AssistantToolKind.Write,
     available,
     problem({ add = [], remove = [] }) {
-      if (add.length + remove.length === 0) return 'Name at least one link to add or remove.'
-      const twice = duplicateLink(add) ?? duplicateLink(remove)
-      return twice ? `${pairs([twice])}: listed twice.` : null
+      return add.length + remove.length === 0 ? 'Name at least one link to add or remove.' : null
     },
     async subject({ codeMapId, diagramId }, user) {
       return (await linkTarget(codeMapId, diagramId, user))?.diagram.title ?? TARGET_NOT_FOUND
@@ -398,7 +427,9 @@ export const CODE_MAP_ACTIONS: readonly AssistantAction[] = [
     kind: AssistantToolKind.Write,
     available,
     async subject({ findingId }, user) {
-      return (await findOwnedFinding(findingId, user))?.comment ?? TARGET_NOT_FOUND
+      const finding = await findOwnedFinding(findingId, user)
+      // Enough to recognise it: the conversation keeps this, not the review's whole comment.
+      return finding ? finding.comment.slice(0, FINDING_SUBJECT_MAX_LENGTH) : TARGET_NOT_FOUND
     },
     async currentProblem({ findingId, resolution }) {
       const finding = await CodeReviewFinding.find(findingId)

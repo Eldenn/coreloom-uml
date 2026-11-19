@@ -280,6 +280,18 @@ describe('actionRows: code maps and reviews', () => {
     ).toEqual({ label: 'follow', value: 'stop' })
   })
 
+  it('shows what a project follows now when an import changes it', () => {
+    expect(
+      rows(
+        'import_code_map_from_github',
+        { projectId: 1, url: 'https://github.com/acme/b', follow: false },
+        'Shop',
+        JSON.stringify(['https://github.com/acme/a', 'main']),
+      ),
+    ).toContainEqual({ label: 'followedNow', value: 'https://github.com/acme/a (main)' })
+    expect(actionImpact({ droppedCodeMaps: 1 })).toEqual([{ kind: 'droppedCodeMaps', count: 1 }])
+  })
+
   it('shows the repository a project stops following, from what it followed', () => {
     expect(
       rows(

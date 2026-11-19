@@ -14,7 +14,8 @@ const ACTION_NOT_FOUND = { error: { message: 'Action not found' } } as const
  * Accepts or rejects an action an assistant message proposed on the account's work (behind
  * `diagram-assistant` and `assistant-actions`). Session only. An accepted action runs through the
  * service of its route; one that cannot be applied is stored `failed` and answered 409
- * (`not_found`, `conflict`) or 422 (`invalid`) with the action.
+ * (`not_found`, `conflict`), 422 (`invalid`) or 503 (`unavailable`: what it was to start after
+ * the commit, a queued job, could not be started) with the action.
  */
 export default class AssistantActionsController {
   /** `POST /assistant/conversations/:conversationId/messages/:messageId/actions/:index/accept` */
@@ -48,9 +49,10 @@ export default class AssistantActionsController {
       return response.conflict({ error: outcome.conflict, action: outcome.action })
     if ('failed' in outcome) {
       const body = { error: outcome.failed, action: outcome.action }
-      return outcome.failed.code === ActionFailure.Invalid
-        ? response.unprocessableEntity(body)
-        : response.conflict(body)
+      if (outcome.failed.code === ActionFailure.Invalid) return response.unprocessableEntity(body)
+      if (outcome.failed.code === ActionFailure.Unavailable)
+        return response.serviceUnavailable(body)
+      return response.conflict(body)
     }
     return response.ok({ action: outcome.action })
   }

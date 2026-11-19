@@ -19,6 +19,7 @@ import { AssistantRole } from '#app/assistant/constants/assistant'
 import AssistantConversation from '#app/assistant/models/assistant-conversation'
 import AssistantMessage from '#app/assistant/models/assistant-message'
 import { conversationHistory } from '#app/assistant/services/assistant-context'
+import { CODE_MAP_LIMITS } from '#app/code-maps/constants/code-map'
 import CodeMap from '#app/code-maps/models/code-map'
 import CodeMapSuggestion from '#app/code-maps/models/code-map-suggestion'
 import DiagramCodeLink from '#app/code-maps/models/diagram-code-link'
@@ -1932,6 +1933,118 @@ test.group('Assistant actions - code maps', (group) => {
     assert.equal(pending.source, 'github')
     // What the route queues.
     assert.deepEqual(dispatched, [{ codeMapId: pending.id }])
+  })
+
+  test('an import that drops the oldest map says so, and is destructive', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-import-full@example.com')
+    for (let n = 1; n < CODE_MAP_LIMITS.perProject; n++) {
+      await CodeMap.create({
+        projectId: f.project.id,
+        userId: f.user.id,
+        source: f.codeMap.source,
+        repositoryUrl: null,
+        branch: null,
+        commitSha: null,
+        extractor: f.codeMap.extractor,
+        extractorVersion: f.codeMap.extractorVersion,
+        status: 'ready',
+        failureReason: null,
+        nodeCount: 0,
+        edgeCount: 0,
+        storageKey: null,
+      })
+    }
+    const { action } = await propose(client, f, 'import_code_map_from_github', {
+      projectId: f.project.id,
+      url: 'https://github.com/acme/shop',
+    })
+    assert.deepEqual(action.impact, { droppedCodeMaps: 1 })
+    assert.isTrue(action.destructive)
+  })
+
+  test('an import that changes the follow shows what is followed now, and is refreshed if that changed', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-import-follow@example.com')
+    const follow = await GithubCodeMapFollow.create({
+      projectId: f.project.id,
+      userId: f.user.id,
+      repositoryId: 7,
+      repositoryUrl: 'https://github.com/acme/a',
+      branch: null,
+    })
+    const { action, answer } = await propose(client, f, 'import_code_map_from_github', {
+      projectId: f.project.id,
+      url: 'https://github.com/acme/b',
+      follow: false,
+    })
+    assert.equal(action.before, JSON.stringify(['https://github.com/acme/a', null]))
+
+    await follow.merge({ repositoryUrl: 'https://github.com/acme/c' }).save()
+    const stale = await answer('accept')
+    stale.assertStatus(409)
+    assert.equal(stale.body().error.code, 'changed')
+    assert.lengthOf(dispatched, 0)
+    assert.isNotNull(await GithubCodeMapFollow.findBy('projectId', f.project.id))
+  })
+
+  test('an import whose job cannot be queued is failed, with no map and the follow untouched', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-import-queue-down@example.com')
+    await GithubCodeMapFollow.create({
+      projectId: f.project.id,
+      userId: f.user.id,
+      repositoryId: 7,
+      repositoryUrl: 'https://github.com/acme/a',
+      branch: null,
+    })
+    const { answer } = await propose(client, f, 'import_code_map_from_github', {
+      projectId: f.project.id,
+      url: 'https://github.com/acme/b',
+      follow: false,
+    })
+    Object.defineProperty(ImportGithubCodeMapJob, 'dispatch', {
+      configurable: true,
+      writable: true,
+      value: async () => {
+        throw new Error('queue down')
+      },
+    })
+
+    const failed = await answer('accept')
+    failed.assertStatus(503)
+    assert.equal(failed.body().action.status, 'failed')
+    assert.equal(failed.body().action.failure, 'unavailable')
+    assert.isNull(failed.body().action.result)
+    assert.lengthOf(await CodeMap.query().where('projectId', f.project.id), 1)
+    assert.isNotNull(await GithubCodeMapFollow.findBy('projectId', f.project.id))
+  })
+
+  test('a stored import with a branch that is not one, or a link listed twice, is invalid at accept', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withCode(client, 'code-import-tampered@example.com')
+    const { message, answer } = await propose(client, f, 'import_code_map_from_github', {
+      projectId: f.project.id,
+      url: 'https://github.com/acme/shop',
+      branch: 'main',
+    })
+    const row = await AssistantMessage.findOrFail(message.id)
+    const [stored] = row.actions ?? []
+    row.actions = [{ ...stored, input: { ...stored.input, branch: '--upload-pack=x' } }]
+    await row.save()
+
+    const refusedAccept = await answer('accept')
+    refusedAccept.assertStatus(422)
+    assert.equal(refusedAccept.body().action.failure, 'invalid')
+    assert.lengthOf(dispatched, 0)
   })
 
   test('a rejected import or deletion writes nothing and queues nothing', async ({

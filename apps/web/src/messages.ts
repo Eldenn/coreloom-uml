@@ -1058,6 +1058,7 @@ export const en = {
       repository: 'Repository',
       branch: 'Branch',
       follow: 'Read again on each push',
+      followedNow: 'Follows now',
       codeMap: 'Code map',
       diagram: 'Diagram',
       linkAdded: 'Link added',
@@ -1088,6 +1089,8 @@ export const en = {
       generations: (n: number) => `${String(n)} ${n === 1 ? 'generation' : 'generations'}`,
       droppedGenerations: (n: number) =>
         n === 1 ? 'the oldest generation' : `the ${String(n)} oldest generations`,
+      droppedCodeMaps: (n: number) =>
+        n === 1 ? 'the oldest code map' : `the ${String(n)} oldest code maps`,
       suggestions: (n: number) =>
         `${String(n)} ${n === 1 ? 'proposed diagram' : 'proposed diagrams'}`,
       findings: (n: number) => `${String(n)} ${n === 1 ? 'finding' : 'findings'}`,
@@ -1104,6 +1107,7 @@ export const en = {
       not_found: 'What this change is about no longer exists.',
       invalid: 'This change was refused as invalid.',
       conflict: 'This change conflicts with what exists now.',
+      unavailable: 'This could not be started. Ask for it again later.',
     },
     about: 'About',
     aboutNothing: 'Nothing in particular',
@@ -2417,6 +2421,7 @@ export const fr: Messages = {
       repository: 'Dépôt',
       branch: 'Branche',
       follow: 'Relu à chaque push',
+      followedNow: 'Suit actuellement',
       codeMap: 'Carte du code',
       diagram: 'Diagramme',
       linkAdded: 'Lien ajouté',
@@ -2450,6 +2455,10 @@ export const fr: Messages = {
         n <= 1
           ? 'la génération la plus ancienne'
           : `les ${String(n)} générations les plus anciennes`,
+      droppedCodeMaps: (n: number) =>
+        n <= 1
+          ? 'la carte du code la plus ancienne'
+          : `les ${String(n)} cartes du code les plus anciennes`,
       suggestions: (n: number) =>
         `${String(n)} ${n <= 1 ? 'diagramme proposé' : 'diagrammes proposés'}`,
       findings: (n: number) => `${String(n)} ${n <= 1 ? 'constat' : 'constats'}`,
@@ -2466,6 +2475,7 @@ export const fr: Messages = {
       not_found: 'Ce que vise ce changement n’existe plus.',
       invalid: 'Ce changement a été refusé comme invalide.',
       conflict: 'Ce changement entre en conflit avec ce qui existe maintenant.',
+      unavailable: 'Cela n’a pas pu démarrer. Redemandez-le plus tard.',
     },
     about: 'Sujet',
     aboutNothing: 'Rien de particulier',
