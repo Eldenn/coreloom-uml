@@ -1,14 +1,17 @@
 import app from '@adonisjs/core/services/app'
 import drive from '@adonisjs/drive/services/main'
-import { MARKER_PREFIX } from '@coreloom-uml/catalog'
+import { CATALOG_VERSION, MARKER_PREFIX } from '@coreloom-uml/catalog'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import type { LanguageModel } from '@coreloom-uml/llm'
 import { type ModelStep, toolCallingModel } from '@coreloom-uml/llm/testing'
 import type { ApiClient } from '@japa/api-client'
 import type { Assert } from '@japa/assert'
 import { test } from '@japa/runner'
+import { AGENT_GENERATIONS_KEPT } from '#app/agent-configs/constants/agent-config'
 import AgentConfig from '#app/agent-configs/models/agent-config'
+import AgentConfigGeneration from '#app/agent-configs/models/agent-config-generation'
 import AgentConfigReadyRule from '#app/agent-configs/models/agent-config-ready-rule'
+import AgentConfigRole from '#app/agent-configs/models/agent-config-role'
 import AgentConfigRule from '#app/agent-configs/models/agent-config-rule'
 import Architecture from '#app/architectures/models/architecture'
 import { AssistantRole } from '#app/assistant/constants/assistant'
@@ -1225,5 +1228,403 @@ test.group('Assistant actions - deleting and sharing', (group) => {
       messages,
     ].join('\n')
     for (const secret of secrets) assert.notInclude(shown, secret)
+  })
+})
+
+test.group('Assistant actions - roles and generations', (group) => {
+  group.each.setup(() => withDefaultFlags())
+  group.each.teardown(() => app.container.restore(LanguageModels))
+
+  const ROLE = {
+    slug: 'reviewer',
+    name: 'Reviewer',
+    description: 'Reviews the changes',
+    mission: 'Read every change and say what is wrong with it.',
+    rights: ['read' as const],
+    scope: ['apps/api'],
+    forbidden: [],
+    done: { commands: [], text: null },
+    escalation: null,
+    source: null,
+  }
+
+  /** The fixture with `agent-roles` on (unless told otherwise) and one role. */
+  async function withRoles(email: string, { roles = true } = {}) {
+    const f = await setup(email)
+    if (roles) await updateFlag(FeatureFlagKey.AgentRoles, ON, f.user)
+    const role = await AgentConfigRole.create({ ...ROLE, agentConfigId: f.config.id })
+    return { ...f, role }
+  }
+
+  async function propose(client: ApiClient, f: Fixture, tool: string, input: object) {
+    const { response, model } = await send(client, f, [call(tool, input), { text: 'Proposed.' }])
+    response.assertStatus(200)
+    const message = response.body().messages[1]
+    const answer = (decision: 'accept' | 'reject') =>
+      client
+        .post(answerPath(f.conversation.id, message.id, 0, decision))
+        .headers(json)
+        .loginAs(f.user)
+    return { message, action: message.actions?.[0], model, answer }
+  }
+
+  async function revisionOf(f: Fixture) {
+    await f.config.refresh()
+    return f.config.revision
+  }
+
+  test('add_role_from_preset: proposed with the conventions, then the role is copied', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withRoles('roles-preset@example.com')
+    const revision = await revisionOf(f)
+    const { action, answer } = await propose(client, f, 'add_role_from_preset', {
+      agentConfigId: f.config.id,
+      preset: 'code-reviewer',
+    })
+    assert.equal(action.subject, 'Shop rules')
+    assert.isFalse(action.destructive)
+
+    const accepted = await answer('accept')
+    accepted.assertStatus(200)
+    assert.deepEqual(accepted.body().action.result, { kind: 'agent-config', id: f.config.id })
+    const role = await AgentConfigRole.query()
+      .where({ agentConfigId: f.config.id, slug: 'code-reviewer' })
+      .firstOrFail()
+    assert.equal(role.source?.preset, 'code-reviewer')
+    assert.equal(await revisionOf(f), revision + 1)
+  })
+
+  test('add_role: proposed with its fields, then the role is stored', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withRoles('roles-add@example.com')
+    const revision = await revisionOf(f)
+    const { action, answer } = await propose(client, f, 'add_role', {
+      agentConfigId: f.config.id,
+      slug: 'api-dev',
+      name: 'API developer',
+      description: 'Builds the API',
+      mission: 'Build the endpoints.',
+      rights: ['read', 'write'],
+      scope: ['apps/api'],
+    })
+    assert.equal(action.subject, 'Shop rules')
+    assert.equal(action.input.name, 'API developer')
+
+    ;(await answer('accept')).assertStatus(200)
+    const role = await AgentConfigRole.query()
+      .where({ agentConfigId: f.config.id, slug: 'api-dev' })
+      .firstOrFail()
+    assert.deepEqual(role.scope, ['apps/api'])
+    assert.deepEqual(role.rights, ['read', 'write'])
+    assert.equal(await revisionOf(f), revision + 1)
+  })
+
+  test('edit_role: names the role, keeps a fingerprint, then changes only the fields given', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withRoles('roles-edit@example.com')
+    const revision = await revisionOf(f)
+    const { action, answer } = await propose(client, f, 'edit_role', {
+      agentConfigId: f.config.id,
+      roleId: f.role.id,
+      name: 'Code reviewer',
+    })
+    assert.equal(action.subject, 'Reviewer')
+    assert.isString(action.before)
+    assert.notInclude(action.before, 'Read every change')
+    assert.isFalse(action.destructive)
+
+    ;(await answer('accept')).assertStatus(200)
+    await f.role.refresh()
+    assert.equal(f.role.name, 'Code reviewer')
+    assert.equal(f.role.mission, ROLE.mission)
+    assert.equal(await revisionOf(f), revision + 1)
+  })
+
+  test('remove_role: destructive, then the role is gone', async ({ client, assert }) => {
+    const f = await withRoles('roles-remove@example.com')
+    const revision = await revisionOf(f)
+    const { action, answer } = await propose(client, f, 'remove_role', {
+      agentConfigId: f.config.id,
+      roleId: f.role.id,
+    })
+    assert.equal(action.subject, 'Reviewer')
+    assert.isTrue(action.destructive)
+
+    ;(await answer('accept')).assertStatus(200)
+    assert.isNull(await AgentConfigRole.find(f.role.id))
+    assert.equal(await revisionOf(f), revision + 1)
+  })
+
+  test('generate_files: proposed with the revision, then a generation is rendered', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withRoles('roles-generate@example.com')
+    const revision = await revisionOf(f)
+    const { action, answer } = await propose(client, f, 'generate_files', {
+      agentConfigId: f.config.id,
+    })
+    assert.equal(action.subject, 'Shop rules')
+    assert.equal(action.before, String(revision))
+    assert.isNull(action.impact)
+    assert.isFalse(action.destructive)
+
+    const accepted = await answer('accept')
+    accepted.assertStatus(200)
+    assert.deepEqual(accepted.body().action.result, { kind: 'agent-config', id: f.config.id })
+    const generation = await AgentConfigGeneration.query()
+      .where('agentConfigId', f.config.id)
+      .firstOrFail()
+    assert.equal(generation.revision, revision)
+    assert.equal(generation.catalogVersion, CATALOG_VERSION)
+    assert.isAbove(generation.files.length, 0)
+  })
+
+  test('a rejected role action writes nothing', async ({ client, assert }) => {
+    const f = await withRoles('roles-reject@example.com')
+    const { answer } = await propose(client, f, 'remove_role', {
+      agentConfigId: f.config.id,
+      roleId: f.role.id,
+    })
+    ;(await answer('reject')).assertStatus(200)
+    assert.isNotNull(await AgentConfigRole.find(f.role.id))
+  })
+
+  test('with agent-roles off, no role tool is offered; generate_files still is', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withRoles('roles-off@example.com', { roles: false })
+    const { model } = await send(client, f, [{ text: 'Nothing.' }])
+    const offered = model.doGenerateCalls[0]?.tools?.map((item) => item.name) ?? []
+    for (const name of [
+      'find_role_presets',
+      'add_role_from_preset',
+      'add_role',
+      'edit_role',
+      'remove_role',
+    ])
+      assert.notInclude(offered, name)
+    assert.include(offered, 'generate_files')
+    assert.include(offered, 'read_agent_config')
+  })
+
+  test('a role action accepted after agent-roles was turned off fails not_found', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withRoles('roles-off-later@example.com')
+    const { answer } = await propose(client, f, 'remove_role', {
+      agentConfigId: f.config.id,
+      roleId: f.role.id,
+    })
+    await updateFlag(FeatureFlagKey.AgentRoles, { enabled: false, rollout: 0, rules: [] }, f.user)
+
+    const refused = await answer('accept')
+    refused.assertStatus(409)
+    assert.equal(refused.body().error.code, 'not_found')
+    assert.equal(refused.body().action.failure, 'not_found')
+    assert.isNotNull(await AgentConfigRole.find(f.role.id))
+  })
+
+  test('an unknown preset, a slug taken or an invalid role is not proposed', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withRoles('roles-refused@example.com')
+    const agentConfigId = f.config.id
+    await AgentConfigRole.create({ ...ROLE, slug: 'tester', agentConfigId })
+    const role = {
+      agentConfigId,
+      name: 'Pusher',
+      description: 'Pushes',
+      mission: 'Push.',
+    }
+    const { response, model } = await send(client, f, [
+      {
+        calls: [
+          { tool: 'add_role_from_preset', input: { agentConfigId, preset: 'no-such-preset' } },
+          { tool: 'add_role', input: { ...role, slug: 'reviewer', rights: ['read'] } },
+          { tool: 'add_role', input: { ...role, slug: 'pusher', rights: ['read', 'push'] } },
+          { tool: 'edit_role', input: { agentConfigId, roleId: f.role.id, slug: 'tester' } },
+        ],
+      },
+      { text: 'None.' },
+    ])
+
+    response.assertStatus(200)
+    assert.isNull(response.body().messages[1].actions)
+    const shown = toolResults(model)
+    assert.include(shown, 'Unknown preset')
+    assert.include(shown, 'A role with this slug already exists')
+    assert.include(shown, 'push needs commit')
+  })
+
+  test('a slug taken between the proposal and the accept is a conflict', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withRoles('roles-slug-later@example.com')
+    const { answer } = await propose(client, f, 'add_role_from_preset', {
+      agentConfigId: f.config.id,
+      preset: 'code-reviewer',
+    })
+    await AgentConfigRole.create({ ...ROLE, slug: 'code-reviewer', agentConfigId: f.config.id })
+
+    const refused = await answer('accept')
+    refused.assertStatus(409)
+    assert.equal(refused.body().error.code, 'conflict')
+    assert.lengthOf(await AgentConfigRole.query().where('agentConfigId', f.config.id), 2)
+  })
+
+  test('generate_files after the conventions changed: the card shows the new revision', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withRoles('roles-generate-stale@example.com')
+    const revision = await revisionOf(f)
+    const { answer } = await propose(client, f, 'generate_files', { agentConfigId: f.config.id })
+    f.config.revision += 1
+    await f.config.save()
+
+    const refused = await answer('accept')
+    refused.assertStatus(409)
+    assert.equal(refused.body().error.code, 'changed')
+    assert.equal(refused.body().action.before, String(revision + 1))
+    assert.lengthOf(await AgentConfigGeneration.query().where('agentConfigId', f.config.id), 0)
+
+    ;(await answer('accept')).assertStatus(200)
+    const generation = await AgentConfigGeneration.query()
+      .where('agentConfigId', f.config.id)
+      .firstOrFail()
+    assert.equal(generation.revision, revision + 1)
+  })
+
+  test('generate_files at the limit says the oldest generation is dropped', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withRoles('roles-generate-limit@example.com')
+    const rows = Array.from({ length: AGENT_GENERATIONS_KEPT }, () => ({
+      agentConfigId: f.config.id,
+      revision: 1,
+      catalogVersion: CATALOG_VERSION,
+      inputs: {} as AgentConfigGeneration['inputs'],
+      files: [],
+      recommendations: [],
+      skills: { compatible: [], conflicting: [] },
+    }))
+    const [oldest] = await AgentConfigGeneration.createMany(rows)
+    const { action, answer } = await propose(client, f, 'generate_files', {
+      agentConfigId: f.config.id,
+    })
+    assert.deepEqual(action.impact, { droppedGenerations: 1 })
+    assert.isTrue(action.destructive)
+
+    ;(await answer('accept')).assertStatus(200)
+    assert.isNull(await AgentConfigGeneration.find(oldest.id))
+    assert.lengthOf(
+      await AgentConfigGeneration.query().where('agentConfigId', f.config.id),
+      AGENT_GENERATIONS_KEPT,
+    )
+  })
+
+  test('a role edited by hand since the proposal is not applied: the card is refreshed', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withRoles('roles-edit-stale@example.com')
+    const { action, answer } = await propose(client, f, 'edit_role', {
+      agentConfigId: f.config.id,
+      roleId: f.role.id,
+      name: 'Code reviewer',
+    })
+    f.role.mission = 'Something else entirely.'
+    await f.role.save()
+
+    const refused = await answer('accept')
+    refused.assertStatus(409)
+    assert.equal(refused.body().error.code, 'changed')
+    assert.notEqual(refused.body().action.before, action.before)
+    await f.role.refresh()
+    assert.equal(f.role.name, 'Reviewer')
+  })
+
+  test("another account's conventions or role are never proposed nor applied", async ({
+    client,
+    assert,
+  }) => {
+    const f = await withRoles('roles-own@example.com')
+    const other = await withRoles('roles-other@example.com')
+    const { response, model } = await send(client, f, [
+      {
+        calls: [
+          {
+            tool: 'add_role_from_preset',
+            input: { agentConfigId: other.config.id, preset: 'code-reviewer' },
+          },
+          { tool: 'remove_role', input: { agentConfigId: f.config.id, roleId: other.role.id } },
+          { tool: 'generate_files', input: { agentConfigId: other.config.id } },
+        ],
+      },
+      { text: 'None.' },
+    ])
+    response.assertStatus(200)
+    assert.isNull(response.body().messages[1].actions)
+    assert.include(toolResults(model), 'Not found')
+
+    const { message, answer } = await propose(client, f, 'remove_role', {
+      agentConfigId: f.config.id,
+      roleId: f.role.id,
+    })
+    const row = await AssistantMessage.findOrFail(message.id)
+    const stored = firstAction(row)
+    row.actions = [{ ...stored, input: { agentConfigId: other.config.id, roleId: other.role.id } }]
+    await row.save()
+    const refused = await answer('accept')
+    refused.assertStatus(409)
+    assert.equal(refused.body().error.code, 'not_found')
+    assert.isNotNull(await AgentConfigRole.find(other.role.id))
+  })
+
+  test('read_agent_config answers roles only with agent-roles on, never a file', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withRoles('roles-read@example.com')
+    await AgentConfigGeneration.create({
+      agentConfigId: f.config.id,
+      revision: 1,
+      catalogVersion: CATALOG_VERSION,
+      inputs: {} as AgentConfigGeneration['inputs'],
+      files: [{ path: 'AGENTS.md', kind: 'instructions', content: 'GENERATED-SECRET-CONTENT' }],
+      recommendations: [],
+      skills: { compatible: [], conflicting: [] },
+    } as never)
+    const on = await send(client, f, [
+      call('read_agent_config', { agentConfigId: f.config.id }),
+      call('find_role_presets', { query: 'code reviewer' }),
+      { text: 'Read.' },
+    ])
+    const shown = toolResults(on.model)
+    assert.include(shown, 'reviewer')
+    assert.include(shown, 'code-reviewer')
+    assert.include(shown, 'revision')
+    assert.notInclude(shown, 'GENERATED-SECRET-CONTENT')
+
+    await updateFlag(FeatureFlagKey.AgentRoles, { enabled: false, rollout: 0, rules: [] }, f.user)
+    const off = await send(client, f, [
+      call('read_agent_config', { agentConfigId: f.config.id }),
+      { text: 'Read.' },
+    ])
+    const hidden = toolResults(off.model)
+    assert.notInclude(hidden, 'reviewer')
+    assert.include(hidden, 'revision')
   })
 })

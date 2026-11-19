@@ -245,7 +245,7 @@ export default class AssistantMessagesController {
     let handoff: HandoffOutput | null = null
     try {
       if (withTools) {
-        const tools = [...actionTools(user, recorded), ...(await handoffTools(user))]
+        const tools = [...(await actionTools(user, recorded)), ...(await handoffTools(user))]
         const result = await runAssistantTools(built.model, {
           history,
           message,

@@ -13,7 +13,7 @@ import { z } from 'zod'
 import { findOwnedAgentConfig } from '#app/agent-configs/services/owned-agent-config'
 import { findOwnedArchitecture } from '#app/architectures/services/owned-architecture'
 import { idInput, NOT_FOUND_SENTENCE, TARGET_NOT_FOUND } from '#app/assistant/actions/action'
-import { currentState, findAction } from '#app/assistant/actions/registry'
+import { currentState, findAction, isAvailable } from '#app/assistant/actions/registry'
 import {
   ActionFailure,
   ActionStatus,
@@ -186,6 +186,8 @@ async function apply(
   const known = findAction(action.name)
   // The registry changed since the proposal: nothing does this any more.
   if (!known || known.kind !== AssistantToolKind.Write) return failed(ActionFailure.NotFound)
+  // Its flag was turned off since: as if nothing did this any more.
+  if (!(await isAvailable(known, user))) return failed(ActionFailure.NotFound)
   const parsed = known.input.safeParse(action.input)
   if (!parsed.success) {
     return failed(

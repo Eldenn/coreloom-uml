@@ -8,14 +8,39 @@ export interface ProposedAction {
   input: Record<string, unknown>
   /** The name of the target when the action was proposed; `null` when it has none. */
   subject: string | null
-  /** The state the action changes, as it was when proposed (a visibility). */
+  /**
+   * The state the action changes, as it was when proposed: a visibility, a revision, or a role's
+   * fingerprint. Each action decides whether its card shows it.
+   */
   before?: string | null
 }
 
 export type ActionRowLabel =
-  'name' | 'title' | 'section' | 'text' | 'slot' | 'readyRule' | 'value' | 'in' | 'visibility'
+  | 'name'
+  | 'title'
+  | 'section'
+  | 'text'
+  | 'slot'
+  | 'readyRule'
+  | 'value'
+  | 'in'
+  | 'visibility'
+  | 'preset'
+  | 'role'
+  | 'slug'
+  | 'description'
+  | 'mission'
+  | 'rights'
+  | 'scope'
+  | 'forbidden'
+  | 'done'
+  | 'escalation'
+  | 'revision'
 
-/** One line of a card; with `from`, the value replaces it. */
+/**
+ * One line of a card; with `from`, the value replaces it. A list is one text, comma-separated;
+ * an empty `scope` is the whole repository.
+ */
 export interface ActionRow {
   label: ActionRowLabel
   value: string
@@ -27,6 +52,34 @@ interface Draft {
   value: unknown
   from?: string | null
 }
+
+/** The texts of a list, comma-separated; not a list is left as it is. */
+function list(value: unknown): unknown {
+  return Array.isArray(value)
+    ? value.filter((item) => typeof item === 'string' && item !== '').join(', ')
+    : value
+}
+
+/** What ends a role's work: its commands, then its text. */
+function done(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null) return value
+  const { commands, text } = value as { commands?: unknown; text?: unknown }
+  const lines: unknown[] = Array.isArray(commands) ? commands : []
+  return list([...lines, text])
+}
+
+/** The fields of a role a card shows, in the order of the role form; left out when not given. */
+const roleRows = (input: Record<string, unknown>): Draft[] => [
+  { label: 'slug', value: input.slug },
+  { label: 'name', value: input.name },
+  { label: 'description', value: input.description },
+  { label: 'mission', value: input.mission },
+  { label: 'rights', value: list(input.rights) },
+  { label: 'scope', value: list(input.scope) },
+  { label: 'forbidden', value: list(input.forbidden) },
+  { label: 'done', value: done(input.done) },
+  { label: 'escalation', value: input.escalation },
+]
 
 /** What the owner would otherwise have to open the target to know. */
 const ROWS: Record<
@@ -68,13 +121,39 @@ const ROWS: Record<
   ],
   regenerate_share_link: (_input, subject) => [{ label: 'title', value: subject }],
   regenerate_access_code: (_input, subject) => [{ label: 'title', value: subject }],
+  add_role_from_preset: (input, subject) => [
+    { label: 'preset', value: input.preset },
+    { label: 'in', value: subject },
+  ],
+  add_role: (input, subject) => [
+    { label: 'name', value: input.name },
+    { label: 'mission', value: input.mission },
+    // Left out, the role works in the whole repository.
+    { label: 'scope', value: list(input.scope ?? []) },
+    { label: 'rights', value: list(input.rights) },
+    { label: 'in', value: subject },
+  ],
+  // `before` is a fingerprint of the role: never shown.
+  edit_role: (input, subject) => [{ label: 'role', value: subject }, ...roleRows(input)],
+  remove_role: (_input, subject) => [{ label: 'role', value: subject }],
+  // `before` is the revision the files are rendered from.
+  generate_files: (_input, subject, before) => [
+    { label: 'in', value: subject },
+    { label: 'revision', value: before },
+  ],
+}
+
+/** Whether a row is shown: a text, or an empty scope (the whole repository). */
+function shows(draft: Draft): draft is Draft & { value: string } {
+  return typeof draft.value === 'string' && (draft.value !== '' || draft.label === 'scope')
 }
 
 /** The lines of an action's card, in order; a value that is missing or not a text is left out. */
 export function actionRows({ name, input, subject, before }: ProposedAction): ActionRow[] {
   if (!Object.hasOwn(ROWS, name)) return []
-  return ROWS[name](input, subject, before ?? null).flatMap(({ label, value, from }) => {
-    if (typeof value !== 'string' || value === '') return []
+  return ROWS[name](input, subject, before ?? null).flatMap((draft) => {
+    if (!shows(draft)) return []
+    const { label, value, from } = draft
     return [from == null ? { label, value } : { label, value, from }]
   })
 }
@@ -97,6 +176,11 @@ const DOMAINS: Record<string, ActionDomain> = {
   regenerate_share_link: 'architecture',
   regenerate_access_code: 'architecture',
   delete_agent_config: 'agent-config',
+  add_role_from_preset: 'agent-config',
+  add_role: 'agent-config',
+  edit_role: 'agent-config',
+  remove_role: 'agent-config',
+  generate_files: 'agent-config',
 }
 
 /** What accepting an action changes, so its lists and pages are read again; `null` when unknown. */
@@ -104,7 +188,7 @@ export function actionDomain(name: string): ActionDomain | null {
   return Object.hasOwn(DOMAINS, name) ? DOMAINS[name] : null
 }
 
-/** What a deletion takes with it, in the order a card lists it. */
+/** What an action takes with it, in the order a card lists it. */
 const IMPACT_KINDS = [
   'architectures',
   'diagrams',
@@ -115,6 +199,7 @@ const IMPACT_KINDS = [
   'readyRules',
   'roles',
   'generations',
+  'droppedGenerations',
 ] as const
 export type ImpactKind = (typeof IMPACT_KINDS)[number]
 

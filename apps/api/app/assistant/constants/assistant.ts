@@ -123,8 +123,8 @@ export const ActionFailure = {
 export type ActionFailure = (typeof ActionFailure)[keyof typeof ActionFailure]
 
 /**
- * What a deletion takes with it, counted when it is proposed and again when it is accepted: a
- * card never deletes more than it says.
+ * What an action takes with it (a deletion's content, the oldest generation a new one drops),
+ * counted when it is proposed and again when it is accepted: a card never deletes more than it says.
  */
 export const ActionImpact = {
   Architectures: 'architectures',
@@ -136,6 +136,8 @@ export const ActionImpact = {
   ReadyRules: 'readyRules',
   Roles: 'roles',
   Generations: 'generations',
+  /** The oldest generations a new one drops, past `AGENT_GENERATIONS_KEPT`. */
+  DroppedGenerations: 'droppedGenerations',
 } as const
 export type ActionImpact = (typeof ActionImpact)[keyof typeof ActionImpact]
 
@@ -154,9 +156,12 @@ export type StoredAction = {
   /** What an accepted action created or changed; null for a deletion (its target is gone). */
   result: { kind: AssistantTargetKind; id: number } | null
   failure: ActionFailure | null
-  /** Non-zero counts of what goes with a deletion; absent from actions stored before it existed. */
+  /** Non-zero counts of what goes with it; absent from actions stored before it existed. */
   impact?: Partial<Record<ActionImpact, number>> | null
-  /** The state the action changes, when proposed (a visibility); absent before it existed. */
+  /**
+   * The state the action changes, when proposed (a visibility, a revision, a role's fingerprint);
+   * absent before it existed.
+   */
   before?: string | null
 }
 

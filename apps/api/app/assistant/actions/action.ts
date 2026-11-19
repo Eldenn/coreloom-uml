@@ -32,7 +32,24 @@ export type ActionApplied =
   | { failure: typeof ActionFailure.NotFound }
   | { failure: typeof ActionFailure.Invalid | typeof ActionFailure.Conflict; message: string }
 
-type ActionBase<S extends z.ZodType> = { name: string; description: string; input: S }
+type ActionBase<S extends z.ZodType> = {
+  name: string
+  description: string
+  input: S
+  /**
+   * Whether the user may use it now (a feature flag): when false it is not offered to the model,
+   * and a stored proposal fails `not_found` when accepted.
+   */
+  available?(user: User): Promise<boolean>
+}
+
+/** What an action takes with it, counted now. */
+export type ImpactCounts = Partial<Record<ActionImpact, number>>
+/**
+ * Cannot be undone; a function when it depends on the state the action changes (`before`) or on
+ * what it takes with it (`impact`).
+ */
+type Destructive = true | ((before: string | null, impact: ImpactCounts) => boolean)
 
 export type ReadActionDefinition<S extends z.ZodType> = ActionBase<S> & {
   kind: typeof AssistantToolKind.Read
@@ -41,8 +58,7 @@ export type ReadActionDefinition<S extends z.ZodType> = ActionBase<S> & {
 
 export type WriteActionDefinition<S extends z.ZodType> = ActionBase<S> & {
   kind: typeof AssistantToolKind.Write
-  /** Cannot be undone; a function when it depends on the state the action changes (`before`). */
-  destructive?: true | ((before: string | null) => boolean)
+  destructive?: Destructive
   /**
    * Why the input can never be applied, read from the input alone (no query): the model is told
    * and nothing is proposed, so the owner is not shown a card that can only fail.
@@ -55,10 +71,14 @@ export type WriteActionDefinition<S extends z.ZodType> = ActionBase<S> & {
    * `subject` found it; the model is told and nothing is proposed.
    */
   currentProblem?(input: z.output<S>, user: User): Promise<string | null>
-  /** The state the action changes, as it is now (shown before → after). */
+  /**
+   * The state the action changes, as it is now: a visibility shown before → after, or a value
+   * the card does not show as such (a revision, a fingerprint of a role) that only has to stay
+   * the same until the owner accepts.
+   */
   before?(input: z.output<S>, user: User): Promise<string | null>
-  /** What a deletion takes with it, as it is now. */
-  impact?(input: z.output<S>, user: User): Promise<Partial<Record<ActionImpact, number>>>
+  /** What the action takes with it (a deletion's content, a generation dropped), as it is now. */
+  impact?(input: z.output<S>, user: User): Promise<ImpactCounts>
   /** Runs inside the transaction (`client`) that stores the action's new status. */
   apply(input: z.output<S>, user: User, client: TransactionClientContract): Promise<ActionApplied>
 }
@@ -71,12 +91,12 @@ export type AssistantAction =
     })
   | (ActionBase<z.ZodType> & {
       kind: typeof AssistantToolKind.Write
-      destructive?: true | ((before: string | null) => boolean)
+      destructive?: Destructive
       problem?(input: unknown): string | null
       subject(input: unknown, user: User): Promise<string | null | typeof TARGET_NOT_FOUND>
       currentProblem(input: unknown, user: User): Promise<string | null>
       before(input: unknown, user: User): Promise<string | null>
-      impact(input: unknown, user: User): Promise<Partial<Record<ActionImpact, number>>>
+      impact(input: unknown, user: User): Promise<ImpactCounts>
       apply(input: unknown, user: User, client: TransactionClientContract): Promise<ActionApplied>
     })
 

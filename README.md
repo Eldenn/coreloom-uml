@@ -70,7 +70,9 @@ silently.
   propose actions on them (create or rename a project, create, rename or duplicate an
   architecture, add, edit or remove an own rule, hold a ready-made rule; delete a project, an
   architecture or agent conventions; change who can open an architecture, replace its share link
-  or access code, which the model never sees): each is stored pending, a deletion with what goes
+  or access code, which the model never sees; with `agent-roles`, add a role from a ready-made
+  one or written out, edit or remove a role; render the files of agent conventions, which the
+  owner then pulls with the CLI): each is stored pending, a deletion with what goes
   with it, and applied only when the owner accepts it (`…/messages/:messageId/actions/:index/accept` or
   `/reject`), through the same code as the matching route. The model may instead hand the message
   over to an architecture's diagram assistant or to a web research; nothing is stored then and the
