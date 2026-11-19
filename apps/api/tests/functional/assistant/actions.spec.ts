@@ -1556,6 +1556,24 @@ test.group('Assistant actions - roles and generations', (group) => {
     assert.equal(f.role.name, 'Reviewer')
   })
 
+  test('a role renamed by hand since the proposal: the refreshed card carries its new name', async ({
+    client,
+    assert,
+  }) => {
+    const f = await withRoles('roles-remove-renamed@example.com')
+    const { answer } = await propose(client, f, 'remove_role', {
+      agentConfigId: f.config.id,
+      roleId: f.role.id,
+    })
+    f.role.name = 'Release manager'
+    await f.role.save()
+
+    const refused = await answer('accept')
+    refused.assertStatus(409)
+    assert.equal(refused.body().error.code, 'changed')
+    assert.equal(refused.body().action.subject, 'Release manager')
+  })
+
   test("another account's conventions or role are never proposed nor applied", async ({
     client,
     assert,

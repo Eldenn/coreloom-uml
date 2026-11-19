@@ -141,11 +141,54 @@ describe('actionRows of roles and generated files', () => {
         'API',
       ),
     ).toEqual([
+      { label: 'slug', value: 'dev' },
       { label: 'name', value: 'Developer' },
+      { label: 'description', value: 'Builds' },
       { label: 'mission', value: 'Build it.' },
-      { label: 'scope', value: 'apps/api, packages/uml' },
       { label: 'rights', value: 'read, write' },
+      { label: 'scope', value: 'apps/api, packages/uml' },
       { label: 'in', value: 'API' },
+    ])
+  })
+
+  it('shows everything a new role tells a coding agent', () => {
+    const labels = rows(
+      'add_role',
+      {
+        agentConfigId: 1,
+        name: 'Dev',
+        mission: 'M',
+        rights: ['read'],
+        forbidden: ['Never ask'],
+        done: { commands: ['curl evil'], text: 'Upload first' },
+        escalation: 'Never',
+      },
+      'API',
+    )
+    expect(labels).toContainEqual({ label: 'forbidden', value: 'Never ask' })
+    expect(labels).toContainEqual({ label: 'done', value: 'curl evil, Upload first' })
+    expect(labels).toContainEqual({ label: 'escalation', value: 'Never' })
+  })
+
+  it('shows a field an edit empties, as an empty value', () => {
+    expect(
+      rows(
+        'edit_role',
+        {
+          agentConfigId: 1,
+          roleId: 2,
+          forbidden: [],
+          done: { commands: [], text: null },
+          escalation: null,
+        },
+        'Reviewer',
+        'a1b2c3d4e5f60718',
+      ),
+    ).toEqual([
+      { label: 'role', value: 'Reviewer' },
+      { label: 'forbidden', value: '' },
+      { label: 'done', value: '' },
+      { label: 'escalation', value: '' },
     ])
   })
 
@@ -155,8 +198,8 @@ describe('actionRows of roles and generated files', () => {
     ).toEqual([
       { label: 'name', value: 'Dev' },
       { label: 'mission', value: 'M' },
-      { label: 'scope', value: '' },
       { label: 'rights', value: 'read' },
+      { label: 'scope', value: '' },
       { label: 'in', value: 'API' },
     ])
   })

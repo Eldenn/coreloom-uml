@@ -176,9 +176,6 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
         name: config.name,
         projectId: config.projectId,
         revision: config.revision,
-        rules: rules.map((rule) => ({ id: rule.id, section: rule.section, text: rule.text })),
-        readyRules: ready.map((row) => ({ slot: row.slot, rule: row.rule, value: row.value })),
-        sections: ruleSections(RULE_PACKS),
         ...((await agentRolesEnabled(user)) && {
           roles: held.map((role) => ({
             id: role.id,
@@ -196,6 +193,10 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
             createdAt: newest.createdAt.toISO(),
           },
         },
+        // Last: the longest part, so a result cut short still carries the roles above.
+        rules: rules.map((rule) => ({ id: rule.id, section: rule.section, text: rule.text })),
+        readyRules: ready.map((row) => ({ slot: row.slot, rule: row.rule, value: row.value })),
+        sections: ruleSections(RULE_PACKS),
       }
     },
   }),

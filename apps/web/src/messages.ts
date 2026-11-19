@@ -1051,6 +1051,7 @@ export const en = {
       revision: 'From revision',
     },
     actionWholeRepository: 'The whole repository',
+    actionNone: 'None (emptied)',
     actionImpactLabel: 'Deleted with it',
     actionDroppedLabel: 'Removed to make room',
     actionImpact: {
@@ -2384,6 +2385,7 @@ export const fr: Messages = {
       revision: 'Depuis la révision',
     },
     actionWholeRepository: 'Tout le dépôt',
+    actionNone: 'Aucun (vidé)',
     actionImpactLabel: 'Supprimé avec',
     actionDroppedLabel: 'Retiré pour faire de la place',
     actionImpact: {

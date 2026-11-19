@@ -66,6 +66,8 @@ function useShownValue(action: AssistantAction) {
         .map((right) => named(rights, right))
         .join(', ')
     if (label === 'scope' && value === '') return t.assistant.actionWholeRepository
+    // A field the action empties.
+    if (value === '') return t.assistant.actionNone
     if (label === 'preset') return presets?.find((item) => item.slug === value)?.name ?? value
     return value
   }
@@ -119,9 +121,11 @@ export function AssistantActionCard({
             <dd
               className={cn(
                 'm-0 min-w-0 break-words whitespace-pre-wrap text-foreground',
-                // A mission can run to pages: its beginning is enough to decide.
-                row.label === 'mission' && 'line-clamp-4',
+                // A mission can run to pages, and all of it is what the agent is told: it scrolls.
+                row.label === 'mission' && 'max-h-40 overflow-y-auto',
               )}
+              // A region that scrolls is reached by keyboard.
+              tabIndex={row.label === 'mission' ? 0 : undefined}
             >
               {row.from !== undefined && (
                 <>

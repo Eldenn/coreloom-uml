@@ -196,15 +196,15 @@ async function apply(
     )
   }
   // The target as it is now: gone, unable to take the action, or no longer what the card said.
-  if ((await known.subject(parsed.data, user)) === TARGET_NOT_FOUND)
-    return failed(ActionFailure.NotFound)
+  const subject = await known.subject(parsed.data, user)
+  if (subject === TARGET_NOT_FOUND) return failed(ActionFailure.NotFound)
   const refused = await known.currentProblem(parsed.data, user)
   if (refused) return failed(ActionFailure.Conflict, refused)
   const now = await currentState(known, parsed.data, user)
   const said = { impact: action.impact ?? null, before: action.before ?? null }
   if (!isDeepStrictEqual({ impact: now.impact, before: now.before }, said)) {
     // Still pending, with what it would do now: the owner decides again on a true card.
-    return { next: { ...action, ...now }, problem: null, changed: true }
+    return { next: { ...action, ...now, subject }, problem: null, changed: true }
   }
   const applied = await known.apply(parsed.data, user, trx)
   if ('failure' in applied) {

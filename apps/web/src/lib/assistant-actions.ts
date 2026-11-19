@@ -39,7 +39,7 @@ export type ActionRowLabel =
 
 /**
  * One line of a card; with `from`, the value replaces it. A list is one text, comma-separated;
- * an empty `scope` is the whole repository.
+ * an empty `scope` is the whole repository, any other empty value is a field the action empties.
  */
 export interface ActionRow {
   label: ActionRowLabel
@@ -50,6 +50,8 @@ export interface ActionRow {
 interface Draft {
   label: ActionRowLabel
   value: unknown
+  /** Shown even when empty: the input names it. */
+  given?: boolean
   from?: string | null
 }
 
@@ -68,18 +70,29 @@ function done(value: unknown): unknown {
   return list([...lines, text])
 }
 
-/** The fields of a role a card shows, in the order of the role form; left out when not given. */
-const roleRows = (input: Record<string, unknown>): Draft[] => [
-  { label: 'slug', value: input.slug },
-  { label: 'name', value: input.name },
-  { label: 'description', value: input.description },
-  { label: 'mission', value: input.mission },
-  { label: 'rights', value: list(input.rights) },
-  { label: 'scope', value: list(input.scope) },
-  { label: 'forbidden', value: list(input.forbidden) },
-  { label: 'done', value: done(input.done) },
-  { label: 'escalation', value: input.escalation },
-]
+const ROLE_FIELDS = [
+  'slug',
+  'name',
+  'description',
+  'mission',
+  'rights',
+  'scope',
+  'forbidden',
+  'done',
+  'escalation',
+] as const
+
+/**
+ * Every field of a role the input gives, in the order of the role form: a role is what a coding
+ * agent is told, so a card hides none of it. A field given empty (an edit that clears it) is
+ * shown, as an empty value; one not given is left out.
+ */
+const roleRows = (input: Record<string, unknown>): Draft[] =>
+  ROLE_FIELDS.filter((field) => Object.hasOwn(input, field)).map((field) => ({
+    label: field,
+    value: (field === 'done' ? done(input.done) : list(input[field])) ?? '',
+    given: true,
+  }))
 
 /** What the owner would otherwise have to open the target to know. */
 const ROWS: Record<
@@ -126,11 +139,8 @@ const ROWS: Record<
     { label: 'in', value: subject },
   ],
   add_role: (input, subject) => [
-    { label: 'name', value: input.name },
-    { label: 'mission', value: input.mission },
     // Left out, the role works in the whole repository.
-    { label: 'scope', value: list(input.scope ?? []) },
-    { label: 'rights', value: list(input.rights) },
+    ...roleRows({ ...input, scope: input.scope ?? [] }),
     { label: 'in', value: subject },
   ],
   // `before` is a fingerprint of the role: never shown.
@@ -143,9 +153,9 @@ const ROWS: Record<
   ],
 }
 
-/** Whether a row is shown: a text, or an empty scope (the whole repository). */
+/** Whether a row is shown: a text, or an empty one the input names. */
 function shows(draft: Draft): draft is Draft & { value: string } {
-  return typeof draft.value === 'string' && (draft.value !== '' || draft.label === 'scope')
+  return typeof draft.value === 'string' && (draft.value !== '' || draft.given === true)
 }
 
 /** The lines of an action's card, in order; a value that is missing or not a text is left out. */
