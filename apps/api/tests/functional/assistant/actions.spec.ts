@@ -1,4 +1,5 @@
 import app from '@adonisjs/core/services/app'
+import drive from '@adonisjs/drive/services/main'
 import { MARKER_PREFIX } from '@coreloom-uml/catalog'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import type { LanguageModel } from '@coreloom-uml/llm'
@@ -14,10 +15,12 @@ import { AssistantRole } from '#app/assistant/constants/assistant'
 import AssistantConversation from '#app/assistant/models/assistant-conversation'
 import AssistantMessage from '#app/assistant/models/assistant-message'
 import { conversationHistory } from '#app/assistant/services/assistant-context'
+import CodeMap from '#app/code-maps/models/code-map'
 import { updateFlag } from '#app/feature-flags/services/feature-flags'
 import LanguageModels from '#app/llm/services/language-models'
 import { saveCodexTokens } from '#app/llm-connections/services/codex-connections'
 import Project from '#app/projects/models/project'
+import { applyVisibility, readAccessCode } from '#app/sharing/services/sharing'
 import User from '#app/users/models/user'
 import env from '#start/env'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
@@ -782,5 +785,366 @@ test.group('Assistant actions - handing over', (group) => {
     response.assertStatus(200)
     assert.isNull(response.body().handoff)
     assert.isUndefined(model.doGenerateCalls[0]?.tools)
+  })
+})
+
+test.group('Assistant actions - deleting and sharing', (group) => {
+  group.each.setup(() => withDefaultFlags())
+  group.each.setup(() => {
+    drive.fake()
+    return () => drive.restore()
+  })
+  group.each.teardown(() => app.container.restore(LanguageModels))
+
+  /** A stored code map of the fixture's project, with its file in Drive. */
+  async function codeMapOf(f: Fixture, key: string) {
+    await drive.use().put(key, 'map')
+    return CodeMap.create({
+      projectId: f.project.id,
+      userId: f.user.id,
+      source: 'upload',
+      extractor: 'graphify',
+      extractorVersion: '0.9.108',
+      status: 'ready',
+      nodeCount: 0,
+      edgeCount: 0,
+      storageKey: key,
+    })
+  }
+
+  /** Proposes one call and answers the stored message and its first action. */
+  async function propose(client: ApiClient, f: Fixture, tool: string, input: object) {
+    const { response, model } = await send(client, f, [call(tool, input), { text: 'Proposed.' }])
+    response.assertStatus(200)
+    const message = response.body().messages[1]
+    const answer = (decision: 'accept' | 'reject') =>
+      client
+        .post(answerPath(f.conversation.id, message.id, 0, decision))
+        .headers(json)
+        .loginAs(f.user)
+    return { message, action: message.actions?.[0], model, answer }
+  }
+
+  async function makeProtected(architecture: Architecture) {
+    await architecture.refresh()
+    applyVisibility(architecture, 'protected')
+    await architecture.save()
+    return {
+      token: architecture.shareToken as string,
+      code: readAccessCode(architecture) as string,
+    }
+  }
+
+  test('delete_project: proposed with what goes with it, its files deleted only on accept', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('actions-delete-project@example.com')
+    await f.architecture
+      .related('diagrams')
+      .create({ title: 'Flow', kind: 'sequence', position: 1 })
+    await codeMapOf(f, 'code-maps/test/a.json.gz')
+    await codeMapOf(f, 'code-maps/test/b.json.gz')
+
+    const { action, answer } = await propose(client, f, 'delete_project', {
+      projectId: f.project.id,
+    })
+    assert.equal(action.subject, 'Shop')
+    assert.isTrue(action.destructive)
+    assert.deepEqual(action.impact, { architectures: 1, diagrams: 2, agentConfigs: 1, codeMaps: 2 })
+    assert.isNull(action.before)
+    assert.isTrue(await drive.use().exists('code-maps/test/a.json.gz'))
+
+    const accepted = await answer('accept')
+    accepted.assertStatus(200)
+    assert.equal(accepted.body().action.status, 'accepted')
+    assert.isNull(accepted.body().action.result)
+    assert.isNull(await Project.find(f.project.id))
+    assert.isNull(await Architecture.find(f.architecture.id))
+    assert.isNull(await AgentConfig.find(f.config.id))
+    assert.lengthOf(await CodeMap.query().where('projectId', f.project.id), 0)
+    assert.isFalse(await drive.use().exists('code-maps/test/a.json.gz'))
+    assert.isFalse(await drive.use().exists('code-maps/test/b.json.gz'))
+  })
+
+  test('delete_project rejected: the project and its files stay', async ({ client, assert }) => {
+    const f = await setup('actions-delete-project-no@example.com')
+    await codeMapOf(f, 'code-maps/test/c.json.gz')
+    const { answer } = await propose(client, f, 'delete_project', { projectId: f.project.id })
+
+    const rejected = await answer('reject')
+    rejected.assertStatus(200)
+    assert.equal(rejected.body().action.status, 'rejected')
+    assert.isNotNull(await Project.find(f.project.id))
+    assert.isTrue(await drive.use().exists('code-maps/test/c.json.gz'))
+  })
+
+  test('delete_architecture: proposed with its diagrams, then the row is gone', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('actions-delete-architecture@example.com')
+    const { action, answer } = await propose(client, f, 'delete_architecture', {
+      architectureId: f.architecture.id,
+    })
+    assert.equal(action.subject, 'Zephyr')
+    assert.isTrue(action.destructive)
+    assert.deepEqual(action.impact, { diagrams: 1 })
+
+    const accepted = await answer('accept')
+    accepted.assertStatus(200)
+    assert.isNull(accepted.body().action.result)
+    assert.isNull(await Architecture.find(f.architecture.id))
+    assert.isNotNull(await Project.find(f.project.id))
+  })
+
+  test('delete_agent_config: proposed with its rules, then the row is gone', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('actions-delete-config@example.com')
+    const { action, answer } = await propose(client, f, 'delete_agent_config', {
+      agentConfigId: f.config.id,
+    })
+    assert.equal(action.subject, 'Shop rules')
+    assert.deepEqual(action.impact, { rules: 1 })
+
+    const accepted = await answer('accept')
+    accepted.assertStatus(200)
+    assert.isNull(accepted.body().action.result)
+    assert.isNull(await AgentConfig.find(f.config.id))
+    assert.isNull(await AgentConfigRule.find(f.rule.id))
+  })
+
+  test('an action stored before impact and before existed answers them as null', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('actions-old-shape@example.com')
+    const { message, answer } = await propose(client, f, 'rename_project', {
+      projectId: f.project.id,
+      name: 'Later',
+    })
+    const row = await AssistantMessage.findOrFail(message.id)
+    const { impact: _impact, before: _before, ...old } = firstAction(row)
+    row.actions = [old]
+    await row.save()
+
+    const rejected = await answer('reject')
+    rejected.assertStatus(200)
+    assert.isNull(rejected.body().action.impact)
+    assert.isNull(rejected.body().action.before)
+  })
+
+  test('a deletion with nothing in it stores no impact', async ({ client, assert }) => {
+    const f = await setup('actions-delete-empty@example.com')
+    const empty = await Project.create({ userId: f.user.id, name: 'Empty' })
+    const { action } = await propose(client, f, 'delete_project', { projectId: empty.id })
+    assert.isNull(action.impact)
+  })
+
+  test('a deletion retargeted to another account fails not_found and deletes nothing', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('actions-delete-swap@example.com')
+    const other = await setup('actions-delete-swap-other@example.com')
+    await codeMapOf(other, 'code-maps/test/other.json.gz')
+    const { message, answer } = await propose(client, f, 'delete_project', {
+      projectId: f.project.id,
+    })
+    const row = await AssistantMessage.findOrFail(message.id)
+    row.actions = [{ ...firstAction(row), input: { projectId: other.project.id } }]
+    await row.save()
+
+    const response = await answer('accept')
+    response.assertStatus(409)
+    assert.equal(response.body().action.failure, 'not_found')
+    assert.isNotNull(await Project.find(other.project.id))
+    assert.isTrue(await drive.use().exists('code-maps/test/other.json.gz'))
+  })
+
+  test("a deletion or a sharing change of another account's work is never proposed", async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('actions-delete-foreign@example.com')
+    const other = await setup('actions-delete-foreign-other@example.com')
+    const { response, model } = await send(client, f, [
+      {
+        calls: [
+          { tool: 'delete_project', input: { projectId: other.project.id } },
+          { tool: 'delete_architecture', input: { architectureId: other.architecture.id } },
+          { tool: 'delete_agent_config', input: { agentConfigId: other.config.id } },
+          {
+            tool: 'set_architecture_sharing',
+            input: { architectureId: other.architecture.id, visibility: 'public' },
+          },
+          { tool: 'regenerate_share_link', input: { architectureId: other.architecture.id } },
+          { tool: 'regenerate_access_code', input: { architectureId: other.architecture.id } },
+        ],
+      },
+      { text: 'None of these exist.' },
+    ])
+
+    response.assertStatus(200)
+    assert.isNull(response.body().messages[1].actions)
+    assert.include(toolResults(model), 'Not found')
+    assert.notInclude(toolResults(model), 'Zephyr')
+  })
+
+  test('set_architecture_sharing: stores the visibility before, then changes it', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('actions-sharing@example.com')
+    const { action, answer } = await propose(client, f, 'set_architecture_sharing', {
+      architectureId: f.architecture.id,
+      visibility: 'protected',
+    })
+    assert.equal(action.subject, 'Zephyr')
+    assert.isFalse(action.destructive)
+    assert.equal(action.before, 'private')
+    assert.isNull(action.impact)
+
+    const accepted = await answer('accept')
+    accepted.assertStatus(200)
+    assert.deepEqual(accepted.body().action.result, {
+      kind: 'architecture',
+      id: f.architecture.id,
+    })
+    await f.architecture.refresh()
+    assert.equal(f.architecture.visibility, 'protected')
+    assert.isString(f.architecture.shareToken)
+    assert.isString(readAccessCode(f.architecture))
+  })
+
+  test('set_architecture_sharing to the visibility it has is refused', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('actions-sharing-noop@example.com')
+    const { response, model } = await send(client, f, [
+      call('set_architecture_sharing', {
+        architectureId: f.architecture.id,
+        visibility: 'private',
+      }),
+      { text: 'Already private.' },
+    ])
+    response.assertStatus(200)
+    assert.isNull(response.body().messages[1].actions)
+    assert.include(toolResults(model), 'already private')
+  })
+
+  test('regenerate_share_link: the old link no longer opens', async ({ client, assert }) => {
+    const f = await setup('actions-link@example.com')
+    applyVisibility(f.architecture, 'public')
+    await f.architecture.save()
+    const old = f.architecture.shareToken as string
+    const { action, answer } = await propose(client, f, 'regenerate_share_link', {
+      architectureId: f.architecture.id,
+    })
+    assert.isTrue(action.destructive)
+    assert.equal(action.subject, 'Zephyr')
+
+    const accepted = await answer('accept')
+    accepted.assertStatus(200)
+    await f.architecture.refresh()
+    assert.notEqual(f.architecture.shareToken, old)
+    ;(await client.get(`/shared/${old}`).headers(json)).assertStatus(404)
+    ;(await client.get(`/shared/${f.architecture.shareToken}`).headers(json)).assertStatus(200)
+  })
+
+  test('regenerate_access_code: the old code no longer unlocks', async ({ client, assert }) => {
+    const f = await setup('actions-code@example.com')
+    const { token, code } = await makeProtected(f.architecture)
+    const { action, answer } = await propose(client, f, 'regenerate_access_code', {
+      architectureId: f.architecture.id,
+    })
+    assert.isTrue(action.destructive)
+
+    const accepted = await answer('accept')
+    accepted.assertStatus(200)
+    await f.architecture.refresh()
+    const fresh = readAccessCode(f.architecture) as string
+    assert.notEqual(fresh, code)
+    ;(await client.post(`/shared/${token}/unlock`).headers(json).json({ code })).assertStatus(422)
+  })
+
+  test('regenerate_access_code: refused when not protected, conflict when it stopped being', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('actions-code-conflict@example.com')
+    const refused = await send(client, f, [
+      call('regenerate_access_code', { architectureId: f.architecture.id }),
+      { text: 'Not protected.' },
+    ])
+    refused.response.assertStatus(200)
+    assert.isNull(refused.response.body().messages[1].actions)
+    assert.include(toolResults(refused.model), 'Only a protected architecture')
+
+    await makeProtected(f.architecture)
+    const { answer } = await propose(client, f, 'regenerate_access_code', {
+      architectureId: f.architecture.id,
+    })
+    applyVisibility(f.architecture, 'public')
+    await f.architecture.save()
+
+    const response = await answer('accept')
+    response.assertStatus(409)
+    assert.equal(response.body().error.code, 'conflict')
+    assert.equal(response.body().action.failure, 'conflict')
+    await f.architecture.refresh()
+    assert.equal(f.architecture.visibility, 'public')
+  })
+
+  test('list_architectures answers the visibility; no link, token or code ever reaches the model or a message', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('actions-secrets@example.com')
+    const first = await makeProtected(f.architecture)
+    const sent = await send(client, f, [
+      {
+        calls: [
+          { tool: 'list_architectures', input: {} },
+          { tool: 'regenerate_share_link', input: { architectureId: f.architecture.id } },
+          { tool: 'regenerate_access_code', input: { architectureId: f.architecture.id } },
+          {
+            tool: 'set_architecture_sharing',
+            input: { architectureId: f.architecture.id, visibility: 'public' },
+          },
+        ],
+      },
+      { text: 'Proposed.' },
+    ])
+    sent.response.assertStatus(200)
+    assert.include(toolResults(sent.model), 'protected')
+    const messageId = sent.response.body().messages[1].id
+    const bodies: unknown[] = []
+    for (const index of [0, 1, 2]) {
+      const accepted = await client
+        .post(answerPath(f.conversation.id, messageId, index, 'accept'))
+        .headers(json)
+        .loginAs(f.user)
+      accepted.assertStatus(200)
+      bodies.push(accepted.body())
+    }
+    await f.architecture.refresh()
+    const after = { token: f.architecture.shareToken as string }
+    const later = await send(client, f, [call('list_architectures', {}), { text: 'Listed.' }])
+
+    const secrets = [first.token, first.code, after.token]
+    const messages = JSON.stringify(await stored(f.conversation.id))
+    const shown = [
+      toolResults(sent.model),
+      toolResults(later.model),
+      JSON.stringify(sent.model.doGenerateCalls),
+      JSON.stringify(later.model.doGenerateCalls),
+      JSON.stringify(bodies),
+      messages,
+    ].join('\n')
+    for (const secret of secrets) assert.notInclude(shown, secret)
   })
 })

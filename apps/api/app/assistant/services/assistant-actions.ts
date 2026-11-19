@@ -21,6 +21,7 @@ import {
   type StoredAction,
 } from '#app/assistant/constants/assistant'
 import AssistantMessage from '#app/assistant/models/assistant-message'
+import { serializeAction } from '#app/assistant/serializers/assistant-serializer'
 import type { ActionOutput, HandoffOutput } from '#app/assistant/validators/assistant-output'
 import { isFeatureEnabled } from '#app/feature-flags/services/feature-flags'
 import { findOwnedProject } from '#app/projects/services/owned-project'
@@ -118,14 +119,15 @@ export type ActionOutcome =
  * Accepting parses the stored input again and applies it through the route's own service, with
  * the caller's ownership checked again, in the same transaction as the new status; a failure is
  * stored (`failed`) with its reason, and whatever the service wrote is rolled back with its
- * savepoint.
+ * savepoint. What cannot be rolled back (a deleted project's files) runs after the commit.
  */
-export function answerAction(
+export async function answerAction(
   decision: ActionDecision,
   target: { conversationId: number; messageId: number; index: number },
   user: User,
 ): Promise<ActionOutcome> {
-  return db.transaction(async (trx) => {
+  let afterCommit: (() => Promise<void>) | undefined
+  const outcome = await db.transaction(async (trx): Promise<ActionOutcome> => {
     const message = await AssistantMessage.query({ client: trx })
       .where('id', target.messageId)
       .where('conversationId', target.conversationId)
@@ -135,28 +137,32 @@ export function answerAction(
     const action = message?.actions?.[target.index]
     if (!message?.actions || !action) return { notFound: true }
     if (action.status !== ActionStatus.Pending) {
-      return { conflict: NOT_PENDING, action: { ...action, index: target.index } }
+      return { conflict: NOT_PENDING, action: serializeAction(action, target.index) }
     }
 
-    const { next, problem } =
+    const applied =
       decision === ActionDecision.Reject
         ? { next: { ...action, status: ActionStatus.Rejected }, problem: null }
         : await apply(action, user, trx)
+    const { next, problem } = applied
+    afterCommit = 'afterCommit' in applied ? applied.afterCommit : undefined
     message.actions = message.actions.map((item, index) => (index === target.index ? next : item))
     await message.save()
-    const output = { ...next, index: target.index }
+    const output = serializeAction(next, target.index)
     if (problem && next.failure) {
       return { failed: { message: problem, code: next.failure }, action: output }
     }
     return { action: output }
   })
+  await afterCommit?.()
+  return outcome
 }
 
 async function apply(
   action: StoredAction,
   user: User,
   trx: TransactionClientContract,
-): Promise<{ next: StoredAction; problem: string | null }> {
+): Promise<{ next: StoredAction; problem: string | null; afterCommit?: () => Promise<void> }> {
   const failed = (failure: ActionFailure, problem: string = FAILURE_MESSAGES[failure]) => ({
     next: { ...action, status: ActionStatus.Failed, failure },
     problem,
@@ -174,6 +180,13 @@ async function apply(
   const applied = await known.apply(parsed.data, user, trx)
   if ('failure' in applied) {
     return failed(applied.failure, 'message' in applied ? applied.message : undefined)
+  }
+  if ('deleted' in applied) {
+    return {
+      next: { ...action, status: ActionStatus.Accepted, result: null },
+      problem: null,
+      afterCommit: applied.afterCommit,
+    }
   }
   return { next: { ...action, status: ActionStatus.Accepted, result: applied }, problem: null }
 }

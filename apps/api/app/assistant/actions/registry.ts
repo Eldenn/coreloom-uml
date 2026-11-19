@@ -48,6 +48,12 @@ export function actionTools(user: User, proposals: StoredAction[]): AssistantToo
         if (problem) return problem
         const subject = await action.subject(input, user)
         if (subject === TARGET_NOT_FOUND) return NOT_FOUND_SENTENCE
+        const current = await action.currentProblem(input, user)
+        if (current) return current
+        // Only what goes with it: a count of zero says nothing.
+        const impact = Object.fromEntries(
+          Object.entries(await action.impact(input, user)).filter(([, count]) => count > 0),
+        )
         proposals.push({
           name,
           input: action.input.parse(input) as Record<string, unknown>,
@@ -56,6 +62,8 @@ export function actionTools(user: User, proposals: StoredAction[]): AssistantToo
           status: ActionStatus.Pending,
           result: null,
           failure: null,
+          impact: Object.keys(impact).length > 0 ? impact : null,
+          before: await action.before(input, user),
         })
         return null
       },

@@ -1,5 +1,6 @@
 import { randomBytes, randomInt, timingSafeEqual } from 'node:crypto'
 import encryption from '@adonisjs/core/services/encryption'
+import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import { ArchitectureVisibility } from '#app/architectures/constants/visibility'
 import type Architecture from '#app/architectures/models/architecture'
 import {
@@ -98,4 +99,48 @@ export function applyVisibility(architecture: Architecture, visibility: Architec
     architecture.accessVersion += 1
   }
   architecture.visibility = visibility
+}
+
+/*
+ * The writes of the owner's sharing routes, shared with the assistant's accepted actions, which
+ * run them inside their own transaction (`client`). The assistant never reads what they mint.
+ */
+
+/** `PUT /architectures/:id/sharing` and `set_architecture_sharing`. */
+export async function setVisibility(
+  architecture: Architecture,
+  visibility: ArchitectureVisibility,
+  client?: TransactionClientContract,
+) {
+  if (client) architecture.useTransaction(client)
+  applyVisibility(architecture, visibility)
+  await architecture.save()
+}
+
+/** RM-21: the old link stops working at once. `regenerate-link` and `regenerate_share_link`. */
+export async function regenerateShareLink(
+  architecture: Architecture,
+  client?: TransactionClientContract,
+) {
+  if (client) architecture.useTransaction(client)
+  architecture.shareToken = generateShareToken()
+  await architecture.save()
+}
+
+export const NOT_PROTECTED_MESSAGE = 'Only a protected architecture has an access code.'
+
+/**
+ * RM-24: everyone who entered the old code loses access. `regenerate-code` and
+ * `regenerate_access_code`: false, with nothing written, when the architecture is not protected.
+ */
+export async function regenerateAccessCode(
+  architecture: Architecture,
+  client?: TransactionClientContract,
+): Promise<boolean> {
+  if (architecture.visibility !== ArchitectureVisibility.Protected) return false
+  if (client) architecture.useTransaction(client)
+  architecture.accessCode = encryptAccessCode(generateAccessCode())
+  architecture.accessVersion += 1
+  await architecture.save()
+  return true
 }

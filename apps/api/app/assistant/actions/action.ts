@@ -1,7 +1,11 @@
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import type { AssistantToolKind } from '@coreloom-uml/llm'
 import { z } from 'zod'
-import type { ActionFailure, AssistantTargetKind } from '#app/assistant/constants/assistant'
+import type {
+  ActionFailure,
+  ActionImpact,
+  AssistantTargetKind,
+} from '#app/assistant/constants/assistant'
 import type User from '#app/users/models/user'
 
 /*
@@ -16,9 +20,15 @@ import type User from '#app/users/models/user'
 /** The target a write action names is missing or not the caller's: nothing is proposed. */
 export const TARGET_NOT_FOUND: unique symbol = Symbol('target not found')
 
-/** What an accepted action created or changed, or why it could not be applied. */
+/**
+ * What an accepted action created or changed, that it deleted its target, or why it could not be
+ * applied. Never a share link, a share token or an access code: the owner reads those on the
+ * sharing screen. `afterCommit` is work that cannot be rolled back (files in Drive), run once the
+ * transaction that stores the new status has committed.
+ */
 export type ActionApplied =
   | { kind: AssistantTargetKind; id: number }
+  | { deleted: true; afterCommit?: () => Promise<void> }
   | { failure: typeof ActionFailure.NotFound }
   | { failure: typeof ActionFailure.Invalid | typeof ActionFailure.Conflict; message: string }
 
@@ -39,6 +49,15 @@ export type WriteActionDefinition<S extends z.ZodType> = ActionBase<S> & {
   problem?(input: z.output<S>): string | null
   /** The display name of the target now (null for a creation), or `TARGET_NOT_FOUND`. */
   subject(input: z.output<S>, user: User): Promise<string | null | typeof TARGET_NOT_FOUND>
+  /**
+   * Why the target, as it is now, cannot take the input (a no-op, a state it lacks): asked after
+   * `subject` found it; the model is told and nothing is proposed.
+   */
+  currentProblem?(input: z.output<S>, user: User): Promise<string | null>
+  /** The state the action changes, as it is when proposed (shown before → after). */
+  before?(input: z.output<S>, user: User): Promise<string | null>
+  /** What a deletion takes with it, counted when proposed. */
+  impact?(input: z.output<S>, user: User): Promise<Partial<Record<ActionImpact, number>>>
   /** Runs inside the transaction (`client`) that stores the action's new status. */
   apply(input: z.output<S>, user: User, client: TransactionClientContract): Promise<ActionApplied>
 }
@@ -54,6 +73,9 @@ export type AssistantAction =
       destructive?: true
       problem?(input: unknown): string | null
       subject(input: unknown, user: User): Promise<string | null | typeof TARGET_NOT_FOUND>
+      currentProblem(input: unknown, user: User): Promise<string | null>
+      before(input: unknown, user: User): Promise<string | null>
+      impact(input: unknown, user: User): Promise<Partial<Record<ActionImpact, number>>>
       apply(input: unknown, user: User, client: TransactionClientContract): Promise<ActionApplied>
     })
 
@@ -73,6 +95,12 @@ export function writeAction<S extends z.ZodType>(
     ...definition,
     problem: (input) => definition.problem?.(definition.input.parse(input)) ?? null,
     subject: (input, user) => definition.subject(definition.input.parse(input), user),
+    currentProblem: async (input, user) =>
+      (await definition.currentProblem?.(definition.input.parse(input), user)) ?? null,
+    before: async (input, user) =>
+      (await definition.before?.(definition.input.parse(input), user)) ?? null,
+    impact: async (input, user) =>
+      (await definition.impact?.(definition.input.parse(input), user)) ?? {},
     apply: (input, user, client) => definition.apply(definition.input.parse(input), user, client),
   }
 }

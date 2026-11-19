@@ -319,9 +319,11 @@ function answeredAction(error: unknown): AssistantAction | undefined {
 
 /** What an accepted action changed: its domain, and the projects' count of architectures. */
 const ACTION_KEYS = {
-  project: [projectKeys.all],
+  // A deleted project takes its architectures and agent conventions with it.
+  project: [projectKeys.all, architectureKeys.all, agentConfigKeys.all],
   architecture: [architectureKeys.all, projectKeys.all],
-  'agent-config': [agentConfigKeys.all],
+  // Projects count their agent conventions.
+  'agent-config': [agentConfigKeys.all, projectKeys.all],
 } as const
 
 /**

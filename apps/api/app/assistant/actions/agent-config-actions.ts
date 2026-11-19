@@ -15,6 +15,7 @@ import {
 } from '#app/agent-configs/constants/agent-config'
 import AgentConfig from '#app/agent-configs/models/agent-config'
 import AgentConfigReadyRule from '#app/agent-configs/models/agent-config-ready-rule'
+import { deleteAgentConfig } from '#app/agent-configs/services/agent-config-writes'
 import {
   addRule,
   type RuleOutcome,
@@ -35,7 +36,11 @@ import {
   TARGET_NOT_FOUND,
   writeAction,
 } from '#app/assistant/actions/action'
-import { ActionFailure, AssistantTargetKind } from '#app/assistant/constants/assistant'
+import {
+  ActionFailure,
+  ActionImpact,
+  AssistantTargetKind,
+} from '#app/assistant/constants/assistant'
 import type User from '#app/users/models/user'
 
 /** Ready-made rule groups one search answers. */
@@ -226,6 +231,25 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
       if ('refused' in result)
         return { failure: ActionFailure.Invalid, message: result.refused.error.message }
       return { kind: AssistantTargetKind.AgentConfig, id: result.id }
+    },
+  }),
+  writeAction({
+    name: 'delete_agent_config',
+    description:
+      "Proposes to delete one of the owner's agent conventions with all their rules, ready-made rules, roles and generated files. It cannot be undone: propose it only when the owner clearly asked for this deletion.",
+    input: z.object(configId),
+    kind: AssistantToolKind.Write,
+    destructive: true,
+    subject: ({ agentConfigId }, user) => configName(agentConfigId, user),
+    async impact({ agentConfigId }, user) {
+      const config = await findOwnedAgentConfig(agentConfigId, user)
+      return config ? { [ActionImpact.Rules]: (await rulesOf(config)).length } : {}
+    },
+    async apply({ agentConfigId }, user, client) {
+      const config = await findOwnedAgentConfig(agentConfigId, user)
+      if (!config) return { failure: ActionFailure.NotFound }
+      await deleteAgentConfig(config, client)
+      return { deleted: true }
     },
   }),
 ]

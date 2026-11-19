@@ -68,8 +68,10 @@ silently.
   never a quote of what was read) in the conversation. With `assistant-actions` too, a plain
   message sent with `auto` (the panel's « Auto ») lets the model read the account's projects, architectures and agent conventions and
   propose actions on them (create or rename a project, create, rename or duplicate an
-  architecture, add, edit or remove an own rule, hold a ready-made rule): each is stored pending
-  and applied only when the owner accepts it (`…/messages/:messageId/actions/:index/accept` or
+  architecture, add, edit or remove an own rule, hold a ready-made rule; delete a project, an
+  architecture or agent conventions; change who can open an architecture, replace its share link
+  or access code, which the model never sees): each is stored pending, a deletion with what goes
+  with it, and applied only when the owner accepts it (`…/messages/:messageId/actions/:index/accept` or
   `/reject`), through the same code as the matching route. The model may instead hand the message
   over to an architecture's diagram assistant or to a web research; nothing is stored then and the
   panel sends it again down that path. It is behind the `diagram-assistant` feature flag, off by

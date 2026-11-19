@@ -8,8 +8,9 @@ import { AnswerButtons, ProposalCard } from '@/assistant/assistant-change-card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/sonner'
 import { type AssistantAction, useActionAnswer } from '@/lib/assistant'
-import { actionRows } from '@/lib/assistant-actions'
+import { actionImpact, actionRows } from '@/lib/assistant-actions'
 import { getErrorMessage, TuyauError } from '@/lib/client'
+import { useCoreloomI18n } from '@/lib/i18n'
 import { useT } from '@/lib/locale'
 
 const LINK =
@@ -47,6 +48,11 @@ export function AssistantActionCard({
   action: AssistantAction
 }) {
   const t = useT().assistant
+  const visibilities: Record<string, string> = useCoreloomI18n().messages.diagramCard.visibility
+  // A visibility is shown by its localized name.
+  const shown = (label: string, value: string) =>
+    label === 'visibility' && Object.hasOwn(visibilities, value) ? visibilities[value] : value
+  const impact = actionImpact(action.impact)
   const answer = useActionAnswer(conversationId)
   const card = React.useRef<HTMLDivElement>(null)
   const known = Object.hasOwn(t.actions, action.name)
@@ -79,15 +85,23 @@ export function AssistantActionCard({
             <dd className="m-0 min-w-0 break-words whitespace-pre-wrap text-foreground">
               {row.from !== undefined && (
                 <>
-                  <span className="text-muted-foreground">{row.from}</span>{' '}
+                  <span className="text-muted-foreground">{shown(row.label, row.from)}</span>{' '}
                   <span aria-hidden="true">→</span>
                   <span className="sr-only">{t.becomes}</span>{' '}
                 </>
               )}
-              {row.value}
+              {shown(row.label, row.value)}
             </dd>
           </React.Fragment>
         ))}
+        {impact.length > 0 && (
+          <>
+            <dt className="text-muted-foreground">{t.actionImpactLabel}</dt>
+            <dd className="m-0 min-w-0 text-foreground">
+              {impact.map(({ kind, count }) => t.actionImpact[kind](count)).join(', ')}
+            </dd>
+          </>
+        )}
       </dl>
       {action.status === 'failed' && action.failure !== null && (
         <p className="m-0 text-[13px] text-destructive">
@@ -98,10 +112,12 @@ export function AssistantActionCard({
             ` ${getErrorMessage(answer.error, '')}`}
         </p>
       )}
+      {/* A deletion's result is null: its target is gone, so there is nothing to open. */}
       {action.status === 'accepted' && action.result && <ResultLink result={action.result} />}
       {action.status === 'pending' && (
         <AnswerButtons
           busy={answer.isPending}
+          destructive={action.destructive}
           onAnswer={(choice) => {
             answered.current = true
             answer.mutate(
