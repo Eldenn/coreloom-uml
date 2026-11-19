@@ -122,13 +122,20 @@ export const ActionFailure = {
 } as const
 export type ActionFailure = (typeof ActionFailure)[keyof typeof ActionFailure]
 
-/** What a deletion takes with it, counted when it is proposed. */
+/**
+ * What a deletion takes with it, counted when it is proposed and again when it is accepted: a
+ * card never deletes more than it says.
+ */
 export const ActionImpact = {
   Architectures: 'architectures',
   Diagrams: 'diagrams',
   AgentConfigs: 'agentConfigs',
   CodeMaps: 'codeMaps',
+  CodeReviews: 'codeReviews',
   Rules: 'rules',
+  ReadyRules: 'readyRules',
+  Roles: 'roles',
+  Generations: 'generations',
 } as const
 export type ActionImpact = (typeof ActionImpact)[keyof typeof ActionImpact]
 

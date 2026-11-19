@@ -1038,10 +1038,16 @@ export const en = {
     actionImpact: {
       architectures: (n: number) => `${String(n)} ${n === 1 ? 'architecture' : 'architectures'}`,
       diagrams: (n: number) => `${String(n)} ${n === 1 ? 'diagram' : 'diagrams'}`,
-      agentConfigs: (n: number) => `${String(n)} agent conventions`,
+      agentConfigs: (n: number) =>
+        n === 1 ? 'its agent conventions' : `${String(n)} sets of agent conventions`,
       codeMaps: (n: number) => `${String(n)} ${n === 1 ? 'code map' : 'code maps'}`,
-      rules: (n: number) => `${String(n)} ${n === 1 ? 'rule' : 'rules'}`,
+      codeReviews: (n: number) => `${String(n)} ${n === 1 ? 'code review' : 'code reviews'}`,
+      rules: (n: number) => `${String(n)} ${n === 1 ? 'own rule' : 'own rules'}`,
+      readyRules: (n: number) => `${String(n)} ${n === 1 ? 'ready-made rule' : 'ready-made rules'}`,
+      roles: (n: number) => `${String(n)} ${n === 1 ? 'role' : 'roles'}`,
+      generations: (n: number) => `${String(n)} ${n === 1 ? 'generation' : 'generations'}`,
     },
+    actionChanged: 'This changed since it was proposed. Read the card again before you accept.',
     becomes: 'becomes',
     actionOpen: {
       project: 'Open the project',
@@ -2345,10 +2351,17 @@ export const fr: Messages = {
     actionImpact: {
       architectures: (n: number) => `${String(n)} ${n <= 1 ? 'architecture' : 'architectures'}`,
       diagrams: (n: number) => `${String(n)} ${n <= 1 ? 'diagramme' : 'diagrammes'}`,
-      agentConfigs: (n: number) => `${String(n)} conventions d’agents`,
+      agentConfigs: (n: number) =>
+        n <= 1 ? 'ses conventions d’agents' : `${String(n)} jeux de conventions d’agents`,
       codeMaps: (n: number) => `${String(n)} ${n <= 1 ? 'carte du code' : 'cartes du code'}`,
-      rules: (n: number) => `${String(n)} ${n <= 1 ? 'règle' : 'règles'}`,
+      codeReviews: (n: number) => `${String(n)} ${n <= 1 ? 'revue de code' : 'revues de code'}`,
+      rules: (n: number) => `${String(n)} ${n <= 1 ? 'règle personnelle' : 'règles personnelles'}`,
+      readyRules: (n: number) =>
+        `${String(n)} ${n <= 1 ? 'règle prête à l’emploi' : 'règles prêtes à l’emploi'}`,
+      roles: (n: number) => `${String(n)} ${n <= 1 ? 'rôle' : 'rôles'}`,
+      generations: (n: number) => `${String(n)} ${n <= 1 ? 'génération' : 'générations'}`,
     },
+    actionChanged: 'Ceci a changé depuis la proposition. Relisez la carte avant d’accepter.',
     becomes: 'devient',
     actionOpen: {
       project: 'Ouvrir le projet',

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import {
   ASSISTANT_READ_LIST_MAX,
   type AssistantAction,
+  countOf,
   idInput,
   readAction,
   TARGET_NOT_FOUND,
@@ -13,6 +14,7 @@ import {
   ActionImpact,
   AssistantTargetKind,
 } from '#app/assistant/constants/assistant'
+import CodeReview from '#app/code-reviews/models/code-review'
 import Diagram from '#app/diagrams/models/diagram'
 import { PROJECT_NAME_MAX_LENGTH } from '#app/projects/constants/limits'
 import Project from '#app/projects/models/project'
@@ -92,6 +94,9 @@ export const PROJECT_ACTIONS: readonly AssistantAction[] = [
         [ActionImpact.Diagrams]: Number(diagrams.$extras.total),
         [ActionImpact.AgentConfigs]: Number(project.$extras.agent_configs_count),
         [ActionImpact.CodeMaps]: Number(project.$extras.code_maps_count),
+        [ActionImpact.CodeReviews]: await countOf(
+          CodeReview.query().where('projectId', project.id),
+        ),
       }
     },
     async apply({ projectId }, user, client) {

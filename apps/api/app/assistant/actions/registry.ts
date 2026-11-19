@@ -22,6 +22,29 @@ export function findAction(name: string): AssistantAction | undefined {
 }
 
 /**
+ * What a card says of the state an action would change, read now: what a deletion takes with it,
+ * the state it replaces, and whether it can be undone. Read when the action is proposed and again
+ * when it is accepted, so an action never does more than its card said.
+ */
+export async function currentState(
+  action: Extract<AssistantAction, { kind: typeof AssistantToolKind.Write }>,
+  input: unknown,
+  user: User,
+): Promise<Pick<StoredAction, 'impact' | 'before' | 'destructive'>> {
+  // Only what goes with it: a count of zero says nothing.
+  const counts = Object.entries(await action.impact(input, user)).filter(([, count]) => count > 0)
+  const before = await action.before(input, user)
+  return {
+    impact: counts.length > 0 ? Object.fromEntries(counts) : null,
+    before,
+    destructive:
+      typeof action.destructive === 'function'
+        ? action.destructive(before)
+        : action.destructive === true,
+  }
+}
+
+/**
  * The actions as the loop's tools, bound to `user`. A write records its proposal in `proposals`
  * (with the target's current name), or tells the model why not: its target does not exist, or
  * its input can never be applied.
@@ -50,20 +73,14 @@ export function actionTools(user: User, proposals: StoredAction[]): AssistantToo
         if (subject === TARGET_NOT_FOUND) return NOT_FOUND_SENTENCE
         const current = await action.currentProblem(input, user)
         if (current) return current
-        // Only what goes with it: a count of zero says nothing.
-        const impact = Object.fromEntries(
-          Object.entries(await action.impact(input, user)).filter(([, count]) => count > 0),
-        )
         proposals.push({
           name,
           input: action.input.parse(input) as Record<string, unknown>,
           subject,
-          destructive: action.destructive === true,
           status: ActionStatus.Pending,
           result: null,
           failure: null,
-          impact: Object.keys(impact).length > 0 ? impact : null,
-          before: await action.before(input, user),
+          ...(await currentState(action, input, user)),
         })
         return null
       },

@@ -16,6 +16,13 @@ import { useT } from '@/lib/locale'
 const LINK =
   'w-fit text-[13px] text-primary-text underline underline-offset-2 outline-none focus-visible:ring-[3px] focus-visible:ring-ring'
 
+/** Whether the server kept the action pending because it no longer did what its card said. */
+function wasChanged(error: unknown): boolean {
+  if (!(error instanceof TuyauError)) return false
+  const body = error.response as { error?: { code?: string } } | undefined
+  return body?.error?.code === 'changed'
+}
+
 /** The page of what an accepted action made or changed. */
 function ResultLink({ result }: { result: NonNullable<AssistantAction['result']> }) {
   const t = useT().assistant.actionOpen
@@ -55,6 +62,8 @@ export function AssistantActionCard({
   const impact = actionImpact(action.impact)
   const answer = useActionAnswer(conversationId)
   const card = React.useRef<HTMLDivElement>(null)
+  // The server refused to apply a card that no longer said what it would do, and refreshed it.
+  const changed = wasChanged(answer.error)
   const known = Object.hasOwn(t.actions, action.name)
   // The buttons leave with the answer: the focus goes to the link it brought, else to the card.
   const answered = React.useRef(false)
@@ -110,6 +119,11 @@ export function AssistantActionCard({
           {action.failure === 'invalid' &&
             answer.isError &&
             ` ${getErrorMessage(answer.error, '')}`}
+        </p>
+      )}
+      {action.status === 'pending' && changed && (
+        <p role="status" className="m-0 text-[13px] text-destructive">
+          {t.actionChanged}
         </p>
       )}
       {/* A deletion's result is null: its target is gone, so there is nothing to open. */}

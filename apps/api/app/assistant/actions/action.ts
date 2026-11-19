@@ -41,7 +41,8 @@ export type ReadActionDefinition<S extends z.ZodType> = ActionBase<S> & {
 
 export type WriteActionDefinition<S extends z.ZodType> = ActionBase<S> & {
   kind: typeof AssistantToolKind.Write
-  destructive?: true
+  /** Cannot be undone; a function when it depends on the state the action changes (`before`). */
+  destructive?: true | ((before: string | null) => boolean)
   /**
    * Why the input can never be applied, read from the input alone (no query): the model is told
    * and nothing is proposed, so the owner is not shown a card that can only fail.
@@ -54,9 +55,9 @@ export type WriteActionDefinition<S extends z.ZodType> = ActionBase<S> & {
    * `subject` found it; the model is told and nothing is proposed.
    */
   currentProblem?(input: z.output<S>, user: User): Promise<string | null>
-  /** The state the action changes, as it is when proposed (shown before → after). */
+  /** The state the action changes, as it is now (shown before → after). */
   before?(input: z.output<S>, user: User): Promise<string | null>
-  /** What a deletion takes with it, counted when proposed. */
+  /** What a deletion takes with it, as it is now. */
   impact?(input: z.output<S>, user: User): Promise<Partial<Record<ActionImpact, number>>>
   /** Runs inside the transaction (`client`) that stores the action's new status. */
   apply(input: z.output<S>, user: User, client: TransactionClientContract): Promise<ActionApplied>
@@ -70,7 +71,7 @@ export type AssistantAction =
     })
   | (ActionBase<z.ZodType> & {
       kind: typeof AssistantToolKind.Write
-      destructive?: true
+      destructive?: true | ((before: string | null) => boolean)
       problem?(input: unknown): string | null
       subject(input: unknown, user: User): Promise<string | null | typeof TARGET_NOT_FOUND>
       currentProblem(input: unknown, user: User): Promise<string | null>
@@ -103,6 +104,14 @@ export function writeAction<S extends z.ZodType>(
       (await definition.impact?.(definition.input.parse(input), user)) ?? {},
     apply: (input, user, client) => definition.apply(definition.input.parse(input), user, client),
   }
+}
+
+/** How many rows a query finds. */
+export async function countOf(query: {
+  count(columns: string): Promise<{ $extras: Record<string, unknown> }[]>
+}): Promise<number> {
+  const [row] = await query.count('* as total')
+  return Number(row?.$extras.total ?? 0)
 }
 
 /** A positive id, as the routes' `withoutDecimals().min(1)`. */

@@ -105,7 +105,17 @@ export function actionDomain(name: string): ActionDomain | null {
 }
 
 /** What a deletion takes with it, in the order a card lists it. */
-const IMPACT_KINDS = ['architectures', 'diagrams', 'agentConfigs', 'codeMaps', 'rules'] as const
+const IMPACT_KINDS = [
+  'architectures',
+  'diagrams',
+  'agentConfigs',
+  'codeMaps',
+  'codeReviews',
+  'rules',
+  'readyRules',
+  'roles',
+  'generations',
+] as const
 export type ImpactKind = (typeof IMPACT_KINDS)[number]
 
 /** The counts of an action's impact, in order; zero and unknown ones are left out. */

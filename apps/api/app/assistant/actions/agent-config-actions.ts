@@ -14,7 +14,9 @@ import {
   AGENT_RULE_TEXT_MAX_LENGTH,
 } from '#app/agent-configs/constants/agent-config'
 import AgentConfig from '#app/agent-configs/models/agent-config'
+import AgentConfigGeneration from '#app/agent-configs/models/agent-config-generation'
 import AgentConfigReadyRule from '#app/agent-configs/models/agent-config-ready-rule'
+import AgentConfigRole from '#app/agent-configs/models/agent-config-role'
 import { deleteAgentConfig } from '#app/agent-configs/services/agent-config-writes'
 import {
   addRule,
@@ -30,6 +32,7 @@ import {
   type ActionApplied,
   ASSISTANT_READ_LIST_MAX,
   type AssistantAction,
+  countOf,
   idInput,
   NOT_FOUND_SENTENCE,
   readAction,
@@ -243,7 +246,14 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
     subject: ({ agentConfigId }, user) => configName(agentConfigId, user),
     async impact({ agentConfigId }, user) {
       const config = await findOwnedAgentConfig(agentConfigId, user)
-      return config ? { [ActionImpact.Rules]: (await rulesOf(config)).length } : {}
+      if (!config) return {}
+      const held = { agentConfigId: config.id }
+      return {
+        [ActionImpact.Rules]: (await rulesOf(config)).length,
+        [ActionImpact.ReadyRules]: await countOf(AgentConfigReadyRule.query().where(held)),
+        [ActionImpact.Roles]: await countOf(AgentConfigRole.query().where(held)),
+        [ActionImpact.Generations]: await countOf(AgentConfigGeneration.query().where(held)),
+      }
     },
     async apply({ agentConfigId }, user, client) {
       const config = await findOwnedAgentConfig(agentConfigId, user)

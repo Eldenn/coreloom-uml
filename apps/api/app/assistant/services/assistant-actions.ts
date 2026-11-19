@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from 'node:util'
+import logger from '@adonisjs/core/services/logger'
 import db from '@adonisjs/lucid/services/db'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
@@ -10,8 +12,8 @@ import {
 import { z } from 'zod'
 import { findOwnedAgentConfig } from '#app/agent-configs/services/owned-agent-config'
 import { findOwnedArchitecture } from '#app/architectures/services/owned-architecture'
-import { idInput, NOT_FOUND_SENTENCE } from '#app/assistant/actions/action'
-import { findAction } from '#app/assistant/actions/registry'
+import { idInput, NOT_FOUND_SENTENCE, TARGET_NOT_FOUND } from '#app/assistant/actions/action'
+import { currentState, findAction } from '#app/assistant/actions/registry'
 import {
   ActionFailure,
   ActionStatus,
@@ -96,7 +98,11 @@ export function handoffOf(route: AssistantToolCall): HandoffOutput {
 export const ActionDecision = { Accept: 'accept', Reject: 'reject' } as const
 export type ActionDecision = (typeof ActionDecision)[keyof typeof ActionDecision]
 
-export const ActionConflictCode = { NotPending: 'not_pending' } as const
+export const ActionConflictCode = { NotPending: 'not_pending', Changed: 'changed' } as const
+const CHANGED = {
+  message: 'What this action changes is no longer what its card said: read it again.',
+  code: ActionConflictCode.Changed,
+} as const
 const NOT_PENDING = {
   message: 'This action is no longer pending.',
   code: ActionConflictCode.NotPending,
@@ -145,16 +151,21 @@ export async function answerAction(
         ? { next: { ...action, status: ActionStatus.Rejected }, problem: null }
         : await apply(action, user, trx)
     const { next, problem } = applied
+    const changed = 'changed' in applied
     afterCommit = 'afterCommit' in applied ? applied.afterCommit : undefined
     message.actions = message.actions.map((item, index) => (index === target.index ? next : item))
     await message.save()
     const output = serializeAction(next, target.index)
+    if (changed) return { conflict: CHANGED, action: output }
     if (problem && next.failure) {
       return { failed: { message: problem, code: next.failure }, action: output }
     }
     return { action: output }
   })
-  await afterCommit?.()
+  // The rows are gone and the action is stored: a file left behind must not turn that into a failure.
+  await afterCommit?.().catch((error) =>
+    logger.error({ err: error }, 'assistant action cleanup failed'),
+  )
   return outcome
 }
 
@@ -162,7 +173,12 @@ async function apply(
   action: StoredAction,
   user: User,
   trx: TransactionClientContract,
-): Promise<{ next: StoredAction; problem: string | null; afterCommit?: () => Promise<void> }> {
+): Promise<{
+  next: StoredAction
+  problem: string | null
+  afterCommit?: () => Promise<void>
+  changed?: true
+}> {
   const failed = (failure: ActionFailure, problem: string = FAILURE_MESSAGES[failure]) => ({
     next: { ...action, status: ActionStatus.Failed, failure },
     problem,
@@ -176,6 +192,17 @@ async function apply(
       ActionFailure.Invalid,
       parsed.error.issues.map((issue) => issue.message).join('; '),
     )
+  }
+  // The target as it is now: gone, unable to take the action, or no longer what the card said.
+  if ((await known.subject(parsed.data, user)) === TARGET_NOT_FOUND)
+    return failed(ActionFailure.NotFound)
+  const refused = await known.currentProblem(parsed.data, user)
+  if (refused) return failed(ActionFailure.Conflict, refused)
+  const now = await currentState(known, parsed.data, user)
+  const said = { impact: action.impact ?? null, before: action.before ?? null }
+  if (!isDeepStrictEqual({ impact: now.impact, before: now.before }, said)) {
+    // Still pending, with what it would do now: the owner decides again on a true card.
+    return { next: { ...action, ...now }, problem: null, changed: true }
   }
   const applied = await known.apply(parsed.data, user, trx)
   if ('failure' in applied) {

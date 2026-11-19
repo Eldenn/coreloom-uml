@@ -148,6 +148,8 @@ export const ARCHITECTURE_ACTIONS: readonly AssistantAction[] = [
       visibility: z.enum(ARCHITECTURE_VISIBILITIES),
     }),
     kind: AssistantToolKind.Write,
+    // Leaving `protected` drops the access code: everyone who entered it loses access for good.
+    destructive: (before) => before === ArchitectureVisibility.Protected,
     subject: ({ architectureId }, user) => architectureTitle(architectureId, user),
     async currentProblem({ architectureId, visibility }, user) {
       const current = await currentVisibility(architectureId, user)

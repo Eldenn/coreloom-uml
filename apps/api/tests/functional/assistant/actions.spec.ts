@@ -916,6 +916,85 @@ test.group('Assistant actions - deleting and sharing', (group) => {
     assert.isNull(await AgentConfigRule.find(f.rule.id))
   })
 
+  test('a deletion that would take more than its card says is not applied: the card is refreshed', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('actions-delete-grown@example.com')
+    const { action, answer } = await propose(client, f, 'delete_project', {
+      projectId: f.project.id,
+    })
+    assert.equal(action.impact.architectures, 1)
+    await Architecture.create({
+      userId: f.user.id,
+      projectId: f.project.id,
+      title: 'Added since',
+      visibility: 'private',
+    })
+
+    const refused = await answer('accept')
+    refused.assertStatus(409)
+    assert.equal(refused.body().error.code, 'changed')
+    assert.equal(refused.body().action.status, 'pending')
+    assert.equal(refused.body().action.impact.architectures, 2)
+    assert.isNotNull(await Project.find(f.project.id))
+
+    // The owner has now seen what goes: the same card can be accepted.
+    const accepted = await answer('accept')
+    accepted.assertStatus(200)
+    assert.isNull(await Project.find(f.project.id))
+  })
+
+  test('delete_agent_config counts the ready-made rules it holds too', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('actions-delete-config-ready@example.com')
+    await AgentConfigReadyRule.create({
+      agentConfigId: f.config.id,
+      slot: 'testing.levels',
+      rule: 'unit',
+      value: null,
+    })
+    const { action } = await propose(client, f, 'delete_agent_config', {
+      agentConfigId: f.config.id,
+    })
+    assert.deepEqual(action.impact, { rules: 1, readyRules: 1 })
+  })
+
+  test('leaving protected is destructive: the access code and every grant are lost', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('actions-sharing-leave@example.com')
+    await makeProtected(f.architecture)
+    const { action } = await propose(client, f, 'set_architecture_sharing', {
+      architectureId: f.architecture.id,
+      visibility: 'private',
+    })
+    assert.isTrue(action.destructive)
+  })
+
+  test('a sharing change proposed from another visibility than the current one is not applied', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('actions-sharing-stale@example.com')
+    const { answer } = await propose(client, f, 'set_architecture_sharing', {
+      architectureId: f.architecture.id,
+      visibility: 'public',
+    })
+    await makeProtected(f.architecture)
+
+    const refused = await answer('accept')
+    refused.assertStatus(409)
+    assert.equal(refused.body().error.code, 'changed')
+    assert.equal(refused.body().action.before, 'protected')
+    assert.isTrue(refused.body().action.destructive)
+    await f.architecture.refresh()
+    assert.equal(f.architecture.visibility, 'protected')
+  })
+
   test('an action stored before impact and before existed answers them as null', async ({
     client,
     assert,
