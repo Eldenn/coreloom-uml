@@ -10,6 +10,7 @@ import { ARCHITECTURE_ACTIONS } from '#app/assistant/actions/architecture-action
 import { CODE_MAP_ACTIONS } from '#app/assistant/actions/code-map-actions'
 import { FILE_ACTIONS } from '#app/assistant/actions/file-actions'
 import { PROJECT_ACTIONS } from '#app/assistant/actions/project-actions'
+import { REPOSITORY_ACTIONS } from '#app/assistant/actions/repository-actions'
 import { SKILL_ACTIONS } from '#app/assistant/actions/skill-actions'
 import { ActionStatus, type StoredAction } from '#app/assistant/constants/assistant'
 import type User from '#app/users/models/user'
@@ -22,6 +23,7 @@ export const ASSISTANT_ACTIONS: readonly AssistantAction[] = [
   ...CODE_MAP_ACTIONS,
   ...SKILL_ACTIONS,
   ...FILE_ACTIONS,
+  ...REPOSITORY_ACTIONS,
 ]
 
 export function findAction(name: string): AssistantAction | undefined {

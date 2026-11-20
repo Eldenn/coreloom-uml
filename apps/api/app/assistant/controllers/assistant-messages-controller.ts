@@ -40,6 +40,7 @@ import {
   findArchitectureConversation,
   findOwnedConversation,
 } from '#app/assistant/services/owned-conversation'
+import { RepositorySession, withFilesRead } from '#app/assistant/services/repository-session'
 import { storeExchange } from '#app/assistant/services/store-exchange'
 import { storedChange } from '#app/assistant/services/stored-change'
 import {
@@ -280,10 +281,17 @@ export default class AssistantMessagesController {
     const started = performance.now()
     let reply: string
     let handoff: HandoffOutput | null = null
+    let unfinished = false
+    // Opened by the first repository tool, paused once the message is answered (or failed).
+    const repository = new RepositorySession(user, conversation.id)
     try {
       if (withTools) {
         const tools = [
-          ...(await actionTools(user, recorded, { conversationId: conversation.id, read })),
+          ...(await actionTools(user, recorded, {
+            conversationId: conversation.id,
+            read,
+            repository,
+          })),
           ...(await handoffTools(user)),
         ]
         // With tools, the model reads the files itself (`file-actions.ts`).
@@ -295,7 +303,8 @@ export default class AssistantMessagesController {
           page: await resolvePage(page, user),
           tools,
         })
-        reply = result.reply
+        reply = withFilesRead(result.reply, repository.read, locale)
+        unfinished = result.unfinished
         // Recorded by the tools as the loop went, in the same order: keep the ones the loop kept.
         actions = recorded.slice(0, result.proposed.length)
         if (result.route) handoff = handoffOf(result.route)
@@ -323,11 +332,13 @@ export default class AssistantMessagesController {
       if (!(error instanceof LlmCallError)) throw error
       logger.warn({ ...log, durationMs, reason: error.reason }, 'assistant chat failed')
       return response.badGateway(llmFailure(error.reason))
+    } finally {
+      await repository.close()
     }
     const durationMs = Math.round(performance.now() - started)
     if (handoff) {
       logger.info({ ...log, durationMs, handoff: handoff.kind }, 'assistant chat handed over')
-      return response.ok({ messages: [], handoff } satisfies ChatOutput)
+      return response.ok({ messages: [], handoff, unfinished: false } satisfies ChatOutput)
     }
     if (!reply.trim() && actions.length === 0) {
       // A blank answer would be stored as an empty bubble: answered like any failed call.
@@ -340,6 +351,9 @@ export default class AssistantMessagesController {
         durationMs,
         tools: withTools,
         actions: actions.map((action) => action.name),
+        // A count only: never a path or what a file holds.
+        repositoryFiles: repository.read.length,
+        unfinished,
       },
       'assistant chat',
     )
@@ -353,6 +367,7 @@ export default class AssistantMessagesController {
     return response.ok({
       messages: messages.map(serializeMessage),
       handoff: null,
+      unfinished,
     } satisfies ChatOutput)
   }
 

@@ -65,7 +65,15 @@ export type AttachFileOutput = {
 }
 
 /** `POST /assistant/conversations/:conversationId/messages` */
-export type ChatOutput = { messages: MessageOutput[]; handoff: HandoffOutput | null }
+export type ChatOutput = {
+  messages: MessageOutput[]
+  handoff: HandoffOutput | null
+  /**
+   * The model used every step it had before it was done (reading a repository, say): the screen
+   * may send a continuation, and the conversation's sandbox is where it left it.
+   */
+  unfinished: boolean
+}
 
 /** The input the next message would use, in estimated tokens; `skipped` views did not fit. */
 export type BudgetOutput = {

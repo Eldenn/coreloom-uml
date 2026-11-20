@@ -840,6 +840,7 @@ test.group('Assistant actions - handing over', (group) => {
     assert.deepEqual(response.body(), {
       messages: [],
       handoff: { kind: 'diagrams', architectureId: fixture.architecture.id },
+      unfinished: false,
     })
     assert.lengthOf(await stored(fixture.conversation.id), 0)
   })
