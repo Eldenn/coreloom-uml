@@ -23,6 +23,7 @@ export function serializeMessage(message: AssistantMessage): MessageOutput {
     role: message.role,
     content: message.content,
     architectureId: message.architectureId ?? null,
+    fileName: message.fileName ?? null,
     changes: message.changes?.map(serializeChange) ?? null,
     proposals: message.proposals ?? null,
     actions: message.actions?.map(serializeAction) ?? null,

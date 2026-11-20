@@ -17,20 +17,26 @@ import {
   RULE_VALUE_MAX_LENGTH,
   RulePick,
   ruleSections,
+  TARGETS,
 } from '@coreloom-uml/catalog'
 import { AssistantToolKind } from '@coreloom-uml/llm'
 import { z } from 'zod'
 import {
   AGENT_CATALOG_ID_MAX_LENGTH,
+  AGENT_CONFIG_NAME_MAX_LENGTH,
   AGENT_GENERATIONS_KEPT,
   AGENT_ROLES_MAX,
   AGENT_RULE_TEXT_MAX_LENGTH,
+  AgentRuleSource,
 } from '#app/agent-configs/constants/agent-config'
 import AgentConfig from '#app/agent-configs/models/agent-config'
 import AgentConfigGeneration from '#app/agent-configs/models/agent-config-generation'
 import AgentConfigReadyRule from '#app/agent-configs/models/agent-config-ready-rule'
 import AgentConfigRole from '#app/agent-configs/models/agent-config-role'
-import { deleteAgentConfig } from '#app/agent-configs/services/agent-config-writes'
+import {
+  createAgentConfig,
+  deleteAgentConfig,
+} from '#app/agent-configs/services/agent-config-writes'
 import { createGeneration } from '#app/agent-configs/services/agent-generations'
 import {
   checkRole,
@@ -57,6 +63,8 @@ import {
   AGENT_ROLE_SLUG_TAKEN,
   findOwnedAgentConfig,
   latestGeneration,
+  PROJECT_HAS_AGENT_CONFIG,
+  projectHasAgentConfig,
 } from '#app/agent-configs/services/owned-agent-config'
 import { agentRolesEnabled } from '#app/agent-configs/services/roles-flag'
 import {
@@ -75,6 +83,7 @@ import {
   ActionImpact,
   AssistantTargetKind,
 } from '#app/assistant/constants/assistant'
+import { findOwnedProject } from '#app/projects/services/owned-project'
 import type User from '#app/users/models/user'
 
 /** Ready-made rule groups one search answers. */
@@ -92,6 +101,14 @@ const catalogId = () => z.string().trim().min(1).max(AGENT_CATALOG_ID_MAX_LENGTH
 const ruleText = () => withoutMarkers(z.string().trim().min(1).max(AGENT_RULE_TEXT_MAX_LENGTH))
 
 const configId = { agentConfigId: idInput() }
+/** A ready-made rule to hold: `value` only for a rule that takes a text. */
+const readyRule = {
+  slot: catalogId(),
+  rule: catalogId(),
+  value: withoutMarkers(z.string().trim().max(RULE_VALUE_MAX_LENGTH)).nullable().optional(),
+}
+/** Rules of each kind one creation carries: what a card can show and an owner can read. */
+const CREATED_RULES_MAX = 20
 
 /** Presets one search answers, and how much of a mission the model reads in a list. */
 const ROLE_PRESET_MATCHES_MAX = 10
@@ -255,6 +272,54 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
     },
   }),
   writeAction({
+    name: 'create_agent_config',
+    description:
+      "Proposes to create agent conventions with the rules they start with, in one of the owner's projects when projectId is given (a project holds at most one), outside any project otherwise. targets are the coding tools the files are made for: ask the owner when nothing says which. rules are the owner's own rules (a section and a text each); readyRules are ready-made rules of the catalog (slot and rule from find_ready_rules), preferred whenever one says the same thing.",
+    input: z.object({
+      name: withoutMarkers(z.string().trim().min(1).max(AGENT_CONFIG_NAME_MAX_LENGTH)),
+      projectId: idInput().optional(),
+      targets: z.array(z.enum(TARGETS)).min(1).max(TARGETS.length),
+      rules: z
+        .array(z.object({ section: catalogId(), text: ruleText() }))
+        .max(CREATED_RULES_MAX)
+        .optional(),
+      readyRules: z.array(z.object(readyRule)).max(CREATED_RULES_MAX).optional(),
+    }),
+    kind: AssistantToolKind.Write,
+    problem: createdRulesProblem,
+    async subject({ projectId }, user) {
+      if (projectId === undefined) return null
+      return (await findOwnedProject(projectId, user))?.name ?? TARGET_NOT_FOUND
+    },
+    async currentProblem({ projectId }) {
+      if (projectId === undefined || !(await projectHasAgentConfig(projectId))) return null
+      return PROJECT_HAS_AGENT_CONFIG.error.message
+    },
+    async apply({ rules = [], readyRules = [], ...fields }, user, client) {
+      // Before anything is written: a rule refused later would leave half of the proposal behind.
+      const refused = createdRulesProblem({ ...fields, rules, readyRules })
+      if (refused) return { failure: ActionFailure.Invalid, message: refused }
+      const created = await createAgentConfig(user, fields, client)
+      if ('notFound' in created) return { failure: ActionFailure.NotFound }
+      if ('conflict' in created)
+        return { failure: ActionFailure.Conflict, message: PROJECT_HAS_AGENT_CONFIG.error.message }
+      const { id } = created.config
+      for (const rule of rules) {
+        const outcome = applied(
+          await addRule(id, user, { ...rule, source: AgentRuleSource.Llm }, client),
+        )
+        if ('failure' in outcome) return outcome
+      }
+      for (const [slot, held] of bySlot(readyRules)) {
+        const result = await replaceReadyRules(id, user, slot, () => held, client)
+        if ('notFound' in result) return { failure: ActionFailure.NotFound }
+        if ('refused' in result)
+          return { failure: ActionFailure.Invalid, message: result.refused.error.message }
+      }
+      return { kind: AssistantTargetKind.AgentConfig, id }
+    },
+  }),
+  writeAction({
     name: 'add_rule',
     description:
       "Proposes to add one of the owner's own rules to agent conventions, in one of the sections read_agent_config lists.",
@@ -304,12 +369,7 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
     name: 'set_ready_rule',
     description:
       'Proposes that agent conventions hold one ready-made rule (slot and rule from find_ready_rules; value only for a rule that takes a text). In a group that holds one rule, it replaces the rule held.',
-    input: z.object({
-      ...configId,
-      slot: catalogId(),
-      rule: catalogId(),
-      value: withoutMarkers(z.string().trim().max(RULE_VALUE_MAX_LENGTH)).nullable().optional(),
-    }),
+    input: z.object({ ...configId, ...readyRule }),
     kind: AssistantToolKind.Write,
     // The rule alone, as the catalog checks it; what the group already holds is checked on accept.
     problem({ slot, rule, value }) {
@@ -461,6 +521,38 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
     },
   }),
 ]
+
+/** The ready-made rules of an input, gathered by the group (slot) that holds them. */
+function bySlot(rules: { slot: string; rule: string; value?: string | null }[]) {
+  const slots = new Map<string, { rule: string; value: string | null }[]>()
+  for (const { slot, rule, value } of rules)
+    slots.set(slot, [...(slots.get(slot) ?? []), { rule, value: value ?? null }])
+  return slots
+}
+
+/** Why the rules a creation carries could never be held: checked when proposed and when accepted. */
+function createdRulesProblem({
+  targets,
+  rules = [],
+  readyRules = [],
+}: {
+  targets: readonly string[]
+  rules?: { section: string }[]
+  readyRules?: Parameters<typeof bySlot>[0]
+}): string | null {
+  if (new Set(targets).size !== targets.length) return 'A target is listed twice.'
+  for (const { section } of rules) {
+    const refused = sectionProblem(section)
+    if (refused) return refused
+  }
+  for (const [slot, held] of bySlot(readyRules)) {
+    const group = findRuleGroup(RULE_PACKS, slot)
+    if (!group) return `Unknown slot: ${slot}. Find one with find_ready_rules.`
+    const refused = acceptedProblem(group, held)
+    if (refused) return `${slot}: ${refused}`
+  }
+  return null
+}
 
 /** As the rule routes: a section the catalog does not have is refused. */
 function sectionProblem(section: string | undefined): string | null {

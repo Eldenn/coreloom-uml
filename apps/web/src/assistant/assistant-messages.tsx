@@ -1,6 +1,6 @@
 // The messages of one assistant conversation: the owner's, the assistant's with the view changes,
 // the rules or the actions it proposed, and a summary carried over from an earlier conversation.
-import { Trash2Icon } from 'lucide-react'
+import { FileIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 
 import { AssistantActionCard } from '@/assistant/assistant-action-card'
@@ -27,6 +27,7 @@ export function MessageList({
   messages,
   loaded,
   asking,
+  askingFile,
   waiting,
   progress,
   pageArchitectureId,
@@ -38,6 +39,8 @@ export function MessageList({
   loaded: boolean
   /** The message being sent, shown until the answer arrives. */
   asking: string | null
+  /** The name of the file it is sent with. */
+  askingFile?: string | null
   waiting: boolean
   /** What a web research is doing, shown under the message being sent. */
   progress?: React.ReactNode
@@ -70,7 +73,7 @@ export function MessageList({
           }}
         />
       ))}
-      {asking !== null && <UserBubble text={asking} />}
+      {asking !== null && <UserBubble text={asking} fileName={askingFile ?? null} />}
       {progress}
       {waiting && <TypingIndicator name={t.title} />}
       <div ref={end} />
@@ -78,12 +81,21 @@ export function MessageList({
   )
 }
 
-function UserBubble({ text }: { text: string }) {
+function UserBubble({ text, fileName }: { text: string; fileName: string | null }) {
   const t = useT().assistant
   return (
     <div className="ml-6 self-end rounded-md bg-secondary px-3 py-2 text-foreground">
       <span className="sr-only">{t.you}: </span>
       <p className="m-0 whitespace-pre-wrap">{text}</p>
+      {fileName !== null && (
+        <p className="m-0 mt-1 flex items-center gap-1 text-[12px] text-muted-foreground">
+          <FileIcon className="size-3.5 shrink-0" aria-hidden />
+          <span className="sr-only">{t.attachedFile(fileName)}</span>
+          <span className="truncate" aria-hidden>
+            {fileName}
+          </span>
+        </p>
+      )}
     </div>
   )
 }
@@ -106,7 +118,8 @@ function Message({
   onDeleteSummary: () => void
 }) {
   const t = useT().assistant
-  if (message.role === 'user') return <UserBubble text={message.content} />
+  if (message.role === 'user')
+    return <UserBubble text={message.content} fileName={message.fileName} />
   if (message.role === 'summary')
     return (
       <div className="flex flex-col gap-2 rounded-md border border-dashed border-border bg-secondary p-3">

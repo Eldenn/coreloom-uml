@@ -24,6 +24,7 @@ export type ActionRowLabel =
   | 'readyRule'
   | 'value'
   | 'in'
+  | 'targets'
   | 'visibility'
   | 'preset'
   | 'role'
@@ -147,6 +148,27 @@ function linkRows(value: unknown, label: (link: { status?: unknown }) => ActionR
   }))
 }
 
+/** Each rule a creation carries, on its own line with its section: none cut. */
+function ruleRows(value: unknown): Draft[] {
+  if (!Array.isArray(value)) return []
+  return (value as { section?: unknown; text?: unknown }[]).map((rule) => ({
+    label: 'text',
+    value: `${String(rule.section)}: ${String(rule.text)}`,
+  }))
+}
+
+/** Each ready-made rule a creation holds, on its own line: its slot, its rule and its text. */
+function readyRuleRows(value: unknown): Draft[] {
+  if (!Array.isArray(value)) return []
+  return (value as { slot?: unknown; rule?: unknown; value?: unknown }[]).map((held) => ({
+    label: 'readyRule',
+    value:
+      typeof held.value === 'string' && held.value !== ''
+        ? `${String(held.slot)}: ${String(held.rule)} (${held.value})`
+        : `${String(held.slot)}: ${String(held.rule)}`,
+  }))
+}
+
 /** What the owner would otherwise have to open the target to know. */
 const ROWS: Record<
   string,
@@ -160,6 +182,14 @@ const ROWS: Record<
   ],
   rename_architecture: (input, subject) => [{ label: 'title', value: input.title, from: subject }],
   duplicate_architecture: (_input, subject) => [{ label: 'title', value: subject }],
+  // Every rule ends up in a file a coding agent reads: all of them are shown.
+  create_agent_config: (input, subject) => [
+    { label: 'name', value: input.name },
+    { label: 'in', value: subject },
+    { label: 'targets', value: list(input.targets) },
+    ...readyRuleRows(input.readyRules),
+    ...ruleRows(input.rules),
+  ],
   add_rule: (input, subject) => [
     { label: 'section', value: input.section },
     { label: 'text', value: input.text },
@@ -259,6 +289,7 @@ const DOMAINS: Record<string, ActionDomain> = {
   create_architecture: 'architecture',
   rename_architecture: 'architecture',
   duplicate_architecture: 'architecture',
+  create_agent_config: 'agent-config',
   add_rule: 'agent-config',
   edit_rule: 'agent-config',
   remove_rule: 'agent-config',

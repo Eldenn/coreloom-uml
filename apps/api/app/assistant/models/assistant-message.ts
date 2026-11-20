@@ -43,6 +43,10 @@ export default class AssistantMessage extends BaseModel {
   @column(json)
   declare actions: StoredAction[] | null
 
+  /** The name of the file attached to a user message; its content is never stored. */
+  @column()
+  declare fileName: string | null
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 

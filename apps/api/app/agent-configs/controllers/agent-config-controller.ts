@@ -1,22 +1,24 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import db from '@adonisjs/lucid/services/db'
-import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import AgentConfig from '#app/agent-configs/models/agent-config'
 import { serializeAgentConfig } from '#app/agent-configs/serializers/agent-config-serializer'
-import { deleteAgentConfig } from '#app/agent-configs/services/agent-config-writes'
+import {
+  cleanNotes,
+  createAgentConfig,
+  deleteAgentConfig,
+  lockProjectHasConfig,
+} from '#app/agent-configs/services/agent-config-writes'
 import {
   AGENT_CONFIG_NOT_FOUND,
   describeAgentConfig,
   findOwnedAgentConfig,
   PROJECT_HAS_AGENT_CONFIG,
-  projectHasAgentConfig,
 } from '#app/agent-configs/services/owned-agent-config'
 import {
   createAgentConfigInput,
   listAgentConfigsInput,
   updateAgentConfigInput,
 } from '#app/agent-configs/validators/agent-configs-input'
-import Project from '#app/projects/models/project'
 import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
 import { likePattern } from '#app/shared/database/like-pattern'
 import { paginate } from '#app/shared/pagination/paginate'
@@ -44,26 +46,11 @@ export default class AgentConfigController {
     const user = auth.getUserOrFail()
     const input = await request.validateUsing(createAgentConfigInput)
 
-    const project = input.projectId ? await findOwnedProject(input.projectId, user) : null
-    if (input.projectId && !project) return response.notFound(PROJECT_NOT_FOUND)
+    const created = await createAgentConfig(user, input)
+    if ('notFound' in created) return response.notFound(PROJECT_NOT_FOUND)
+    if ('conflict' in created) return response.conflict(PROJECT_HAS_AGENT_CONFIG)
 
-    const config = await db.transaction(async (trx) => {
-      if (project && (await lockProjectHasConfig(project.id, undefined, trx))) return null
-      return AgentConfig.create(
-        {
-          userId: user.id,
-          projectId: project?.id ?? null,
-          name: input.name,
-          targets: input.targets,
-          notes: cleanNotes(input.notes) ?? null,
-          revision: 1,
-        },
-        { client: trx },
-      )
-    })
-    if (!config) return response.conflict(PROJECT_HAS_AGENT_CONFIG)
-
-    return response.created(await describeAgentConfig(config))
+    return response.created(await describeAgentConfig(created.config))
   }
 
   async show({ params, auth, response }: HttpContext) {
@@ -127,22 +114,4 @@ export default class AgentConfigController {
 
     return response.noContent()
   }
-}
-
-/**
- * Locks the project row until the transaction ends, so two requests cannot both find it empty,
- * then tells whether another configuration than `exceptId` already sits in it.
- */
-async function lockProjectHasConfig(
-  projectId: number,
-  exceptId: number | undefined,
-  trx: TransactionClientContract,
-) {
-  await Project.query({ client: trx }).where('id', projectId).forUpdate()
-  return projectHasAgentConfig(projectId, exceptId, trx)
-}
-
-/** Blank notes are stored as none; omitted notes stay omitted. */
-function cleanNotes(notes: string | null | undefined) {
-  return notes === undefined ? undefined : notes?.trim() ? notes : null
 }

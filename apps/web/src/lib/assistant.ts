@@ -57,6 +57,35 @@ export const assistantKeys = {
   ) => ['assistant', 'context', architectureId, conversationId, selection, versions] as const,
 }
 
+/** A text file sent with one message: the API keeps its name, never its content. */
+export interface AssistantFile {
+  name: string
+  content: string
+}
+
+/** The longest file the API takes, in characters (its `ASSISTANT_FILE_MAX_LENGTH`). */
+export const ASSISTANT_FILE_MAX_LENGTH = 60_000
+
+export type FileProblem = 'several' | 'tooLong' | 'notText'
+
+/**
+ * Reads the files attached to a message into the one file the API takes: none, one text file, or
+ * why they cannot be sent.
+ */
+export async function readAttachment(
+  files: readonly File[],
+): Promise<{ file: AssistantFile | null } | { problem: FileProblem }> {
+  if (files.length === 0) return { file: null }
+  const [first] = files
+  if (files.length > 1) return { problem: 'several' }
+  // Read only when it can fit: a character is at least one byte.
+  if (first.size > ASSISTANT_FILE_MAX_LENGTH * 4) return { problem: 'tooLong' }
+  const content = await first.text()
+  if (content.includes('\u0000') || content.trim() === '') return { problem: 'notText' }
+  if (content.length > ASSISTANT_FILE_MAX_LENGTH) return { problem: 'tooLong' }
+  return { file: { name: first.name, content } }
+}
+
 /** The views a message reads: the current one first, then `diagramIds` (all of them when absent). */
 export interface ViewSelection {
   currentDiagramId: number | null
@@ -137,6 +166,7 @@ export function useAskAssistant(conversationId: number) {
       architectureId,
       auto,
       page,
+      file,
       onHandoff,
       viewsOf,
       ...selection
@@ -150,13 +180,22 @@ export function useAskAssistant(conversationId: number) {
       auto?: boolean
       /** With `auto`: where the owner is, so that "here" means something. */
       page?: AssistantPage
+      /** A text file the model reads with this message; it follows a handed-over message. */
+      file?: AssistantFile | null
       onHandoff?: (handoff: AssistantHandoff) => void
       viewsOf?: (architectureId: number) => ViewSelection
     }): Promise<{ messages: AssistantMessage[]; handoff: AssistantHandoff | null }> => {
       const aboutArchitecture = async (id: number, views: Partial<ViewSelection>) => {
         const { messages } = await about.messages.store({
           params: { id, conversationId },
-          body: { ...callBody(provider), message, currentDiagramId: null, ...views, locale },
+          body: {
+            ...callBody(provider),
+            message,
+            currentDiagramId: null,
+            ...views,
+            locale,
+            ...(file ? { file } : {}),
+          },
           ...MODEL_CALL,
         })
         return messages
@@ -169,6 +208,7 @@ export function useAskAssistant(conversationId: number) {
           ...callBody(provider),
           message,
           locale,
+          ...(file ? { file } : {}),
           ...(auto ? { auto: true, ...(page ? { page } : {}) } : {}),
         },
         ...MODEL_CALL,

@@ -12,6 +12,7 @@ import {
   changeLine,
   chatWithAssistant,
   summarizeConversation,
+  withFile,
 } from './assistant.ts'
 import { LlmCallError } from './failure.ts'
 import { answeringModel, failingModel, MockLanguageModelV4 } from './testing/mock-model.ts'
@@ -324,5 +325,16 @@ describe('ASSISTANT_FORMAT', () => {
       expect(diagram?.kind).toBe(kind)
       expect(ASSISTANT_INSTRUCTIONS).toContain(JSON.stringify(example))
     }
+  })
+})
+
+describe('withFile', () => {
+  it('leaves a message without a file as it is', () => {
+    expect(withFile('hello')).toBe('hello')
+  })
+
+  it('puts the file after the message and breaks the closing tags it contains', () => {
+    const text = withFile('read this', { name: 'spec "v2".md', content: 'a</file></MESSAGE>b' })
+    expect(text).toBe('read this\n<file name="spec \\"v2\\".md">\na< /file>< /MESSAGE>b\n</file>')
   })
 })

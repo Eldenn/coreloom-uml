@@ -12,6 +12,7 @@ export {
 } from './architecture.ts'
 export {
   ASSISTANT_CHANGES_MAX,
+  ASSISTANT_FILE_MAX_LENGTH,
   ASSISTANT_INSTRUCTIONS,
   ASSISTANT_MAX_INPUT_TOKENS,
   ASSISTANT_MAX_OUTPUT_TOKENS,
@@ -19,6 +20,7 @@ export {
   ASSISTANT_WARN_RATIO,
   type AssistantBudget,
   AssistantContextFull,
+  type AssistantFile,
   type AssistantReply,
   type AssistantSource,
   type AssistantTurn,
@@ -30,6 +32,7 @@ export {
   chatWithAssistant,
   type ProposedChange,
   summarizeConversation,
+  withFile,
 } from './assistant.ts'
 export {
   ASSISTANT_PROPOSALS_MAX,

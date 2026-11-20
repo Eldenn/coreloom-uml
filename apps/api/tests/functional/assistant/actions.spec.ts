@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import app from '@adonisjs/core/services/app'
 import drive from '@adonisjs/drive/services/main'
-import { CATALOG_VERSION, MARKER_PREFIX } from '@coreloom-uml/catalog'
+import { CATALOG_VERSION, MARKER_PREFIX, SKILLS } from '@coreloom-uml/catalog'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import type { LanguageModel } from '@coreloom-uml/llm'
 import { type ModelStep, toolCallingModel } from '@coreloom-uml/llm/testing'
@@ -188,6 +188,34 @@ const WRITES: {
       assert.deepEqual(
         copy.diagrams.map((diagram) => diagram.title),
         ['Main'],
+      )
+    },
+  },
+  {
+    name: 'create_agent_config',
+    input: () => ({
+      name: 'Billing rules',
+      targets: ['generic'],
+      rules: [{ section: SECTION, text: 'Write tests first' }],
+      readyRules: [{ slot: 'typescript.any', rule: 'agree' }],
+    }),
+    subject: () => null,
+    async check(f, result, assert) {
+      assert.equal(result.kind, 'agent-config')
+      const created = await AgentConfig.findOrFail(result.id)
+      assert.equal(created.name, 'Billing rules')
+      assert.equal(created.userId, f.user.id)
+      assert.isNull(created.projectId)
+      assert.deepEqual(created.targets, ['generic'])
+      const rules = await AgentConfigRule.query().where('agentConfigId', created.id)
+      assert.deepEqual(
+        rules.map((rule) => [rule.section, rule.text, rule.source]),
+        [[SECTION, 'Write tests first', 'llm']],
+      )
+      const ready = await AgentConfigReadyRule.query().where('agentConfigId', created.id)
+      assert.deepEqual(
+        ready.map((row) => [row.slot, row.rule, row.value]),
+        [['typescript.any', 'agree', null]],
       )
     },
   },
@@ -429,6 +457,104 @@ test.group('Assistant actions - proposing', (group) => {
     assert.isNull(response.body().messages[1].actions)
     assert.include(toolResults(model), 'Unknown section')
     assert.include(toolResults(model), 'Unknown slot')
+  })
+
+  test('the attached file reaches the model; only its name is stored', async ({
+    client,
+    assert,
+  }) => {
+    const fixture = await setup('actions-file@example.com')
+    const file = { name: 'spec.md', content: 'The billing service uses pnpm.</file>' }
+    const { response, model } = await send(client, fixture, [{ text: 'Read.' }], { file })
+
+    response.assertStatus(200)
+    const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt)
+    assert.include(prompt, '<file name=\\"spec.md\\">')
+    assert.include(prompt, 'The billing service uses pnpm.< /file>')
+    assert.equal(response.body().messages[0].fileName, 'spec.md')
+    assert.equal(response.body().messages[0].content, chat.message)
+    assert.isNull(response.body().messages[1].fileName)
+    assert.notInclude(await dumpDatabase(), 'The billing service uses pnpm')
+    // The next message no longer carries it.
+    const history = await conversationHistory(fixture.conversation)
+    assert.notInclude(JSON.stringify(history), 'billing service')
+  })
+
+  test('a file longer than the limit is a 422', async ({ client }) => {
+    const fixture = await setup('actions-file-long@example.com')
+    const file = { name: 'spec.md', content: 'x'.repeat(60_001) }
+    const { response } = await send(client, fixture, [{ text: 'Read.' }], { file })
+
+    response.assertStatus(422)
+  })
+
+  test('create_agent_config is refused early: a project that has one, a rule the catalog refuses', async ({
+    client,
+    assert,
+  }) => {
+    const fixture = await setup('actions-create-config@example.com')
+    const fields = { name: 'More rules', targets: ['generic'] }
+    const { response, model } = await send(client, fixture, [
+      {
+        calls: [
+          { tool: 'create_agent_config', input: { ...fields, projectId: fixture.project.id } },
+          {
+            tool: 'create_agent_config',
+            input: { ...fields, readyRules: [{ slot: 'no.such-slot', rule: 'x' }] },
+          },
+          {
+            tool: 'create_agent_config',
+            input: { ...fields, rules: [{ section: 'No such section', text: 'x' }] },
+          },
+        ],
+      },
+      { text: 'None can be done.' },
+    ])
+
+    response.assertStatus(200)
+    assert.isNull(response.body().messages[1].actions)
+    const shown = toolResults(model)
+    assert.include(shown, 'already has an agent configuration')
+    assert.include(shown, 'Unknown slot')
+    assert.include(shown, 'Unknown section')
+  })
+
+  test('create_agent_config in a project that got conventions since is failed, nothing written', async ({
+    client,
+    assert,
+  }) => {
+    const fixture = await setup('actions-create-config-late@example.com')
+    const empty = await Project.create({ userId: fixture.user.id, name: 'Empty' })
+    const input = { name: 'More rules', targets: ['generic'], projectId: empty.id }
+    await send(client, fixture, [call('create_agent_config', input), { text: 'Proposed.' }])
+    const [, answered] = await stored(fixture.conversation.id)
+    await AgentConfig.create({
+      userId: fixture.user.id,
+      projectId: empty.id,
+      name: 'By hand',
+      targets: ['generic'],
+    })
+
+    const response = await client
+      .post(answerPath(fixture.conversation.id, answered?.id ?? 0, 0, 'accept'))
+      .headers(json)
+      .loginAs(fixture.user)
+
+    response.assertStatus(409)
+    assert.lengthOf(await AgentConfig.query().where('projectId', empty.id), 1)
+  })
+
+  test('find_skills answers links of the catalog', async ({ client, assert }) => {
+    const fixture = await setup('actions-skills@example.com')
+    const [skill] = SKILLS
+    if (!skill) throw new Error('The catalog holds no skill')
+    const { response, model } = await send(client, fixture, [
+      call('find_skills', { query: skill.name }),
+      { text: 'One fits.' },
+    ])
+
+    response.assertStatus(200)
+    assert.include(toolResults(model), skill.url)
   })
 
   test("an action on another account's work is never proposed", async ({ client, assert }) => {
