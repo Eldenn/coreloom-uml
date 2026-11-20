@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { AgentConfigSetupContent } from '@/agent-configs/agent-config-setup'
 import { ProjectLabel } from '@/architectures/architecture-list'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -44,11 +45,14 @@ export function AgentConfigList({
   searching,
   projects,
   onCreate,
+  selection,
 }: {
   query: ReturnType<typeof useAgentConfigs>
   searching: boolean
   projects: readonly Project[]
   onCreate: () => void
+  /** Makes the rows selectable: the selected ids, and what ticking a row does. */
+  selection?: AgentConfigSelection
 }) {
   const t = useT()
   if (query.isPending)
@@ -90,19 +94,27 @@ export function AgentConfigList({
   return (
     <ItemGroup className="gap-2">
       {query.data.data.map((config) => (
-        <AgentConfigRow key={config.id} config={config} projects={projects} />
+        <AgentConfigRow key={config.id} config={config} projects={projects} selection={selection} />
       ))}
     </ItemGroup>
   )
 }
 
+export interface AgentConfigSelection {
+  has: (id: number) => boolean
+  onToggle: (config: AgentConfigSummary, selected: boolean) => void
+}
+
 function AgentConfigRow({
   config,
   projects,
+  selection,
 }: {
   config: AgentConfigSummary
   projects: readonly Project[]
+  selection?: AgentConfigSelection
 }) {
+  const t = useT()
   return (
     <Item variant="outline" className="relative">
       <ItemMedia variant="icon">
@@ -128,6 +140,17 @@ function AgentConfigRow({
           date={config.updatedAt}
           className="hidden text-[13px] text-muted-foreground sm:inline"
         />
+        {selection && (
+          // After the link in the row, and positioned, so it stays clickable on top of it.
+          <Checkbox
+            className="relative"
+            aria-label={t.agents.select(config.name)}
+            checked={selection.has(config.id)}
+            onCheckedChange={(checked) => {
+              selection.onToggle(config, checked === true)
+            }}
+          />
+        )}
       </ItemActions>
     </Item>
   )

@@ -131,8 +131,8 @@ export const en = {
     mergeDescription:
       'Creates new agent conventions from the ones you pick, outside any project. The ones you pick stay as they are.',
     mergeSources: 'Conventions to merge',
-    mergeSourcesPlaceholder: 'Pick at least two',
-    mergeNeedTwo: 'Pick at least two.',
+    mergePickMore: '1 selected. Pick one more to merge.',
+    select: (name: string) => `Select ${name}`,
     mergeConflicts: (count: number) =>
       count === 1 ? '1 conflict to settle' : `${count} conflicts to settle`,
     mergeConflictsHelp: 'These cannot be held together. Choose which to keep.',
@@ -1490,8 +1490,8 @@ export const fr: Messages = {
     mergeDescription:
       'Crée de nouvelles conventions d’agents à partir de celles que vous choisissez, hors de tout projet. Celles que vous choisissez restent telles quelles.',
     mergeSources: 'Conventions à fusionner',
-    mergeSourcesPlaceholder: 'Choisissez-en au moins deux',
-    mergeNeedTwo: 'Choisissez-en au moins deux.',
+    mergePickMore: '1 sélectionnée. Choisissez-en une autre pour fusionner.',
+    select: (name: string) => `Sélectionner ${name}`,
     mergeConflicts: (count: number) =>
       count === 1 ? '1 conflit à trancher' : `${count} conflits à trancher`,
     mergeConflictsHelp:
