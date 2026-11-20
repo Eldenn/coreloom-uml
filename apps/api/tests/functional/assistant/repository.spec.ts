@@ -1,7 +1,6 @@
 import { execFile } from 'node:child_process'
+import { generateKeyPairSync } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { createServer, type Server } from 'node:http'
-import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -13,11 +12,14 @@ import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import AssistantConversation from '#app/assistant/models/assistant-conversation'
 import AssistantSandbox from '#app/assistant/models/assistant-sandbox'
+import { CLONE } from '#app/assistant/services/repository-commands'
 import RepositorySandbox, {
   type OpenRepositorySandbox,
 } from '#app/assistant/services/repository-sandbox'
 import GithubCodeMapFollow from '#app/code-maps/models/github-code-map-follow'
 import { updateFlag } from '#app/feature-flags/services/feature-flags'
+import GithubRepositoryGrant from '#app/github/models/github-repository-grant'
+import GithubApi, { type GithubResult } from '#app/github/services/github-api'
 import PruneAssistantSandboxesJob from '#app/jobs/prune-assistant-sandboxes_job'
 import LanguageModels from '#app/llm/services/language-models'
 import Project from '#app/projects/models/project'
@@ -27,20 +29,90 @@ import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
 
 /**
- * The assistant reads a project's repository in a sandbox. E2B is never reached: the sandbox is
- * swapped for one that unpacks the archive in a temporary folder and runs the same fixed command
- * lines with this machine's bash. The analyzer is a local server answering a tar of a fixture.
+ * The assistant reads a project's repository in a sandbox. E2B and GitHub are never reached:
+ * the sandbox is swapped for a temporary folder where the same fixed command lines run with this
+ * machine's bash and git, and the repository's GitHub URL is cloned from a local fixture
+ * repository instead (the only change to what the sandbox would run). `GithubApi` is a fake.
  */
 
 const json = { accept: 'application/json' }
 const ON = { enabled: true, rollout: 100, rules: [] }
 const KEY = 'sk-fixture-repository-never-stored'
+const TOKEN = 'ghs_InstallationTokenNeverStored00003'
 const provider = { kind: 'mistral', model: 'mistral-small-latest' }
-const COMMIT = 'a'.repeat(40)
+const REPOSITORY = 'https://github.com/acme/shop'
 /** A line of the fixture's code: it must never reach a log, a row or a response. */
 const SECRET_LINE = 'export function placeOrder(cart) { return ledger.charge(cart) }'
 
 const sh = promisify(execFile)
+
+const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
+const APP_ENV = {
+  GITHUB_APP_ID: '123456',
+  GITHUB_APP_SLUG: 'coreloom-uml-test',
+  GITHUB_APP_CLIENT_ID: 'Iv23liTestClient',
+  GITHUB_APP_CLIENT_SECRET: 'client-secret-for-tests',
+  GITHUB_APP_PRIVATE_KEY: privateKey
+    .export({ type: 'pkcs1', format: 'pem' })
+    .toString()
+    .replaceAll('\n', '\\n'),
+  GITHUB_APP_WEBHOOK_SECRET: 'webhook-secret-for-tests',
+} as const
+
+/** Swaps the GitHub App's settings in, and back out after the test. */
+function withGithubApp() {
+  const keys = Object.keys(APP_ENV) as (keyof typeof APP_ENV)[]
+  const previous = keys.map((key) => [key, env.get(key as never)] as const)
+  for (const key of keys) env.set(key as never, APP_ENV[key] as never)
+  return () => {
+    for (const [key, value] of previous) env.set(key as never, (value ?? '') as never)
+  }
+}
+
+class FakeGithubApi extends GithubApi {
+  tokens = 0
+  revoked: string[] = []
+
+  override async installationToken(): Promise<GithubResult<string>> {
+    this.tokens += 1
+    return { ok: true, value: TOKEN }
+  }
+
+  override async revokeInstallationToken(token: string) {
+    this.revoked.push(token)
+  }
+
+  override async canRead(): Promise<GithubResult<boolean>> {
+    return { ok: true, value: true }
+  }
+}
+
+/** A local Git repository standing for `REPOSITORY`, with two commits; answers the first. */
+async function fixtureRepository(folder: string): Promise<string> {
+  const run = (...args: string[]) =>
+    sh('git', args, {
+      cwd: folder,
+      env: {
+        PATH: process.env.PATH ?? '',
+        GIT_CONFIG_NOSYSTEM: '1',
+        GIT_CONFIG_GLOBAL: '/dev/null',
+        GIT_AUTHOR_NAME: 'Ada',
+        GIT_AUTHOR_EMAIL: 'ada@example.com',
+        GIT_COMMITTER_NAME: 'Ada',
+        GIT_COMMITTER_EMAIL: 'ada@example.com',
+      },
+    })
+  await mkdir(join(folder, 'src'), { recursive: true })
+  await run('init', '--quiet', '--initial-branch=main')
+  await writeFile(join(folder, 'README.md'), '# Shop\n')
+  await writeFile(join(folder, 'src', 'orders.ts'), '// Orders\n')
+  await run('add', '.')
+  await run('commit', '--quiet', '-m', 'Start the shop')
+  const first = (await run('rev-parse', 'HEAD')).stdout.trim()
+  await writeFile(join(folder, 'src', 'orders.ts'), `// Orders\n${SECRET_LINE}\n`)
+  await run('commit', '--quiet', '-am', 'Charge the ledger')
+  return first
+}
 
 class FakeSandboxes extends RepositorySandbox {
   created = 0
@@ -48,16 +120,19 @@ class FakeSandboxes extends RepositorySandbox {
   paused = 0
   killed: string[] = []
   folders = new Map<string, string>()
+  /** The environment of every clone, as the sandbox would get it. */
+  clones: Record<string, string>[] = []
+
+  constructor(private origin: string) {
+    super()
+  }
 
   configured() {
     return true
   }
 
-  async create(archive: Uint8Array): Promise<OpenRepositorySandbox | null> {
+  async create(): Promise<OpenRepositorySandbox | null> {
     const folder = await mkdtemp(join(tmpdir(), 'fake-sandbox-'))
-    await writeFile(join(folder, 'repo.tar.gz'), archive)
-    await mkdir(join(folder, 'repo'))
-    await sh('tar', ['-xzf', join(folder, 'repo.tar.gz'), '-C', join(folder, 'repo')])
     this.created += 1
     const id = `sbx-${String(this.created)}`
     this.folders.set(id, folder)
@@ -81,62 +156,35 @@ class FakeSandboxes extends RepositorySandbox {
     const root = join(this.folders.get(id) ?? '', 'repo')
     return {
       sandboxId: id,
-      run: (command, envs) =>
-        new Promise((resolve) => {
+      run: (command, envs) => {
+        if (command === CLONE) this.clones.push(envs)
+        // GitHub's URL is cloned from the fixture, which the sandbox's git (https only) refuses
+        // unless allowed, the same way a token is passed.
+        const count = Number(envs.GIT_CONFIG_COUNT ?? 0)
+        const local = {
+          ...envs,
+          REPO_URL: envs.REPO_URL === `${REPOSITORY}.git` ? `file://${this.origin}` : '',
+          GIT_CONFIG_COUNT: String(count + 1),
+          [`GIT_CONFIG_KEY_${String(count)}`]: 'protocol.file.allow',
+          [`GIT_CONFIG_VALUE_${String(count)}`]: 'always',
+        }
+        return new Promise((resolve) => {
           execFile(
             '/bin/bash',
             ['-c', command],
-            { env: { PATH: process.env.PATH ?? '', ...envs, REPO_ROOT: root } },
+            { env: { PATH: process.env.PATH ?? '', ...local, REPO_ROOT: root } },
             (error, stdout) =>
               resolve({
                 exitCode: error ? (typeof error.code === 'number' ? error.code : 1) : 0,
                 output: stdout,
               }),
           )
-        }),
+        })
+      },
       pause: async () => {
         this.paused += 1
       },
     }
-  }
-}
-
-/** The analyzer's `POST /archive`: a gzipped tar of a fixture repository. */
-class FakeAnalyzer {
-  requests: Record<string, unknown>[] = []
-  #server: Server | null = null
-  #archive = Buffer.alloc(0)
-
-  async start(): Promise<string> {
-    const base = await mkdtemp(join(tmpdir(), 'fake-archive-'))
-    await mkdir(join(base, 'src'), { recursive: true })
-    await writeFile(join(base, 'README.md'), '# Shop\n')
-    await writeFile(join(base, 'src', 'orders.ts'), `// Orders\n${SECRET_LINE}\n`)
-    await sh('tar', ['-czf', join(base, 'out.tar.gz'), '-C', base, 'README.md', 'src'])
-    this.#archive = await readFile(join(base, 'out.tar.gz'))
-    await rm(base, { recursive: true, force: true })
-    this.#server = createServer((request, response) => {
-      let body = ''
-      request.on('data', (chunk) => {
-        body += chunk
-      })
-      request.on('end', () => {
-        this.requests.push(JSON.parse(body) as Record<string, unknown>)
-        response.writeHead(200, {
-          'content-type': 'application/gzip',
-          'content-length': this.#archive.length,
-          'x-commit-sha': COMMIT,
-          'x-branch': 'main',
-        })
-        response.end(this.#archive)
-      })
-    })
-    await new Promise<void>((resolve) => this.#server?.listen(0, '127.0.0.1', resolve))
-    return `http://127.0.0.1:${String((this.#server.address() as AddressInfo).port)}`
-  }
-
-  stop() {
-    return new Promise<void>((resolve) => this.#server?.close(() => resolve()))
   }
 }
 
@@ -163,7 +211,7 @@ async function setup(email: string) {
     projectId: project.id,
     userId: user.id,
     repositoryId: 4242,
-    repositoryUrl: 'https://github.com/acme/shop',
+    repositoryUrl: REPOSITORY,
     branch: null,
   })
   const conversation = await AssistantConversation.create({ userId: user.id, title: '' })
@@ -176,22 +224,21 @@ const toolResults = (model: ReturnType<typeof toolCallingModel>) =>
   )
 
 let sandboxes: FakeSandboxes
-let analyzer: FakeAnalyzer
+let firstCommit = ''
 
 test.group('Assistant repository', (group) => {
   group.each.setup(() => withDefaultFlags())
   group.each.setup(async () => {
-    sandboxes = new FakeSandboxes()
+    const origin = await mkdtemp(join(tmpdir(), 'fake-origin-'))
+    firstCommit = await fixtureRepository(origin)
+    sandboxes = new FakeSandboxes(origin)
     app.container.swap(RepositorySandbox, () => sandboxes)
-    analyzer = new FakeAnalyzer()
-    const previous = env.get('ANALYZER_URL')
-    env.set('ANALYZER_URL', await analyzer.start())
     return async () => {
-      env.set('ANALYZER_URL', previous ?? '')
-      await analyzer.stop()
       for (const id of [...sandboxes.folders.keys()]) await sandboxes.kill(id)
+      await rm(origin, { recursive: true, force: true })
       app.container.restore(RepositorySandbox)
       app.container.restore(LanguageModels)
+      app.container.restore(GithubApi)
     }
   })
 
@@ -231,15 +278,17 @@ test.group('Assistant repository', (group) => {
     const results = toolResults(model)
     assert.include(results, 'src/orders.ts')
     assert.include(results, 'ledger.charge')
+    assert.notInclude(results, '.git')
     const reply = response.body().messages[1].content as string
     assert.include(reply, 'Files read: `src/orders.ts`')
     assert.isFalse(response.body().unfinished)
-    // No token for a public repository, and the sandbox got only the archive.
-    assert.deepEqual(analyzer.requests, [{ repository: 'https://github.com/acme/shop' }])
+    // A public repository is cloned without any credential.
+    assert.lengthOf(sandboxes.clones, 1)
+    assert.notProperty(sandboxes.clones[0], 'GIT_CONFIG_COUNT')
     assert.equal(sandboxes.created, 1)
     assert.equal(sandboxes.paused, 1)
     const row = await AssistantSandbox.findByOrFail('conversationId', f.conversation.id)
-    assert.equal(row.commitSha, COMMIT)
+    assert.match(row.commitSha, /^[0-9a-f]{40}$/)
     assert.isFalse(row.private)
     // The code lives in the sandbox only.
     const logged = logs.lines.join('\n')
@@ -249,26 +298,106 @@ test.group('Assistant repository', (group) => {
       assert.notInclude(database, secret)
     }
 
-    useModel(
-      toolCallingModel([
-        {
-          calls: [
-            { tool: 'read_repository_file', input: { projectId: f.project.id, path: 'README.md' } },
-          ],
-        },
-        { text: 'A shop.' },
-      ]),
-    )
+    const history = toolCallingModel([
+      { calls: [{ tool: 'repository_history', input: { projectId: f.project.id } }] },
+      {
+        calls: [
+          {
+            tool: 'show_repository_commit',
+            input: { projectId: f.project.id, commit: firstCommit.slice(0, 10) },
+          },
+        ],
+      },
+      {
+        calls: [
+          {
+            tool: 'blame_repository_file',
+            input: { projectId: f.project.id, path: 'README.md' },
+          },
+        ],
+      },
+      { text: 'Ada started it.' },
+    ])
+    useModel(history)
     const again = await client
       .post(`${f.path}/messages`)
       .headers(json)
       .loginAs(f.user)
-      .json({ provider, apiKey: KEY, message: 'And the readme?', locale: 'fr', auto: true })
+      .json({ provider, apiKey: KEY, message: 'Who started it?', locale: 'fr', auto: true })
     again.assertStatus(200)
+    const read = toolResults(history)
+    assert.include(read, 'Ada: Charge the ledger')
+    assert.include(read, 'Start the shop')
+    assert.include(read, `commit ${firstCommit}`)
+    assert.include(read, firstCommit.slice(0, 7))
     assert.include(again.body().messages[1].content, 'Fichiers lus: `README.md`')
     assert.equal(sandboxes.created, 1)
     assert.equal(sandboxes.resumed, 1)
-    assert.lengthOf(analyzer.requests, 1)
+    assert.lengthOf(sandboxes.clones, 1)
+  })
+
+  test('clones a private repository with a token it never writes down, revoked afterwards', async ({
+    client,
+    assert,
+  }) => {
+    const restore = withGithubApp()
+    try {
+      const github = new FakeGithubApi()
+      app.container.swap(GithubApi, () => github)
+      const f = await setup('repo-private@example.com')
+      await GithubRepositoryGrant.create({
+        userId: f.user.id,
+        githubUserId: 501,
+        githubLogin: 'octo',
+        installationId: 77,
+        repositoryId: 4242,
+        owner: 'acme',
+        name: 'shop',
+        private: true,
+        defaultBranch: 'main',
+      })
+      useModel(
+        toolCallingModel([
+          {
+            calls: [
+              {
+                tool: 'read_repository_file',
+                input: { projectId: f.project.id, path: 'src/orders.ts' },
+              },
+            ],
+          },
+          { text: 'ok' },
+        ]),
+      )
+      const logs = captureLogs()
+      const response = await client
+        .post(`${f.path}/messages`)
+        .headers(json)
+        .loginAs(f.user)
+        .json({ provider, apiKey: KEY, message: 'Read', locale: 'en', auto: true })
+      logs.restore()
+      response.assertStatus(200)
+
+      // The token reached the clone as an environment variable only, and was revoked.
+      assert.lengthOf(sandboxes.clones, 1)
+      const header = Buffer.from(`x-access-token:${TOKEN}`).toString('base64')
+      assert.equal(sandboxes.clones[0].GIT_CONFIG_VALUE_0, `Authorization: Basic ${header}`)
+      assert.deepEqual(github.revoked, [TOKEN])
+      const folder = [...sandboxes.folders.values()][0]
+      const config = await readFile(join(folder, 'repo.git', 'config'), 'utf8')
+      assert.notInclude(config, header)
+      assert.notInclude(config, 'extraheader')
+      const row = await AssistantSandbox.findByOrFail('conversationId', f.conversation.id)
+      assert.isTrue(row.private)
+      const database = await dumpDatabase()
+      for (const secret of [TOKEN, header]) {
+        assert.notInclude(logs.lines.join('\n'), secret)
+        assert.notInclude(database, secret)
+        assert.notInclude(JSON.stringify(response.body()), secret)
+      }
+    } finally {
+      restore()
+    }
   })
 
   test('refuses paths out of the repository and another account’s project', async ({
@@ -302,7 +431,6 @@ test.group('Assistant repository', (group) => {
     assert.notInclude(results, 'root:')
     assert.include(results, 'no GitHub repository')
     assert.equal(sandboxes.created, 0)
-    assert.lengthOf(analyzer.requests, 0)
   })
 
   test('offers no repository tool while the flag is off', async ({ client, assert }) => {
@@ -324,6 +452,7 @@ test.group('Assistant repository', (group) => {
     response.assertStatus(200)
     const tools = model.doGenerateCalls[0]?.tools?.map((tool) => tool.name) ?? []
     assert.notInclude(tools, 'read_repository_file')
+    assert.notInclude(tools, 'repository_history')
   })
 
   test('kills the sandbox with its conversation, its account, or after days unused', async ({

@@ -3,15 +3,17 @@ import redis from '@adonisjs/redis/services/main'
 import { DateTime } from 'luxon'
 import { REPOSITORY_SANDBOX } from '#app/assistant/constants/repository'
 import AssistantSandbox from '#app/assistant/models/assistant-sandbox'
+import { CLONE } from '#app/assistant/services/repository-commands'
 import RepositorySandbox, {
   type OpenRepositorySandbox,
 } from '#app/assistant/services/repository-sandbox'
 import { CodeMapStatus } from '#app/code-maps/constants/code-map'
 import CodeMap from '#app/code-maps/models/code-map'
 import GithubCodeMapFollow from '#app/code-maps/models/github-code-map-follow'
-import { archiveRepository } from '#app/code-maps/services/code-map-analyzer'
 import { stillGranted } from '#app/code-maps/services/code-source'
 import { parseGithubRepository } from '#app/code-maps/services/github-repository'
+import type GithubApi from '#app/github/services/github-api'
+import { isCommitId } from '#app/github/services/github-api'
 import { findGrant } from '#app/github/services/github-grants'
 import { repositoryToken } from '#app/github/services/repository-token'
 import { findOwnedProject } from '#app/projects/services/owned-project'
@@ -19,8 +21,8 @@ import type User from '#app/users/models/user'
 
 /*
  * The repository sandbox of a conversation, for one message: opened on the first repository tool
- * the model calls (resumed when the conversation has one for that repository, else made from a
- * fresh archive), paused when the message ends (`close`). One message at a time per conversation
+ * the model calls (resumed when the conversation has one for that repository, else cloned in a
+ * new one), paused when the message ends (`close`). One message at a time per conversation
  * (a Redis key that ends by itself). The code lives in the sandbox only: nothing here keeps,
  * logs or traces a file or an output.
  */
@@ -73,6 +75,7 @@ export async function killSandboxes(rows: readonly AssistantSandbox[]): Promise<
 export class RepositorySession {
   #opened: (OpenRepository & { row: AssistantSandbox }) | null = null
   #locked = false
+  #access: { github: GithubApi; token: string } | null = null
   /** The files the model read in this message, in order: shown under the reply. */
   readonly read: string[] = []
 
@@ -128,48 +131,74 @@ export class RepositorySession {
   ): Promise<OpenRepository | string> {
     const parsed = parseGithubRepository(repository.url)
     if (!parsed) return REPOSITORY_SENTENCES.unreadable
-    let access: Awaited<ReturnType<typeof repositoryToken>>
-    try {
-      access = await repositoryToken(this.user.id, repository.url)
-    } catch {
+    const auth = await this.#auth(repository.url)
+    if (typeof auth === 'string') return auth
+    const sandbox = await sandboxes.create()
+    if (!sandbox) return REPOSITORY_SENTENCES.unavailable
+    const cloned = await sandbox.run(
+      CLONE,
+      {
+        REPO_ROOT: REPOSITORY_SANDBOX.root,
+        REPO_URL: `${parsed.url}.git`,
+        REPO_BRANCH: repository.branch ?? '',
+        ...auth,
+      },
+      REPOSITORY_SANDBOX.cloneTimeoutMs,
+    )
+    const commit = cloned.output.trim()
+    if (cloned.exitCode !== 0 || !isCommitId(commit)) {
+      await sandboxes.kill(sandbox.sandboxId)
       return REPOSITORY_SENTENCES.unreadable
     }
-    if (typeof access === 'string') return REPOSITORY_SENTENCES.unreadable
-    let archived: Awaited<ReturnType<typeof archiveRepository>>
-    try {
-      if (access && !(await stillGranted(access, this.user.id, parsed))) {
-        return REPOSITORY_SENTENCES.unreadable
-      }
-      // The token goes to the analyzer for this one clone and never into the sandbox.
-      archived = await archiveRepository(
-        { repository: repository.url, branch: repository.branch, token: access?.token },
-        {
-          maxBytes: REPOSITORY_SANDBOX.archiveMaxBytes,
-          timeoutMs: REPOSITORY_SANDBOX.archiveTimeoutMs,
-        },
-      )
-    } finally {
-      if (access) await access.github.revokeInstallationToken(access.token).catch(() => {})
-    }
-    if ('failure' in archived) {
-      return archived.failure === 'unavailable'
-        ? REPOSITORY_SENTENCES.unavailable
-        : REPOSITORY_SENTENCES.unreadable
-    }
-    const sandbox = await sandboxes.create(archived.archive)
-    if (!sandbox) return REPOSITORY_SENTENCES.unavailable
     const row = await AssistantSandbox.create({
       conversationId: this.conversationId,
       userId: this.user.id,
       sandboxId: sandbox.sandboxId,
       repositoryUrl: repository.url,
       branch: repository.branch,
-      commitSha: archived.commit,
-      private: access !== null,
+      commitSha: commit,
+      private: this.#access !== null,
       lastUsedAt: DateTime.now(),
     })
     this.#opened = { sandbox, repositoryUrl: row.repositoryUrl, commit: row.commitSha, row }
     return this.#opened
+  }
+
+  /**
+   * What git needs to fetch from this repository, as environment variables of one command: none
+   * for a public one, else an installation token for this one repository, made once a message
+   * (after GitHub confirms the owner still reads it) and revoked by `close`. Never written to a
+   * file, a row or a log.
+   */
+  async #auth(repositoryUrl: string): Promise<Record<string, string> | string> {
+    if (!this.#access) {
+      const parsed = parseGithubRepository(repositoryUrl)
+      if (!parsed) return REPOSITORY_SENTENCES.unreadable
+      let access: Awaited<ReturnType<typeof repositoryToken>>
+      try {
+        access = await repositoryToken(this.user.id, repositoryUrl)
+      } catch {
+        return REPOSITORY_SENTENCES.unreadable
+      }
+      if (typeof access === 'string') return REPOSITORY_SENTENCES.unreadable
+      if (!access) return {}
+      if (!(await stillGranted(access, this.user.id, parsed).catch(() => false))) {
+        await access.github.revokeInstallationToken(access.token).catch(() => {})
+        return REPOSITORY_SENTENCES.unreadable
+      }
+      this.#access = access
+    }
+    const basic = Buffer.from(`x-access-token:${this.#access.token}`).toString('base64')
+    return {
+      GIT_CONFIG_COUNT: '1',
+      GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader',
+      GIT_CONFIG_VALUE_0: `Authorization: Basic ${basic}`,
+    }
+  }
+
+  /** `#auth` for a command that may fetch older files of the open repository. */
+  async fetchEnvs(opened: OpenRepository): Promise<Record<string, string> | string> {
+    return this.#auth(opened.repositoryUrl)
   }
 
   /** Pauses the sandbox until the next message and frees the conversation. Never throws. */
@@ -185,6 +214,9 @@ export class RepositorySession {
     } catch {
       // A sandbox that could not be paused ends by itself (`REPOSITORY_SANDBOX.timeoutMs`).
     } finally {
+      const access = this.#access
+      this.#access = null
+      if (access) await access.github.revokeInstallationToken(access.token).catch(() => {})
       if (this.#locked) await redis.del(lockKey(this.conversationId)).catch(() => 0)
       this.#locked = false
     }
