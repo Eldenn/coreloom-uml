@@ -60,6 +60,24 @@ export const askAssistantInput = vine.create(
     ...viewSelection(),
     /** A ready code map of the architecture's project: the message asks for a diagram of it. */
     codeMapId: vine.number().withoutDecimals().positive().optional(),
+    /**
+     * The message was stored by its reading (`POST …/readings`) just before: only the answer is
+     * stored now, after the reading in the history.
+     */
+    afterReading: vine.boolean().optional(),
+  }),
+)
+
+/**
+ * `POST /architectures/:id/assistant/conversations/:conversationId/readings` — what a message
+ * about the views needs, read with the read tools before the views are drawn.
+ */
+export const readingInput = vine.create(
+  vine.object({
+    ...llmCallFields(),
+    message: vine.string().trim().minLength(1).maxLength(ASSISTANT_MESSAGE_MAX_LENGTH),
+    locale: vine.enum(ASSISTANT_LOCALES),
+    fileId: fileIdInput(),
   }),
 )
 

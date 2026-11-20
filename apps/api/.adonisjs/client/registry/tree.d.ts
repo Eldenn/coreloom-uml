@@ -190,6 +190,9 @@ export interface ApiDefinition {
       messages: {
         store: typeof routes['architectures.assistant.messages.store']
       }
+      readings: {
+        store: typeof routes['architectures.assistant.readings.store']
+      }
       context: typeof routes['architectures.assistant.context']
       changes: {
         accept: typeof routes['architectures.assistant.changes.accept']

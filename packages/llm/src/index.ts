@@ -49,6 +49,8 @@ export {
   AssistantToolKind,
   type AssistantToolsInput,
   type AssistantToolsResult,
+  DIAGRAM_READING_INSTRUCTIONS,
+  NOTHING_TO_READ,
   runAssistantTools,
 } from './assistant-tools.ts'
 export {

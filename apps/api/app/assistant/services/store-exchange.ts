@@ -25,20 +25,25 @@ export function storeExchange(
     actions?: StoredAction[]
     /** The name of the file the message came with; its content is not stored. */
     fileName?: string
+    /** False when the message is stored already (by its reading): the answer only, then. */
+    asked?: boolean
   },
 ) {
   const { architectureId } = answer
   return db.transaction(async (trx) => {
-    const asked = await AssistantMessage.create(
-      {
-        conversationId: conversation.id,
-        architectureId,
-        role: AssistantRole.User,
-        content: message,
-        fileName: answer.fileName ?? null,
-      },
-      { client: trx },
-    )
+    const asked =
+      answer.asked === false
+        ? null
+        : await AssistantMessage.create(
+            {
+              conversationId: conversation.id,
+              architectureId,
+              role: AssistantRole.User,
+              content: message,
+              fileName: answer.fileName ?? null,
+            },
+            { client: trx },
+          )
     const answered = await AssistantMessage.create(
       {
         conversationId: conversation.id,
@@ -57,6 +62,6 @@ export function storeExchange(
     }
     conversation.updatedAt = DateTime.now()
     await conversation.save()
-    return [asked, answered]
+    return asked ? [asked, answered] : [answered]
   })
 }

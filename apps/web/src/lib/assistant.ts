@@ -16,6 +16,7 @@ import type { ChangeAction } from '@/lib/assistant-changes'
 import type { AssistantPage } from '@/lib/assistant-subject'
 import { client, TuyauError } from '@/lib/client'
 import { codeReviewKeys } from '@/lib/code-reviews'
+import { useFeature } from '@/lib/feature-flags'
 import { githubKeys } from '@/lib/github'
 import { MODEL_CALL, type StoredProvider } from '@/lib/llm-provider'
 import { callBody } from '@/lib/llm-provider-body'
@@ -227,6 +228,7 @@ export function useAskAssistant(conversationId: number) {
   const { locale } = useLocale()
   const t = useT().assistant
   const invalidate = useInvalidateAssistant()
+  const readsFirst = useFeature('assistant-actions')
   return useMutation({
     mutationFn: async ({
       provider,
@@ -259,7 +261,36 @@ export function useAskAssistant(conversationId: number) {
       viewsOf?: (architectureId: number) => ViewSelection
     }): Promise<{ messages: AssistantMessage[]; handoff: AssistantHandoff | null }> => {
       const fileId = await attachFile(provider, conversationId, attached, onReading)
-      const aboutArchitecture = async (id: number, views: Partial<ViewSelection>) => {
+      // What the request needs from the code, the maps or the files is read first, in a request
+      // of its own (a few rounds at most), and stored in the conversation for the drawing to use.
+      const readFirst = async (id: number) => {
+        const read = (text: string) =>
+          about.readings.store({
+            params: { id, conversationId },
+            body: {
+              ...callBody(provider),
+              message: text,
+              locale,
+              ...(fileId === null || text !== message ? {} : { fileId }),
+            },
+            ...MODEL_CALL,
+          })
+        let last = await read(message)
+        const messages = [...last.messages]
+        for (let round = 0; last.unfinished && round < CONTINUATIONS_MAX; round += 1) {
+          last = await read(t.continueReading)
+          messages.push(...last.messages)
+        }
+        return messages
+      }
+      const aboutArchitecture = async (
+        id: number,
+        views: Partial<ViewSelection> & { codeMapId?: number },
+      ) => {
+        const reading =
+          readsFirst && provider.kind !== 'openai-codex' && views.codeMapId === undefined
+            ? await readFirst(id)
+            : []
         const { messages } = await about.messages.store({
           params: { id, conversationId },
           body: {
@@ -269,10 +300,11 @@ export function useAskAssistant(conversationId: number) {
             ...views,
             locale,
             ...(fileId === null ? {} : { fileId }),
+            ...(reading.length > 0 ? { afterReading: true } : {}),
           },
           ...MODEL_CALL,
         })
-        return messages
+        return [...reading, ...messages]
       }
       if (architectureId !== null)
         return { messages: await aboutArchitecture(architectureId, selection), handoff: null }

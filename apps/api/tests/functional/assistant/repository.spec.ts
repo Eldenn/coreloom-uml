@@ -7,10 +7,13 @@ import { promisify } from 'node:util'
 import app from '@adonisjs/core/services/app'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import type { LanguageModel } from '@coreloom-uml/llm'
-import { toolCallingModel } from '@coreloom-uml/llm/testing'
+import { NOTHING_TO_READ } from '@coreloom-uml/llm'
+import { answeringModel, toolCallingModel } from '@coreloom-uml/llm/testing'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
+import Architecture from '#app/architectures/models/architecture'
 import AssistantConversation from '#app/assistant/models/assistant-conversation'
+import AssistantMessage from '#app/assistant/models/assistant-message'
 import AssistantSandbox from '#app/assistant/models/assistant-sandbox'
 import { CLONE } from '#app/assistant/services/repository-commands'
 import RepositorySandbox, {
@@ -502,5 +505,108 @@ test.group('Assistant repository', (group) => {
     assert.notInclude(sandboxes.killed, d.row.sandboxId)
     assert.isNull(await AssistantSandbox.find(c.row.id))
     assert.isNotNull(await AssistantSandbox.find(d.row.id))
+  })
+  test('the diagram assistant reads the code first, then draws from what was read', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('repo-diagram@example.com')
+    const architecture = await Architecture.create({
+      userId: f.user.id,
+      projectId: f.project.id,
+      title: 'Shop API',
+      visibility: 'private',
+    })
+    const base = `/architectures/${architecture.id}/assistant/conversations/${f.conversation.id}`
+    const reading = toolCallingModel([
+      {
+        calls: [
+          {
+            tool: 'read_repository_file',
+            input: { projectId: f.project.id, path: 'src/orders.ts' },
+          },
+        ],
+      },
+      { text: '- placeOrder charges the ledger (src/orders.ts:2)' },
+    ])
+    useModel(reading)
+    const logs = captureLogs()
+    const read = await client
+      .post(`${base}/readings`)
+      .headers(json)
+      .loginAs(f.user)
+      .json({ provider, apiKey: KEY, message: 'Draw how an order is placed', locale: 'en' })
+    logs.restore()
+    read.assertStatus(200)
+    assert.isFalse(read.body().unfinished)
+    const [asked, found] = read.body().messages as { role: string; content: string }[]
+    assert.equal(asked.content, 'Draw how an order is placed')
+    assert.include(found.content, 'Files read: `src/orders.ts`')
+    // Read tools only: nothing to write, nothing to hand over.
+    const offered = reading.doGenerateCalls[0]?.tools?.map((tool) => tool.name) ?? []
+    assert.includeMembers(offered, ['read_repository_file', 'repository_history', 'list_projects'])
+    for (const name of ['create_project', 'delete_architecture', 'work_on_diagrams'])
+      assert.notInclude(offered, name)
+    assert.include(toolResults(reading), 'ledger.charge')
+    assert.notInclude(logs.lines.join('\n'), 'ledger.charge')
+
+    const drawing = answeringModel(JSON.stringify({ reply: 'Drawn from the code.', changes: [] }))
+    useModel(drawing)
+    const drawn = await client.post(`${base}/messages`).headers(json).loginAs(f.user).json({
+      provider,
+      apiKey: KEY,
+      message: 'Draw how an order is placed',
+      currentDiagramId: null,
+      locale: 'en',
+      afterReading: true,
+    })
+    drawn.assertStatus(200)
+    assert.lengthOf(drawn.body().messages, 1)
+    assert.include(
+      JSON.stringify(drawing.doGenerateCalls[0]?.prompt),
+      'placeOrder charges the ledger',
+    )
+    const stored = await AssistantMessage.query()
+      .where('conversationId', f.conversation.id)
+      .orderBy('id', 'asc')
+    assert.deepEqual(
+      stored.map((message) => message.role),
+      ['user', 'assistant', 'assistant'],
+    )
+  })
+
+  test('a reading stores nothing when the message needs nothing read', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('repo-diagram-nothing@example.com')
+    const architecture = await Architecture.create({
+      userId: f.user.id,
+      projectId: f.project.id,
+      title: 'Shop API',
+      visibility: 'private',
+    })
+    useModel(toolCallingModel([{ text: NOTHING_TO_READ }]))
+    const read = await client
+      .post(
+        `/architectures/${architecture.id}/assistant/conversations/${f.conversation.id}/readings`,
+      )
+      .headers(json)
+      .loginAs(f.user)
+      .json({ provider, apiKey: KEY, message: 'Rename B to C', locale: 'en' })
+    read.assertStatus(200)
+    assert.deepEqual(read.body(), { messages: [], unfinished: false })
+    assert.lengthOf(await AssistantMessage.query().where('conversationId', f.conversation.id), 0)
+    assert.equal(sandboxes.created, 0)
+
+    await updateFlag(FeatureFlagKey.AssistantActions, { ...ON, enabled: false, rollout: 0 }, f.user)
+    const off = await client
+      .post(
+        `/architectures/${architecture.id}/assistant/conversations/${f.conversation.id}/readings`,
+      )
+      .headers(json)
+      .loginAs(f.user)
+      .json({ provider, apiKey: KEY, message: 'Rename B to C', locale: 'en' })
+    off.assertStatus(404)
   })
 })

@@ -1363,6 +1363,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-messages-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'architectures.assistant.readings.store': {
+    methods: ["POST"]
+    pattern: '/architectures/:id/assistant/conversations/:conversationId/readings'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/assistant/validators/assistant-input').readingInput)>>
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; conversationId: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/assistant/validators/assistant-input').readingInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-messages-controller').default['read']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-messages-controller').default['read']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'architectures.assistant.context': {
     methods: ["POST"]
     pattern: '/architectures/:id/assistant/conversations/:conversationId/context'
