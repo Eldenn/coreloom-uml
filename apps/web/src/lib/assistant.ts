@@ -19,7 +19,7 @@ import { codeReviewKeys } from '@/lib/code-reviews'
 import { githubKeys } from '@/lib/github'
 import { MODEL_CALL, type StoredProvider } from '@/lib/llm-provider'
 import { callBody } from '@/lib/llm-provider-body'
-import { useLocale } from '@/lib/locale'
+import { useLocale, useT } from '@/lib/locale'
 import { projectKeys } from '@/lib/projects'
 
 export type { AutosaveControl, BudgetLevel, ChangeAction } from '@/lib/assistant-changes'
@@ -220,8 +220,12 @@ export function useDeleteConversation() {
  * message about that architecture with the views `viewsOf` gives, in the same pending call. One
  * for a web research comes back as `handoff` with no message: the caller runs the research.
  */
+/** How many times a reply that ran out of steps goes on by itself (about 48 steps in all). */
+const CONTINUATIONS_MAX = 3
+
 export function useAskAssistant(conversationId: number) {
   const { locale } = useLocale()
+  const t = useT().assistant
   const invalidate = useInvalidateAssistant()
   return useMutation({
     mutationFn: async ({
@@ -272,18 +276,30 @@ export function useAskAssistant(conversationId: number) {
       }
       if (architectureId !== null)
         return { messages: await aboutArchitecture(architectureId, selection), handoff: null }
-      const plain = await api.messages.store({
-        params: { conversationId },
-        body: {
-          ...callBody(provider),
-          message,
-          locale,
-          ...(fileId === null ? {} : { fileId }),
-          ...(auto ? { auto: true, ...(page ? { page } : {}) } : {}),
-        },
-        ...MODEL_CALL,
-      })
-      if (plain.handoff === null) return plain
+      const send = (text: string, withFile: boolean) =>
+        api.messages.store({
+          params: { conversationId },
+          body: {
+            ...callBody(provider),
+            message: text,
+            locale,
+            ...(fileId === null || !withFile ? {} : { fileId }),
+            ...(auto ? { auto: true, ...(page ? { page } : {}) } : {}),
+          },
+          ...MODEL_CALL,
+        })
+      const plain = await send(message, true)
+      if (plain.handoff === null) {
+        // A reply that ran out of steps (reading a repository, say) goes on, a few times at most.
+        const messages = [...plain.messages]
+        let last: Awaited<ReturnType<typeof send>> = plain
+        for (let round = 0; last.unfinished && round < CONTINUATIONS_MAX; round += 1) {
+          last = await send(t.continueReading, false)
+          // A continuation handed over stored nothing and is not unfinished: the loop ends.
+          messages.push(...last.messages)
+        }
+        return { messages, handoff: null }
+      }
       onHandoff?.(plain.handoff)
       if (plain.handoff.kind === 'web') return plain
       const { architectureId: handedTo } = plain.handoff

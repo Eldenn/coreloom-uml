@@ -67,7 +67,12 @@ describe('runAssistantTools', () => {
 
     const result = await runAssistantTools(model, { ...base, tools })
 
-    expect(result).toEqual({ reply: 'You have Shop.', proposed: [], route: null })
+    expect(result).toEqual({
+      reply: 'You have Shop.',
+      proposed: [],
+      route: null,
+      unfinished: false,
+    })
     expect(ran).toEqual(['list_projects'])
     expect(toolResults(model)).toContain('Shop')
   })
@@ -130,6 +135,7 @@ describe('runAssistantTools', () => {
       reply: '',
       proposed: [],
       route: { name: 'work_on_diagrams', input: { architectureId: 3 } },
+      unfinished: false,
     })
     expect(model.doGenerateCalls).toHaveLength(2)
   })
@@ -143,7 +149,12 @@ describe('runAssistantTools', () => {
 
     const result = await runAssistantTools(model, { ...base, tools })
 
-    expect(result).toEqual({ reply: 'No such architecture.', proposed: [], route: null })
+    expect(result).toEqual({
+      reply: 'No such architecture.',
+      proposed: [],
+      route: null,
+      unfinished: false,
+    })
     expect(toolResults(model)).toContain('No architecture has this id.')
   })
 
@@ -160,6 +171,7 @@ describe('runAssistantTools', () => {
       reply: '',
       proposed: [{ name: 'rename_project', input: { projectId: 7, name: 'Storefront' } }],
       route: null,
+      unfinished: false,
     })
   })
 
@@ -187,6 +199,21 @@ describe('runAssistantTools', () => {
     ])
   })
 
+  it('says the loop is unfinished when it used every step, finished otherwise', async () => {
+    const { tools } = fakeTools()
+    const reading = toolCallingModel([
+      call('list_projects', {}),
+      call('list_projects', {}),
+      { text: 'So far: one project.' },
+    ])
+    const cut = await runAssistantTools(reading, { ...base, tools }, { maxSteps: 3 })
+    expect(cut).toMatchObject({ reply: 'So far: one project.', unfinished: true })
+
+    const quick = toolCallingModel([call('list_projects', {}), { text: 'One project.' }])
+    const done = await runAssistantTools(quick, { ...base, tools }, { maxSteps: 3 })
+    expect(done.unfinished).toBe(false)
+  })
+
   it('survives an input the schema refuses and records nothing', async () => {
     const { tools, ran } = fakeTools()
     const model = toolCallingModel([
@@ -196,7 +223,7 @@ describe('runAssistantTools', () => {
 
     const result = await runAssistantTools(model, { ...base, tools })
 
-    expect(result).toEqual({ reply: 'Sorry.', proposed: [], route: null })
+    expect(result).toEqual({ reply: 'Sorry.', proposed: [], route: null, unfinished: false })
     expect(ran).toEqual([])
   })
 

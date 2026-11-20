@@ -7,6 +7,7 @@ import type {
   AssistantTargetKind,
 } from '#app/assistant/constants/assistant'
 import type AssistantFile from '#app/assistant/models/assistant-file'
+import type { RepositorySession } from '#app/assistant/services/repository-session'
 import type User from '#app/users/models/user'
 
 /*
@@ -35,12 +36,14 @@ export type ActionApplied =
   | { failure: typeof ActionFailure.Invalid | typeof ActionFailure.Conflict; message: string }
 
 /**
- * Where a read runs: the conversation of the message, and the reader of its files' texts (each
- * read from Drive once per message).
+ * Where a read runs: the conversation of the message, the reader of its files' texts (each read
+ * from Drive once per message) and its repository sandbox.
  */
 export type ActionContext = {
   conversationId: number
   read(file: AssistantFile): Promise<string>
+  /** The conversation's repository sandbox, opened by the first repository tool called. */
+  repository: RepositorySession
 }
 
 type ActionBase<S extends z.ZodType> = {

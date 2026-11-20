@@ -98,6 +98,48 @@ export async function analyzeRepository(request: {
   }
 }
 
+/**
+ * The repository's regular files as a gzipped tar (`POST /archive`), for the workspace
+ * assistant's sandbox: never stored, never read here beyond its size. Null when the analyzer is
+ * missing, refuses or fails (the reason is the analyzer's code, never the repository's content).
+ */
+export async function archiveRepository(
+  request: { repository: string; branch: string | null; token?: string },
+  limits: { maxBytes: number; timeoutMs: number },
+): Promise<{ archive: Uint8Array; commit: string } | { failure: string }> {
+  const base = analyzerUrl()
+  if (!base) return { failure: 'unavailable' }
+  let response: Response
+  try {
+    response = await fetch(`${base}/archive`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        repository: request.repository,
+        ...(request.branch ? { branch: request.branch } : {}),
+        ...(request.token ? { token: request.token } : {}),
+      }),
+      redirect: 'error',
+      signal: AbortSignal.timeout(limits.timeoutMs),
+    })
+  } catch {
+    return { failure: 'unavailable' }
+  }
+  if (!response.ok) {
+    const code = response.status === 422 ? await errorCode(response) : null
+    if (code === null) await response.body?.cancel().catch(() => {})
+    return { failure: code && ANALYZER_ERRORS.has(code) ? code : 'unavailable' }
+  }
+  const commit = header(response, 'x-commit-sha', /^[0-9a-f]{7,64}$/)
+  if (Number(response.headers.get('content-length') ?? 0) > limits.maxBytes || !commit) {
+    await response.body?.cancel().catch(() => {})
+    return { failure: commit ? AnalyzerError.TooLarge : 'unavailable' }
+  }
+  const archive = new Uint8Array(await response.arrayBuffer())
+  if (archive.byteLength > limits.maxBytes) return { failure: AnalyzerError.TooLarge }
+  return { archive, commit }
+}
+
 async function errorCode(response: Response): Promise<string | null> {
   try {
     const body = (await response.json()) as { error?: { code?: unknown } }

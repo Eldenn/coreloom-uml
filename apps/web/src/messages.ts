@@ -1164,6 +1164,7 @@ export const en = {
       'This conversation holds as many files as it can: start a new one to attach another.',
     readingFile:
       'Reading the file: your model summarizes it, part by part. The conversation keeps it for the next messages…',
+    continueReading: 'Go on from where you stopped.',
     summary: 'Summary of the previous conversation',
     deleteSummary: 'Delete the summary',
     deleteSummaryHint:
@@ -2565,6 +2566,7 @@ export const fr: Messages = {
       'Cette conversation contient déjà autant de fichiers que possible : commencez-en une nouvelle pour en joindre un autre.',
     readingFile:
       'Lecture du fichier : votre modèle le résume, partie par partie. La conversation le garde pour les messages suivants…',
+    continueReading: 'Reprenez là où vous vous êtes arrêté.',
     summary: 'Résumé de la conversation précédente',
     deleteSummary: 'Supprimer le résumé',
     deleteSummaryHint:

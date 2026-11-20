@@ -218,6 +218,31 @@ export class AssistantMessageSchema extends BaseModel {
   declare role: string
 }
 
+export class AssistantSandboxSchema extends BaseModel {
+  static $columns = ['branch', 'commitSha', 'conversationId', 'createdAt', 'id', 'lastUsedAt', 'private', 'repositoryUrl', 'sandboxId', 'userId'] as const
+  $columns = AssistantSandboxSchema.$columns
+  @column()
+  declare branch: string | null
+  @column()
+  declare commitSha: string
+  @column()
+  declare conversationId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column.dateTime()
+  declare lastUsedAt: DateTime
+  @column()
+  declare private: boolean
+  @column()
+  declare repositoryUrl: string
+  @column()
+  declare sandboxId: string
+  @column()
+  declare userId: number
+}
+
 export class AuthAccessTokenSchema extends BaseModel {
   static $columns = ['abilities', 'createdAt', 'expiresAt', 'hash', 'hint', 'id', 'lastUsedAt', 'name', 'tokenableId', 'type', 'updatedAt'] as const
   $columns = AuthAccessTokenSchema.$columns

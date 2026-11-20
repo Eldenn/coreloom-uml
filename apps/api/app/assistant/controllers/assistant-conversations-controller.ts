@@ -5,6 +5,7 @@ import { LlmCallError, summarizeConversation } from '@coreloom-uml/llm'
 import { ASSISTANT_TITLE_MAX_LENGTH, AssistantRole } from '#app/assistant/constants/assistant'
 import AssistantConversation from '#app/assistant/models/assistant-conversation'
 import AssistantMessage from '#app/assistant/models/assistant-message'
+import AssistantSandbox from '#app/assistant/models/assistant-sandbox'
 import {
   serializeConversation,
   serializeMessage,
@@ -19,6 +20,7 @@ import {
   CONVERSATION_NOT_FOUND,
   findOwnedConversation,
 } from '#app/assistant/services/owned-conversation'
+import { killSandboxes } from '#app/assistant/services/repository-session'
 import {
   continueConversationInput,
   createConversationInput,
@@ -164,9 +166,12 @@ export default class AssistantConversationsController {
     if (!conversation) return response.notFound(CONVERSATION_NOT_FOUND)
 
     const files = await conversationFiles(conversation.id)
+    const sandboxes = await AssistantSandbox.query().where('conversationId', conversation.id)
     await conversation.delete()
-    // Its files' texts are objects in Drive: the cascade does not reach them.
+    // Its files' texts are objects in Drive and its repository is in a sandbox: the cascade
+    // reaches neither.
     await deleteConversationFileTexts(files.map((file) => file.storageKey))
+    await killSandboxes(sandboxes)
 
     return response.noContent()
   }
