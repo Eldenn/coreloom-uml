@@ -1339,6 +1339,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-actions-controller').default['reject']>>>
     }
   }
+  'assistant.files.digest': {
+    methods: ["POST"]
+    pattern: '/assistant/files/digest'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/assistant/validators/assistant-input').digestFileInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/assistant/validators/assistant-input').digestFileInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-files-controller').default['digest']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-files-controller').default['digest']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'architectures.assistant.messages.store': {
     methods: ["POST"]
     pattern: '/architectures/:id/assistant/conversations/:conversationId/messages'

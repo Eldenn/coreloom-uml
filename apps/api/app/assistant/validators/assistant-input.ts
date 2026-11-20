@@ -1,4 +1,4 @@
-import { ASSISTANT_FILE_MAX_LENGTH } from '@coreloom-uml/llm'
+import { ASSISTANT_FILE_MAX_LENGTH, FILE_DIGEST_MAX_LENGTH } from '@coreloom-uml/llm'
 import vine from '@vinejs/vine'
 import {
   ASSISTANT_FILE_NAME_MAX_LENGTH,
@@ -44,6 +44,17 @@ const fileInput = () =>
       content: vine.string().minLength(1).maxLength(ASSISTANT_FILE_MAX_LENGTH),
     })
     .optional()
+
+/** `POST /assistant/files/digest` — a file too long for a message, read into notes first. */
+export const digestFileInput = vine.create(
+  vine.object({
+    ...llmCallFields(),
+    file: vine.object({
+      name: vine.string().trim().minLength(1).maxLength(ASSISTANT_FILE_NAME_MAX_LENGTH),
+      content: vine.string().minLength(1).maxLength(FILE_DIGEST_MAX_LENGTH),
+    }),
+  }),
+)
 
 /** `POST /architectures/:id/assistant/conversations/:conversationId/messages` */
 export const askAssistantInput = vine.create(

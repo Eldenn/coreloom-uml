@@ -123,6 +123,8 @@ export function Conversation({
   const [fileProblem, setFileProblem] = React.useState<FileProblem | null>(null)
   /** A message the server handed over, from its answer until it was sent again that way. */
   const [handed, setHanded] = React.useState<Handed | null>(null)
+  /** A long file is being read into notes, before the message itself is sent. */
+  const [reading, setReading] = React.useState(false)
 
   const messages = detail.data?.messages ?? []
   const { budget, askError } = watched(fromCode, context.data, ask.error)
@@ -158,6 +160,7 @@ export function Conversation({
         provider,
         message: text,
         file,
+        onReading: setReading,
         architectureId: architectureOf(subject),
         ...views.selection,
         ...subject.code.sent,
@@ -176,7 +179,7 @@ export function Conversation({
         setHanded(null)
       })
   }
-  const pending = pendingOf(subject, ask, web, handed)
+  const pending = pendingOf(subject, ask, web, { handed, reading })
 
   return (
     <>
@@ -194,7 +197,7 @@ export function Conversation({
               <Stage
                 stage={pending.stage}
                 title={
-                  subject.architectures.find((a) => a.id === pending.stage?.architectureId)?.title
+                  subject.architectures.find((a) => a.id === stageTarget(pending.stage))?.title
                 }
               />
             )}
@@ -243,7 +246,8 @@ export function Conversation({
 }
 
 /** The text files the picker offers; anything else that reads as text is taken too. */
-const ATTACHMENT_TYPES = 'text/*,.md,.markdown,.txt,.json,.yaml,.yml,.toml,.xml,.csv,.puml,.mmd'
+const ATTACHMENT_TYPES =
+  'text/*,application/pdf,.pdf,.md,.markdown,.txt,.json,.yaml,.yml,.toml,.xml,.csv,.puml,.mmd'
 
 /** Under the messages: what went wrong, what the message is about, and the prompt. */
 function Composer({
@@ -369,8 +373,9 @@ interface Handed {
  * undefined), then working on the diagrams of the architecture it chose. `null` when the typing
  * indicator or the research's own steps say it.
  */
-function stageOf(auto: boolean, asking: boolean, handed: Handed | null) {
+function stageOf(auto: boolean, asking: boolean, handed: Handed | null, reading: boolean) {
   if (!asking) return null
+  if (reading) return { reading: true as const }
   if (handed?.handoff.kind === 'diagrams') return { architectureId: handed.handoff.architectureId }
   return auto && handed === null ? { architectureId: undefined } : null
 }
@@ -384,12 +389,12 @@ function pendingOf(
   subject: Subject,
   ask: ReturnType<typeof useAskAssistant>,
   web: ReturnType<typeof useWebRequest>,
-  handed: Handed | null,
+  { handed, reading }: { handed: Handed | null; reading: boolean },
 ) {
   const toWeb = handed?.handoff.kind === 'web' ? handed.handoff.agentConfigId : null
   // The research's first step shows from the handoff on, before its own call starts.
   const webStep = web.step ?? (toWeb === null ? null : 'researching')
-  const stage = stageOf(subject.mode === 'auto', ask.isPending, handed)
+  const stage = stageOf(subject.mode === 'auto', ask.isPending, handed, reading)
   return {
     text: ask.isPending ? ask.variables.message : (web.request ?? handed?.message ?? null),
     typing: ask.isPending && stage === null && webStep === null,
@@ -397,6 +402,18 @@ function pendingOf(
     webStep,
     configId: toWeb ?? subject.configId,
   }
+}
+
+type StageNow = NonNullable<ReturnType<typeof stageOf>>
+
+/** The architecture a stage works on, when it has one. */
+function stageTarget(stage: StageNow | null) {
+  return stage !== null && 'architectureId' in stage ? stage.architectureId : undefined
+}
+
+function stageText(t: ReturnType<typeof useT>['assistant'], stage: StageNow, title: string | null) {
+  if ('reading' in stage) return t.readingFile
+  return stage.architectureId === undefined ? t.deciding : t.workingOnDiagrams(title)
 }
 
 function Stage({
@@ -410,7 +427,7 @@ function Stage({
   return (
     <p role="status" className="m-0 mr-6 flex items-center gap-2 text-[13px] text-muted-foreground">
       <Spinner />
-      {stage.architectureId === undefined ? t.deciding : t.workingOnDiagrams(title ?? null)}
+      {stageText(t, stage, title ?? null)}
     </p>
   )
 }

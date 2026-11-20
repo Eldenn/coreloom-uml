@@ -672,6 +672,12 @@ const routes = {
     tokens: [{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject","type":0,"val":"assistant","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject","type":0,"val":"conversations","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject","type":1,"val":"conversationId","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject","type":0,"val":"messages","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject","type":1,"val":"messageId","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject","type":0,"val":"actions","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject","type":1,"val":"index","end":""},{"old":"/assistant/conversations/:conversationId/messages/:messageId/actions/:index/reject","type":0,"val":"reject","end":""}],
     types: placeholder as Registry['assistant.actions.reject']['types'],
   },
+  'assistant.files.digest': {
+    methods: ["POST"],
+    pattern: '/assistant/files/digest',
+    tokens: [{"old":"/assistant/files/digest","type":0,"val":"assistant","end":""},{"old":"/assistant/files/digest","type":0,"val":"files","end":""},{"old":"/assistant/files/digest","type":0,"val":"digest","end":""}],
+    types: placeholder as Registry['assistant.files.digest']['types'],
+  },
   'architectures.assistant.messages.store': {
     methods: ["POST"],
     pattern: '/architectures/:id/assistant/conversations/:conversationId/messages',

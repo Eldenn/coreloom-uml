@@ -676,6 +676,15 @@ router
   .use(middleware.auth())
 
 router
+  .post('/assistant/files/digest', [
+    () => import('#app/assistant/controllers/assistant-files-controller'),
+    'digest',
+  ])
+  .as('assistant.files.digest')
+  .use(middleware.auth())
+  .use(llmThrottle)
+
+router
   .group(() => {
     router
       .post('/conversations/:conversationId/messages', [assistantMessagesController, 'store'])
