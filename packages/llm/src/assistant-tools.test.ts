@@ -6,6 +6,7 @@ import {
   ASSISTANT_READ_RESULT_MAX_LENGTH,
   type AssistantTool,
   AssistantToolKind,
+  NOTHING_TO_READ,
   runAssistantTools,
 } from './assistant-tools.ts'
 import { LlmCallError } from './failure.ts'
@@ -75,6 +76,19 @@ describe('runAssistantTools', () => {
     })
     expect(ran).toEqual(['list_projects'])
     expect(toolResults(model)).toContain('Shop')
+  })
+
+  it('gathers for the diagram assistant with its own instructions when reading', async () => {
+    const { tools } = fakeTools()
+    const model = toolCallingModel([call('list_projects', {}), { text: '- Shop (project 7)' }])
+
+    const result = await runAssistantTools(model, { ...base, purpose: 'reading', tools })
+
+    expect(result.reply).toBe('- Shop (project 7)')
+    const system = JSON.stringify(model.doGenerateCalls[0]?.prompt[0])
+    expect(system).toContain(NOTHING_TO_READ)
+    expect(system).toContain('you cannot change them yourself')
+    expect(system).not.toContain('work_on_diagrams')
   })
 
   it('records a write as a proposal and tells the model it awaits the owner', async () => {

@@ -684,6 +684,12 @@ const routes = {
     tokens: [{"old":"/architectures/:id/assistant/conversations/:conversationId/messages","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages","type":0,"val":"conversations","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages","type":1,"val":"conversationId","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/messages","type":0,"val":"messages","end":""}],
     types: placeholder as Registry['architectures.assistant.messages.store']['types'],
   },
+  'architectures.assistant.readings.store': {
+    methods: ["POST"],
+    pattern: '/architectures/:id/assistant/conversations/:conversationId/readings',
+    tokens: [{"old":"/architectures/:id/assistant/conversations/:conversationId/readings","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/readings","type":1,"val":"id","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/readings","type":0,"val":"assistant","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/readings","type":0,"val":"conversations","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/readings","type":1,"val":"conversationId","end":""},{"old":"/architectures/:id/assistant/conversations/:conversationId/readings","type":0,"val":"readings","end":""}],
+    types: placeholder as Registry['architectures.assistant.readings.store']['types'],
+  },
   'architectures.assistant.context': {
     methods: ["POST"],
     pattern: '/architectures/:id/assistant/conversations/:conversationId/context',

@@ -2,15 +2,22 @@ import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
 import {
   AssistantContextFull,
+  AssistantToolKind,
   askAssistant,
   assistantBudget,
   chatWithAssistant,
   LlmCallError,
+  NOTHING_TO_READ,
   runAssistantTools,
   withFile,
 } from '@coreloom-uml/llm'
 import { actionTools } from '#app/assistant/actions/registry'
-import { AssistantRole, ChangeStatus, type StoredAction } from '#app/assistant/constants/assistant'
+import {
+  AssistantRole,
+  AssistantTargetKind,
+  ChangeStatus,
+  type StoredAction,
+} from '#app/assistant/constants/assistant'
 import AssistantMessage from '#app/assistant/models/assistant-message'
 import { serializeMessage } from '#app/assistant/serializers/assistant-serializer'
 import {
@@ -47,11 +54,13 @@ import {
   askAssistantInput,
   assistantContextInput,
   chatInput,
+  readingInput,
 } from '#app/assistant/validators/assistant-input'
 import type {
   AskAssistantOutput,
   ChatOutput,
   HandoffOutput,
+  ReadingOutput,
 } from '#app/assistant/validators/assistant-output'
 import { CodeMapStatus } from '#app/code-maps/constants/code-map'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
@@ -90,7 +99,7 @@ export default class AssistantMessagesController {
     if (!found) return response.notFound(CONVERSATION_NOT_FOUND)
     const { architecture, conversation } = found
 
-    const { provider, apiKey, codeMapId, fileId, ...selection } =
+    const { provider, apiKey, codeMapId, fileId, afterReading, ...selection } =
       await request.validateUsing(askAssistantInput)
     if (!selectsOwnViews(architecture, selection)) return response.notFound(DIAGRAM_NOT_FOUND)
     const attached =
@@ -157,6 +166,7 @@ export default class AssistantMessagesController {
         architectureId: architecture.id,
         content: answer.content,
         changes: answer.change ? [answer.change] : [],
+        asked: afterReading !== true,
       })
       const next = await assistantSource(architecture, conversation, { ...selection, message: '' })
       return response.ok({
@@ -166,8 +176,9 @@ export default class AssistantMessagesController {
       } satisfies AskAssistantOutput)
     }
 
-    // The diagram assistant has no tool: it reads the files beyond their summaries through the
-    // passages its request is about. A short file the message attaches goes whole instead.
+    // The diagram assistant has no tool: what the request needs from the code was read just
+    // before (`read`, in the history); the files beyond their summaries through the passages its
+    // request is about. A short file the message attaches goes whole instead.
     const read = fileTextReader()
     const whole = await wholeFile(attached, read)
     const passages = await filePassages(
@@ -212,6 +223,7 @@ export default class AssistantMessagesController {
       content: reply.reply,
       changes,
       fileName: attached?.name,
+      asked: afterReading !== true,
     })
 
     const next = await assistantSource(architecture, conversation, { ...selection, message: '' })
@@ -220,6 +232,109 @@ export default class AssistantMessagesController {
       budget: assistantBudget(next),
       skipped: reply.skipped,
     } satisfies AskAssistantOutput)
+  }
+
+  /**
+   * `POST /architectures/:id/assistant/conversations/:conversationId/readings` — before a message
+   * about the views is answered (`store` with `afterReading`), the user's model reads what it
+   * needs with the read tools of the assistant's actions (the project's repository and history,
+   * its code maps, the conversation's files…; never a write or a handoff). The message and what
+   * was read are stored as an exchange of the conversation, which the drawing reads in its
+   * history; nothing is stored when the message needs nothing read. A request of its own, so the
+   * reading and the drawing each fit in what the proxy allows one. Behind `assistant-actions`.
+   */
+  async read({ params, request, auth, response }: HttpContext) {
+    const user = auth.getUserOrFail()
+    if (!(await assistantEnabled(user)) || !(await assistantActionsEnabled(user)))
+      return response.notFound(ASSISTANT_NOT_FOUND)
+    const found = await findArchitectureConversation(params.id, params.conversationId, user)
+    if (!found) return response.notFound(CONVERSATION_NOT_FOUND)
+    const { architecture, conversation } = found
+
+    const { provider, apiKey, message, locale, fileId } = await request.validateUsing(readingInput)
+    const attached =
+      fileId === undefined ? null : await findConversationFile(conversation.id, fileId)
+    if (fileId !== undefined && !attached) return response.notFound(FILE_NOT_FOUND)
+    // The ChatGPT subscription is not known to carry a tool call from one step to the next.
+    if (provider.kind === ProviderKind.OpenAICodex)
+      return response.ok({ messages: [], unfinished: false } satisfies ReadingOutput)
+    const built = await userLanguageModel(provider, apiKey, user)
+    if ('problem' in built)
+      return response.unprocessableEntity({ error: { message: built.problem } })
+    if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)
+
+    const log = { conversationId: conversation.id, kind: provider.kind, model: provider.model }
+    if ('reason' in built) {
+      logger.warn({ ...log, reason: built.reason }, 'assistant reading failed')
+      return response.badGateway(llmFailure(built.reason))
+    }
+    const read = fileTextReader()
+    const whole = await wholeFile(attached, read)
+    const recorded: StoredAction[] = []
+    const repository = new RepositorySession(user, conversation.id)
+    const started = performance.now()
+    let reply: string
+    let unfinished: boolean
+    try {
+      const tools = (
+        await actionTools(user, recorded, { conversationId: conversation.id, read, repository })
+      ).filter((tool) => tool.kind === AssistantToolKind.Read)
+      // The project is what its code, maps and repository are read from.
+      const page = await resolvePage(
+        architecture.projectId === null
+          ? { kind: AssistantTargetKind.Architecture, id: architecture.id }
+          : { kind: AssistantTargetKind.Project, id: architecture.projectId },
+        user,
+      )
+      const result = await runAssistantTools(built.model, {
+        purpose: 'reading',
+        history: await conversationHistory(conversation),
+        files: filesContext(await conversationFiles(conversation.id)),
+        message: withFile(
+          `(about the views of the architecture ${JSON.stringify(architecture.title)})\n${message}`,
+          whole,
+        ),
+        locale,
+        page,
+        tools,
+      })
+      reply = result.reply
+      unfinished = result.unfinished
+    } catch (error) {
+      const durationMs = Math.round(performance.now() - started)
+      if (error instanceof AssistantContextFull) {
+        logger.info({ ...log, durationMs }, 'assistant reading refused: context full')
+        return response.unprocessableEntity(CONTEXT_FULL)
+      }
+      if (!(error instanceof LlmCallError)) throw error
+      logger.warn({ ...log, durationMs, reason: error.reason }, 'assistant reading failed')
+      return response.badGateway(llmFailure(error.reason))
+    } finally {
+      await repository.close()
+    }
+    const nothing =
+      !reply.trim() || (reply.includes(NOTHING_TO_READ) && repository.read.length === 0)
+    logger.info(
+      {
+        ...log,
+        durationMs: Math.round(performance.now() - started),
+        nothing,
+        // A count only: never a path or what a file holds.
+        repositoryFiles: repository.read.length,
+        unfinished,
+      },
+      'assistant reading',
+    )
+    if (nothing) return response.ok({ messages: [], unfinished: false } satisfies ReadingOutput)
+    const messages = await storeExchange(conversation, message, {
+      architectureId: architecture.id,
+      content: withFilesRead(reply, repository.read, locale),
+      fileName: attached?.name,
+    })
+    return response.ok({
+      messages: messages.map(serializeMessage),
+      unfinished,
+    } satisfies ReadingOutput)
   }
 
   /** `POST …/conversations/:conversationId/context` — the budget of a selection, no model call. */

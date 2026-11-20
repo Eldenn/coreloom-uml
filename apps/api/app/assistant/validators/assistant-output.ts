@@ -84,6 +84,12 @@ export type BudgetOutput = {
   skipped: number[]
 }
 
+/**
+ * A reading: the message and what was read for it, stored (none when the message needs nothing
+ * read), and whether it used every step (the screen may send a continuation).
+ */
+export type ReadingOutput = { messages: MessageOutput[]; unfinished: boolean }
+
 export type AskAssistantOutput = {
   messages: MessageOutput[]
   budget: BudgetOutput

@@ -691,6 +691,10 @@ router
       .as('architectures.assistant.messages.store')
       .use(llmThrottle)
     router
+      .post('/conversations/:conversationId/readings', [assistantMessagesController, 'read'])
+      .as('architectures.assistant.readings.store')
+      .use(llmThrottle)
+    router
       .post('/conversations/:conversationId/context', [assistantMessagesController, 'context'])
       .as('architectures.assistant.context')
     router
