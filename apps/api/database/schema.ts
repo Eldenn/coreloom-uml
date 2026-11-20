@@ -172,6 +172,27 @@ export class AssistantConversationSchema extends BaseModel {
   declare userId: number
 }
 
+export class AssistantFileSchema extends BaseModel {
+  static $columns = ['chars', 'conversationId', 'createdAt', 'id', 'name', 'parts', 'storageKey', 'userId'] as const
+  $columns = AssistantFileSchema.$columns
+  @column()
+  declare chars: number
+  @column()
+  declare conversationId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column()
+  declare parts: any
+  @column()
+  declare storageKey: string
+  @column()
+  declare userId: number
+}
+
 export class AssistantMessageSchema extends BaseModel {
   static $columns = ['actions', 'architectureId', 'changes', 'content', 'conversationId', 'createdAt', 'fileName', 'id', 'proposals', 'role'] as const
   $columns = AssistantMessageSchema.$columns

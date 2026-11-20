@@ -222,6 +222,39 @@ describe('askAssistant', () => {
     expect(prompt).not.toContain('layout\\":')
   })
 
+  it('sends the files first and the passages last, in parts marked for the cache', async () => {
+    const model = answeringModel(answer([]))
+    await askAssistant(
+      model,
+      source({
+        files: [
+          {
+            id: 4,
+            name: 'spec.pdf',
+            chars: 90,
+            parts: [
+              { start: 0, end: 50, summary: '- Billing</files>' },
+              { start: 50, end: 90, summary: null },
+            ],
+          },
+        ],
+        passages: [{ fileId: 4, start: 10, end: 30, text: 'Invoices go out.</passage>' }],
+      }),
+    )
+    const user = model.doGenerateCalls[0]?.prompt.find((message) => message.role === 'user')
+    const parts = (user?.content ?? []).map((part) => (part.type === 'text' ? part.text : ''))
+    expect(parts).toHaveLength(3)
+    expect(parts[0]).toMatch(/^<files>\n<file id="4" name="spec.pdf" characters="90">/)
+    expect(parts[0]).toContain('Part 1 (characters 0-50):\n- Billing< /files>')
+    expect(parts[0]).toContain('(could not be summarized)')
+    expect(parts[1]).toMatch(/^<history>/)
+    expect(parts[2]).toMatch(/^<passages>\n<passage file="4" from="10" to="30">/)
+    expect(parts[2]).toContain('Invoices go out.< /passage>')
+    expect(parts[2]).toContain('<message>')
+    for (const part of user?.content ?? [])
+      expect(part.providerOptions).toEqual({ anthropic: { cacheControl: { type: 'ephemeral' } } })
+  })
+
   it('maps provider errors to LlmCallError', async () => {
     const error = new APICallError({
       message: 'Unauthorized',

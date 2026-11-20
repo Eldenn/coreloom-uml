@@ -237,6 +237,25 @@ describe('runAssistantTools', () => {
     ])
   })
 
+  it('puts the files and the history before the page, the most stable first', async () => {
+    const { tools } = fakeTools()
+    const model = toolCallingModel([{ text: 'ok' }])
+
+    await runAssistantTools(model, {
+      ...base,
+      tools,
+      history: [{ role: 'user', text: 'Earlier.' }],
+      files: [{ id: 2, name: 'a.md', chars: 9, parts: [{ start: 0, end: 9, summary: '- A' }] }],
+      page: { kind: 'project', id: 7, name: 'Shop' },
+    })
+
+    const user = model.doGenerateCalls[0]?.prompt.find((message) => message.role === 'user')
+    const parts = (user?.content ?? []).map((part) => (part.type === 'text' ? part.text : ''))
+    expect(parts[0]).toMatch(/^<files>/)
+    expect(parts[1]).toMatch(/^<history>/)
+    expect(parts[2]).toMatch(/^<page kind="project"/)
+  })
+
   it('refuses a history that does not fit, without a call', async () => {
     const { tools } = fakeTools()
     const model = toolCallingModel([{ text: 'never' }])

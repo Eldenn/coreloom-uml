@@ -27,6 +27,15 @@ import {
 import { ASSISTANT_NOT_FOUND, assistantEnabled } from '#app/assistant/services/assistant-flag'
 import { answerFromCode, type CodeAnswer } from '#app/assistant/services/code-request'
 import {
+  conversationFiles,
+  FILE_NOT_FOUND,
+  filePassages,
+  filesContext,
+  fileTextReader,
+  findConversationFile,
+  wholeFile,
+} from '#app/assistant/services/conversation-files'
+import {
   CONVERSATION_NOT_FOUND,
   findArchitectureConversation,
   findOwnedConversation,
@@ -80,9 +89,12 @@ export default class AssistantMessagesController {
     if (!found) return response.notFound(CONVERSATION_NOT_FOUND)
     const { architecture, conversation } = found
 
-    const { provider, apiKey, codeMapId, file, ...selection } =
+    const { provider, apiKey, codeMapId, fileId, ...selection } =
       await request.validateUsing(askAssistantInput)
     if (!selectsOwnViews(architecture, selection)) return response.notFound(DIAGRAM_NOT_FOUND)
+    const attached =
+      fileId === undefined ? null : await findConversationFile(conversation.id, fileId)
+    if (fileId !== undefined && !attached) return response.notFound(FILE_NOT_FOUND)
 
     const built = await userLanguageModel(provider, apiKey, user)
     if ('problem' in built)
@@ -153,11 +165,21 @@ export default class AssistantMessagesController {
       } satisfies AskAssistantOutput)
     }
 
-    // The file goes to the model with this message only; the stored message keeps its name.
-    const source = await assistantSource(architecture, conversation, {
-      ...selection,
-      message: withFile(selection.message, file),
-    })
+    // The diagram assistant has no tool: it reads the files beyond their summaries through the
+    // passages its request is about. A short file the message attaches goes whole instead.
+    const read = fileTextReader()
+    const whole = await wholeFile(attached, read)
+    const passages = await filePassages(
+      (await conversationFiles(conversation.id)).filter((item) => !whole || item.id !== fileId),
+      `${architecture.title} ${selection.message}`,
+      read,
+    )
+    const source = await assistantSource(
+      architecture,
+      conversation,
+      { ...selection, message: withFile(selection.message, whole) },
+      passages,
+    )
     const started = performance.now()
     let reply: Awaited<ReturnType<typeof askAssistant>>
     try {
@@ -188,7 +210,7 @@ export default class AssistantMessagesController {
       architectureId: architecture.id,
       content: reply.reply,
       changes,
-      fileName: file?.name,
+      fileName: attached?.name,
     })
 
     const next = await assistantSource(architecture, conversation, { ...selection, message: '' })
@@ -227,10 +249,11 @@ export default class AssistantMessagesController {
     const conversation = await findOwnedConversation(params.conversationId, user)
     if (!conversation) return response.notFound(CONVERSATION_NOT_FOUND)
 
-    const { provider, apiKey, message, locale, page, auto, file } =
+    const { provider, apiKey, message, locale, page, auto, fileId } =
       await request.validateUsing(chatInput)
-    // The file goes to the model with this message only; the stored message keeps its name.
-    const sent = withFile(message, file)
+    const attached =
+      fileId === undefined ? null : await findConversationFile(conversation.id, fileId)
+    if (fileId !== undefined && !attached) return response.notFound(FILE_NOT_FOUND)
     const built = await userLanguageModel(provider, apiKey, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
@@ -247,6 +270,11 @@ export default class AssistantMessagesController {
       provider.kind !== ProviderKind.OpenAICodex &&
       (await assistantActionsEnabled(user))
     const history = await conversationHistory(conversation)
+    const files = await conversationFiles(conversation.id)
+    const read = fileTextReader()
+    // A short file the message attaches goes whole with it; the others by their summaries.
+    const whole = await wholeFile(attached, read)
+    const sent = withFile(message, whole)
     const recorded: StoredAction[] = []
     let actions: StoredAction[] = []
     const started = performance.now()
@@ -254,9 +282,14 @@ export default class AssistantMessagesController {
     let handoff: HandoffOutput | null = null
     try {
       if (withTools) {
-        const tools = [...(await actionTools(user, recorded)), ...(await handoffTools(user))]
+        const tools = [
+          ...(await actionTools(user, recorded, { conversationId: conversation.id, read })),
+          ...(await handoffTools(user)),
+        ]
+        // With tools, the model reads the files itself (`file-actions.ts`).
         const result = await runAssistantTools(built.model, {
           history,
+          files: filesContext(files),
           message: sent,
           locale,
           page: await resolvePage(page, user),
@@ -267,7 +300,19 @@ export default class AssistantMessagesController {
         actions = recorded.slice(0, result.proposed.length)
         if (result.route) handoff = handoffOf(result.route)
       } else {
-        reply = await chatWithAssistant(built.model, { history, message: sent, locale })
+        // Without tools, it reads them through the passages its message is about.
+        const passages = await filePassages(
+          files.filter((item) => !whole || item.id !== fileId),
+          message,
+          read,
+        )
+        reply = await chatWithAssistant(built.model, {
+          history,
+          files: filesContext(files),
+          passages,
+          message: sent,
+          locale,
+        })
       }
     } catch (error) {
       const durationMs = Math.round(performance.now() - started)
@@ -303,7 +348,7 @@ export default class AssistantMessagesController {
       architectureId: null,
       content: reply,
       actions,
-      fileName: file?.name,
+      fileName: attached?.name,
     })
     return response.ok({
       messages: messages.map(serializeMessage),

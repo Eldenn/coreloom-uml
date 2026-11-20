@@ -1,4 +1,4 @@
-import { ASSISTANT_FILE_MAX_LENGTH, FILE_DIGEST_MAX_LENGTH } from '@coreloom-uml/llm'
+import { FILE_DIGEST_MAX_LENGTH } from '@coreloom-uml/llm'
 import vine from '@vinejs/vine'
 import {
   ASSISTANT_FILE_NAME_MAX_LENGTH,
@@ -34,19 +34,14 @@ const viewSelection = () => ({
 })
 
 /**
- * A text file attached to the message: the model reads it with that message, its name is stored
- * with the message and its content never is. Left out of a message about a code map.
+ * A file of the conversation (`POST …/files` stored it) that this message attaches: a short one
+ * goes whole with the message, a longer one by its summary and passages. Left out of a message
+ * about a code map.
  */
-const fileInput = () =>
-  vine
-    .object({
-      name: vine.string().trim().minLength(1).maxLength(ASSISTANT_FILE_NAME_MAX_LENGTH),
-      content: vine.string().minLength(1).maxLength(ASSISTANT_FILE_MAX_LENGTH),
-    })
-    .optional()
+const fileIdInput = () => vine.number().withoutDecimals().positive().optional()
 
-/** `POST /assistant/files/digest` — a file too long for a message, read into notes first. */
-export const digestFileInput = vine.create(
+/** `POST /assistant/conversations/:conversationId/files` — a file attached to the conversation. */
+export const attachFileInput = vine.create(
   vine.object({
     ...llmCallFields(),
     file: vine.object({
@@ -61,7 +56,7 @@ export const askAssistantInput = vine.create(
   vine.object({
     ...llmCallFields(),
     message: vine.string().trim().minLength(1).maxLength(ASSISTANT_MESSAGE_MAX_LENGTH),
-    file: fileInput(),
+    fileId: fileIdInput(),
     ...viewSelection(),
     /** A ready code map of the architecture's project: the message asks for a diagram of it. */
     codeMapId: vine.number().withoutDecimals().positive().optional(),
@@ -87,7 +82,7 @@ export const chatInput = vine.create(
     ...llmCallFields(),
     message: vine.string().trim().minLength(1).maxLength(ASSISTANT_MESSAGE_MAX_LENGTH),
     locale: vine.enum(ASSISTANT_LOCALES),
-    file: fileInput(),
+    fileId: fileIdInput(),
     /**
      * The owner lets the assistant decide what the message needs (actions, diagrams, the web).
      * Without it the message is a plain one, whatever the flags.

@@ -454,14 +454,17 @@ function WebProgress({
   )
 }
 
-/** A 422 `{ error: { code: 'context_full' } }`: the message would not fit the model's input. */
-function isContextFull(error: unknown) {
-  return (
-    error instanceof TuyauError &&
-    error.status === 422 &&
-    (error.response as { error?: { code?: string } } | undefined)?.error?.code === 'context_full'
-  )
+/** The `code` of an API refusal (`{ error: { code } }`) with this status. */
+function refusalCode(error: unknown, status: number) {
+  return error instanceof TuyauError && error.status === status
+    ? (error.response as { error?: { code?: string } } | undefined)?.error?.code
+    : undefined
 }
+
+/** A 422 `{ error: { code: 'context_full' } }`: the message would not fit the model's input. */
+const isContextFull = (error: unknown) => refusalCode(error, 422) === 'context_full'
+/** A 409 `{ error: { code: 'files_full' } }`: the conversation holds as many files as it can. */
+const isFilesFull = (error: unknown) => refusalCode(error, 409) === 'files_full'
 
 /** Whether the next message can't be sent, and whether continuing in a new conversation helps. */
 function fullness(budget: ContextBudget | undefined, messageCount: number, askError: unknown) {
@@ -593,7 +596,9 @@ function Notices({
       {provider === null && <NoProvider />}
       {askError !== null && (
         <Alert variant="destructive">
-          <AlertDescription>{failureText(providerCallFailure(askError))}</AlertDescription>
+          <AlertDescription>
+            {isFilesFull(askError) ? t.filesFull : failureText(providerCallFailure(askError))}
+          </AlertDescription>
         </Alert>
       )}
       {continueError !== null && (

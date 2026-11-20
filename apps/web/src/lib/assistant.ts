@@ -57,15 +57,13 @@ export const assistantKeys = {
   ) => ['assistant', 'context', architectureId, conversationId, selection, versions] as const,
 }
 
-/** A text file sent with one message: the API keeps its name, never its content. */
+/** A text file attached to a message: stored with the conversation, which goes on from it. */
 export interface AssistantFile {
   name: string
   content: string
 }
 
-/** The longest file a message carries, in characters (the API's `ASSISTANT_FILE_MAX_LENGTH`). */
-export const ASSISTANT_FILE_MAX_LENGTH = 60_000
-/** The longest file the model reads into notes first (the API's `FILE_DIGEST_MAX_LENGTH`). */
+/** The longest file a conversation takes (the API's `FILE_DIGEST_MAX_LENGTH`). */
 export const FILE_DIGEST_MAX_LENGTH = 600_000
 /** A PDF holds far more bytes than text: past this it is not even opened. */
 const PDF_MAX_BYTES = 50_000_000
@@ -117,35 +115,36 @@ export async function readAttachment(
   return { file: { name: first.name, content } }
 }
 
-/** The last long file read into notes, so asking again with it does not read it again. */
-let lastDigest: { source: AssistantFile; model: string; notes: AssistantFile } | null = null
+/** The last file attached, so a message sent again with it does not attach it again. */
+let lastAttached: { conversationId: number; file: AssistantFile; fileId: number } | null = null
 
 /**
- * The file as a message carries it: itself when short enough, else the notes the user's model
- * takes of it in a call of its own (`POST /assistant/files/digest`), told by `onReading`.
+ * Attaches a file to the conversation (`POST …/files`): the user's model summarizes it in a call
+ * of its own, told by `onReading`, then the conversation keeps it and the next messages go on
+ * from it without attaching it again. Answers the id the message names it by.
  */
-async function sendable(
+async function attachFile(
   provider: StoredProvider,
+  conversationId: number,
   file: AssistantFile | null | undefined,
   onReading?: (reading: boolean) => void,
-): Promise<AssistantFile | null> {
+): Promise<number | null> {
   if (!file) return null
-  if (file.content.length <= ASSISTANT_FILE_MAX_LENGTH) return file
-  const model = `${provider.kind}/${provider.model}`
   if (
-    lastDigest?.model === model &&
-    lastDigest.source.name === file.name &&
-    lastDigest.source.content === file.content
+    lastAttached?.conversationId === conversationId &&
+    lastAttached.file.name === file.name &&
+    lastAttached.file.content === file.content
   )
-    return lastDigest.notes
+    return lastAttached.fileId
   onReading?.(true)
   try {
-    const { file: notes } = await api.files.digest({
+    const { file: attached } = await api.files.store({
+      params: { conversationId },
       body: { ...callBody(provider), file },
       ...MODEL_CALL,
     })
-    lastDigest = { source: file, model, notes }
-    return notes
+    lastAttached = { conversationId, file, fileId: attached.id }
+    return attached.id
   } finally {
     onReading?.(false)
   }
@@ -247,15 +246,15 @@ export function useAskAssistant(conversationId: number) {
       /** With `auto`: where the owner is, so that "here" means something. */
       page?: AssistantPage
       /**
-       * A file the model reads with this message; it follows a handed-over message. A long one is
-       * read into notes first, and `onReading` hears when that reading starts and ends.
+       * A file attached with this message; it follows a handed-over message. It is attached to
+       * the conversation first, and `onReading` hears when that reading starts and ends.
        */
       file?: AssistantFile | null
       onReading?: (reading: boolean) => void
       onHandoff?: (handoff: AssistantHandoff) => void
       viewsOf?: (architectureId: number) => ViewSelection
     }): Promise<{ messages: AssistantMessage[]; handoff: AssistantHandoff | null }> => {
-      const file = await sendable(provider, attached, onReading)
+      const fileId = await attachFile(provider, conversationId, attached, onReading)
       const aboutArchitecture = async (id: number, views: Partial<ViewSelection>) => {
         const { messages } = await about.messages.store({
           params: { id, conversationId },
@@ -265,7 +264,7 @@ export function useAskAssistant(conversationId: number) {
             currentDiagramId: null,
             ...views,
             locale,
-            ...(file ? { file } : {}),
+            ...(fileId === null ? {} : { fileId }),
           },
           ...MODEL_CALL,
         })
@@ -279,7 +278,7 @@ export function useAskAssistant(conversationId: number) {
           ...callBody(provider),
           message,
           locale,
-          ...(file ? { file } : {}),
+          ...(fileId === null ? {} : { fileId }),
           ...(auto ? { auto: true, ...(page ? { page } : {}) } : {}),
         },
         ...MODEL_CALL,

@@ -1,6 +1,8 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import hash from '@adonisjs/core/services/hash'
 import { deleteAccountInput } from '#app/account/validators/account-input'
+import AssistantFile from '#app/assistant/models/assistant-file'
+import { deleteConversationFileTexts } from '#app/assistant/services/conversation-files'
 import { DEFAULT_ACCOUNT_MANAGED_MESSAGE } from '#app/auth/constants/default-account'
 import { isDefaultAccount } from '#app/auth/services/default-account'
 import CodeMap from '#app/code-maps/models/code-map'
@@ -25,11 +27,13 @@ export default class DeleteAccountController {
 
     await auth.use('web').logout()
     const codeMaps = await CodeMap.query().where('userId', user.id).select('storageKey')
+    const files = await AssistantFile.query().where('userId', user.id).select('storageKey')
     await user.delete()
-    // The Claude credentials live in a folder and code maps in Drive, not in rows: the cascade
-    // does not reach them.
+    // The Claude credentials live in a folder, code maps and the assistant's files in Drive, not
+    // in rows: the cascade does not reach them.
     await forgetClaude(user)
     await deleteCodeMapFiles(codeMaps.map((codeMap) => codeMap.storageKey))
+    await deleteConversationFileTexts(files.map((file) => file.storageKey))
 
     return response.noContent()
   }

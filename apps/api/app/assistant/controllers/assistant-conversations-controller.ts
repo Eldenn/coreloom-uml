@@ -12,6 +12,10 @@ import {
 import { conversationHistory } from '#app/assistant/services/assistant-context'
 import { ASSISTANT_NOT_FOUND, assistantEnabled } from '#app/assistant/services/assistant-flag'
 import {
+  conversationFiles,
+  deleteConversationFileTexts,
+} from '#app/assistant/services/conversation-files'
+import {
   CONVERSATION_NOT_FOUND,
   findOwnedConversation,
 } from '#app/assistant/services/owned-conversation'
@@ -159,7 +163,10 @@ export default class AssistantConversationsController {
     const conversation = await findOwnedConversation(params.conversationId, user)
     if (!conversation) return response.notFound(CONVERSATION_NOT_FOUND)
 
+    const files = await conversationFiles(conversation.id)
     await conversation.delete()
+    // Its files' texts are objects in Drive: the cascade does not reach them.
+    await deleteConversationFileTexts(files.map((file) => file.storageKey))
 
     return response.noContent()
   }

@@ -31,6 +31,10 @@ export const ASSISTANT_MESSAGE_MAX_LENGTH = 4000
 /** As the `file_name` column. */
 export const ASSISTANT_FILE_NAME_MAX_LENGTH = 255
 export const ASSISTANT_TITLE_MAX_LENGTH = 200
+/** Folder of the conversations' files in Drive: `assistant-files/<conversationId>/<uuid>.txt.gz`. */
+export const ASSISTANT_FILES_STORAGE_FOLDER = 'assistant-files'
+/** Most files one conversation holds. */
+export const CONVERSATION_FILES_MAX = 4
 /** A conversation without a title takes the first characters of its first message. */
 export const ASSISTANT_TITLE_FROM_MESSAGE = 60
 

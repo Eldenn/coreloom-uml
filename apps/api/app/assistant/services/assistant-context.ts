@@ -1,4 +1,9 @@
-import { type AssistantSource, type AssistantTurn, changeLine } from '@coreloom-uml/llm'
+import {
+  type AssistantSource,
+  type AssistantTurn,
+  changeLine,
+  type FilePassageText,
+} from '@coreloom-uml/llm'
 import type Architecture from '#app/architectures/models/architecture'
 import {
   AssistantRole,
@@ -7,6 +12,7 @@ import {
 } from '#app/assistant/constants/assistant'
 import type AssistantConversation from '#app/assistant/models/assistant-conversation'
 import AssistantMessage from '#app/assistant/models/assistant-message'
+import { conversationFiles, filesContext } from '#app/assistant/services/conversation-files'
 
 export type ViewSelection = {
   message: string
@@ -25,13 +31,15 @@ export function selectsOwnViews(architecture: Architecture, selection: ViewSelec
 
 /**
  * What `askAssistant` (and `assistantBudget`) is given for the next message: the selected views
- * as they are now, and the stored conversation, where a proposed change is one `changeLine`, never
- * its diagrams.
+ * as they are now, the stored conversation, where a proposed change is one `changeLine`, never
+ * its diagrams, and the conversation's files by name and summary, with the `passages` read for
+ * this message.
  */
 export async function assistantSource(
   architecture: Architecture,
   conversation: AssistantConversation,
   selection: ViewSelection,
+  passages: FilePassageText[] = [],
 ): Promise<AssistantSource> {
   const { message, currentDiagramId, diagramIds, locale } = selection
   return {
@@ -49,6 +57,8 @@ export async function assistantSource(
         current: diagram.id === currentDiagramId,
       })),
     history: await conversationHistory(conversation),
+    files: filesContext(await conversationFiles(conversation.id)),
+    passages,
     message,
     locale,
   }
@@ -69,7 +79,11 @@ export async function conversationHistory(
 }
 
 function historyTurn(message: AssistantMessage): AssistantTurn {
-  if (message.role !== AssistantRole.Assistant) return { role: message.role, text: message.content }
+  if (message.role !== AssistantRole.Assistant) {
+    // The file itself is in <files>: the turn names it only.
+    const file = message.fileName === null ? '' : `\n(attached file: ${message.fileName})`
+    return { role: message.role, text: message.content + file }
+  }
   const lines = (message.changes ?? []).map((change) =>
     changeLine({ ...change, diagramId: change.diagramId ?? undefined }),
   )
