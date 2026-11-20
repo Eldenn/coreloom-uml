@@ -28,6 +28,8 @@ export const ChangeOp = {
 export type ChangeOp = (typeof ChangeOp)[keyof typeof ChangeOp]
 
 export const ASSISTANT_MESSAGE_MAX_LENGTH = 4000
+/** As the `file_name` column. */
+export const ASSISTANT_FILE_NAME_MAX_LENGTH = 255
 export const ASSISTANT_TITLE_MAX_LENGTH = 200
 /** A conversation without a title takes the first characters of its first message. */
 export const ASSISTANT_TITLE_FROM_MESSAGE = 60

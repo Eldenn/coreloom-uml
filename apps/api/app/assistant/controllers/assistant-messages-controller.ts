@@ -7,6 +7,7 @@ import {
   chatWithAssistant,
   LlmCallError,
   runAssistantTools,
+  withFile,
 } from '@coreloom-uml/llm'
 import { actionTools } from '#app/assistant/actions/registry'
 import { AssistantRole, ChangeStatus, type StoredAction } from '#app/assistant/constants/assistant'
@@ -79,7 +80,7 @@ export default class AssistantMessagesController {
     if (!found) return response.notFound(CONVERSATION_NOT_FOUND)
     const { architecture, conversation } = found
 
-    const { provider, apiKey, codeMapId, ...selection } =
+    const { provider, apiKey, codeMapId, file, ...selection } =
       await request.validateUsing(askAssistantInput)
     if (!selectsOwnViews(architecture, selection)) return response.notFound(DIAGRAM_NOT_FOUND)
 
@@ -152,7 +153,11 @@ export default class AssistantMessagesController {
       } satisfies AskAssistantOutput)
     }
 
-    const source = await assistantSource(architecture, conversation, selection)
+    // The file goes to the model with this message only; the stored message keeps its name.
+    const source = await assistantSource(architecture, conversation, {
+      ...selection,
+      message: withFile(selection.message, file),
+    })
     const started = performance.now()
     let reply: Awaited<ReturnType<typeof askAssistant>>
     try {
@@ -183,6 +188,7 @@ export default class AssistantMessagesController {
       architectureId: architecture.id,
       content: reply.reply,
       changes,
+      fileName: file?.name,
     })
 
     const next = await assistantSource(architecture, conversation, { ...selection, message: '' })
@@ -221,7 +227,10 @@ export default class AssistantMessagesController {
     const conversation = await findOwnedConversation(params.conversationId, user)
     if (!conversation) return response.notFound(CONVERSATION_NOT_FOUND)
 
-    const { provider, apiKey, message, locale, page, auto } = await request.validateUsing(chatInput)
+    const { provider, apiKey, message, locale, page, auto, file } =
+      await request.validateUsing(chatInput)
+    // The file goes to the model with this message only; the stored message keeps its name.
+    const sent = withFile(message, file)
     const built = await userLanguageModel(provider, apiKey, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
@@ -248,7 +257,7 @@ export default class AssistantMessagesController {
         const tools = [...(await actionTools(user, recorded)), ...(await handoffTools(user))]
         const result = await runAssistantTools(built.model, {
           history,
-          message,
+          message: sent,
           locale,
           page: await resolvePage(page, user),
           tools,
@@ -258,7 +267,7 @@ export default class AssistantMessagesController {
         actions = recorded.slice(0, result.proposed.length)
         if (result.route) handoff = handoffOf(result.route)
       } else {
-        reply = await chatWithAssistant(built.model, { history, message, locale })
+        reply = await chatWithAssistant(built.model, { history, message: sent, locale })
       }
     } catch (error) {
       const durationMs = Math.round(performance.now() - started)
@@ -294,6 +303,7 @@ export default class AssistantMessagesController {
       architectureId: null,
       content: reply,
       actions,
+      fileName: file?.name,
     })
     return response.ok({
       messages: messages.map(serializeMessage),

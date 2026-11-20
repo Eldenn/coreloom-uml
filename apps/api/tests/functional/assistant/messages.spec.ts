@@ -264,6 +264,30 @@ test.group('Assistant messages', (group) => {
     assert.notInclude(prompts[1], 'Domain')
   })
 
+  test('the attached file reaches the model; only its name is stored', async ({
+    client,
+    assert,
+  }) => {
+    const { user, diagram, conversation, base } = await setup('assist-msg-file@example.com')
+    const model = answeringModel(answer([], 'Read.'))
+    useModel(model)
+
+    const response = await client
+      .post(`${base}/messages`)
+      .headers(json)
+      .loginAs(user)
+      .json(ask(diagram.id, { file: { name: 'spec.md', content: 'Orders ship in boxes.' } }))
+
+    response.assertStatus(200)
+    const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt)
+    assert.include(prompt, '<file name=\\"spec.md\\">')
+    assert.include(prompt, 'Orders ship in boxes.')
+    const [asked, answered] = await storedMessages(conversation.id)
+    assert.equal(asked?.fileName, 'spec.md')
+    assert.equal(asked?.content, 'Replace B with C in the domain view.')
+    assert.isNull(answered?.fileName)
+  })
+
   test('never changes a diagram', async ({ client, assert }) => {
     const { user, architecture, diagram, other, conversation, base } = await setup(
       'assist-msg-never@example.com',

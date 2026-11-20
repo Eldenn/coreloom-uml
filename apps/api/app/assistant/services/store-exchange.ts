@@ -23,6 +23,8 @@ export function storeExchange(
     changes?: StoredChange[]
     proposals?: StoredProposals
     actions?: StoredAction[]
+    /** The name of the file the message came with; its content is not stored. */
+    fileName?: string
   },
 ) {
   const { architectureId } = answer
@@ -33,6 +35,7 @@ export function storeExchange(
         architectureId,
         role: AssistantRole.User,
         content: message,
+        fileName: answer.fileName ?? null,
       },
       { client: trx },
     )

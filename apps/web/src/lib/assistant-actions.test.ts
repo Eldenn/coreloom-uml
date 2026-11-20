@@ -17,6 +17,32 @@ describe('actionRows', () => {
     ])
   })
 
+  it('shows every rule new agent conventions start with', () => {
+    expect(
+      rows(
+        'create_agent_config',
+        {
+          name: 'Shop rules',
+          projectId: 2,
+          targets: ['claude-code', 'cursor'],
+          rules: [{ section: 'Testing', text: 'Write tests first' }],
+          readyRules: [
+            { slot: 'typescript.any', rule: 'agree' },
+            { slot: 'git.branch', rule: 'named', value: 'main' },
+          ],
+        },
+        'Shop',
+      ),
+    ).toEqual([
+      { label: 'name', value: 'Shop rules' },
+      { label: 'in', value: 'Shop' },
+      { label: 'targets', value: 'claude-code, cursor' },
+      { label: 'readyRule', value: 'typescript.any: agree' },
+      { label: 'readyRule', value: 'git.branch: named (main)' },
+      { label: 'text', value: 'Testing: Write tests first' },
+    ])
+  })
+
   it('shows the title of an architecture and its project when it has one', () => {
     expect(rows('create_architecture', { title: 'Payments' })).toEqual([
       { label: 'title', value: 'Payments' },

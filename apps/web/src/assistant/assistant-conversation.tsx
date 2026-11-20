@@ -27,6 +27,8 @@ import {
   type AssistantHandoff,
   type AutosaveControl,
   budgetLevel,
+  type FileProblem,
+  readAttachment,
   useAskAssistant,
   useContextBudget,
   useContinueConversation,
@@ -117,14 +119,26 @@ export function Conversation({
     workspace && { architectureId: workspace.architecture.id, autosave: workspace.autosave },
   )
   const [draft, setDraft] = React.useState('')
+  /** Why the file attached to the last message could not be sent. */
+  const [fileProblem, setFileProblem] = React.useState<FileProblem | null>(null)
   /** A message the server handed over, from its answer until it was sent again that way. */
   const [handed, setHanded] = React.useState<Handed | null>(null)
 
   const messages = detail.data?.messages ?? []
   const { budget, askError } = watched(fromCode, context.data, ask.error)
 
-  const send = (text: string) => {
+  const send = async (typed: string, files: File[]) => {
     if (!provider) return
+    const attachment = await readAttachment(files)
+    setFileProblem('problem' in attachment ? attachment.problem : null)
+    if ('problem' in attachment) {
+      // The field cleared itself on submit: the text comes back, the file is picked again.
+      setDraft((now) => (now === '' ? typed : now))
+      return
+    }
+    const { file } = attachment
+    // A file alone is a request too.
+    const text = typed === '' ? t.fileOnlyMessage : typed
     // The field cleared itself on submit: the text comes back so nothing is lost.
     const restore = () => {
       setDraft((now) => (now === '' ? text : now))
@@ -143,6 +157,7 @@ export function Conversation({
       .mutateAsync({
         provider,
         message: text,
+        file,
         architectureId: architectureOf(subject),
         ...views.selection,
         ...subject.code.sent,
@@ -171,6 +186,7 @@ export function Conversation({
         messages={messages}
         loaded={detail.isSuccess}
         asking={pending.text}
+        askingFile={ask.isPending ? ask.variables.file?.name : null}
         waiting={pending.typing || proceed.isPending}
         progress={
           <>
@@ -219,11 +235,15 @@ export function Conversation({
             },
           )
         }}
-        onSend={send}
+        fileProblem={fileProblem}
+        onSend={(text, files) => void send(text, files)}
       />
     </>
   )
 }
+
+/** The text files the picker offers; anything else that reads as text is taken too. */
+const ATTACHMENT_TYPES = 'text/*,.md,.markdown,.txt,.json,.yaml,.yml,.toml,.xml,.csv,.puml,.mmd'
 
 /** Under the messages: what went wrong, what the message is about, and the prompt. */
 function Composer({
@@ -238,6 +258,7 @@ function Composer({
   handing,
   proceed,
   onContinue,
+  fileProblem,
   onSend,
 }: {
   provider: StoredProvider | null
@@ -252,7 +273,9 @@ function Composer({
   handing: boolean
   proceed: ReturnType<typeof useContinueConversation>
   onContinue: () => void
-  onSend: (text: string) => void
+  /** Why the file of the last message could not be sent; told until the next one. */
+  fileProblem: FileProblem | null
+  onSend: (text: string, files: File[]) => void
 }) {
   const t = useT().assistant
   const sending = ask.isPending || web.step !== null || handing
@@ -271,6 +294,7 @@ function Composer({
         onContinue={onContinue}
       />
       {web.error !== null && <ProposalsFailed error={web.error} />}
+      <FileProblemNotice problem={fileProblem} />
       {subject.webOffered && manual(subject) && containsWebAddress(draft) && (
         <p className="m-0 flex flex-wrap items-center gap-x-2 text-[12px] text-muted-foreground">
           {t.addressFound}
@@ -298,11 +322,28 @@ function Composer({
         placeholder={placeholder(t, subject)}
         status={sending ? 'submitted' : 'ready'}
         disabled={!provider || full || proceed.isPending || noTarget}
-        onSubmit={({ text }) => {
-          onSend(text)
+        allowAttachments={takesFile(subject)}
+        accept={ATTACHMENT_TYPES}
+        onSubmit={({ text, files }) => {
+          onSend(text, files)
         }}
       />
     </div>
+  )
+}
+
+/** A web research reads pages and a code request reads a map: neither takes a file. */
+function takesFile(subject: Subject) {
+  return subject.mode !== 'web' && subject.code.sent === undefined
+}
+
+function FileProblemNotice({ problem }: { problem: FileProblem | null }) {
+  const t = useT().assistant
+  if (problem === null) return null
+  return (
+    <p role="alert" className="m-0 text-[12px] text-destructive">
+      {t.fileProblems[problem]}
+    </p>
   )
 }
 

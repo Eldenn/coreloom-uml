@@ -30,6 +30,8 @@ export type MessageOutput = {
   content: string
   /** The architecture the message is about; null for none. */
   architectureId: number | null
+  /** The name of the file a user message came with; null without one. */
+  fileName: string | null
   changes: ChangeOutput[] | null
   proposals: StoredProposals | null
   actions: ActionOutput[] | null
