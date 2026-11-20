@@ -1342,7 +1342,7 @@ export const en = {
     researchWriting: (model: string) => `${model} is writing the proposals…`,
     researchSources: 'Pages read',
     researchSteps: 'What the model is doing',
-    researchStepKind: { page: 'Reading', command: 'Running' },
+    researchComputer: 'The assistant’s computer',
     researchStepState: { running: 'In progress', done: 'Done', failed: 'Failed' },
     researchNoSources: 'No page was read: the model worked from commands only.',
     researchNoSubscription:
@@ -2750,7 +2750,7 @@ export const fr: Messages = {
     researchWriting: (model: string) => `${model} rédige les propositions…`,
     researchSources: 'Pages lues',
     researchSteps: 'Ce que fait le modèle',
-    researchStepKind: { page: 'Lecture de', command: 'Commande' },
+    researchComputer: 'L’ordinateur de l’assistant',
     researchStepState: { running: 'En cours', done: 'Terminé', failed: 'Échec' },
     researchNoSources:
       'Aucune page n’a été lue : le modèle a travaillé avec des commandes seulement.',

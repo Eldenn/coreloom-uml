@@ -2,7 +2,7 @@
 // the ready-made rules to hold (added together) and the rules of the owner's own (accepted one by
 // one). Shared by the import panel and by the assistant's messages that carry proposals; nothing is
 // stored before the owner adds a rule.
-import { CheckIcon, XIcon } from 'lucide-react'
+import { SquareTerminalIcon } from 'lucide-react'
 import * as React from 'react'
 
 import { ProposalsReview } from '@/agent-configs/agent-config-proposals'
@@ -13,8 +13,10 @@ import {
   type ReviewedReadyRule,
   withProposed,
 } from '@/agent-configs/import-rules'
+import { researchScreen } from '@/agent-configs/research-screen'
 import { AppliedBadge, RuleText } from '@/agent-configs/rule-text'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AnsiOutput } from '@/components/ui/ansi-output'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
@@ -22,7 +24,7 @@ import { toast } from '@/components/ui/sonner'
 import { Spinner } from '@/components/ui/spinner'
 import { type AgentConfig, useSaveReadyRules } from '@/lib/agent-configs'
 import { getErrorMessage } from '@/lib/client'
-import { type ResearchSource, type ResearchStep, useResearchProgress } from '@/lib/llm-provider'
+import { type ResearchSource, useResearchProgress } from '@/lib/llm-provider'
 import { useLocale, useT } from '@/lib/locale'
 import { type Choice, fillValue, heldBySlot } from '@/lib/ready-rules'
 
@@ -96,39 +98,39 @@ export function ImportReview({
   )
 }
 
-/** What the model has done in the sandbox so far, while the research runs. */
+/**
+ * The sandbox as a small terminal while the research runs: what the model has read and run so far,
+ * never a result. Read-only: nothing typed here could reach the sandbox.
+ */
 export function ResearchSteps({ configId }: { configId: number }) {
   const t = useT()
   const steps = useResearchProgress(configId, true).data ?? []
   if (steps.length === 0) return null
+  const running = steps.some((step) => step.state === 'running')
   return (
-    <ol aria-label={t.llm.researchSteps} className="flex flex-col gap-1 text-sm">
-      {steps.map((step) => (
-        <li key={step.position} className="flex min-w-0 items-start gap-2">
-          <ResearchStepState state={step.state} />
-          <span className="min-w-0 break-all">
-            <span className="text-muted-foreground">{t.llm.researchStepKind[step.kind]}</span>{' '}
-            {step.kind === 'command' ? <code>{step.label}</code> : step.label}
-          </span>
-        </li>
-      ))}
-    </ol>
-  )
-}
-
-function ResearchStepState({ state }: { state: ResearchStep['state'] }) {
-  const t = useT()
-  const label = t.llm.researchStepState[state]
-  const icon = {
-    running: <Spinner />,
-    done: <CheckIcon aria-hidden className="size-4" />,
-    failed: <XIcon aria-hidden className="size-4 text-destructive" />,
-  }[state]
-  return (
-    <span className="mt-0.5 shrink-0">
-      {icon}
-      <span className="sr-only">{label}</span>
-    </span>
+    <section
+      aria-label={t.llm.researchSteps}
+      className="overflow-hidden rounded-lg border border-border bg-inset"
+    >
+      <div className="flex h-9 items-center gap-2 border-b border-border-subtle px-3">
+        <SquareTerminalIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
+          {t.llm.researchComputer}
+        </span>
+        {running && <Spinner className="size-3.5 text-muted-foreground" />}
+        <span className="sr-only" role="status">
+          {running ? t.llm.researchStepState.running : ''}
+        </span>
+      </div>
+      <AnsiOutput
+        text={researchScreen(steps, t.llm.researchStepState.failed)}
+        // An address the model chose is text to read, not a link to follow.
+        links={false}
+        maxHeight="12rem"
+        aria-label={t.llm.researchComputer}
+        className="rounded-none border-0"
+      />
+    </section>
   )
 }
 
