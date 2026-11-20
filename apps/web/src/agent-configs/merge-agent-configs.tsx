@@ -1,4 +1,4 @@
-// Merges several agent conventions into new ones: pick them, name the result and, when the API
+// Merges the agent conventions picked in the list into new ones: name the result and, when the API
 // answers conflicts, choose which source's version to keep before sending again.
 import { useNavigate } from '@tanstack/react-router'
 import * as React from 'react'
@@ -21,7 +21,6 @@ import { toast } from '@/components/ui/sonner'
 import {
   type MergeConflicts,
   NAME_MAX_LENGTH,
-  useAgentConfigs,
   useMergeAgentConfigs,
   useRulePacks,
 } from '@/lib/agent-configs'
@@ -39,13 +38,15 @@ const ruleKey = (slot: string) => `rule:${slot}`
 const roleKey = (slug: string) => `role:${slug}`
 
 /** The conflicts the API answered, worded for the screen. */
-function useShownConflicts(conflicts: MergeConflicts | null): Conflict[] {
+function useShownConflicts(
+  conflicts: MergeConflicts | null,
+  sources: { id: number; name: string }[],
+): Conflict[] {
   const t = useT()
   const localized = useLocalized()
-  const configs = useAgentConfigs({}).data?.data ?? []
   const packs = useRulePacks().data ?? []
   const sourceName = (sourceId: number) =>
-    configs.find((config) => config.id === sourceId)?.name ?? String(sourceId)
+    sources.find((source) => source.id === sourceId)?.name ?? String(sourceId)
   const groups = packs.flatMap((pack) => pack.groups)
   return conflicts
     ? [
@@ -132,26 +133,30 @@ function ConflictChoices({
 export function MergeAgentConfigsDialog({
   open,
   onOpenChange,
+  sources,
+  onMerged,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** The configurations to merge, in the order they were picked. */
+  sources: { id: number; name: string }[]
+  onMerged: () => void
 }) {
   const t = useT()
   const navigate = useNavigate()
-  const configs = useAgentConfigs({}).data?.data ?? []
   const merge = useMergeAgentConfigs()
+  const sourcesId = React.useId()
   const [conflicts, setConflicts] = React.useState<MergeConflicts | null>(null)
   /** The source kept for each conflict, by the conflict's key. */
   const [choices, setChoices] = React.useState<Partial<Record<string, number>>>({})
 
-  const shown = useShownConflicts(conflicts)
+  const shown = useShownConflicts(conflicts, sources)
 
   const form = useAppForm({
-    defaultValues: { name: '', sourceIds: [] as string[] },
+    defaultValues: { name: '' },
     validators: {
       onSubmit: z.object({
         name: z.string().trim().min(1, t.agents.nameRequired).max(NAME_MAX_LENGTH),
-        sourceIds: z.array(z.string()).min(2, t.agents.mergeNeedTwo),
       }),
     },
     onSubmit: async ({ value }) => {
@@ -162,7 +167,7 @@ export function MergeAgentConfigsDialog({
       try {
         const body = await merge.mutateAsync({
           name: value.name.trim(),
-          sourceIds: value.sourceIds.map(Number),
+          sourceIds: sources.map((source) => source.id),
           choices: {
             readyRules: (conflicts?.readyRules ?? []).map(({ slot }) => ({
               slot,
@@ -179,6 +184,7 @@ export function MergeAgentConfigsDialog({
           return
         }
         close()
+        onMerged()
         toast.success(t.agents.merged)
         void navigate({ to: '/agent-configs/$id', params: { id: body.config.id } })
       } catch (error) {
@@ -216,27 +222,14 @@ export function MergeAgentConfigsDialog({
           }}
         >
           <form.AppForm>
-            <form.AppField
-              name="sourceIds"
-              listeners={{
-                // Other sources, other conflicts: the API answers them again on the next send.
-                onChange: () => {
-                  setConflicts(null)
-                  setChoices({})
-                },
-              }}
-            >
-              {(field) => (
-                <field.MultiSelectField
-                  label={t.agents.mergeSources}
-                  placeholder={t.agents.mergeSourcesPlaceholder}
-                  options={configs.map((config) => ({
-                    value: String(config.id),
-                    label: config.name,
-                  }))}
-                />
-              )}
-            </form.AppField>
+            <Field>
+              <FieldLabel id={sourcesId}>{t.agents.mergeSources}</FieldLabel>
+              <ul aria-labelledby={sourcesId} className="list-disc pl-5 text-muted-foreground">
+                {sources.map((source) => (
+                  <li key={source.id}>{source.name}</li>
+                ))}
+              </ul>
+            </Field>
             <form.AppField name="name">
               {(field) => <field.TextField label={t.agents.nameLabel} autoComplete="off" />}
             </form.AppField>
