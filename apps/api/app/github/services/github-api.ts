@@ -1,4 +1,5 @@
 import { createSign } from 'node:crypto'
+import logger from '@adonisjs/core/services/logger'
 import {
   GITHUB_API_VERSION,
   GITHUB_LIMITS,
@@ -165,17 +166,21 @@ export default class GithubApi {
     installationId: number,
     repositoryId: number,
   ): Promise<GithubResult<string>> {
-    const answer = await this.#api(`/app/installations/${String(installationId)}/access_tokens`, {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${appJwt(config)}`,
-        'content-type': 'application/json',
+    const answer = await this.#api(
+      `/app/installations/${String(installationId)}/access_tokens`,
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${appJwt(config)}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          repository_ids: [repositoryId],
+          permissions: { contents: 'read', metadata: 'read' },
+        }),
       },
-      body: JSON.stringify({
-        repository_ids: [repositoryId],
-        permissions: { contents: 'read', metadata: 'read' },
-      }),
-    })
+      'GitHub refused an installation token',
+    )
     if (!answer.ok) return answer
     const token = (answer.value as { token?: unknown }).token
     if (typeof token !== 'string' || token === '')
@@ -280,23 +285,34 @@ export default class GithubApi {
     }
   }
 
-  #api(path: string, init: RequestInit): Promise<GithubResult<unknown>> {
-    return this.#call(`${GITHUB_URLS.api}${path}`, {
-      ...init,
-      headers: {
-        accept: 'application/vnd.github+json',
-        'x-github-api-version': GITHUB_API_VERSION,
-        ...(init.headers as Record<string, string>),
+  #api(path: string, init: RequestInit, refusal?: string): Promise<GithubResult<unknown>> {
+    return this.#call(
+      `${GITHUB_URLS.api}${path}`,
+      {
+        ...init,
+        headers: {
+          accept: 'application/vnd.github+json',
+          'x-github-api-version': GITHUB_API_VERSION,
+          ...(init.headers as Record<string, string>),
+        },
       },
-    })
+      refusal,
+    )
   }
 
-  async #call(url: string, init: RequestInit): Promise<GithubResult<unknown>> {
+  /**
+   * With `refusal`, a refused call is logged with its status and GitHub's own `message` (a
+   * sentence such as "The permissions requested are not granted to this installation."), never
+   * the request: it carries the App's JWT or a token.
+   */
+  async #call(url: string, init: RequestInit, refusal?: string): Promise<GithubResult<unknown>> {
     const response = await this.#send(url, init)
     if (!response) return { ok: false, failure: GithubFailure.Unreachable }
     if (response.status === 204) return { ok: true, value: null }
     if (!response.ok) {
-      await response.body?.cancel()
+      if (refusal)
+        logger.warn({ status: response.status, message: await errorMessage(response) }, refusal)
+      else await response.body?.cancel()
       return { ok: false, failure: failureOf(response.status) }
     }
     try {
@@ -332,6 +348,19 @@ function isRepository({ owner, name }: { owner: string; name: string }): boolean
 /** 401, 403, 404, 422: the code, token or installation is refused. 5xx and 429: try later. */
 function failureOf(status: number): GithubFailure {
   return status < 500 && status !== 429 ? GithubFailure.Denied : GithubFailure.Unreachable
+}
+
+/** GitHub's `message` in an error body, cut to 300 characters; null when there is none. */
+async function errorMessage(response: Response): Promise<string | null> {
+  const body = await readCapped(response, 16_384).catch(() => null)
+  if (!body) return null
+  try {
+    const message = (JSON.parse(Buffer.from(body).toString('utf8')) as { message?: unknown })
+      .message
+    return typeof message === 'string' ? message.slice(0, 300) : null
+  } catch {
+    return null
+  }
 }
 
 /** The body, or null as soon as it grows past `limit` bytes (the rest is never downloaded). */
