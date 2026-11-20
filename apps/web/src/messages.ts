@@ -97,6 +97,17 @@ export const en = {
     deleteTitle: (title: string) => `Delete “${title}”?`,
     deleteText:
       'Its diagrams and share links go with it. People who had the link can no longer open it.',
+    select: (title: string) => `Select ${title}`,
+    deleteManyTitle: (count: number) =>
+      count === 1 ? 'Delete 1 architecture?' : `Delete ${count} architectures?`,
+    deleteManyText:
+      'Their diagrams and share links go with them. People who had a link can no longer open it.',
+    deletedMany: (count: number) =>
+      count === 1 ? '1 architecture deleted.' : `${count} architectures deleted.`,
+    deleteManyFailed: (count: number) =>
+      count === 1
+        ? '1 architecture could not be deleted.'
+        : `${count} architectures could not be deleted.`,
     loadFailed: 'The architectures could not be loaded.',
     retry: 'Retry',
     move: 'Change project',
@@ -107,6 +118,15 @@ export const en = {
     moveTargetRequired: 'Pick a project, or no project.',
     moveSubmit: 'Move',
     moved: 'Architecture moved.',
+    moveSelected: 'Move',
+    moveManyTitle: (count: number) =>
+      count === 1 ? 'Move 1 architecture' : `Move ${count} architectures`,
+    movedMany: (count: number) =>
+      count === 1 ? '1 architecture moved.' : `${count} architectures moved.`,
+    moveManyFailed: (count: number) =>
+      count === 1
+        ? '1 architecture could not be moved.'
+        : `${count} architectures could not be moved.`,
   },
   agents: {
     tab: 'Agent conventions',
@@ -1463,6 +1483,17 @@ export const fr: Messages = {
     deleteTitle: (title: string) => `Supprimer « ${title} » ?`,
     deleteText:
       'Ses diagrammes et ses liens de partage disparaissent avec elle. Les personnes qui avaient le lien ne peuvent plus l’ouvrir.',
+    select: (title: string) => `Sélectionner ${title}`,
+    deleteManyTitle: (count: number) =>
+      count === 1 ? 'Supprimer 1 architecture ?' : `Supprimer ${count} architectures ?`,
+    deleteManyText:
+      'Leurs diagrammes et leurs liens de partage disparaissent avec elles. Les personnes qui avaient un lien ne peuvent plus l’ouvrir.',
+    deletedMany: (count: number) =>
+      count === 1 ? '1 architecture supprimée.' : `${count} architectures supprimées.`,
+    deleteManyFailed: (count: number) =>
+      count === 1
+        ? '1 architecture n’a pas pu être supprimée.'
+        : `${count} architectures n’ont pas pu être supprimées.`,
     loadFailed: 'Les architectures n’ont pas pu être chargées.',
     retry: 'Réessayer',
     move: 'Changer de projet',
@@ -1473,6 +1504,15 @@ export const fr: Messages = {
     moveTargetRequired: 'Choisissez un projet, ou aucun.',
     moveSubmit: 'Déplacer',
     moved: 'Architecture déplacée.',
+    moveSelected: 'Déplacer',
+    moveManyTitle: (count: number) =>
+      count === 1 ? 'Déplacer 1 architecture' : `Déplacer ${count} architectures`,
+    movedMany: (count: number) =>
+      count === 1 ? '1 architecture déplacée.' : `${count} architectures déplacées.`,
+    moveManyFailed: (count: number) =>
+      count === 1
+        ? '1 architecture n’a pas pu être déplacée.'
+        : `${count} architectures n’ont pas pu être déplacées.`,
   },
   agents: {
     tab: 'Conventions d’agents',

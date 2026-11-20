@@ -6,6 +6,7 @@ import * as React from 'react'
 import { z } from 'zod'
 
 import { DiagramCard } from '@/components/diagram-card'
+import { ActionBar } from '@/components/ui/action-bar'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -64,6 +66,8 @@ export function ArchitectureList({
   conformance?: CodeConformance | undefined
 }) {
   const t = useT()
+  /** The cards ticked, by id with their title: they stay ticked while a search hides them. */
+  const [selected, setSelected] = React.useState<ReadonlyMap<number, string>>(() => new Map())
   if (query.isPending)
     return (
       <div className="grid gap-4 min-[1800px]:grid-cols-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -101,15 +105,110 @@ export function ArchitectureList({
       </Empty>
     )
   return (
-    <ul className="m-0 grid list-none gap-4 p-0 min-[1800px]:grid-cols-4 sm:grid-cols-2 xl:grid-cols-3">
-      {query.data.data.map((architecture) => (
-        <li key={architecture.id} className="flex flex-col gap-1.5">
-          <ArchitectureCard architecture={architecture} />
-          {projects && <ProjectLabel projects={projects} projectId={architecture.projectId} />}
-          {conformance && <CodeStanding architecture={architecture} conformance={conformance} />}
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="m-0 grid list-none gap-4 p-0 min-[1800px]:grid-cols-4 sm:grid-cols-2 xl:grid-cols-3">
+        {query.data.data.map((architecture) => (
+          <li key={architecture.id} className="relative flex flex-col gap-1.5">
+            <ArchitectureCard architecture={architecture} />
+            {/* Over the card's thumbnail, above the link that covers the card. */}
+            <Checkbox
+              className="absolute top-3 left-3 z-10 bg-background"
+              aria-label={t.architectures.select(architecture.title)}
+              checked={selected.has(architecture.id)}
+              onCheckedChange={(checked) => {
+                setSelected((current) => {
+                  const next = new Map(current)
+                  if (checked === true) next.set(architecture.id, architecture.title)
+                  else next.delete(architecture.id)
+                  return next
+                })
+              }}
+            />
+            {projects && <ProjectLabel projects={projects} projectId={architecture.projectId} />}
+            {conformance && <CodeStanding architecture={architecture} conformance={conformance} />}
+          </li>
+        ))}
+      </ul>
+      <SelectionBar
+        ids={[...selected.keys()]}
+        onClear={() => {
+          setSelected(new Map())
+        }}
+      />
+    </>
+  )
+}
+
+/** What can be done to every ticked architecture at once: move them, or delete them after a confirmation. */
+function SelectionBar({ ids, onClear }: { ids: readonly number[]; onClear: () => void }) {
+  const t = useT()
+  const remove = useDeleteArchitecture()
+  const [confirming, setConfirming] = React.useState(false)
+  const [deleting, setDeleting] = React.useState(false)
+  const [moving, setMoving] = React.useState(false)
+  const deleteAll = async () => {
+    setDeleting(true)
+    // ponytail: one DELETE per architecture through the existing route; a bulk route if selections grow large.
+    const results = await Promise.allSettled(ids.map((id) => remove.mutateAsync(id)))
+    setDeleting(false)
+    setConfirming(false)
+    const failed = results.filter((r) => r.status === 'rejected').length
+    const deleted = results.length - failed
+    if (deleted > 0) toast.success(t.architectures.deletedMany(deleted))
+    if (failed > 0) toast.error(t.architectures.deleteManyFailed(failed))
+    onClear()
+  }
+  return (
+    <>
+      <ActionBar count={ids.length} onClear={onClear}>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            setMoving(true)
+          }}
+        >
+          <FolderInputIcon /> {t.architectures.moveSelected}
+        </Button>
+        <Button
+          size="sm"
+          variant="destructive"
+          onClick={() => {
+            setConfirming(true)
+          }}
+        >
+          <Trash2Icon /> {t.architectures.delete}
+        </Button>
+      </ActionBar>
+      <MoveArchitecturesDialog
+        title={t.architectures.moveManyTitle(ids.length)}
+        ids={ids}
+        open={moving}
+        onOpenChange={setMoving}
+        onMoved={onClear}
+      />
+      <AlertDialog open={confirming} onOpenChange={setConfirming}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.architectures.deleteManyTitle(ids.length)}</AlertDialogTitle>
+            <AlertDialogDescription>{t.architectures.deleteManyText}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{t.architectures.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleting}
+              onClick={(e) => {
+                e.preventDefault()
+                void deleteAll()
+              }}
+            >
+              {t.architectures.delete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
@@ -230,7 +329,13 @@ function ArchitectureCard({ architecture }: { architecture: ArchitectureSummary 
           },
         ]}
       />
-      <MoveArchitectureDialog architecture={architecture} open={moving} onOpenChange={setMoving} />
+      <MoveArchitecturesDialog
+        title={t.architectures.moveTitle(architecture.title)}
+        ids={[architecture.id]}
+        currentProjectId={architecture.projectId}
+        open={moving}
+        onOpenChange={setMoving}
+      />
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -255,17 +360,25 @@ function ArchitectureCard({ architecture }: { architecture: ArchitectureSummary 
   )
 }
 
-function MoveArchitectureDialog({
-  architecture,
+/** Moves one or several architectures; the one's current project is left out of the targets. */
+function MoveArchitecturesDialog({
+  title,
+  ids,
+  currentProjectId,
   open,
   onOpenChange,
+  onMoved,
 }: {
-  architecture: ArchitectureSummary
+  title: string
+  ids: readonly number[]
+  currentProjectId?: number | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  onMoved?: () => void
 }) {
   const t = useT()
-  const current = String(architecture.projectId ?? NO_PROJECT)
+  const current =
+    currentProjectId === undefined ? undefined : String(currentProjectId ?? NO_PROJECT)
   const targets = useProjectOptions().filter((option) => option.value !== current)
   const move = useMoveArchitecture()
   const form = useAppForm({
@@ -274,14 +387,19 @@ function MoveArchitectureDialog({
       onSubmit: z.object({ projectId: z.string().min(1, t.architectures.moveTargetRequired) }),
     },
     onSubmit: async ({ value }) => {
-      try {
-        await move.mutateAsync({ id: architecture.id, projectId: toProjectId(value.projectId) })
-        form.reset()
-        onOpenChange(false)
-        toast.success(t.architectures.moved)
-      } catch (error) {
-        toast.error(getErrorMessage(error, t.editor.failed))
+      const projectId = toProjectId(value.projectId)
+      const results = await Promise.allSettled(ids.map((id) => move.mutateAsync({ id, projectId })))
+      const failures = results.filter((r) => r.status === 'rejected')
+      if (failures.length === results.length) {
+        toast.error(getErrorMessage(failures[0]?.reason, t.editor.failed))
+        return
       }
+      form.reset()
+      onOpenChange(false)
+      onMoved?.()
+      const moved = results.length - failures.length
+      toast.success(ids.length === 1 ? t.architectures.moved : t.architectures.movedMany(moved))
+      if (failures.length > 0) toast.error(t.architectures.moveManyFailed(failures.length))
     },
   })
 
@@ -289,7 +407,7 @@ function MoveArchitectureDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t.architectures.moveTitle(architecture.title)}</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{t.architectures.moveDescription}</DialogDescription>
         </DialogHeader>
         <form
