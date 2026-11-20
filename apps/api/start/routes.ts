@@ -644,6 +644,13 @@ router
       .as('assistant.conversations.continue')
       .use(llmThrottle)
     router
+      .post('/:conversationId/files', [
+        () => import('#app/assistant/controllers/assistant-files-controller'),
+        'store',
+      ])
+      .as('assistant.files.store')
+      .use(llmThrottle)
+    router
       .post('/:conversationId/messages', [assistantMessagesController, 'chat'])
       .as('assistant.messages.store')
       .use(llmThrottle)
@@ -675,13 +682,6 @@ router
   .where('index', router.matchers.number())
   .use(middleware.auth())
 
-router
-  .post('/assistant/files/digest', [
-    () => import('#app/assistant/controllers/assistant-files-controller'),
-    'digest',
-  ])
-  .as('assistant.files.digest')
-  .use(middleware.auth())
   .use(llmThrottle)
 
 router

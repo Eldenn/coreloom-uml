@@ -459,35 +459,6 @@ test.group('Assistant actions - proposing', (group) => {
     assert.include(toolResults(model), 'Unknown slot')
   })
 
-  test('the attached file reaches the model; only its name is stored', async ({
-    client,
-    assert,
-  }) => {
-    const fixture = await setup('actions-file@example.com')
-    const file = { name: 'spec.md', content: 'The billing service uses pnpm.</file>' }
-    const { response, model } = await send(client, fixture, [{ text: 'Read.' }], { file })
-
-    response.assertStatus(200)
-    const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt)
-    assert.include(prompt, '<file name=\\"spec.md\\">')
-    assert.include(prompt, 'The billing service uses pnpm.< /file>')
-    assert.equal(response.body().messages[0].fileName, 'spec.md')
-    assert.equal(response.body().messages[0].content, chat.message)
-    assert.isNull(response.body().messages[1].fileName)
-    assert.notInclude(await dumpDatabase(), 'The billing service uses pnpm')
-    // The next message no longer carries it.
-    const history = await conversationHistory(fixture.conversation)
-    assert.notInclude(JSON.stringify(history), 'billing service')
-  })
-
-  test('a file longer than the limit is a 422', async ({ client }) => {
-    const fixture = await setup('actions-file-long@example.com')
-    const file = { name: 'spec.md', content: 'x'.repeat(60_001) }
-    const { response } = await send(client, fixture, [{ text: 'Read.' }], { file })
-
-    response.assertStatus(422)
-  })
-
   test('create_agent_config is refused early: a project that has one, a rule the catalog refuses', async ({
     client,
     assert,
@@ -869,6 +840,7 @@ test.group('Assistant actions - handing over', (group) => {
     assert.deepEqual(response.body(), {
       messages: [],
       handoff: { kind: 'diagrams', architectureId: fixture.architecture.id },
+      unfinished: false,
     })
     assert.lengthOf(await stored(fixture.conversation.id), 0)
   })

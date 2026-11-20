@@ -6,6 +6,8 @@ import type {
   ActionImpact,
   AssistantTargetKind,
 } from '#app/assistant/constants/assistant'
+import type AssistantFile from '#app/assistant/models/assistant-file'
+import type { RepositorySession } from '#app/assistant/services/repository-session'
 import type User from '#app/users/models/user'
 
 /*
@@ -33,6 +35,17 @@ export type ActionApplied =
   | { failure: typeof ActionFailure.NotFound }
   | { failure: typeof ActionFailure.Invalid | typeof ActionFailure.Conflict; message: string }
 
+/**
+ * Where a read runs: the conversation of the message, the reader of its files' texts (each read
+ * from Drive once per message) and its repository sandbox.
+ */
+export type ActionContext = {
+  conversationId: number
+  read(file: AssistantFile): Promise<string>
+  /** The conversation's repository sandbox, opened by the first repository tool called. */
+  repository: RepositorySession
+}
+
 type ActionBase<S extends z.ZodType> = {
   name: string
   description: string
@@ -54,7 +67,7 @@ type Destructive = true | ((before: string | null, impact: ImpactCounts) => bool
 
 export type ReadActionDefinition<S extends z.ZodType> = ActionBase<S> & {
   kind: typeof AssistantToolKind.Read
-  read(input: z.output<S>, user: User): Promise<unknown>
+  read(input: z.output<S>, user: User, context: ActionContext): Promise<unknown>
 }
 
 export type WriteActionDefinition<S extends z.ZodType> = ActionBase<S> & {
@@ -88,7 +101,7 @@ export type WriteActionDefinition<S extends z.ZodType> = ActionBase<S> & {
 export type AssistantAction =
   | (ActionBase<z.ZodType> & {
       kind: typeof AssistantToolKind.Read
-      read(input: unknown, user: User): Promise<unknown>
+      read(input: unknown, user: User, context: ActionContext): Promise<unknown>
     })
   | (ActionBase<z.ZodType> & {
       kind: typeof AssistantToolKind.Write
@@ -106,7 +119,7 @@ export function readAction<S extends z.ZodType>(
 ): AssistantAction {
   return {
     ...definition,
-    read: (input, user) => definition.read(definition.input.parse(input), user),
+    read: (input, user, context) => definition.read(definition.input.parse(input), user, context),
   }
 }
 

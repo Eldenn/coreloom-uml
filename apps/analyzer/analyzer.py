@@ -13,6 +13,11 @@ the URL or a file), and never logged nor answered.
              and X-Graphify-Version headers.
         400: a malformed request. 422: {"error": {"code", "message"}}, the repository could not be
              mapped (see ERRORS). 503: another repository is being mapped.
+    POST /archive  {"repository": ..., "branch"?: str, "token"?: str}
+        200: the clone's files as a gzipped tar (application/gzip), regular files only (no
+             `.git`, no symlink), with the X-Commit-Sha and X-Branch headers: what the workspace
+             assistant's sandbox reads. Smaller limits than /analyze (ARCHIVE_*), so it fits in
+             one request of the API. 400, 422 and 503 as /analyze.
     GET /health    200 once the server listens.
 
 The code is data: it is read, never run. The clone is shallow, without submodules, symlinks,
@@ -23,12 +28,14 @@ graphify reads it with tree-sitter only (GRAPHIFY_BACKEND=none), so no model is 
 from __future__ import annotations
 
 import gzip
+import io
 import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import threading
 import time
@@ -41,6 +48,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 MAX_REPOSITORY_BYTES = int(os.environ.get("ANALYZER_MAX_BYTES", 200 * 1024 * 1024))
 MAX_FILES = int(os.environ.get("ANALYZER_MAX_FILES", 20_000))
 TIMEOUT_SECONDS = int(os.environ.get("ANALYZER_TIMEOUT_SECONDS", 5 * 60))
+# Limits of one archive (POST /archive): what one request of the API moves in a few seconds.
+ARCHIVE_MAX_BYTES = int(os.environ.get("ANALYZER_ARCHIVE_MAX_BYTES", 50 * 1024 * 1024))
+ARCHIVE_MAX_FILES = int(os.environ.get("ANALYZER_ARCHIVE_MAX_FILES", 5_000))
+ARCHIVE_TIMEOUT_SECONDS = int(os.environ.get("ANALYZER_ARCHIVE_TIMEOUT_SECONDS", 30))
+# Archives made at once: light next to an analysis, and never waiting behind one.
+ARCHIVES_AT_ONCE = 2
 # The largest request body: a URL, a branch and a short ignore file.
 MAX_REQUEST_BYTES = 64 * 1024
 MAX_IGNORE_BYTES = 16 * 1024
@@ -181,8 +194,9 @@ def run_bounded(
     env: dict[str, str],
     deadline: float,
     watch: str | None = None,
+    max_bytes: int = MAX_REPOSITORY_BYTES,
 ) -> subprocess.CompletedProcess[str]:
-    """Runs a command until it ends, the deadline passes or `watch` grows past the size limit."""
+    """Runs a command until it ends, the deadline passes or `watch` grows past `max_bytes`."""
     process = subprocess.Popen(
         args,
         cwd=cwd,
@@ -208,7 +222,7 @@ def run_bounded(
         while process.poll() is None:
             if time.monotonic() > deadline:
                 raise AnalysisError("timeout")
-            if watch and os.path.isdir(watch) and tree_size(watch)[0] > MAX_REPOSITORY_BYTES:
+            if watch and os.path.isdir(watch) and tree_size(watch)[0] > max_bytes:
                 raise AnalysisError("too_large")
             time.sleep(POLL_SECONDS)
     finally:
@@ -247,7 +261,13 @@ def git(*args: str) -> list[str]:
     ]
 
 
-def clone(request: Request, work: str, deadline: float, clone_url: str | None = None) -> str:
+def clone(
+    request: Request,
+    work: str,
+    deadline: float,
+    clone_url: str | None = None,
+    max_bytes: int = MAX_REPOSITORY_BYTES,
+) -> str:
     """Clones the branch (or the default one) at depth 1 into `work/repo`."""
     target = os.path.join(work, "repo")
     args = ["clone", "--depth", "1", "--single-branch", "--no-tags", "--no-recurse-submodules"]
@@ -268,7 +288,9 @@ def clone(request: Request, work: str, deadline: float, clone_url: str | None = 
     if clone_url:
         # Tests clone a local repository, which `protocol.allow=never` refuses otherwise.
         command[1:1] = ["-c", "protocol.file.allow=always"]
-    result = run_bounded(command, cwd=work, env=env, deadline=deadline, watch=target)
+    result = run_bounded(
+        command, cwd=work, env=env, deadline=deadline, watch=target, max_bytes=max_bytes
+    )
     if result.returncode != 0:
         # A private or missing repository (or one the token does not reach) asks for
         # credentials, which are refused: not found.
@@ -352,6 +374,52 @@ def analyze(request: Request, clone_url: str | None = None) -> Analysis:
         shutil.rmtree(work, ignore_errors=True)
 
 
+@dataclass(frozen=True)
+class Archive:
+    body: bytes
+    commit: str
+    branch: str
+
+
+def archive(request: Request, clone_url: str | None = None) -> Archive:
+    """Clone, check, pack the regular files in a gzipped tar, clean up. `clone_url` is for tests."""
+    deadline = time.monotonic() + ARCHIVE_TIMEOUT_SECONDS
+    work = tempfile.mkdtemp(prefix="archive-")
+    try:
+        repo = clone(request, work, deadline, clone_url, max_bytes=ARCHIVE_MAX_BYTES)
+        commit, branch = revision(repo, work)
+        size, files = tree_size(repo, skip_git=True)
+        if size > ARCHIVE_MAX_BYTES:
+            raise AnalysisError("too_large")
+        if files > ARCHIVE_MAX_FILES:
+            raise AnalysisError("too_many_files")
+        return Archive(body=pack(repo), commit=commit, branch=request.branch or branch)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def pack(repo: str) -> bytes:
+    """The regular files under `repo` (never `.git`, never a symlink), owned by nobody, 0644."""
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
+        for root, dirs, names in os.walk(repo, followlinks=False):
+            dirs[:] = sorted(
+                name
+                for name in dirs
+                if name != ".git" and not os.path.islink(os.path.join(root, name))
+            )
+            for name in sorted(names):
+                path = os.path.join(root, name)
+                if os.path.islink(path) or not os.path.isfile(path):
+                    continue
+                info = tarfile.TarInfo(os.path.relpath(path, repo))
+                info.size = os.path.getsize(path)
+                info.mode = 0o644
+                with open(path, "rb") as file:
+                    tar.addfile(info, file)
+    return buffer.getvalue()
+
+
 def remove(path: str) -> None:
     """Deletes a folder or a file, whichever it is (symlinks were checked out as files)."""
     if os.path.isdir(path) and not os.path.islink(path):
@@ -380,6 +448,7 @@ class Handler(BaseHTTPRequestHandler):
     sys_version = ""
     # One repository at a time: graphify is CPU and memory hungry.
     busy = threading.Lock()
+    archiving = threading.BoundedSemaphore(ARCHIVES_AT_ONCE)
     version = "unknown"
     # Tests point clones at a local repository.
     clone_url: str | None = None
@@ -391,7 +460,7 @@ class Handler(BaseHTTPRequestHandler):
             self.reply_json(HTTPStatus.NOT_FOUND, {"error": {"code": "not_found_route"}})
 
     def do_POST(self) -> None:  # noqa: N802
-        if self.path != "/analyze":
+        if self.path not in ("/analyze", "/archive"):
             self.reply_json(HTTPStatus.NOT_FOUND, {"error": {"code": "not_found_route"}})
             return
         length = int(self.headers.get("Content-Length") or 0)
@@ -401,6 +470,9 @@ class Handler(BaseHTTPRequestHandler):
         request = parse_request(self.rfile.read(length))
         if not request:
             self.reply_json(HTTPStatus.BAD_REQUEST, {"error": {"code": "bad_request"}})
+            return
+        if self.path == "/archive":
+            self.answer_archive(request)
             return
         if not Handler.busy.acquire(blocking=False):
             self.reply_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": {"code": "busy"}})
@@ -425,12 +497,40 @@ class Handler(BaseHTTPRequestHandler):
             f"{request.owner}/{request.repository}@{analysis.commit[:12]}: "
             f"{len(analysis.graph)} bytes in {time.monotonic() - started:.1f}s"
         )
-        body = gzip.compress(analysis.graph)
+        self.reply_gzip(gzip.compress(analysis.graph), analysis.commit, analysis.branch)
+
+    def answer_archive(self, request: Request) -> None:
+        if not Handler.archiving.acquire(blocking=False):
+            self.reply_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": {"code": "busy"}})
+            return
+        started = time.monotonic()
+        try:
+            packed = archive(request, self.clone_url)
+        except AnalysisError as error:
+            log(f"{request.owner}/{request.repository} archive: {error.code}")
+            self.reply_json(
+                HTTPStatus.UNPROCESSABLE_ENTITY,
+                {"error": {"code": error.code, "message": str(error)}},
+            )
+            return
+        except Exception as error:  # noqa: BLE001
+            log(f"{request.owner}/{request.repository} archive: unexpected {type(error).__name__}")
+            self.reply_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "internal"}})
+            return
+        finally:
+            Handler.archiving.release()
+        log(
+            f"{request.owner}/{request.repository}@{packed.commit[:12]} archive: "
+            f"{len(packed.body)} bytes in {time.monotonic() - started:.1f}s"
+        )
+        self.reply_gzip(packed.body, packed.commit, packed.branch)
+
+    def reply_gzip(self, body: bytes, commit: str, branch: str) -> None:
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "application/gzip")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("X-Commit-Sha", analysis.commit)
-        self.send_header("X-Branch", analysis.branch)
+        self.send_header("X-Commit-Sha", commit)
+        self.send_header("X-Branch", branch)
         self.send_header("X-Graphify-Version", self.version)
         self.end_headers()
         self.wfile.write(body)

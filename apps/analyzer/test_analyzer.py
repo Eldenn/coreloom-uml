@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import base64
 import gzip
+import io
 import json
 import os
 import shutil
 import stat
 import subprocess
+import tarfile
 import tempfile
 import threading
 import unittest
@@ -141,11 +143,11 @@ class AnalyzeTest(Fixture):
         seen: dict[str, object] = {}
         real_run = analyzer.run_bounded
 
-        def spy(args, *, cwd, env, deadline, watch=None):  # type: ignore[no-untyped-def]
+        def spy(args, *, cwd, env, deadline, **limits):  # type: ignore[no-untyped-def]
             if "clone" in args:
                 seen["args"] = list(args)
                 seen["env"] = dict(env)
-            return real_run(args, cwd=cwd, env=env, deadline=deadline, watch=watch)
+            return real_run(args, cwd=cwd, env=env, deadline=deadline, **limits)
 
         request = analyzer.Request("acme", "shop", None, None, token=token)
         with mock.patch.object(analyzer, "run_bounded", spy):
@@ -260,6 +262,52 @@ class ServerTest(Fixture):
             analyzer.Handler.busy.release()
         self.assertEqual(status, 503)
         self.assertEqual(json.loads(body)["error"]["code"], "busy")
+
+    def test_archives_the_regular_files(self) -> None:
+        request = urllib.request.Request(
+            f"{self.base}/archive",
+            data=json.dumps({"repository": "https://github.com/acme/shop"}).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(request) as response:
+            self.assertEqual(response.headers["Content-Type"], "application/gzip")
+            self.assertRegex(response.headers["X-Commit-Sha"], r"^[0-9a-f]{40}$")
+            self.assertEqual(response.headers["X-Branch"], "main")
+            body = response.read()
+        with tarfile.open(fileobj=io.BytesIO(body), mode="r:gz") as tar:
+            members = {member.name: member for member in tar.getmembers()}
+            self.assertIn("src/a.py", members)
+            self.assertFalse(any(name.startswith(".git/") or name == ".git" for name in members))
+            self.assertTrue(all(member.isreg() for member in members.values()))
+            self.assertTrue(all(member.mode == 0o644 for member in members.values()))
+            # The symlink was checked out as a file holding its target, never followed.
+            link = tar.extractfile(members["link"])
+            self.assertEqual(link.read() if link else b"", b"/etc/passwd")
+
+    def test_an_archive_is_refused_past_its_limits(self) -> None:
+        with mock.patch.object(analyzer, "ARCHIVE_MAX_FILES", 1):
+            with self.assertRaises(analyzer.AnalysisError) as raised:
+                analyzer.archive(self.request(), clone_url=self.origin)
+        self.assertEqual(raised.exception.code, "too_many_files")
+        with mock.patch.object(analyzer, "ARCHIVE_MAX_BYTES", 10):
+            with self.assertRaises(analyzer.AnalysisError) as raised:
+                analyzer.archive(self.request(), clone_url=self.origin)
+        self.assertEqual(raised.exception.code, "too_large")
+
+    def test_an_archive_does_not_wait_for_an_analysis(self) -> None:
+        analyzer.Handler.busy.acquire()
+        try:
+            request = urllib.request.Request(
+                f"{self.base}/archive",
+                data=json.dumps({"repository": "https://github.com/acme/shop"}).encode(),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(request) as response:
+                self.assertEqual(response.status, 200)
+        finally:
+            analyzer.Handler.busy.release()
 
     def test_health(self) -> None:
         with urllib.request.urlopen(f"{self.base}/health") as response:

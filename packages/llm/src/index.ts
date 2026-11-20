@@ -28,8 +28,11 @@ export {
   askAssistant,
   assistantBudget,
   assistantOutputSchema,
+  type ConversationFileContext,
   changeLine,
   chatWithAssistant,
+  FILE_PASSAGES_MAX_LENGTH,
+  type FilePassageText,
   type ProposedChange,
   summarizeConversation,
   withFile,
@@ -138,10 +141,17 @@ export {
   proposeFeedbackRules,
 } from './feedback.ts'
 export {
-  digestFile,
   FILE_DIGEST_MAX_LENGTH,
-  type FileDigest,
+  FILE_SUMMARY_MAX_LENGTH,
+  type FilePart,
+  type FileSummary,
+  summarizeFile,
 } from './file-digest.ts'
+export {
+  FILE_PASSAGE_LENGTH,
+  findPassages,
+  type Passage,
+} from './file-search.ts'
 export {
   cleanImportedRules,
   describeGroups,

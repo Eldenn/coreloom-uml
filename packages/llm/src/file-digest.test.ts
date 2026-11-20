@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { ASSISTANT_FILE_MAX_LENGTH } from './assistant.ts'
 import { LlmCallError } from './failure.ts'
-import { digestFile, FILE_DIGEST_MAX_LENGTH, splitText } from './file-digest.ts'
+import {
+  FILE_DIGEST_MAX_LENGTH,
+  FILE_SUMMARY_MAX_LENGTH,
+  splitText,
+  summarizeFile,
+} from './file-digest.ts'
 import { answeringModel, failingModel, MockLanguageModelV4 } from './testing/mock-model.ts'
 
 const USAGE = {
@@ -23,8 +27,8 @@ describe('splitText', () => {
   })
 })
 
-describe('digestFile', () => {
-  it('notes every part, leaves out the empty ones and names the file', async () => {
+describe('summarizeFile', () => {
+  it('summarizes every part with its offsets; a part of nothing is empty', async () => {
     let calls = 0
     const model = new MockLanguageModelV4({
       doGenerate: async () => ({
@@ -34,22 +38,22 @@ describe('digestFile', () => {
         warnings: [],
       }),
     })
-    const digest = await digestFile(
+    const summary = await summarizeFile(
       model,
       { name: 'book.pdf', content: 'x'.repeat(250) },
       { partLength: 100, concurrency: 1 },
     )
 
-    expect(digest.parts).toBe(3)
-    expect(digest.failed).toBe(0)
-    expect(digest.file.name).toBe('book.pdf')
-    expect(digest.file.content).toContain('3 parts')
-    expect(digest.file.content).toContain('## Part 1\n- Uses pnpm')
-    expect(digest.file.content).not.toContain('## Part 2')
+    expect(summary.failed).toBe(0)
+    expect(summary.parts).toEqual([
+      { start: 0, end: 100, summary: '- Uses pnpm' },
+      { start: 100, end: 200, summary: '' },
+      { start: 200, end: 250, summary: '- Uses pnpm' },
+    ])
     expect(JSON.stringify(model.doGenerateCalls[0]?.prompt)).toContain('of=\\"3\\"')
   })
 
-  it('counts the parts that failed and keeps the others', async () => {
+  it('counts the parts that failed: their summary is null', async () => {
     let calls = 0
     const model = new MockLanguageModelV4({
       doGenerate: async () => {
@@ -62,30 +66,30 @@ describe('digestFile', () => {
         }
       },
     })
-    const digest = await digestFile(
+    const summary = await summarizeFile(
       model,
       { name: 'a.md', content: 'x'.repeat(200) },
       { partLength: 100, concurrency: 1 },
     )
 
-    expect(digest.failed).toBe(1)
-    expect(digest.file.content).toContain('1 of which could not be read')
-    expect(digest.file.content).toContain('## Part 2\n- Kept')
+    expect(summary.failed).toBe(1)
+    expect(summary.parts.map((part) => part.summary)).toEqual([null, '- Kept'])
   })
 
   it('throws when no part could be read', async () => {
     await expect(
-      digestFile(failingModel(new Error('boom')), { name: 'a.md', content: 'text' }),
+      summarizeFile(failingModel(new Error('boom')), { name: 'a.md', content: 'text' }),
     ).rejects.toBeInstanceOf(LlmCallError)
   })
 
-  it('always fits a message, even when every note is as long as it may be', async () => {
-    const digest = await digestFile(answeringModel(`- ${'y'.repeat(20_000)}`), {
+  it('keeps all the summaries within their room, even when every answer is long', async () => {
+    const summary = await summarizeFile(answeringModel(`- ${'y'.repeat(20_000)}`), {
       name: 'long.txt',
       content: 'x'.repeat(FILE_DIGEST_MAX_LENGTH),
     })
 
-    expect(digest.parts).toBe(12)
-    expect(digest.file.content.length).toBeLessThanOrEqual(ASSISTANT_FILE_MAX_LENGTH)
+    expect(summary.parts).toHaveLength(12)
+    const total = summary.parts.reduce((sum, part) => sum + (part.summary?.length ?? 0), 0)
+    expect(total).toBeLessThanOrEqual(FILE_SUMMARY_MAX_LENGTH)
   })
 })

@@ -116,7 +116,7 @@ export async function readSource(
  * webhook: before any file is read with the App's token, GitHub says whether that login still
  * reads the repository. A no drops the grant; no answer reads nothing and keeps it.
  */
-async function stillGranted(
+export async function stillGranted(
   access: { github: GithubApi; token: string },
   userId: number,
   repository: { owner: string; name: string; url: string },

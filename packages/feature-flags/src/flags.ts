@@ -12,6 +12,7 @@ export const FeatureFlagKey = {
   CodeMaps: 'code-maps',
   WebResearch: 'web-research',
   AssistantActions: 'assistant-actions',
+  AssistantRepository: 'assistant-repository',
 } as const
 
 export type FeatureFlagKey = (typeof FeatureFlagKey)[keyof typeof FeatureFlagKey]
@@ -89,6 +90,14 @@ export const FEATURE_FLAGS: readonly FeatureFlagDeclaration[] = [
     description:
       'Lets the workspace assistant read projects, architectures and agent conventions, and propose changes the owner accepts one by one.',
     tags: ['llm'],
+    defaultState: OFF,
+  },
+  {
+    key: FeatureFlagKey.AssistantRepository,
+    name: 'Assistant repository sandbox',
+    description:
+      "Lets the workspace assistant read a project's GitHub repository, cloned in a sandbox kept (paused) with the conversation. Needs code maps, E2B_API_KEY and ANALYZER_URL on the server.",
+    tags: ['code', 'llm'],
     defaultState: OFF,
   },
 ]

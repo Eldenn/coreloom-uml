@@ -208,6 +208,9 @@ export interface ApiDefinition {
       destroy: typeof routes['assistant.conversations.destroy']
       continue: typeof routes['assistant.conversations.continue']
     }
+    files: {
+      store: typeof routes['assistant.files.store']
+    }
     messages: {
       store: typeof routes['assistant.messages.store']
       destroy: typeof routes['assistant.messages.destroy']
@@ -218,9 +221,6 @@ export interface ApiDefinition {
     actions: {
       accept: typeof routes['assistant.actions.accept']
       reject: typeof routes['assistant.actions.reject']
-    }
-    files: {
-      digest: typeof routes['assistant.files.digest']
     }
   }
   uml: {

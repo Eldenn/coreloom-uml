@@ -1279,6 +1279,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-conversations-controller').default['continue']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'assistant.files.store': {
+    methods: ["POST"]
+    pattern: '/assistant/conversations/:conversationId/files'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/assistant/validators/assistant-input').attachFileInput)>>
+      paramsTuple: [ParamValue]
+      params: { conversationId: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/assistant/validators/assistant-input').attachFileInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-files-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-files-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'assistant.messages.store': {
     methods: ["POST"]
     pattern: '/assistant/conversations/:conversationId/messages'
@@ -1337,18 +1349,6 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-actions-controller').default['reject']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-actions-controller').default['reject']>>>
-    }
-  }
-  'assistant.files.digest': {
-    methods: ["POST"]
-    pattern: '/assistant/files/digest'
-    types: {
-      body: ExtractBody<InferInput<(typeof import('#app/assistant/validators/assistant-input').digestFileInput)>>
-      paramsTuple: []
-      params: {}
-      query: ExtractQuery<InferInput<(typeof import('#app/assistant/validators/assistant-input').digestFileInput)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-files-controller').default['digest']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/assistant/controllers/assistant-files-controller').default['digest']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'architectures.assistant.messages.store': {

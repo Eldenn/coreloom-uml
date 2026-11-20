@@ -1,5 +1,6 @@
 import { type AssistantTool, AssistantToolKind } from '@coreloom-uml/llm'
 import {
+  type ActionContext,
   type AssistantAction,
   NOT_FOUND_SENTENCE,
   TARGET_NOT_FOUND,
@@ -7,7 +8,9 @@ import {
 import { AGENT_CONFIG_ACTIONS } from '#app/assistant/actions/agent-config-actions'
 import { ARCHITECTURE_ACTIONS } from '#app/assistant/actions/architecture-actions'
 import { CODE_MAP_ACTIONS } from '#app/assistant/actions/code-map-actions'
+import { FILE_ACTIONS } from '#app/assistant/actions/file-actions'
 import { PROJECT_ACTIONS } from '#app/assistant/actions/project-actions'
+import { REPOSITORY_ACTIONS } from '#app/assistant/actions/repository-actions'
 import { SKILL_ACTIONS } from '#app/assistant/actions/skill-actions'
 import { ActionStatus, type StoredAction } from '#app/assistant/constants/assistant'
 import type User from '#app/users/models/user'
@@ -19,6 +22,8 @@ export const ASSISTANT_ACTIONS: readonly AssistantAction[] = [
   ...AGENT_CONFIG_ACTIONS,
   ...CODE_MAP_ACTIONS,
   ...SKILL_ACTIONS,
+  ...FILE_ACTIONS,
+  ...REPOSITORY_ACTIONS,
 ]
 
 export function findAction(name: string): AssistantAction | undefined {
@@ -55,11 +60,16 @@ export async function isAvailable(action: AssistantAction, user: User): Promise<
 }
 
 /**
- * The actions available to `user` as the loop's tools, bound to them. A write records its
+ * The actions available to `user` as the loop's tools, bound to them and to the message's
+ * conversation (`context`). A write records its
  * proposal in `proposals` (with the target's current name), or tells the model why not: its
  * target does not exist, or its input can never be applied.
  */
-export async function actionTools(user: User, proposals: StoredAction[]): Promise<AssistantTool[]> {
+export async function actionTools(
+  user: User,
+  proposals: StoredAction[],
+  context: ActionContext,
+): Promise<AssistantTool[]> {
   const available = await Promise.all(ASSISTANT_ACTIONS.map((action) => isAvailable(action, user)))
   const actions = ASSISTANT_ACTIONS.filter((_action, index) => available[index])
   return actions.map((action): AssistantTool => {
@@ -70,7 +80,7 @@ export async function actionTools(user: User, proposals: StoredAction[]): Promis
         description,
         inputSchema,
         kind: action.kind,
-        run: (input) => action.read(input, user),
+        run: (input) => action.read(input, user, context),
       }
     }
     return {

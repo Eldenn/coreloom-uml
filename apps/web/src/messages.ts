@@ -1160,7 +1160,11 @@ export const en = {
         'This file is not text: attach a PDF or a text file (Markdown, plain text, JSON, YAML…).',
       pdfUnreadable: 'No text could be read from this PDF: it may be scanned pages, or protected.',
     },
-    readingFile: 'Reading the file: your model takes notes of it, part by part…',
+    filesFull:
+      'This conversation holds as many files as it can: start a new one to attach another.',
+    readingFile:
+      'Reading the file: your model summarizes it, part by part. The conversation keeps it for the next messages…',
+    continueReading: 'Go on from where you stopped.',
     summary: 'Summary of the previous conversation',
     deleteSummary: 'Delete the summary',
     deleteSummaryHint:
@@ -2558,7 +2562,11 @@ export const fr: Messages = {
       pdfUnreadable:
         'Aucun texte n’a pu être lu dans ce PDF : il contient peut-être des pages scannées, ou il est protégé.',
     },
-    readingFile: 'Lecture du fichier : votre modèle en prend des notes, partie par partie…',
+    filesFull:
+      'Cette conversation contient déjà autant de fichiers que possible : commencez-en une nouvelle pour en joindre un autre.',
+    readingFile:
+      'Lecture du fichier : votre modèle le résume, partie par partie. La conversation le garde pour les messages suivants…',
+    continueReading: 'Reprenez là où vous vous êtes arrêté.',
     summary: 'Résumé de la conversation précédente',
     deleteSummary: 'Supprimer le résumé',
     deleteSummaryHint:
