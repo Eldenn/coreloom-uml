@@ -50,6 +50,14 @@ export type HandoffOutput =
   | { kind: typeof HandoffKind.Diagrams; architectureId: number }
   | { kind: typeof HandoffKind.Web; agentConfigId: number }
 
+/** `POST /assistant/files/digest`: the notes as a message's file, and how the reading went. */
+export type FileDigestOutput = {
+  file: { name: string; content: string }
+  parts: number
+  /** Parts the model could not read: their content is missing from the notes. */
+  failed: number
+}
+
 /** `POST /assistant/conversations/:conversationId/messages` */
 export type ChatOutput = { messages: MessageOutput[]; handoff: HandoffOutput | null }
 

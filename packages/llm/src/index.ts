@@ -138,6 +138,11 @@ export {
   proposeFeedbackRules,
 } from './feedback.ts'
 export {
+  digestFile,
+  FILE_DIGEST_MAX_LENGTH,
+  type FileDigest,
+} from './file-digest.ts'
+export {
   cleanImportedRules,
   describeGroups,
   IMPORT_EVIDENCE_MAX_LENGTH,
