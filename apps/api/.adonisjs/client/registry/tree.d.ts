@@ -219,6 +219,9 @@ export interface ApiDefinition {
       accept: typeof routes['assistant.actions.accept']
       reject: typeof routes['assistant.actions.reject']
     }
+    files: {
+      digest: typeof routes['assistant.files.digest']
+    }
   }
   uml: {
     validate: typeof routes['uml.validate']

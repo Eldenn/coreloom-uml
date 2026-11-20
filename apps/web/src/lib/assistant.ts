@@ -63,14 +63,36 @@ export interface AssistantFile {
   content: string
 }
 
-/** The longest file the API takes, in characters (its `ASSISTANT_FILE_MAX_LENGTH`). */
+/** The longest file a message carries, in characters (the API's `ASSISTANT_FILE_MAX_LENGTH`). */
 export const ASSISTANT_FILE_MAX_LENGTH = 60_000
+/** The longest file the model reads into notes first (the API's `FILE_DIGEST_MAX_LENGTH`). */
+export const FILE_DIGEST_MAX_LENGTH = 600_000
+/** A PDF holds far more bytes than text: past this it is not even opened. */
+const PDF_MAX_BYTES = 50_000_000
 
-export type FileProblem = 'several' | 'tooLong' | 'notText'
+export type FileProblem = 'several' | 'tooLong' | 'notText' | 'pdfUnreadable'
+
+const isPdf = (file: File) =>
+  file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
 
 /**
- * Reads the files attached to a message into the one file the API takes: none, one text file, or
- * why they cannot be sent.
+ * The text of a PDF, read here in the browser (the API only ever gets text); `null` when it
+ * cannot be opened. The reader is loaded only when a PDF is attached.
+ */
+async function pdfText(file: File): Promise<string | null> {
+  try {
+    const { extractText, getDocumentProxy } = await import('unpdf')
+    const pdf = await getDocumentProxy(new Uint8Array(await file.arrayBuffer()))
+    const { text } = await extractText(pdf, { mergePages: true })
+    return text
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Reads the files attached to a message into the one file the assistant takes: none, the text of
+ * one text file or PDF, or why they cannot be sent.
  */
 export async function readAttachment(
   files: readonly File[],
@@ -78,12 +100,55 @@ export async function readAttachment(
   if (files.length === 0) return { file: null }
   const [first] = files
   if (files.length > 1) return { problem: 'several' }
-  // Read only when it can fit: a character is at least one byte.
-  if (first.size > ASSISTANT_FILE_MAX_LENGTH * 4) return { problem: 'tooLong' }
-  const content = await first.text()
-  if (content.includes('\u0000') || content.trim() === '') return { problem: 'notText' }
-  if (content.length > ASSISTANT_FILE_MAX_LENGTH) return { problem: 'tooLong' }
+  let content: string
+  if (isPdf(first)) {
+    if (first.size > PDF_MAX_BYTES) return { problem: 'tooLong' }
+    const text = await pdfText(first)
+    // A scanned PDF opens but holds pictures of pages, no text.
+    if (text === null || text.trim() === '') return { problem: 'pdfUnreadable' }
+    content = text
+  } else {
+    // Read only when it can fit: a character is at least one byte.
+    if (first.size > FILE_DIGEST_MAX_LENGTH * 4) return { problem: 'tooLong' }
+    content = await first.text()
+    if (content.includes('\u0000') || content.trim() === '') return { problem: 'notText' }
+  }
+  if (content.length > FILE_DIGEST_MAX_LENGTH) return { problem: 'tooLong' }
   return { file: { name: first.name, content } }
+}
+
+/** The last long file read into notes, so asking again with it does not read it again. */
+let lastDigest: { source: AssistantFile; model: string; notes: AssistantFile } | null = null
+
+/**
+ * The file as a message carries it: itself when short enough, else the notes the user's model
+ * takes of it in a call of its own (`POST /assistant/files/digest`), told by `onReading`.
+ */
+async function sendable(
+  provider: StoredProvider,
+  file: AssistantFile | null | undefined,
+  onReading?: (reading: boolean) => void,
+): Promise<AssistantFile | null> {
+  if (!file) return null
+  if (file.content.length <= ASSISTANT_FILE_MAX_LENGTH) return file
+  const model = `${provider.kind}/${provider.model}`
+  if (
+    lastDigest?.model === model &&
+    lastDigest.source.name === file.name &&
+    lastDigest.source.content === file.content
+  )
+    return lastDigest.notes
+  onReading?.(true)
+  try {
+    const { file: notes } = await api.files.digest({
+      body: { ...callBody(provider), file },
+      ...MODEL_CALL,
+    })
+    lastDigest = { source: file, model, notes }
+    return notes
+  } finally {
+    onReading?.(false)
+  }
 }
 
 /** The views a message reads: the current one first, then `diagramIds` (all of them when absent). */
@@ -166,7 +231,8 @@ export function useAskAssistant(conversationId: number) {
       architectureId,
       auto,
       page,
-      file,
+      file: attached,
+      onReading,
       onHandoff,
       viewsOf,
       ...selection
@@ -180,11 +246,16 @@ export function useAskAssistant(conversationId: number) {
       auto?: boolean
       /** With `auto`: where the owner is, so that "here" means something. */
       page?: AssistantPage
-      /** A text file the model reads with this message; it follows a handed-over message. */
+      /**
+       * A file the model reads with this message; it follows a handed-over message. A long one is
+       * read into notes first, and `onReading` hears when that reading starts and ends.
+       */
       file?: AssistantFile | null
+      onReading?: (reading: boolean) => void
       onHandoff?: (handoff: AssistantHandoff) => void
       viewsOf?: (architectureId: number) => ViewSelection
     }): Promise<{ messages: AssistantMessage[]; handoff: AssistantHandoff | null }> => {
+      const file = await sendable(provider, attached, onReading)
       const aboutArchitecture = async (id: number, views: Partial<ViewSelection>) => {
         const { messages } = await about.messages.store({
           params: { id, conversationId },

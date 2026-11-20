@@ -1155,9 +1155,12 @@ export const en = {
     fileOnlyMessage: 'Read this file and propose what it calls for.',
     fileProblems: {
       several: 'Attach one file at a time.',
-      tooLong: 'This file is too long: the assistant reads up to 60,000 characters.',
-      notText: 'This file is not text: attach a text file (Markdown, plain text, JSON, YAML…).',
+      tooLong: 'This file is too long: the assistant reads up to 600,000 characters of text.',
+      notText:
+        'This file is not text: attach a PDF or a text file (Markdown, plain text, JSON, YAML…).',
+      pdfUnreadable: 'No text could be read from this PDF: it may be scanned pages, or protected.',
     },
+    readingFile: 'Reading the file: your model takes notes of it, part by part…',
     summary: 'Summary of the previous conversation',
     deleteSummary: 'Delete the summary',
     deleteSummaryHint:
@@ -2549,10 +2552,13 @@ export const fr: Messages = {
     fileOnlyMessage: 'Lis ce fichier et propose ce qu’il demande.',
     fileProblems: {
       several: 'Joignez un seul fichier à la fois.',
-      tooLong: 'Ce fichier est trop long : l’assistant lit jusqu’à 60 000 caractères.',
+      tooLong: 'Ce fichier est trop long : l’assistant lit jusqu’à 600 000 caractères de texte.',
       notText:
-        'Ce fichier n’est pas du texte : joignez un fichier texte (Markdown, texte brut, JSON, YAML…).',
+        'Ce fichier n’est pas du texte : joignez un PDF ou un fichier texte (Markdown, texte brut, JSON, YAML…).',
+      pdfUnreadable:
+        'Aucun texte n’a pu être lu dans ce PDF : il contient peut-être des pages scannées, ou il est protégé.',
     },
+    readingFile: 'Lecture du fichier : votre modèle en prend des notes, partie par partie…',
     summary: 'Résumé de la conversation précédente',
     deleteSummary: 'Supprimer le résumé',
     deleteSummaryHint:
