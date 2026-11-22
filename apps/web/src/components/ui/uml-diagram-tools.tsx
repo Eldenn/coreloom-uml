@@ -4,7 +4,13 @@
 // select-an-area and arrange buttons; the bar that aligns and spaces the selected boxes; and the
 // field that renames an element in place (F2 or a double click); and full screen. UmlDiagram
 // places them.
-import { getViewportForBounds, Panel, useReactFlow, useStoreApi } from '@xyflow/react'
+import {
+  getViewportForBounds,
+  Panel,
+  useReactFlow,
+  useStoreApi,
+  type Viewport,
+} from '@xyflow/react'
 import {
   AlignCenterHorizontalIcon,
   AlignCenterVerticalIcon,
@@ -378,6 +384,26 @@ function useRename(input: {
   return { target, start, done, onKeyDown }
 }
 
+/**
+ * Full screen fits the diagram to the screen; leaving it puts back the view from before, since
+ * the screen-sized pan and zoom would leave the diagram off to the side of the smaller box.
+ */
+function useViewAcrossFullscreen(fullscreen: Fullscreen | null) {
+  const active = fullscreen?.active ?? false
+  const flow = useReactFlow()
+  const before = React.useRef<Viewport | null>(null)
+  React.useEffect(() => {
+    if (active) {
+      before.current = flow.getViewport()
+      return
+    }
+    const view = before.current
+    if (!view) return
+    before.current = null
+    void flow.setViewport(view)
+  }, [active, flow])
+}
+
 export {
   AlignBar,
   CanvasControls,
@@ -389,4 +415,5 @@ export {
   useFitDiagram,
   useFullscreen,
   useRename,
+  useViewAcrossFullscreen,
 }

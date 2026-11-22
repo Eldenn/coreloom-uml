@@ -18,7 +18,6 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
-  type Viewport,
   ViewportPortal,
 } from '@xyflow/react'
 import * as React from 'react'
@@ -47,6 +46,7 @@ import {
   RenameField,
   useFullscreen,
   useRename,
+  useViewAcrossFullscreen,
 } from '@/components/ui/uml-diagram-tools'
 import { type Messages, useCoreloomI18n } from '@/lib/i18n'
 import type { SequenceDiagram, UmlLayout, UmlPoint, UmlSpec } from '@/lib/uml'
@@ -259,7 +259,9 @@ function useCanvasEffects({
     const observer = new ResizeObserver(() => {
       if (!refit && moved.current) return // Kept once the reader pans or zooms.
       cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => void flow.fitView({ padding: 0.08, maxZoom: 1 }))
+      // A reader's canvas keeps the margin of its first fit; thumbnails and full screen fit tighter.
+      const fit = { padding: refit ? 0.08 : 0.15, maxZoom: 1 }
+      frame = requestAnimationFrame(() => void flow.fitView(fit))
     })
     observer.observe(canvas.current)
     return () => {
@@ -268,26 +270,6 @@ function useCanvasEffects({
     }
   }, [refit, flow, canvas])
   return { onMoveStart: (event: MouseEvent | TouchEvent | null) => (moved.current ||= !!event) }
-}
-
-/**
- * Full screen fits the diagram to the screen; leaving it puts back the view from before, since
- * the screen-sized pan and zoom would leave the diagram off to the side of the smaller box.
- */
-function useViewAcrossFullscreen(fullscreen: Fullscreen | null) {
-  const active = fullscreen?.active ?? false
-  const flow = useReactFlow()
-  const before = React.useRef<Viewport | null>(null)
-  React.useEffect(() => {
-    if (active) {
-      before.current = flow.getViewport()
-      return
-    }
-    const view = before.current
-    if (!view) return
-    before.current = null
-    void flow.setViewport(view)
-  }, [active, flow])
 }
 
 /** What React Flow's own live region and descriptions say, in the reader's language. */
