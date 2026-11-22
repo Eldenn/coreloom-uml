@@ -216,7 +216,7 @@ function usePositions(layout: UmlLayout | undefined, graph: DiagramGraph | null)
   return { fixed, boxes, setDragged }
 }
 
-/** The image handle, and fitting the view again when elements come or go. */
+/** The image handle, and fitting the view again when elements come or go or the box resizes. */
 function useCanvasEffects({
   ref,
   canvas,
@@ -234,6 +234,7 @@ function useCanvasEffects({
   refit: boolean
 }) {
   const flow = useReactFlow()
+  const moved = React.useRef(false)
   React.useImperativeHandle(ref, () => ({
     toImage: async (format) => {
       setExporting(true)
@@ -253,19 +254,20 @@ function useCanvasEffects({
     }
   }, [ids, flow])
   React.useEffect(() => {
-    const el = canvas.current
-    if (!refit || !el) return
+    if (!canvas.current) return
     let frame = 0
     const observer = new ResizeObserver(() => {
+      if (!refit && moved.current) return // Kept once the reader pans or zooms.
       cancelAnimationFrame(frame)
       frame = requestAnimationFrame(() => void flow.fitView({ padding: 0.08, maxZoom: 1 }))
     })
-    observer.observe(el)
+    observer.observe(canvas.current)
     return () => {
       observer.disconnect()
       cancelAnimationFrame(frame)
     }
   }, [refit, flow, canvas])
+  return { onMoveStart: (event: MouseEvent | TouchEvent | null) => (moved.current ||= !!event) }
 }
 
 /**
@@ -484,7 +486,7 @@ function DiagramCanvas({
 
   const flow = useReactFlow()
   const rename = useRename({ canvas, graph, onRename: editable ? onRename : undefined, diagram })
-  useCanvasEffects({
+  const view = useCanvasEffects({
     ref,
     canvas,
     setExporting,
@@ -506,6 +508,7 @@ function DiagramCanvas({
       <ReactFlow<DiagramFlowNode, DiagramFlowEdge>
         ref={canvas}
         tabIndex={-1}
+        onMoveStart={view.onMoveStart}
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}

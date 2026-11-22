@@ -349,20 +349,21 @@ function useCopy(text: () => string) {
 }
 
 const GRID: Record<DiagramEditorView, string> = {
-  split: 'lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]',
+  split: '@5xl/diagram-editor:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]',
   drawing: '',
   text: '',
 }
 
 /**
  * How tall the panes are on wide screens: a fixed height, or (`fill`) what's left of the editor's
- * own height. Where the panes stack they keep the fixed one, 560px when filling.
+ * own height, shared equally when the text and the drawing stack in a narrow editor. On narrow
+ * screens the panes keep the fixed one, 560px when filling.
  */
 function paneHeight(height: string) {
   const fill = height === 'fill'
   return {
     style: { '--diagram-editor-h': fill ? '560px' : height } as React.CSSProperties,
-    className: fill ? 'lg:flex-1 lg:grid-rows-[minmax(0,1fr)]' : 'lg:h-(--diagram-editor-h)',
+    className: cn('lg:auto-rows-[minmax(0,1fr)]', fill ? 'lg:flex-1' : 'lg:h-(--diagram-editor-h)'),
   }
 }
 
@@ -391,7 +392,8 @@ function TextPane({
     <div
       className={cn(
         'flex min-h-0 min-w-0 flex-col',
-        split && 'border-b border-border lg:border-r lg:border-b-0',
+        split &&
+          'border-b border-border @5xl/diagram-editor:border-r @5xl/diagram-editor:border-b-0',
       )}
     >
       <p id={`${id}-source`} className="sr-only">
@@ -527,7 +529,7 @@ function DiagramEditor({
       data-slot="diagram-editor"
       aria-label={t.label}
       className={cn(
-        'flex flex-col overflow-hidden rounded-xl border border-border bg-card',
+        '@container/diagram-editor flex flex-col overflow-hidden rounded-xl border border-border bg-card',
         className,
       )}
       style={panes.style}

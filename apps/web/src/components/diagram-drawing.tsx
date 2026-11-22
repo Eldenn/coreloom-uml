@@ -80,7 +80,7 @@ function SidePanel({
     />
   )
   return (
-    <div className="flex max-h-[420px] min-h-0 flex-col gap-4 overflow-auto border-t border-border p-3 *:shrink-0 lg:max-h-none lg:w-64 lg:shrink-0 lg:border-t-0 lg:border-l">
+    <div className="flex max-h-[420px] min-h-0 flex-col gap-4 overflow-auto border-t border-border p-3 *:shrink-0 @md/diagram-drawing:max-h-none @md/diagram-drawing:w-64 @md/diagram-drawing:shrink-0 @md/diagram-drawing:border-t-0 @md/diagram-drawing:border-l">
       {diagram.kind === 'sequence' && (
         <SequenceOutline
           diagram={diagram}
@@ -157,7 +157,7 @@ function Drawing({
 
     <div
       ref={pane}
-      className="flex min-h-0 min-w-0 flex-col"
+      className="@container/diagram-drawing flex min-h-0 min-w-0 flex-col"
       {...(readOnly ? {} : { onKeyDown: shortcutKeys(editing, locked) })}
     >
       <DiagramTools
@@ -184,7 +184,7 @@ function Drawing({
         onUndo={editing.undo}
         onRedo={editing.redo}
       />
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col @md/diagram-drawing:flex-row">
         <div className="h-[340px] min-h-0 min-w-0 p-3 lg:h-auto lg:flex-1">
           {diagram ? (
             <UmlDiagram
