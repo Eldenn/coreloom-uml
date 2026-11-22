@@ -530,7 +530,7 @@ function DiagramWorkspace({
       data-slot="diagram-workspace"
       aria-label={title}
       className={cn(
-        'relative flex min-w-0 flex-col gap-3',
+        '@container/diagram-workspace relative flex min-w-0 flex-col gap-3',
         height && 'lg:h-(--diagram-workspace-h)',
         className,
       )}
@@ -540,12 +540,17 @@ function DiagramWorkspace({
       {drop.dragging && <DropHint text={t.dropFiles} />}
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
         {/* The name takes its own row until the list of views moves to the side. */}
-        <p className="m-0 flex min-w-0 basis-full font-display text-[20px] leading-tight font-semibold tracking-[-0.01em] lg:flex-1 lg:basis-0">
+        <p className="m-0 flex min-w-0 basis-full font-display text-[20px] leading-tight font-semibold tracking-[-0.01em] @4xl/diagram-workspace:flex-1 @4xl/diagram-workspace:basis-0">
           <EditableText value={title} onValueChange={onTitleChange} label={t.titleLabel} required />
         </p>
         <Sheet open={sheet} onOpenChange={setSheet}>
           <SheetTrigger asChild>
-            <Button type="button" variant="secondary" size="sm" className="lg:hidden">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="@4xl/diagram-workspace:hidden"
+            >
               <ListIcon aria-hidden />
               {t.showViews(diagrams.length)}
             </Button>
@@ -568,14 +573,14 @@ function DiagramWorkspace({
       </div>
       <div
         className={cn(
-          'grid min-w-0 gap-3 lg:grid-cols-[15rem_minmax(0,1fr)]',
+          'grid min-w-0 gap-3 @4xl/diagram-workspace:grid-cols-[15rem_minmax(0,1fr)]',
           height ? 'lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(0,1fr)]' : 'lg:items-start',
         )}
       >
         <nav
           aria-label={t.views}
           className={cn(
-            'hidden min-w-0 lg:block',
+            'hidden min-w-0 @4xl/diagram-workspace:block',
             height && 'lg:max-h-full lg:self-start lg:overflow-y-auto',
           )}
         >
