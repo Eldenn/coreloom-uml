@@ -44,6 +44,7 @@ import {
   type Fullscreen,
   FullscreenButton,
   RenameField,
+  useFitView,
   useFullscreen,
   useRename,
   useViewAcrossFullscreen,
@@ -216,25 +217,18 @@ function usePositions(layout: UmlLayout | undefined, graph: DiagramGraph | null)
   return { fixed, boxes, setDragged }
 }
 
-/** The image handle, and fitting the view again when elements come or go or the box resizes. */
-function useCanvasEffects({
+/** The image handle: the drawing as an image, without the selection. */
+function useCanvasImage({
   ref,
   canvas,
   setExporting,
-  ids,
-  refit,
 }: {
   ref: React.Ref<UmlDiagramHandle> | undefined
   canvas: React.RefObject<HTMLDivElement | null>
   /** True while an image is made, so the selection isn't in it. */
   setExporting: (on: boolean) => void
-  /** The node ids, joined: a change means elements were added or removed. */
-  ids: string
-  /** Fit again whenever the box changes size (thumbnails, full screen). */
-  refit: boolean
 }) {
   const flow = useReactFlow()
-  const moved = React.useRef(false)
   React.useImperativeHandle(ref, () => ({
     toImage: async (format) => {
       setExporting(true)
@@ -246,30 +240,6 @@ function useCanvasEffects({
       }
     },
   }))
-  React.useEffect(() => {
-    // React Flow's fitView, which waits until new elements have their size.
-    const frame = requestAnimationFrame(() => void flow.fitView({ padding: 0.15, maxZoom: 1 }))
-    return () => {
-      cancelAnimationFrame(frame)
-    }
-  }, [ids, flow])
-  React.useEffect(() => {
-    if (!canvas.current) return
-    let frame = 0
-    const observer = new ResizeObserver(() => {
-      if (!refit && moved.current) return // Kept once the reader pans or zooms.
-      cancelAnimationFrame(frame)
-      // A reader's canvas keeps the margin of its first fit; thumbnails and full screen fit tighter.
-      const fit = { padding: refit ? 0.08 : 0.15, maxZoom: 1 }
-      frame = requestAnimationFrame(() => void flow.fitView(fit))
-    })
-    observer.observe(canvas.current)
-    return () => {
-      observer.disconnect()
-      cancelAnimationFrame(frame)
-    }
-  }, [refit, flow, canvas])
-  return { onMoveStart: (event: MouseEvent | TouchEvent | null) => (moved.current ||= !!event) }
 }
 
 /** What React Flow's own live region and descriptions say, in the reader's language. */
@@ -468,13 +438,8 @@ function DiagramCanvas({
 
   const flow = useReactFlow()
   const rename = useRename({ canvas, graph, onRename: editable ? onRename : undefined, diagram })
-  const view = useCanvasEffects({
-    ref,
-    canvas,
-    setExporting,
-    ids: nodes.map((n) => n.id).join('\u0000'),
-    refit,
-  })
+  useCanvasImage({ ref, canvas, setExporting })
+  useFitView(canvas, nodes.map((n) => n.id).join('\u0000'), refit)
   useViewAcrossFullscreen(fullscreen)
 
   const toAlign = editable ? alignable(selection.elements, boxes, graph) : []
@@ -490,7 +455,6 @@ function DiagramCanvas({
       <ReactFlow<DiagramFlowNode, DiagramFlowEdge>
         ref={canvas}
         tabIndex={-1}
-        onMoveStart={view.onMoveStart}
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}
