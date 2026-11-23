@@ -112,6 +112,14 @@ export {
   testConnection,
 } from './connection.ts'
 export {
+  cleanDesignFindings,
+  type DesignReviewFinding,
+  type DesignReviewResult,
+  type DesignReviewSource,
+  designReviewPrompt,
+  reviewDesign,
+} from './design-review.ts'
+export {
   type DiagramRequestResult,
   type DiagramRequestSource,
   diagramRequestOutputSchema,

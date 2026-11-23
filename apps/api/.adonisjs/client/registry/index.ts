@@ -294,6 +294,18 @@ const routes = {
     tokens: [{"old":"/projects/:id/design-review","type":0,"val":"projects","end":""},{"old":"/projects/:id/design-review","type":1,"val":"id","end":""},{"old":"/projects/:id/design-review","type":0,"val":"design-review","end":""}],
     types: placeholder as Registry['projects.design_review.show']['types'],
   },
+  'architectures.design_review.store': {
+    methods: ["POST"],
+    pattern: '/architectures/:id/design-review',
+    tokens: [{"old":"/architectures/:id/design-review","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/design-review","type":1,"val":"id","end":""},{"old":"/architectures/:id/design-review","type":0,"val":"design-review","end":""}],
+    types: placeholder as Registry['architectures.design_review.store']['types'],
+  },
+  'design_findings.update': {
+    methods: ["PATCH"],
+    pattern: '/design-findings/:id',
+    tokens: [{"old":"/design-findings/:id","type":0,"val":"design-findings","end":""},{"old":"/design-findings/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['design_findings.update']['types'],
+  },
   'projects.code_reviews.index': {
     methods: ["GET","HEAD"],
     pattern: '/projects/:id/code-reviews',

@@ -1,5 +1,10 @@
 import vine from '@vinejs/vine'
+import {
+  CODE_REVIEW_LOCALES,
+  CODE_REVIEW_RESOLUTIONS,
+} from '#app/code-reviews/constants/code-review'
 import { DECISION_LIMITS, DECISION_STATUSES } from '#app/decisions/constants/decision'
+import { llmCallFields } from '#app/llm/validators/llm-input'
 
 const titleInput = () => vine.string().trim().minLength(1).maxLength(DECISION_LIMITS.titleLength)
 const textInput = () => vine.string().trim().maxLength(DECISION_LIMITS.textLength).nullable()
@@ -60,4 +65,17 @@ export const listDecisionsInput = vine.create(
     page: vine.number().withoutDecimals().min(1).optional(),
     perPage: vine.number().withoutDecimals().min(1).optional(),
   }),
+)
+
+/**
+ * `POST /architectures/:id/design-review`: the owner's model and the language of the comments.
+ * The browser sends nothing of the design: the server reads it.
+ */
+export const reviewDesignInput = vine.create(
+  vine.object({ ...llmCallFields(), locale: vine.enum(CODE_REVIEW_LOCALES) }),
+)
+
+/** `PATCH /design-findings/:id` */
+export const updateDesignFindingInput = vine.create(
+  vine.object({ resolution: vine.enum(CODE_REVIEW_RESOLUTIONS) }),
 )

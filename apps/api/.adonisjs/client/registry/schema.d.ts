@@ -583,6 +583,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/decisions/controllers/design-review-controller').default['show']>>>
     }
   }
+  'architectures.design_review.store': {
+    methods: ["POST"]
+    pattern: '/architectures/:id/design-review'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/decisions/validators/decisions-input').reviewDesignInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/decisions/validators/decisions-input').reviewDesignInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/decisions/controllers/design-review-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/decisions/controllers/design-review-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'design_findings.update': {
+    methods: ["PATCH"]
+    pattern: '/design-findings/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/decisions/validators/decisions-input').updateDesignFindingInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/decisions/validators/decisions-input').updateDesignFindingInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/decisions/controllers/design-findings-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/decisions/controllers/design-findings-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'projects.code_reviews.index': {
     methods: ["GET","HEAD"]
     pattern: '/projects/:id/code-reviews'
