@@ -24,7 +24,7 @@ import {
   type UmlSpec,
 } from '@/lib/uml'
 import { DIRECTIONS } from '@/lib/uml-arrange'
-import type { UmlImageFormat } from '@/lib/uml-image'
+import { printImage, type UmlDownloadFormat } from '@/lib/uml-image'
 import { parseMermaid, toMermaid } from '@/lib/uml-mermaid'
 import { isPlantUml, parsePlantUml, toPlantUml } from '@/lib/uml-plantuml'
 import { cn } from '@/lib/utils'
@@ -303,17 +303,18 @@ function useDownload({
   text: () => string
 }) {
   const [failed, setFailed] = React.useState(false)
-  const download = (what: DiagramFormat | UmlImageFormat) => {
-    if (what === 'svg' || what === 'png') {
+  const download = (what: DiagramFormat | UmlDownloadFormat) => {
+    if (what === 'svg' || what === 'png' || what === 'pdf') {
       setFailed(false)
-      image.current
-        ?.toImage(what)
-        .then((url) => {
-          save(url, `${fileName}.${what}`)
-        })
-        .catch(() => {
-          setFailed(true)
-        })
+      const made =
+        what === 'pdf'
+          ? image.current?.toImage('svg', { light: true }).then((url) => printImage(url, fileName))
+          : image.current?.toImage(what).then((url) => {
+              save(url, `${fileName}.${what}`)
+            })
+      made?.catch(() => {
+        setFailed(true)
+      })
       return
     }
     const blob = new Blob([text()], { type: format === 'json' ? 'application/json' : 'text/plain' })
