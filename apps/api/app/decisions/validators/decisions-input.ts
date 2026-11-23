@@ -4,7 +4,11 @@ import {
   CODE_REVIEW_LOCALES,
   CODE_REVIEW_RESOLUTIONS,
 } from '#app/code-reviews/constants/code-review'
-import { DECISION_LIMITS, DECISION_STATUSES } from '#app/decisions/constants/decision'
+import {
+  DECISION_LIMITS,
+  DECISION_STATUSES,
+  DecisionOrigin,
+} from '#app/decisions/constants/decision'
 import { llmCallFields } from '#app/llm/validators/llm-input'
 
 const titleInput = () => vine.string().trim().minLength(1).maxLength(DECISION_LIMITS.titleLength)
@@ -56,7 +60,8 @@ export const createDecisionInput = vine.create(
 
 /**
  * `PATCH /decisions/:id` — omitted fields are left as-is; `requirementIds`, `diagramIds` and
- * `parts` replace the whole set when given.
+ * `parts` replace the whole set when given. `origin: owner` keeps a coding agent's proposal: it
+ * becomes the owner's and counts from then on. Nothing sets `agent` back.
  */
 export const updateDecisionInput = vine.create(
   vine.object({
@@ -70,6 +75,7 @@ export const updateDecisionInput = vine.create(
     requirementIds: idsInput().optional(),
     diagramIds: idsInput().optional(),
     parts: partsInput().optional(),
+    origin: vine.enum([DecisionOrigin.Owner]).optional(),
   }),
 )
 

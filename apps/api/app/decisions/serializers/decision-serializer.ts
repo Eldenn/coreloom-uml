@@ -17,6 +17,8 @@ export function serializeDecision(decision: Decision): DecisionOutput {
     requirementIds: decision.requirements.map((requirement) => requirement.id).sort(byNumber),
     diagramIds: decision.diagrams.map((diagram) => diagram.id).sort(byNumber),
     parts: serializeParts(decision),
+    origin: decision.origin,
+    supersedesId: decision.supersedesId,
     createdAt: decision.createdAt.toISO() ?? '',
     updatedAt: decision.updatedAt.toISO() ?? '',
   }

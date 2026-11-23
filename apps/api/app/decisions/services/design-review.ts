@@ -1,6 +1,7 @@
 import { hasUmlPart, type UmlSpec } from '@coreloom-uml/uml'
 import { type DecisionPartRef, DecisionStatus } from '#app/decisions/constants/decision'
 import Decision from '#app/decisions/models/decision'
+import { reviewed } from '#app/decisions/services/agent-proposals'
 import { withLinks } from '#app/decisions/services/decision-writes'
 import Diagram from '#app/diagrams/models/diagram'
 import { RequirementPriority } from '#app/requirements/constants/requirement'
@@ -85,7 +86,7 @@ export function reviewDesign(
 export async function projectDesignFindings(projectId: number): Promise<DesignFinding[]> {
   const [requirements, decisions] = await Promise.all([
     Requirement.query().where('projectId', projectId).orderBy('id', 'asc'),
-    withLinks(Decision.query().where('projectId', projectId)).orderBy('id', 'asc'),
+    withLinks(reviewed(Decision.query().where('projectId', projectId))).orderBy('id', 'asc'),
   ])
   const viewIds = [...new Set(decisions.flatMap((d) => d.parts.map((part) => part.diagramId)))]
   const views = viewIds.length

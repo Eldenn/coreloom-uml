@@ -4,6 +4,7 @@ import type {
 } from '#app/code-reviews/constants/code-review'
 import type {
   DecisionOption,
+  DecisionOrigin,
   DecisionPartRef,
   DecisionStatus,
 } from '#app/decisions/constants/decision'
@@ -24,6 +25,10 @@ export type DecisionOutput = {
   diagramIds: number[]
   /** The parts of views it names, in the order they were given. */
   parts: DecisionPartRef[]
+  /** `agent` with `proposed`: a coding agent's proposal waiting for the owner's review. */
+  origin: DecisionOrigin
+  /** For a coding agent's proposal: the decision it says no longer holds. */
+  supersedesId: number | null
   createdAt: string
   updatedAt: string
 }

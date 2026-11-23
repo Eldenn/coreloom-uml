@@ -22,6 +22,21 @@ export const DECISION_LIMITS = {
   perProject: 100,
 } as const
 
+/**
+ * Who recorded a decision. A coding agent's (the MCP tool `propose_decision`) waits for the
+ * owner's review while it is `proposed`: nothing a model or an agent reads counts it until the
+ * owner keeps it, which makes it the owner's.
+ */
+export const DecisionOrigin = {
+  Owner: 'owner',
+  Agent: 'agent',
+} as const
+export type DecisionOrigin = (typeof DecisionOrigin)[keyof typeof DecisionOrigin]
+export const DECISION_ORIGINS = Object.values(DecisionOrigin)
+
+/** Proposals of coding agents waiting for the owner's review a project holds at most. */
+export const AGENT_PROPOSALS_WAITING_MAX = 10
+
 /** One option weighed by a decision. */
 export type DecisionOption = { name: string; pros: string | null; cons: string | null }
 
