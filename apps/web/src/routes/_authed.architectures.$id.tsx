@@ -36,7 +36,7 @@ import {
   useSharingActions,
   useUpdateArchitecture,
 } from '@/lib/architectures'
-import { useAssistantWorkspace } from '@/lib/assistant-context'
+import { useAssistantWorkspace, useWorkspaceContextActions } from '@/lib/assistant-context'
 import { getErrorMessage } from '@/lib/client'
 import { annotationsOf } from '@/lib/code-review-findings'
 import {
@@ -224,6 +224,7 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
     },
     conversationId,
   )
+  const contextActions = useWorkspaceContextActions(architecture.id)
   const reviewed = useOpenViewFindings(architecture.projectId, active?.id)
 
   return (
@@ -244,6 +245,7 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
             onAnnotationSelect={(element) => {
               side.review(true, element)
             }}
+            contextActions={contextActions}
             activeId={active ? String(active.id) : ''}
             onActiveChange={(viewId) => {
               select(Number(viewId))

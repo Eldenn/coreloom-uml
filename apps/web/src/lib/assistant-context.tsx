@@ -43,6 +43,8 @@ interface AssistantControls {
   showConversation: (conversationId: number | null) => void
   setWorkspace: (workspace: Workspace | null) => void
   setItems: (items: readonly ContextItem[]) => void
+  /** The context as it is now, for a caller that must not render again with the chat. */
+  readItems: () => readonly ContextItem[]
 }
 
 const StateContext = React.createContext<AssistantState | null>(null)
@@ -54,8 +56,18 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = React.useState<readonly ContextItem[]>([])
   const [workspace, setWorkspace] = React.useState<Workspace | null>(null)
   // The setters of `useState`: stable, so the object is too.
+  const held = React.useRef(items)
+  React.useEffect(() => {
+    held.current = items
+  }, [items])
   const controls = React.useMemo<AssistantControls>(
-    () => ({ setOpen, showConversation: setConversationId, setWorkspace, setItems }),
+    () => ({
+      setOpen,
+      showConversation: setConversationId,
+      setWorkspace,
+      setItems,
+      readItems: () => held.current,
+    }),
     [],
   )
   const state = React.useMemo(
@@ -145,14 +157,16 @@ export interface WorkspaceTarget {
 /**
  * What a right-click in an architecture's workspace adds to the menu of a view or of a part of
  * one: putting it in the assistant's context, or taking it out. Parts that read the same in one
- * view are one item.
+ * view are one item. The context is read when the menu opens: the page that calls this tells the
+ * chat its workspace, and must not render again each time the chat's state changes.
  */
 export function useWorkspaceContextActions(architectureId: number) {
   const t = useT().assistant
-  const { items, setItems, setOpen } = useAssistant()
+  const { readItems, setItems, setOpen } = useControls()
   const enabled = useFeature('diagram-assistant')
   const autoOffered = useAutoOffered(useStoredProvider())
   return (target: WorkspaceTarget): ItemAction[] => {
+    const items = readItems()
     const viewId = Number(target.viewId)
     if (!enabled || !Number.isInteger(viewId)) return []
     const { label } = target
