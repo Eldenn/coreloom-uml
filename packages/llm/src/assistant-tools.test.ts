@@ -278,6 +278,27 @@ describe('runAssistantTools', () => {
     ])
   })
 
+  it('names what the owner put in the context, after the page', async () => {
+    const { tools } = fakeTools()
+    const model = toolCallingModel([{ text: 'ok' }])
+
+    await runAssistantTools(model, {
+      ...base,
+      tools,
+      page: { kind: 'project', id: 7, name: 'Shop' },
+      context: [
+        { kind: 'architecture', id: 3, name: 'Checkout' },
+        { kind: 'agent-config', id: 9, name: 'Back "end"' },
+      ],
+    })
+
+    const user = model.doGenerateCalls[0]?.prompt.find((message) => message.role === 'user')
+    const text = (user?.content ?? []).map((part) => (part.type === 'text' ? part.text : '')).at(-1)
+    expect(text).toMatch(
+      /^<page kind="project" id="7" name="Shop" \/>\n<context>\n<item kind="architecture" id="3" name="Checkout" \/>\n<item kind="agent-config" id="9" name="Back \\"end\\"" \/>\n<\/context>\n/,
+    )
+  })
+
   it('puts the files and the history before the page, the most stable first', async () => {
     const { tools } = fakeTools()
     const model = toolCallingModel([{ text: 'ok' }])

@@ -304,7 +304,7 @@ describe('chatWithAssistant', () => {
     expect(prompt).toContain('What is in this view?')
     expect(prompt).toContain('Can you draw my login flow?')
     expect(prompt).toContain('French')
-    expect(prompt).toContain('From the web')
+    expect(prompt).toContain("Add to the assistant's context")
     expect(prompt).not.toContain('<view')
     expect(call?.tools ?? []).toHaveLength(0)
   })

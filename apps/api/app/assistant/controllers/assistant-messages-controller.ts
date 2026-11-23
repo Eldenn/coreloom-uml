@@ -24,6 +24,7 @@ import {
   assistantActionsEnabled,
   handoffOf,
   handoffTools,
+  resolveContext,
   resolvePage,
 } from '#app/assistant/services/assistant-actions'
 import {
@@ -365,7 +366,7 @@ export default class AssistantMessagesController {
     const conversation = await findOwnedConversation(params.conversationId, user)
     if (!conversation) return response.notFound(CONVERSATION_NOT_FOUND)
 
-    const { provider, apiKey, message, locale, page, auto, fileId } =
+    const { provider, apiKey, message, locale, page, context, auto, fileId } =
       await request.validateUsing(chatInput)
     const attached =
       fileId === undefined ? null : await findConversationFile(conversation.id, fileId)
@@ -416,6 +417,7 @@ export default class AssistantMessagesController {
           message: sent,
           locale,
           page: await resolvePage(page, user),
+          context: await resolveContext(context, user),
           tools,
         })
         reply = withFilesRead(result.reply, repository.read, locale)

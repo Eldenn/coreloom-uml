@@ -2,10 +2,10 @@
 // newest, or one picked among the five kept), in five views: what the map holds, the diagrams the
 // user's own model proposes for it, how each diagram matches it, the conformance reviews of the
 // diagrams by that model, and the processes no diagram documents.
-import { EllipsisIcon, PlusIcon, RefreshCwIcon, Trash2Icon } from 'lucide-react'
+import { EllipsisIcon, PlusIcon, RefreshCwIcon, SparklesIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 
-import { OpenAssistantButton } from '@/code-maps/code-assistant'
+import { OpenAssistantDialog } from '@/code-maps/code-assistant'
 import { CodeDiagramLinks } from '@/code-maps/code-diagram-links'
 import { CodeMapOverview } from '@/code-maps/code-map-overview'
 import { CodeMapSources } from '@/code-maps/code-map-sources'
@@ -54,6 +54,7 @@ import { toast } from '@/components/ui/sonner'
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getErrorMessage } from '@/lib/client'
+import { type DrawnMap, useDrawsWithAssistant } from '@/lib/code-maps'
 import {
   type CodeMapDetail,
   type CodeMapSummary,
@@ -184,7 +185,6 @@ function CodeMapPanel({
             />
             <FollowBadge projectId={projectId} />
             <div className="flex flex-wrap gap-2">
-              <OpenAssistantButton map={shown} />
               <Button
                 variant="outline"
                 onClick={() => {
@@ -193,7 +193,7 @@ function CodeMapPanel({
               >
                 <PlusIcon /> {t.code.addMap}
               </Button>
-              <MapActions onDelete={deleteShown} />
+              <MapActions map={shown} onDelete={deleteShown} />
             </div>
           </div>
         </div>
@@ -260,8 +260,10 @@ function CodeMapPanel({
 }
 
 /** The rarer actions on the shown map, behind a menu; deleting asks first. */
-function MapActions({ onDelete }: { onDelete: () => Promise<void> }) {
+function MapActions({ map, onDelete }: { map: DrawnMap; onDelete: () => Promise<void> }) {
   const t = useT()
+  const draws = useDrawsWithAssistant(map)
+  const [drawing, setDrawing] = React.useState(false)
   const [deleting, setDeleting] = React.useState(false)
   return (
     <>
@@ -272,6 +274,15 @@ function MapActions({ onDelete }: { onDelete: () => Promise<void> }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {draws && (
+            <DropdownMenuItem
+              onSelect={() => {
+                setDrawing(true)
+              }}
+            >
+              <SparklesIcon /> {t.code.assistantOpen}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             variant="destructive"
             onSelect={() => {
@@ -282,6 +293,7 @@ function MapActions({ onDelete }: { onDelete: () => Promise<void> }) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <OpenAssistantDialog open={drawing} onOpenChange={setDrawing} map={map} />
       <AlertDialog open={deleting} onOpenChange={setDeleting}>
         <AlertDialogContent>
           <AlertDialogHeader>

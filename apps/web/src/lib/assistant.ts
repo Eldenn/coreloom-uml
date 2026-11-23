@@ -236,6 +236,7 @@ export function useAskAssistant(conversationId: number) {
       architectureId,
       auto,
       page,
+      context,
       file: attached,
       onReading,
       onHandoff,
@@ -251,6 +252,8 @@ export function useAskAssistant(conversationId: number) {
       auto?: boolean
       /** With `auto`: where the owner is, so that "here" means something. */
       page?: AssistantPage
+      /** With `auto`: the items the owner put in the context, which the assistant reads. */
+      context?: AssistantPage[]
       /**
        * A file attached with this message; it follows a handed-over message. It is attached to
        * the conversation first, and `onReading` hears when that reading starts and ends.
@@ -316,7 +319,7 @@ export function useAskAssistant(conversationId: number) {
             message: text,
             locale,
             ...(fileId === null || !withFile ? {} : { fileId }),
-            ...(auto ? { auto: true, ...(page ? { page } : {}) } : {}),
+            ...(auto ? { auto: true, ...(page ? { page } : {}), context: context ?? [] } : {}),
           },
           ...MODEL_CALL,
         })

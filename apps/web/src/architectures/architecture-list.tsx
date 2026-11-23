@@ -5,6 +5,7 @@ import { CopyIcon, FolderInputIcon, NetworkIcon, PlusIcon, Trash2Icon } from 'lu
 import * as React from 'react'
 import { z } from 'zod'
 
+import { ItemContextMenu } from '@/assistant/item-context-menu'
 import { DiagramCard } from '@/components/diagram-card'
 import { ActionBar } from '@/components/ui/action-bar'
 import {
@@ -42,6 +43,7 @@ import {
   useDuplicateArchitecture,
   useMoveArchitecture,
 } from '@/lib/architectures'
+import { useContextActions } from '@/lib/assistant-context'
 import { getErrorMessage } from '@/lib/client'
 import type { CodeConformance } from '@/lib/code-maps'
 import { useCoreloomI18n } from '@/lib/i18n'
@@ -285,50 +287,58 @@ function ArchitectureCard({ architecture }: { architecture: ArchitectureSummary 
   const [confirming, setConfirming] = React.useState(false)
   const [moving, setMoving] = React.useState(false)
   const cover = architecture.cover?.content
+  const inContext = useContextActions({
+    kind: 'architecture',
+    id: architecture.id,
+    label: architecture.title,
+  })
+  const actions = [
+    {
+      label: t.architectures.open,
+      icon: <NetworkIcon />,
+      onSelect: () => void navigate({ to: '/architectures/$id', params: { id: architecture.id } }),
+    },
+    {
+      label: t.architectures.duplicate,
+      icon: <CopyIcon />,
+      onSelect: () => {
+        duplicate.mutate(architecture.id, {
+          onSuccess: () => toast.success(t.architectures.duplicated),
+        })
+      },
+    },
+    {
+      label: t.architectures.move,
+      icon: <FolderInputIcon />,
+      onSelect: () => {
+        setMoving(true)
+      },
+    },
+    ...inContext,
+    {
+      label: t.architectures.delete,
+      icon: <Trash2Icon />,
+      destructive: true,
+      onSelect: () => {
+        setConfirming(true)
+      },
+    },
+  ]
 
   return (
     <>
-      <DiagramCard
-        className="h-full"
-        title={architecture.title}
-        href={`/architectures/${architecture.id}`}
-        diagram={cover ?? undefined}
-        visibility={architecture.visibility}
-        updatedAt={new Date(architecture.updatedAt)}
-        diagramCount={architecture.diagramCount}
-        actions={[
-          {
-            label: t.architectures.open,
-            icon: <NetworkIcon />,
-            onSelect: () =>
-              void navigate({ to: '/architectures/$id', params: { id: architecture.id } }),
-          },
-          {
-            label: t.architectures.duplicate,
-            icon: <CopyIcon />,
-            onSelect: () => {
-              duplicate.mutate(architecture.id, {
-                onSuccess: () => toast.success(t.architectures.duplicated),
-              })
-            },
-          },
-          {
-            label: t.architectures.move,
-            icon: <FolderInputIcon />,
-            onSelect: () => {
-              setMoving(true)
-            },
-          },
-          {
-            label: t.architectures.delete,
-            icon: <Trash2Icon />,
-            destructive: true,
-            onSelect: () => {
-              setConfirming(true)
-            },
-          },
-        ]}
-      />
+      <ItemContextMenu actions={actions}>
+        <DiagramCard
+          className="h-full"
+          title={architecture.title}
+          href={`/architectures/${architecture.id}`}
+          diagram={cover ?? undefined}
+          visibility={architecture.visibility}
+          updatedAt={new Date(architecture.updatedAt)}
+          diagramCount={architecture.diagramCount}
+          actions={actions}
+        />
+      </ItemContextMenu>
       <MoveArchitecturesDialog
         title={t.architectures.moveTitle(architecture.title)}
         ids={[architecture.id]}

@@ -6,6 +6,7 @@ import { z } from 'zod'
 
 import { AgentConfigSetupContent } from '@/agent-configs/agent-config-setup'
 import { ProjectLabel } from '@/architectures/architecture-list'
+import { ItemContextMenu } from '@/assistant/item-context-menu'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -36,6 +37,7 @@ import {
   type useAgentConfigs,
   useUpdateAgentConfig,
 } from '@/lib/agent-configs'
+import { useContextActions } from '@/lib/assistant-context'
 import { getErrorMessage } from '@/lib/client'
 import { useT } from '@/lib/locale'
 import { NO_PROJECT, type Project, toProjectId, useProjectOptions } from '@/lib/projects'
@@ -115,44 +117,56 @@ function AgentConfigRow({
   selection?: AgentConfigSelection
 }) {
   const t = useT()
+  const navigate = useNavigate()
+  const inContext = useContextActions({ kind: 'agent-config', id: config.id, label: config.name })
+  const actions = [
+    {
+      label: t.projects.open,
+      icon: <BotIcon />,
+      onSelect: () => void navigate({ to: '/agent-configs/$id', params: { id: config.id } }),
+    },
+    ...inContext,
+  ]
   return (
-    <Item variant="outline" className="relative">
-      <ItemMedia variant="icon">
-        <BotIcon />
-      </ItemMedia>
-      <ItemContent>
-        <ItemTitle>
-          {/* The whole row opens the configuration; the project link stays clickable on top. */}
-          <Link
-            to="/agent-configs/$id"
-            params={{ id: config.id }}
-            className="rounded-sm outline-none after:absolute after:inset-0 focus-visible:ring-[3px] focus-visible:ring-ring"
-          >
-            {config.name}
-          </Link>
-        </ItemTitle>
-        <ItemDescription className="relative">
-          <ProjectLabel projects={projects} projectId={config.projectId} />
-        </ItemDescription>
-      </ItemContent>
-      <ItemActions>
-        <RelativeTime
-          date={config.updatedAt}
-          className="hidden text-[13px] text-muted-foreground sm:inline"
-        />
-        {selection && (
-          // After the link in the row, and positioned, so it stays clickable on top of it.
-          <Checkbox
-            className="relative"
-            aria-label={t.agents.select(config.name)}
-            checked={selection.has(config.id)}
-            onCheckedChange={(checked) => {
-              selection.onToggle(config, checked === true)
-            }}
+    <ItemContextMenu actions={actions}>
+      <Item variant="outline" className="relative">
+        <ItemMedia variant="icon">
+          <BotIcon />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>
+            {/* The whole row opens the configuration; the project link stays clickable on top. */}
+            <Link
+              to="/agent-configs/$id"
+              params={{ id: config.id }}
+              className="rounded-sm outline-none after:absolute after:inset-0 focus-visible:ring-[3px] focus-visible:ring-ring"
+            >
+              {config.name}
+            </Link>
+          </ItemTitle>
+          <ItemDescription className="relative">
+            <ProjectLabel projects={projects} projectId={config.projectId} />
+          </ItemDescription>
+        </ItemContent>
+        <ItemActions>
+          <RelativeTime
+            date={config.updatedAt}
+            className="hidden text-[13px] text-muted-foreground sm:inline"
           />
-        )}
-      </ItemActions>
-    </Item>
+          {selection && (
+            // After the link in the row, and positioned, so it stays clickable on top of it.
+            <Checkbox
+              className="relative"
+              aria-label={t.agents.select(config.name)}
+              checked={selection.has(config.id)}
+              onCheckedChange={(checked) => {
+                selection.onToggle(config, checked === true)
+              }}
+            />
+          )}
+        </ItemActions>
+      </Item>
+    </ItemContextMenu>
   )
 }
 

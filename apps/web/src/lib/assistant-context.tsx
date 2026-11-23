@@ -1,0 +1,144 @@
+// The assistant's state, shared by every page of the shell: whether its floating chat is open,
+// the conversation shown, the context the owner made (the items the next messages are about,
+// added from an item's menu) and the architecture page it floats over, if any. The context stays
+// from one conversation to the next, until the owner takes an item out; a reload empties it.
+import { SparklesIcon } from 'lucide-react'
+import * as React from 'react'
+
+import { useAutoOffered } from '@/assistant/use-subject'
+import { toast } from '@/components/ui/sonner'
+import type { ArchitectureDetail } from '@/lib/architectures'
+import type { AutosaveControl } from '@/lib/assistant'
+import { addItem, type ContextItem, sameItem } from '@/lib/assistant-subject'
+import { useFeature } from '@/lib/feature-flags'
+import { useStoredProvider } from '@/lib/llm-provider'
+import { useT } from '@/lib/locale'
+
+/** An architecture's page under the chat: its open view and its editor's autosave. */
+export interface Workspace {
+  architecture: ArchitectureDetail
+  currentDiagramId: number | null
+  autosave: AutosaveControl
+  /** A code map the page was opened to draw from (`?code=`). */
+  codeMapId?: number
+}
+
+interface AssistantState {
+  open: boolean
+  conversationId: number | null
+  items: readonly ContextItem[]
+  workspace: Workspace | null
+}
+
+/** What never changes: a page that only calls these does not render again with the chat. */
+interface AssistantControls {
+  setOpen: (open: boolean) => void
+  /** `null` shows the newest conversation. */
+  showConversation: (conversationId: number | null) => void
+  setWorkspace: (workspace: Workspace | null) => void
+  setItems: (items: readonly ContextItem[]) => void
+}
+
+const StateContext = React.createContext<AssistantState | null>(null)
+const ControlsContext = React.createContext<AssistantControls | null>(null)
+
+export function AssistantProvider({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = React.useState(false)
+  const [conversationId, setConversationId] = React.useState<number | null>(null)
+  const [items, setItems] = React.useState<readonly ContextItem[]>([])
+  const [workspace, setWorkspace] = React.useState<Workspace | null>(null)
+  // The setters of `useState`: stable, so the object is too.
+  const controls = React.useMemo<AssistantControls>(
+    () => ({ setOpen, showConversation: setConversationId, setWorkspace, setItems }),
+    [],
+  )
+  const state = React.useMemo(
+    () => ({ open, conversationId, items, workspace }),
+    [open, conversationId, items, workspace],
+  )
+  return (
+    <ControlsContext value={controls}>
+      <StateContext value={state}>{children}</StateContext>
+    </ControlsContext>
+  )
+}
+
+function useControls(): AssistantControls {
+  const controls = React.use(ControlsContext)
+  if (!controls) throw new Error('useAssistant needs an AssistantProvider')
+  return controls
+}
+
+export function useAssistant(): AssistantState & AssistantControls {
+  const state = React.use(StateContext)
+  const controls = useControls()
+  if (!state) throw new Error('useAssistant needs an AssistantProvider')
+  return { ...state, ...controls }
+}
+
+/**
+ * On an architecture's page: tells the chat which architecture it floats over, its open view and
+ * its editor's autosave, so a message is about it and an accepted change goes through the editor.
+ * `conversationId` (`?assistant=`) opens the chat on that conversation.
+ */
+export function useAssistantWorkspace(workspace: Workspace, conversationId: number | undefined) {
+  const { setWorkspace, setOpen, showConversation } = useControls()
+  const { architecture, currentDiagramId, autosave, codeMapId } = workspace
+  React.useEffect(() => {
+    setWorkspace({ architecture, currentDiagramId, autosave, codeMapId })
+  }, [setWorkspace, architecture, currentDiagramId, autosave, codeMapId])
+  React.useEffect(
+    () => () => {
+      setWorkspace(null)
+    },
+    [setWorkspace],
+  )
+  React.useEffect(() => {
+    if (conversationId === undefined) return
+    showConversation(conversationId)
+    setOpen(true)
+  }, [conversationId, showConversation, setOpen])
+}
+
+/**
+ * Whether an item can go in the assistant's context, whether it is there, and the switch. Not
+ * offered while the assistant is off, nor, without "Auto", for anything but an architecture: the
+ * diagram assistant reads nothing else.
+ */
+export function useContextItem(item: ContextItem) {
+  const t = useT().assistant
+  const { items, setItems, setOpen } = useAssistant()
+  const enabled = useFeature('diagram-assistant')
+  const autoOffered = useAutoOffered(useStoredProvider())
+  const held = items.some((other) => sameItem(other, item))
+  return {
+    offered: enabled && (autoOffered || item.kind === 'architecture'),
+    held,
+    label: held ? t.removeFromContext : t.addToContext,
+    toggle: () => {
+      if (held) {
+        setItems(items.filter((other) => !sameItem(other, item)))
+        return
+      }
+      const next = addItem(items, item, autoOffered)
+      if (next === items) toast.error(t.contextFull)
+      else setItems(next)
+      // The owner sees the item land next to the prompt.
+      setOpen(true)
+    },
+  }
+}
+
+/** What an item's menu offers, in its "…" menu and on a right-click. */
+export interface ItemAction {
+  label: string
+  icon?: React.ReactNode
+  destructive?: boolean
+  onSelect: () => void
+}
+
+/** Adding the item to the assistant's context, or taking it out; nothing while it is not offered. */
+export function useContextActions(item: ContextItem): ItemAction[] {
+  const { offered, label, toggle } = useContextItem(item)
+  return offered ? [{ label, icon: <SparklesIcon />, onSelect: toggle }] : []
+}

@@ -11,6 +11,7 @@ import {
 import * as React from 'react'
 import { z } from 'zod'
 
+import { ItemContextMenu } from '@/assistant/item-context-menu'
 import { PageHeader } from '@/components/app-shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -18,7 +19,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/item'
 import { RelativeTime } from '@/components/ui/relative-time'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useContextActions } from '@/lib/assistant-context'
 import { useT } from '@/lib/locale'
 import { type Project, useProjects } from '@/lib/projects'
 import {
@@ -167,70 +168,83 @@ function ProjectRow({ project }: { project: Project }) {
   const open = () =>
     void navigate({ to: '/projects/$projectId', params: { projectId: project.id } })
 
+  const inContext = useContextActions({ kind: 'project', id: project.id, label: project.name })
+  const actions = [
+    { label: t.projects.open, icon: <FolderOpenIcon />, onSelect: open },
+    {
+      label: t.projects.rename,
+      icon: <PencilIcon />,
+      onSelect: () => {
+        setEditing(true)
+      },
+    },
+    ...inContext,
+    {
+      label: t.projects.delete,
+      icon: <Trash2Icon />,
+      destructive: true,
+      onSelect: () => {
+        setDeleting(true)
+      },
+    },
+  ]
+
   return (
     <>
-      <Item variant="outline" className="relative">
-        <ItemMedia variant="icon">
-          <FolderIcon />
-        </ItemMedia>
-        <ItemContent>
-          <ItemTitle>
-            {/* The whole row opens the project; the menu below stays clickable on top of it. */}
-            <Link
-              to="/projects/$projectId"
-              params={{ projectId: project.id }}
-              className="rounded-sm outline-none after:absolute after:inset-0 focus-visible:ring-[3px] focus-visible:ring-ring"
-            >
-              {project.name}
-            </Link>
-          </ItemTitle>
-          {!!project.description && (
-            <ItemDescription className="line-clamp-1">{project.description}</ItemDescription>
-          )}
-        </ItemContent>
-        <ItemActions className="relative">
-          {project.agentConfigCount > 0 && (
-            <Badge variant="outline" className="hidden sm:inline-flex">
-              {t.agents.badge}
+      <ItemContextMenu actions={actions}>
+        <Item variant="outline" className="relative">
+          <ItemMedia variant="icon">
+            <FolderIcon />
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>
+              {/* The whole row opens the project; the menu below stays clickable on top of it. */}
+              <Link
+                to="/projects/$projectId"
+                params={{ projectId: project.id }}
+                className="rounded-sm outline-none after:absolute after:inset-0 focus-visible:ring-[3px] focus-visible:ring-ring"
+              >
+                {project.name}
+              </Link>
+            </ItemTitle>
+            {!!project.description && (
+              <ItemDescription className="line-clamp-1">{project.description}</ItemDescription>
+            )}
+          </ItemContent>
+          <ItemActions className="relative">
+            {project.agentConfigCount > 0 && (
+              <Badge variant="outline" className="hidden sm:inline-flex">
+                {t.agents.badge}
+              </Badge>
+            )}
+            <Badge variant="secondary">
+              {t.projects.architectureCount(project.architectureCount)}
             </Badge>
-          )}
-          <Badge variant="secondary">
-            {t.projects.architectureCount(project.architectureCount)}
-          </Badge>
-          <RelativeTime
-            date={project.updatedAt}
-            className="hidden text-[13px] text-muted-foreground sm:inline"
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label={t.projects.actions(project.name)}>
-                <MoreHorizontalIcon />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={open}>
-                <FolderOpenIcon /> {t.projects.open}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => {
-                  setEditing(true)
-                }}
-              >
-                <PencilIcon /> {t.projects.rename}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                onSelect={() => {
-                  setDeleting(true)
-                }}
-              >
-                <Trash2Icon /> {t.projects.delete}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </ItemActions>
-      </Item>
+            <RelativeTime
+              date={project.updatedAt}
+              className="hidden text-[13px] text-muted-foreground sm:inline"
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label={t.projects.actions(project.name)}>
+                  <MoreHorizontalIcon />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {actions.map((action) => (
+                  <DropdownMenuItem
+                    key={action.label}
+                    variant={action.destructive ? 'destructive' : 'default'}
+                    onSelect={action.onSelect}
+                  >
+                    {action.icon} {action.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </ItemActions>
+        </Item>
+      </ItemContextMenu>
       <EditProjectDialog project={project} open={editing} onOpenChange={setEditing} />
       <DeleteProjectDialog project={project} open={deleting} onOpenChange={setDeleting} />
     </>

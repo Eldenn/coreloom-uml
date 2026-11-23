@@ -20,37 +20,9 @@ import { useArchitectures } from '@/lib/architectures'
 import { useCreateConversation } from '@/lib/assistant'
 import { getErrorMessage } from '@/lib/client'
 import type { CodeMapDetail } from '@/lib/code-maps'
-import { useFeature } from '@/lib/feature-flags'
-import { useStoredProvider } from '@/lib/llm-provider'
 import { useT } from '@/lib/locale'
 
-/** Shown for a ready map, with the assistant on and a provider set. */
-export function OpenAssistantButton({
-  map,
-}: {
-  map: Pick<CodeMapDetail, 'id' | 'projectId' | 'status'>
-}) {
-  const t = useT()
-  const assistant = useFeature('diagram-assistant')
-  const provider = useStoredProvider()
-  const [open, setOpen] = React.useState(false)
-  if (!assistant || provider === null || map.status !== 'ready') return null
-  return (
-    <>
-      <Button
-        variant="outline"
-        onClick={() => {
-          setOpen(true)
-        }}
-      >
-        <SparklesIcon /> {t.code.assistantOpen}
-      </Button>
-      <OpenAssistantDialog open={open} onOpenChange={setOpen} map={map} />
-    </>
-  )
-}
-
-function OpenAssistantDialog({
+export function OpenAssistantDialog({
   open,
   onOpenChange,
   map,
