@@ -392,7 +392,11 @@ export default class AssistantMessagesController {
     if (request.accepts(['application/json', 'text/event-stream']) === 'text/event-stream') {
       // The owner closing the panel (or pressing Stop) stops the model call: nothing is stored.
       const gone = new AbortController()
-      request.request.once('close', () => gone.abort())
+      // The response's own close: the request's fires once its body was read.
+      const raw = response.response
+      raw.once('close', () => {
+        if (!raw.writableFinished) gone.abort()
+      })
       for (const [name, value] of Object.entries(UI_MESSAGE_STREAM_HEADERS))
         response.header(name, value)
       response.header('Cache-Control', 'no-cache, no-transform')
@@ -404,7 +408,9 @@ export default class AssistantMessagesController {
         if (answer.status === HttpStatus.Ok) writer.done(answer.body)
         else writer.fail(answer.status, answer.body)
       })
-      return response.stream(Readable.fromWeb(body as NodeReadableStream<string>))
+      response.stream(Readable.fromWeb(body as NodeReadableStream<string>))
+      // Answered by the stream: kept out of the JSON response type Tuyau reads.
+      return undefined as never
     }
     const answer = await answerChat(input, {})
     if (answer.status === HttpStatus.UnprocessableEntity)
