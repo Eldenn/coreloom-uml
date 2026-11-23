@@ -1,4 +1,5 @@
 import db from '@adonisjs/lucid/services/db'
+import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import type { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import {
   DECISION_LIMITS,
@@ -60,6 +61,7 @@ async function problem(
   selfId: number | null,
   fields: Partial<DecisionFields>,
   next: Pick<Decision, 'options' | 'chosen' | 'status' | 'supersededById'>,
+  client?: TransactionClientContract,
 ): Promise<DecisionRefusal | null> {
   const names = next.options.map((option) => option.name)
   if (new Set(names).size !== names.length)
@@ -75,12 +77,12 @@ async function problem(
     const other =
       next.supersededById === selfId
         ? null
-        : await Decision.query().where({ id: next.supersededById, projectId }).first()
+        : await Decision.query({ client }).where({ id: next.supersededById, projectId }).first()
     if (!other) return refuse('supersededById', 'This is not another decision of the project.')
   }
 
   if (fields.requirementIds?.length) {
-    const found = await Requirement.query()
+    const found = await Requirement.query({ client })
       .where('projectId', projectId)
       .whereIn('id', fields.requirementIds)
       .count('* as total')
@@ -88,7 +90,7 @@ async function problem(
       return refuse('requirementIds', 'These are not all requirements of the project.')
   }
   if (fields.diagramIds?.length) {
-    const found = await Diagram.query()
+    const found = await Diagram.query({ client })
       .whereIn('id', fields.diagramIds)
       .whereIn('architectureId', (architectures) =>
         architectures.from('architectures').select('id').where('project_id', projectId),
@@ -119,15 +121,20 @@ function assign(decision: Decision, fields: Partial<DecisionFields>) {
 }
 
 /** Saves `decision` and, when given, replaces the sets it is linked to; answers it with its links. */
-async function save(decision: Decision, fields: Partial<DecisionFields>): Promise<Decision> {
-  await db.transaction(async (client) => {
-    decision.useTransaction(client)
+async function save(
+  decision: Decision,
+  fields: Partial<DecisionFields>,
+  client?: TransactionClientContract,
+): Promise<Decision> {
+  const write = async (trx: TransactionClientContract) => {
+    decision.useTransaction(trx)
     await decision.save()
     if (fields.requirementIds)
-      await decision.related('requirements').sync(fields.requirementIds, true, client)
-    if (fields.diagramIds) await decision.related('diagrams').sync(fields.diagramIds, true, client)
-  })
-  return withLinks(Decision.query().where('id', decision.id)).firstOrFail()
+      await decision.related('requirements').sync(fields.requirementIds, true, trx)
+    if (fields.diagramIds) await decision.related('diagrams').sync(fields.diagramIds, true, trx)
+  }
+  await (client ? write(client) : db.transaction(write))
+  return withLinks(Decision.query({ client }).where('id', decision.id)).firstOrFail()
 }
 
 /**
@@ -137,10 +144,15 @@ async function save(decision: Decision, fields: Partial<DecisionFields>): Promis
 export async function createDecision(
   project: Project,
   fields: DecisionFields,
+  client?: TransactionClientContract,
 ): Promise<Decision | 'full' | { refused: DecisionRefusal }> {
-  const held = await Decision.query().where('projectId', project.id).count('* as total')
-  if (Number(held[0].$extras.total) >= DECISION_LIMITS.perProject) return 'full'
+  const refused = await creationProblem(project, fields, client)
+  if (refused === 'full') return 'full'
+  return refused ? { refused } : save(draft(project, fields), fields, client)
+}
 
+/** A decision of `project` holding `fields`, not saved. */
+function draft(project: Project, fields: DecisionFields): Decision {
   const decision = new Decision().fill({
     projectId: project.id,
     userId: project.userId,
@@ -151,16 +163,27 @@ export async function createDecision(
     supersededById: null,
   })
   assign(decision, fields)
-  const refused = await problem(project.id, null, fields, decision)
-  return refused ? { refused } : save(decision, fields)
+  return decision
+}
+
+/** Why `createDecision` would not store these fields now, or null: what it checks, writing nothing. */
+export async function creationProblem(
+  project: Project,
+  fields: DecisionFields,
+  client?: TransactionClientContract,
+): Promise<'full' | DecisionRefusal | null> {
+  const held = await Decision.query({ client }).where('projectId', project.id).count('* as total')
+  if (Number(held[0].$extras.total) >= DECISION_LIMITS.perProject) return 'full'
+  return problem(project.id, null, fields, draft(project, fields), client)
 }
 
 /** Changes an owned decision; omitted fields are left as is. A refusal changes nothing. */
 export async function updateDecision(
   decision: Decision,
   fields: Partial<DecisionFields>,
+  client?: TransactionClientContract,
 ): Promise<Decision | { refused: DecisionRefusal }> {
   assign(decision, fields)
-  const refused = await problem(decision.projectId, decision.id, fields, decision)
-  return refused ? { refused } : save(decision, fields)
+  const refused = await problem(decision.projectId, decision.id, fields, decision, client)
+  return refused ? { refused } : save(decision, fields, client)
 }

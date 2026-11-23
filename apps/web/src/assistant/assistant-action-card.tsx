@@ -31,24 +31,24 @@ function wasChanged(error: unknown): boolean {
   return body?.error?.code === 'changed'
 }
 
-/** The page of what an accepted action made or changed: a code action's, the project's Code tab. */
+/** The page of what an accepted action made or changed: the project's Code or Design tab for theirs. */
 function ResultLink({
   result,
-  code,
+  tab,
 }: {
   result: NonNullable<AssistantAction['result']>
-  code: boolean
+  tab: 'code' | 'design' | null
 }) {
   const t = useT().assistant.actionOpen
-  if (result.kind === 'project' && code)
+  if (result.kind === 'project' && tab)
     return (
       <Link
         to="/projects/$projectId"
         params={{ projectId: result.id }}
-        search={{ tab: 'code' }}
+        search={{ tab }}
         className={LINK}
       >
-        {t.code}
+        {t[tab]}
       </Link>
     )
   if (result.kind === 'project')
@@ -82,6 +82,9 @@ function useShownValue(action: AssistantAction) {
     visibility: i18n.diagramCard.visibility,
     follow: t.assistant.actionFollow,
     resolution: { open: t.assistant.actionResolutionOpen, ...i18n.findingCard.resolved },
+    category: t.design.categories,
+    priority: t.design.priorities,
+    status: t.design.statuses,
   }
   const empty: Partial<Record<ActionRowLabel, string>> = {
     scope: t.assistant.actionWholeRepository,
@@ -160,6 +163,12 @@ function ActionDetails({ action }: { action: AssistantAction }) {
   )
 }
 
+/** The tab of the project an accepted action's link opens, when it is not the first one. */
+function resultTab(name: string): 'code' | 'design' | null {
+  const domain = actionDomain(name)
+  return domain === 'code' || domain === 'design' ? domain : null
+}
+
 /** Actions that create something and push the oldest out: nothing is deleted "with" them. */
 const DROPS = new Set(['generate_files', 'import_code_map_from_github'])
 
@@ -217,7 +226,7 @@ export function AssistantActionCard({
       )}
       {/* A deletion's result is null: its target is gone, so there is nothing to open. */}
       {action.status === 'accepted' && action.result && (
-        <ResultLink result={action.result} code={actionDomain(action.name) === 'code'} />
+        <ResultLink result={action.result} tab={resultTab(action.name)} />
       )}
       {action.status === 'pending' && (
         <AnswerButtons

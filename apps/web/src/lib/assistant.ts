@@ -529,6 +529,8 @@ const ACTION_KEYS = {
   // `code-maps` imports this module), the reviews, the repository a project follows, and the
   // projects' count of maps.
   code: [['code-maps'], codeReviewKeys.all, githubKeys.follows, projectKeys.all],
+  // The keys of `design-records.ts`, and the projects' counts of both.
+  design: [['requirements'], ['decisions'], projectKeys.all],
 } as const
 
 /**

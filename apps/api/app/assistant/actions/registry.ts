@@ -8,6 +8,7 @@ import {
 import { AGENT_CONFIG_ACTIONS } from '#app/assistant/actions/agent-config-actions'
 import { ARCHITECTURE_ACTIONS } from '#app/assistant/actions/architecture-actions'
 import { CODE_MAP_ACTIONS } from '#app/assistant/actions/code-map-actions'
+import { DESIGN_ACTIONS } from '#app/assistant/actions/design-actions'
 import { FILE_ACTIONS } from '#app/assistant/actions/file-actions'
 import { PROJECT_ACTIONS } from '#app/assistant/actions/project-actions'
 import { REPOSITORY_ACTIONS } from '#app/assistant/actions/repository-actions'
@@ -21,6 +22,7 @@ export const ASSISTANT_ACTIONS: readonly AssistantAction[] = [
   ...ARCHITECTURE_ACTIONS,
   ...AGENT_CONFIG_ACTIONS,
   ...CODE_MAP_ACTIONS,
+  ...DESIGN_ACTIONS,
   ...SKILL_ACTIONS,
   ...FILE_ACTIONS,
   ...REPOSITORY_ACTIONS,

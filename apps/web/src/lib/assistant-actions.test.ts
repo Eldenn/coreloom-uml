@@ -9,6 +9,34 @@ const rows = (
   before: string | null = null,
 ) => actionRows({ name, input, subject, before })
 
+describe('actionRows of a decision', () => {
+  it('shows every option of a decision, and the decision it replaces', () => {
+    expect(
+      rows(
+        'supersede_decision',
+        {
+          decisionId: 4,
+          title: 'How are mails sent?',
+          options: [{ name: 'Queue', pros: 'Failures stay out.' }, { name: 'Direct call' }],
+          chosen: 'Queue',
+          requirementIds: [3, 5],
+        },
+        'Mails are sent in the request',
+        'accepted',
+      ),
+    ).toEqual([
+      { label: 'replaces', value: 'Mails are sent in the request' },
+      { label: 'question', value: 'How are mails sent?' },
+      { label: 'option', value: 'Queue' },
+      { label: 'optionFor', value: 'Failures stay out.' },
+      { label: 'option', value: 'Direct call' },
+      { label: 'chosen', value: 'Queue' },
+      { label: 'status', value: 'proposed' },
+      { label: 'linkedRequirements', value: '#3, #5' },
+    ])
+  })
+})
+
 describe('actionRows', () => {
   it('shows the name of a project, and the one it replaces', () => {
     expect(rows('create_project', { name: 'Shop' })).toEqual([{ label: 'name', value: 'Shop' }])
@@ -424,6 +452,11 @@ describe('actionDomain', () => {
       'delete_code_review',
     ])
       expect(actionDomain(name)).toBe('code')
+  })
+
+  it('names the design domain for the requirement and decision actions', () => {
+    for (const name of ['add_requirement', 'add_decision', 'supersede_decision'])
+      expect(actionDomain(name)).toBe('design')
   })
 
   it('names nothing for an unknown action', () => {
