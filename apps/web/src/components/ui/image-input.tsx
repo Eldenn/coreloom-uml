@@ -3,12 +3,14 @@
 // Coreloom UI — ImageInput. One image with its preview: a profile photo, a workspace logo, a cover.
 // Click the preview (or drop an image on it) to choose; Replace and Remove sit beside it. The value
 // is the chosen File, or a URL string for the image already saved, or null. It only collects the
-// File: you upload it yourself.
+// File: you upload it yourself. With `crop`, a chosen image is framed first (ImageCrop) and the
+// value is the cropped File.
 import { ImageIcon, ImageUpIcon } from 'lucide-react'
 import * as React from 'react'
 
 import { Button } from '@/components/ui/button'
 import { formatBytes } from '@/components/ui/file-upload'
+import { ImageCropDialog } from '@/components/ui/image-crop'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
@@ -19,6 +21,20 @@ const shapes = {
   square: 'size-20 rounded-lg',
   wide: 'aspect-video w-56 rounded-lg',
 } as const
+const shapeAspect = { circle: 1, square: 1, wide: 16 / 9 } as const
+
+interface ImageInputCrop {
+  /** Width ÷ height of the frame. Default: the shape's (1, or 16 / 9 for wide). */
+  aspect?: number
+  /** Longest side of the cropped image, in pixels. Default 1024. */
+  maxSize?: number
+}
+
+function cropSettings(crop: boolean | ImageInputCrop | undefined): ImageInputCrop | null {
+  if (crop === true) return {}
+  if (crop === false || crop === undefined) return null
+  return crop
+}
 
 /** An object URL for a File (revoked when it changes), or the string itself. */
 function usePreview(value: ImageValue) {
@@ -43,6 +59,7 @@ function ImageInput({
   shape = 'circle',
   accept = 'image/png,image/jpeg,image/webp,image/gif',
   maxSize,
+  crop,
   fallback,
   hint,
   disabled,
@@ -61,6 +78,11 @@ function ImageInput({
   accept?: string
   /** Largest file accepted, in bytes. */
   maxSize?: number
+  /**
+   * Frame the chosen image before taking it: move and zoom in a dialog, round for a circle. `true`
+   * uses the shape's ratio; the value is then the cropped File.
+   */
+  crop?: boolean | ImageInputCrop
   /** Shown when there is no image: initials, an icon. */
   fallback?: React.ReactNode
   /** Text under the buttons; defaults to the accepted types and size. Pass null to hide it. */
@@ -81,13 +103,18 @@ function ImageInput({
   const src = usePreview(current)
   const [error, setError] = React.useState<string | null>(null)
   const [over, setOver] = React.useState(false)
+  const [toCrop, setToCrop] = React.useState<File | null>(null)
+  const cropOptions = cropSettings(crop)
   const fileRef = React.useRef<HTMLInputElement>(null)
+  const chooseRef = React.useRef<HTMLButtonElement>(null)
+  const [announcement, setAnnouncement] = React.useState('')
   const hintId = React.useId()
   const errorId = React.useId()
 
   const set = (next: File | null) => {
     if (value === undefined) setInner(next)
     onValueChange?.(next)
+    setAnnouncement(next ? '' : t.removed)
   }
   const take = (file: File | undefined) => {
     if (!file) return
@@ -100,7 +127,8 @@ function ImageInput({
       return
     }
     setError(null)
-    set(file)
+    if (cropOptions) setToCrop(file)
+    else set(file)
   }
   const types = accept
     .split(',')
@@ -163,7 +191,14 @@ function ImageInput({
       </button>
       <div className="flex min-w-0 flex-col gap-1.5">
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={choose}>
+          <Button
+            ref={chooseRef}
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            onClick={choose}
+          >
             <ImageUpIcon />
             {src ? t.replace : t.choose}
           </Button>
@@ -176,6 +211,8 @@ function ImageInput({
               onClick={() => {
                 setError(null)
                 set(null)
+                // Remove goes away with the image: the focus moves to the button that stays.
+                chooseRef.current?.focus()
               }}
             >
               {t.remove}
@@ -193,6 +230,18 @@ function ImageInput({
           </p>
         ) : null}
       </div>
+      {cropOptions && (
+        <ImageCropDialog
+          file={toCrop}
+          aspect={cropOptions.aspect ?? shapeAspect[shape]}
+          round={shape === 'circle'}
+          maxSize={cropOptions.maxSize}
+          onDone={(file) => {
+            setToCrop(null)
+            if (file) set(file)
+          }}
+        />
+      )}
       <input
         ref={fileRef}
         type="file"
@@ -204,8 +253,11 @@ function ImageInput({
           e.target.value = ''
         }}
       />
+      <span role="status" className="sr-only">
+        {announcement}
+      </span>
     </div>
   )
 }
 
-export { ImageInput, type ImageValue }
+export { ImageInput, type ImageInputCrop, type ImageValue }

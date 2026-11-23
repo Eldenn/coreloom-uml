@@ -66,18 +66,23 @@ function flowNodes(input: {
   connectable: boolean
   selected: ReadonlySet<string>
   /** Boxes pointed out (see `UmlDiagramProps.highlighted`): an outline around the selection ring. */
-  highlighted?: ReadonlySet<string> | undefined
+  highlighted?: readonly string[] | undefined
+  /** An image is being made: nothing is drawn as pointed out. */
+  exporting?: boolean
   /** The statuses laid over the elements; each is said after the element's own words. */
   layer?: AnnotationLayer
   t: DiagramText
 }): DiagramFlowNode[] {
-  const { graph, boxes, editable, connectable, selected, highlighted, layer, t } = input
+  const { graph, boxes, editable, connectable, selected, highlighted, exporting, layer, t } = input
   const lines = regionLines(graph.nodes, boxes, graph.direction)
+  const pointedOut = new Set(exporting ? [] : highlighted)
   return byDepth(graph.nodes).map((node) => {
     const box = boxes.get(node.id) ?? { x: 0, y: 0, width: node.width, height: node.height }
-    const regions = lines.get(node.id)
     const annotation = layer?.marks.get(node.id)
-    const label = nodeLabel(node, t)
+    const regions = lines.get(node.id)
+    const pointed = pointedOut.has(node.id)
+    // The outline is only seen: the words say it too.
+    const label = pointed ? t.highlighted(nodeLabel(node, t)) : nodeLabel(node, t)
     return {
       id: node.id,
       type: NODE_TYPE[node.shape],
@@ -95,9 +100,10 @@ function flowNodes(input: {
       draggable: editable,
       selected: selected.has(node.id),
       className: cn(
-        'rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring [&.highlighted]:outline-[3px] [&.highlighted]:outline-offset-4 [&.highlighted]:outline-success [&.highlighted]:outline-solid [&.selected]:ring-2 [&.selected]:ring-primary',
-        highlighted?.has(node.id) && 'highlighted',
+        'rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring [&.selected]:ring-2 [&.selected]:ring-primary',
         annotation && ANNOTATION_RING[annotation.status],
+        // Outside the rings, so a box can be selected or annotated and pointed out at once.
+        pointed && 'outline-[3px] outline-offset-4 outline-success outline-solid',
       ),
     }
   })

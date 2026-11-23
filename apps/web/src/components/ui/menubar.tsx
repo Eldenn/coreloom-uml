@@ -1,3 +1,7 @@
+'use client'
+
+// Coreloom UI — Menubar (shadcn/ui new-york-v4, restyled like DropdownMenu). Desktop-app style menu bar.
+
 import { CheckIcon, ChevronRightIcon, CircleIcon } from 'lucide-react'
 import { Menubar as MenubarPrimitive } from 'radix-ui'
 import * as React from 'react'

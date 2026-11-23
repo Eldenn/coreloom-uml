@@ -221,6 +221,37 @@ function CodeScroll({ code }: { code: string }) {
   )
 }
 
+/** A table. A wide one scrolls sideways; only then does its box take focus, with a name. */
+function TableScroll(props: React.ComponentProps<'table'>) {
+  const t = useCoreloomI18n().messages.dataTable
+  const ref = React.useRef<HTMLDivElement>(null)
+  const [overflows, setOverflows] = React.useState(false)
+  React.useEffect(() => {
+    const box = ref.current
+    if (!box) return
+    const observer = new ResizeObserver(() => {
+      setOverflows(box.scrollWidth > box.clientWidth + 1)
+    })
+    observer.observe(box)
+    // The table grows while the answer streams in, without the box changing size.
+    if (box.firstElementChild) observer.observe(box.firstElementChild)
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
+  return (
+    <div
+      ref={ref}
+      role={overflows ? 'group' : undefined}
+      aria-label={overflows ? t.scrollable : undefined}
+      tabIndex={overflows ? 0 : undefined}
+      className="my-3 overflow-x-auto rounded-md border border-border-subtle outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+    >
+      <table className="w-full text-[13px]" {...props} />
+    </div>
+  )
+}
+
 /** A fenced block: the app's renderer for its language when there is one, else the code. */
 function CodeBlock({ code, language }: { code: string; language: string | undefined }) {
   const t = useCoreloomI18n().messages.ai.code
@@ -354,11 +385,7 @@ function useComponents(): Components {
         const n = Number(node?.properties.dataCitation)
         return n ? <Citation n={n} fallback={children} /> : <sup {...p}>{children}</sup>
       },
-      table: ({ node: _n, ...p }) => (
-        <div className="my-3 overflow-x-auto rounded-md border border-border-subtle">
-          <table className="w-full text-[13px]" {...p} />
-        </div>
-      ),
+      table: ({ node: _n, ...p }) => <TableScroll {...p} />,
       thead: ({ node: _n, ...p }) => <thead className="bg-secondary" {...p} />,
       th: ({ node: _n, ...p }) => (
         <th

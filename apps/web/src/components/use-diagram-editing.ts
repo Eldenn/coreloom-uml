@@ -1,3 +1,8 @@
+'use client'
+
+// Coreloom UI — useDiagramEditing. What the diagram editor's tools do: each change is made on the
+// model (uml-edit*.ts), written back as text in the current format, and kept so it can be undone.
+// Typing in the text starts a new history: the text editor has its own undo.
 import * as React from 'react'
 
 import {

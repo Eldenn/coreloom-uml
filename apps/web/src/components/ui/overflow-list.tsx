@@ -1,3 +1,10 @@
+'use client'
+
+// Coreloom UI — OverflowList. A row of chips, tags, avatars or links that shows as many as fit on
+// one line and ends with "+3" for the rest. The "+3" opens a popover listing them. It measures
+// again when the space changes, so the same row works in a wide table column and a narrow card.
+//
+//   <OverflowList items={labels} renderItem={(l) => <Badge key={l}>{l}</Badge>} />
 import { Popover as PopoverPrimitive } from 'radix-ui'
 import * as React from 'react'
 

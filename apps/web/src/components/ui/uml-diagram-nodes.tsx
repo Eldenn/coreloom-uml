@@ -1,9 +1,3 @@
-'use client'
-
-// Coreloom UI — UmlDiagram node pieces: the invisible ends every node has (and the dot to drag a
-// new line from), and the shapes of use case, activity, component and package diagrams: an actor's
-// stick figure, a use case's ellipse, a decision's diamond with its question, an interface's
-// lollipop, a port's square and a package's folder. uml-diagram-parts.tsx draws the rest.
 import { Handle, type Node, type NodeProps, Position, useConnection } from '@xyflow/react'
 import type * as React from 'react'
 

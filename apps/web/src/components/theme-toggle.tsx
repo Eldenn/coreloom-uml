@@ -1,12 +1,3 @@
-'use client'
-
-// Coreloom UI — theme switching (block part). Dark is the default; light sets <html data-theme="light">.
-// The choice — "light", "dark" or "system" (follow the OS) — is kept in localStorage("theme").
-// Add the inline script from the Getting started guide to <head> so it applies before the first paint.
-//   ThemeToggle: one icon button, light ↔ dark.
-//   ThemeMenu:   a menu with Light, Dark and System.
-// Accent presets (accents.css): <html data-accent="violet">, kept in localStorage("accent").
-//   AccentPicker: a row of swatches, one per preset, with useAccent behind it.
 import { CheckIcon, MonitorIcon, MoonIcon, SunIcon } from 'lucide-react'
 import { RadioGroup as RadioGroupPrimitive } from 'radix-ui'
 import * as React from 'react'

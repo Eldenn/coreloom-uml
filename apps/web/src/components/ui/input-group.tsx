@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — InputGroup. A field with things attached inside its border: an icon, a unit, a
+// prefix like "https://", a button, a keyboard hint, or a toolbar above or below a textarea. It
+// follows shadcn's input-group parts. `PasswordInput`, `SearchInput` and `CopyInput` are the groups
+// every app writes by hand (show/hide, clear, copy), built from those parts.
 import { cva, type VariantProps } from 'class-variance-authority'
 import { CheckIcon, CopyIcon, EyeIcon, EyeOffIcon, SearchIcon, XIcon } from 'lucide-react'
 import * as React from 'react'

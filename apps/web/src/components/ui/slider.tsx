@@ -1,5 +1,3 @@
-'use client'
-
 import { Slider as SliderPrimitive } from 'radix-ui'
 import * as React from 'react'
 
@@ -14,6 +12,7 @@ function Slider({
   max = 100,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledby,
+  'aria-valuetext': ariaValueText,
   ...props
 }: React.ComponentProps<typeof SliderPrimitive.Root>) {
   const t = useCoreloomI18n().messages
@@ -56,6 +55,8 @@ function Slider({
                 : `${ariaLabel}, ${index === 0 ? t.slider.minimum : index === _values.length - 1 ? t.slider.maximum : index + 1}`
           }
           aria-labelledby={ariaLabelledby}
+          // The value in words ("6.4 s of 14.2 s") belongs on the thumb, the element with the role.
+          aria-valuetext={_values.length === 1 ? ariaValueText : undefined}
           className="relative block size-6 shrink-0 cursor-grab rounded-full transition-[box-shadow] duration-base ease-out outline-none before:absolute before:inset-[3px] before:rounded-full before:border-[3px] before:border-background before:bg-primary before:shadow-sm before:content-[''] hover:ring-4 hover:ring-primary-subtle focus-visible:ring-[3px] focus-visible:ring-ring active:cursor-grabbing disabled:pointer-events-none"
         />
       ))}

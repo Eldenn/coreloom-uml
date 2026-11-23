@@ -1,3 +1,10 @@
+'use client'
+
+// Coreloom UI — AgentGraph. How a multi-agent system fits together: agents as cards, teams as frames,
+// and the links between them — who delegates to whom, who hands off to whom, which tools and knowledge
+// each one uses. Laid out in layers (supervisors above the agents they delegate to) without a graph
+// library. Select an agent to see its links; pass `activity` and `activePath` to show a run live. A
+// list view says the same thing in text.
 import {
   BookOpenIcon,
   BotIcon,
@@ -934,7 +941,7 @@ function AgentGraph({
                       key={`${edge.kind}-${edge.from}-${edge.to}-${String(i)}`}
                       data-edge={edge.kind}
                       data-active={onPath || undefined}
-                      className={cn('transition-opacity duration-150', dim && 'opacity-30')}
+                      className={cn('transition-opacity duration-fast', dim && 'opacity-30')}
                     >
                       <path
                         d={pe.path}
@@ -1014,7 +1021,7 @@ function AgentGraph({
                       onNodeKeyDown(e, p)
                     }}
                     className={cn(
-                      'absolute flex cursor-pointer items-center gap-2.5 border bg-card text-left shadow-xs transition-[border-color,box-shadow,opacity] duration-150 outline-none hover:border-border-strong focus-visible:ring-[3px] focus-visible:ring-ring',
+                      'absolute flex cursor-pointer items-center gap-2.5 border bg-card text-left shadow-xs transition-[border-color,box-shadow,opacity] duration-base outline-none hover:border-border-strong focus-visible:ring-[3px] focus-visible:ring-ring',
                       resource ? 'rounded-full px-3' : 'rounded-lg px-3',
                       isSelected
                         ? 'border-primary ring-2 ring-primary/40'

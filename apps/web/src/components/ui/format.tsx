@@ -1,3 +1,12 @@
+'use client'
+
+// Coreloom UI — FormatNumber and AnimatedNumber. Numbers written the way the reader's language
+// writes them: "1 234,5 €" in French, "$1,234.50" in English, "12%", "1.2K", "3.4 MB". The
+// locale comes from CoreloomI18nProvider. AnimatedNumber counts up to its value, for the big
+// figures of a dashboard; screen readers and people who reduce motion get the final value at once.
+//
+//   <FormatNumber value={1234.5} format="currency" currency="EUR" />
+//   <AnimatedNumber value={revenue} format="compact" />
 import * as React from 'react'
 
 import { useCoreloomI18n } from '@/lib/i18n'

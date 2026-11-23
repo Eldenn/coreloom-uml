@@ -94,8 +94,8 @@ function Marquee({
       {controls && (
         <button
           type="button"
+          // The name says what a press does; with aria-pressed too it would read "Play, pressed".
           aria-label={paused ? t.play : t.pause}
-          aria-pressed={paused}
           onClick={() => {
             setPausedState(!paused)
             onPausedChange?.(!paused)
