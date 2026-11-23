@@ -13,7 +13,7 @@ import { agentConfigKeys } from '@/lib/agent-configs'
 import { architectureKeys } from '@/lib/architectures'
 import { actionDomain } from '@/lib/assistant-actions'
 import type { ChangeAction } from '@/lib/assistant-changes'
-import type { AssistantPage } from '@/lib/assistant-subject'
+import type { AssistantPage, PointedPart, sentContext } from '@/lib/assistant-subject'
 import { client, TuyauError } from '@/lib/client'
 import { codeReviewKeys } from '@/lib/code-reviews'
 import { useFeature } from '@/lib/feature-flags'
@@ -237,6 +237,7 @@ export function useAskAssistant(conversationId: number) {
       auto,
       page,
       context,
+      pointed,
       file: attached,
       onReading,
       onHandoff,
@@ -253,7 +254,9 @@ export function useAskAssistant(conversationId: number) {
       /** With `auto`: where the owner is, so that "here" means something. */
       page?: AssistantPage
       /** With `auto`: the items the owner put in the context, which the assistant reads. */
-      context?: AssistantPage[]
+      context?: ReturnType<typeof sentContext>['context']
+      /** The parts of views the message is about, whatever route it takes. */
+      pointed?: PointedPart[]
       /**
        * A file attached with this message; it follows a handed-over message. It is attached to
        * the conversation first, and `onReading` hears when that reading starts and ends.
@@ -274,6 +277,7 @@ export function useAskAssistant(conversationId: number) {
               ...callBody(provider),
               message: text,
               locale,
+              ...(pointed?.length ? { pointed } : {}),
               ...(fileId === null || text !== message ? {} : { fileId }),
             },
             ...MODEL_CALL,
@@ -302,6 +306,7 @@ export function useAskAssistant(conversationId: number) {
             currentDiagramId: null,
             ...views,
             locale,
+            ...(pointed?.length ? { pointed } : {}),
             ...(fileId === null ? {} : { fileId }),
             ...(reading.length > 0 ? { afterReading: true } : {}),
           },
@@ -320,6 +325,7 @@ export function useAskAssistant(conversationId: number) {
             locale,
             ...(fileId === null || !withFile ? {} : { fileId }),
             ...(auto ? { auto: true, ...(page ? { page } : {}), context: context ?? [] } : {}),
+            ...(auto && pointed?.length ? { pointed } : {}),
           },
           ...MODEL_CALL,
         })
