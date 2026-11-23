@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { addItem, ASSISTANT_CONTEXT_MAX, pageOf, sentContext, subjectOf } from './assistant-subject'
+import {
+  addItem,
+  ASSISTANT_CONTEXT_MAX,
+  pageOf,
+  sentContext,
+  subjectOf,
+  workspaceItems,
+} from './assistant-subject'
 
 describe('addItem', () => {
   const shop = { kind: 'architecture', id: 1, label: 'Shop' } as const
@@ -131,4 +138,33 @@ describe('views and parts of views', () => {
       ],
     })
   })
+})
+
+it('several selected parts are one item each, the ones that read the same once', () => {
+  const items = workspaceItems(
+    {
+      type: 'selection',
+      viewId: '7',
+      targets: [
+        { type: 'element', label: 'Order' },
+        { type: 'relation', label: 'Order → Payment: pays' },
+        { type: 'element', label: 'Order' },
+      ],
+    },
+    7,
+    3,
+  )
+  expect(items).toEqual([
+    { kind: 'element', viewId: 7, architectureId: 3, type: 'element', label: 'Order' },
+    {
+      kind: 'element',
+      viewId: 7,
+      architectureId: 3,
+      type: 'relation',
+      label: 'Order → Payment: pays',
+    },
+  ])
+  expect(workspaceItems({ type: 'view', viewId: '7', label: 'Classes' }, 7, 3)).toEqual([
+    { kind: 'view', id: 7, architectureId: 3, label: 'Classes' },
+  ])
 })
