@@ -13,8 +13,9 @@ import {
   addItem,
   architectureOfItem,
   type ContextItem,
-  type PointedType,
   sameItem,
+  workspaceItems,
+  type WorkspaceTarget,
 } from '@/lib/assistant-subject'
 import { useFeature } from '@/lib/feature-flags'
 import { useStoredProvider } from '@/lib/llm-provider'
@@ -147,17 +148,11 @@ export function useContextItem(item: ContextItem) {
   }
 }
 
-/** A view, or a part of one, as the diagram workspace names what a right-click landed on. */
-export interface WorkspaceTarget {
-  type: 'view' | PointedType
-  viewId: string
-  label: string
-}
-
 /**
  * What a right-click in an architecture's workspace adds to the menu of a view or of a part of
- * one: putting it in the assistant's context, or taking it out. Parts that read the same in one
- * view are one item. The context is read when the menu opens: the page that calls this tells the
+ * one: putting it in the assistant's context, or taking it out (several selected parts go in or
+ * out together: out when every one is held, in otherwise). Parts that read the same in one view
+ * are one item. The context is read when the menu opens: the page that calls this tells the
  * chat its workspace, and must not render again each time the chat's state changes.
  */
 export function useWorkspaceContextActions(architectureId: number) {
@@ -169,24 +164,26 @@ export function useWorkspaceContextActions(architectureId: number) {
     const items = readItems()
     const viewId = Number(target.viewId)
     if (!enabled || !Number.isInteger(viewId)) return []
-    const { label } = target
-    const item: ContextItem =
-      target.type === 'view'
-        ? { kind: 'view', id: viewId, architectureId, label }
-        : { kind: 'element', viewId, architectureId, type: target.type, label }
-    const held = items.some((other) => sameItem(other, item))
+    const wanted = workspaceItems(target, viewId, architectureId)
+    const holds = (all: readonly ContextItem[], item: ContextItem) =>
+      all.some((other) => sameItem(other, item))
+    const held = wanted.every((item) => holds(items, item))
+    const many = wanted.length > 1
+    const remove = many ? t.removeManyFromContext(wanted.length) : t.removeFromContext
+    const add = many ? t.addManyToContext(wanted.length) : t.addToContext
     return [
       {
-        label: held ? t.removeFromContext : t.addToContext,
+        label: held ? remove : add,
         icon: <SparklesIcon />,
         onSelect: () => {
           if (held) {
-            setItems(items.filter((other) => !sameItem(other, item)))
+            setItems(items.filter((other) => !holds(wanted, other)))
             return
           }
-          const next = addItem(items, item, autoOffered)
-          if (next === items) toast.error(t.contextFull)
-          else setItems(next)
+          const next = wanted.reduce((all, item) => addItem(all, item, autoOffered), items)
+          // Some may not fit: what fits goes in, and the owner is told.
+          if (wanted.some((item) => !holds(next, item))) toast.error(t.contextFull)
+          if (next !== items) setItems(next)
           setOpen(true)
         },
       },

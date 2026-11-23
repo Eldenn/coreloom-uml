@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — DiagramContextMenu. The menu a right-click, a long press, or the context-menu key
+// (or Shift+F10) on a focused target opens in a drawing or a list of views: the component's own
+// actions for what's under the pointer, a separator, then the app's. Nothing to show for a
+// target: no menu opens, and the browser's own menu stays.
 import { CopyPlusIcon, PencilIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 
@@ -12,13 +18,14 @@ import {
   type GraphHit,
   graphTarget,
   sequenceTarget,
+  type UmlContextPart,
   type UmlContextTarget,
 } from '@/components/ui/uml-diagram-labels'
 import type { Messages } from '@/lib/i18n'
 import type { SequenceDiagram, UmlSpec } from '@/lib/uml'
 import { canDelete, type UmlSelection } from '@/lib/uml-edit'
 import { canCopy } from '@/lib/uml-edit-clipboard'
-import type { DiagramGraph, DiagramNode } from '@/lib/uml-graph'
+import { type DiagramGraph, type DiagramNode, relationIndexOf } from '@/lib/uml-graph'
 
 /** One entry of a context menu. */
 interface DiagramContextAction {
@@ -50,7 +57,10 @@ interface DrawingEdits {
   onMemberDelete?: ((element: string, index: number) => void) | undefined
 }
 
-/** A drawing's own entries for a target: Rename, Duplicate and Delete, those it can do. */
+/**
+ * A drawing's own entries for a target: Rename, Duplicate and Delete, those it can do. Several
+ * selected parts are duplicated and deleted together, and have no Rename.
+ */
 function drawingActions(
   diagram: UmlSpec,
   target: UmlContextTarget,
@@ -82,7 +92,11 @@ function drawingActions(
         rename(target.id)
       },
     })
-  if (target.type === 'element' && onDuplicate && canCopy(diagram, only))
+  if (
+    (target.type === 'element' || target.type === 'selection') &&
+    onDuplicate &&
+    canCopy(diagram, only)
+  )
     out.push({
       label: t.duplicate,
       icon: <CopyPlusIcon aria-hidden />,
@@ -111,21 +125,23 @@ function canvasHit(element: Element): GraphHit {
   return { node, member: member === null || member === undefined ? undefined : Number(member) }
 }
 
-/** The id under an element of a sequence drawing; on the drawing itself, the one selected. */
+/** The id under an element of a sequence drawing; on the drawing itself, the first selected. */
 function sequenceHit(element: Element, selected: readonly string[]): string | null {
   const id = element.closest('[data-id]')?.getAttribute('data-id')
   if (id) return id
-  return selected.length === 1 ? (selected[0] ?? null) : null
+  return selected[0] ?? null
 }
 
 /** Whether a target is already part of a selection. */
 function isSelected(target: UmlContextTarget, selection: UmlSelection): boolean {
+  if (target.type === 'selection') return true
   if (target.type === 'relation') return selection.relations.includes(target.index)
   return selection.elements.includes(target.type === 'member' ? target.element : target.id)
 }
 
-/** A selection of the target alone (a member's element). */
+/** A selection of the target alone (a member's element); of several parts, theirs. */
 function selectionOf(target: UmlContextTarget): UmlSelection {
+  if (target.type === 'selection') return target.selection
   if (target.type === 'relation') return { elements: [], relations: [target.index] }
   return { elements: [target.type === 'member' ? target.element : target.id], relations: [] }
 }
@@ -150,16 +166,34 @@ const NOTHING: UmlSelection = { elements: [], relations: [] }
 /** The context menu's wiring for a drawing, once it knows how to find a target. */
 function drawingMenu(
   input: DrawingMenuInput,
-  resolve: (element: Element) => UmlContextTarget | null,
+  resolve: (element: Element) => UmlContextPart | null,
+  /** The parts a selection holds, elements then relations; what the drawing lacks is left out. */
+  parts: (selection: UmlSelection) => UmlContextPart[],
   /** Opens the drawing's name field, when it has one. */
   rename?: (id: string) => void,
 ) {
   const { diagram, contextActions, select, messages } = input
   const selection = input.selection ?? NOTHING
   const edits: DrawingEdits = { ...input, rename: input.onRename && rename }
+  // On one of several selected parts, the menu is about all of them.
+  const whole = (part: UmlContextPart): UmlContextTarget => {
+    if (selection.elements.length + selection.relations.length < 2) return part
+    if (!isSelected(part, selection)) return part
+    const targets = parts(selection)
+    if (targets.length < 2) return part
+    return {
+      type: 'selection',
+      selection,
+      targets,
+      label: messages.diagramTools.selected(targets.length),
+    }
+  }
   return {
     enabled: !input.preview && contextActions !== undefined,
-    resolve,
+    resolve: (element: Element): UmlContextTarget | null => {
+      const part = resolve(element)
+      return part && whole(part)
+    },
     lists: (target: UmlContextTarget) => ({
       own: input.editable ? drawingActions(diagram, target, edits, messages.diagramTools) : [],
       app: contextActions?.(target) ?? [],
@@ -180,9 +214,17 @@ function canvasMenu(
 ) {
   const { graph, messages } = input
   const role = (node: DiagramNode) => messages.diagram.roles[node.role]
+  const at = (hit: GraphHit) => (graph ? graphTarget(graph, hit, role) : null)
   return drawingMenu(
     input,
-    (element) => (graph ? graphTarget(graph, canvasHit(element), role) : null),
+    (element) => at(canvasHit(element)),
+    (selection) =>
+      [
+        ...selection.elements.map((node) => at({ node })),
+        ...selection.relations.map((index) =>
+          at({ edge: graph?.edges.find((e) => relationIndexOf(e.id) === index)?.id ?? '' }),
+        ),
+      ].filter((part) => part !== null),
     input.rename.start,
   )
 }
@@ -191,10 +233,15 @@ function canvasMenu(
 function sequenceMenu(input: DrawingMenuInput & { diagram: SequenceDiagram }) {
   const { diagram } = input
   const selected = input.selection?.elements ?? []
-  return drawingMenu(input, (element) => {
-    const id = sequenceHit(element, selected)
-    return id ? sequenceTarget(diagram, id) : null
-  })
+  return drawingMenu(
+    input,
+    (element) => {
+      const id = sequenceHit(element, selected)
+      return id ? sequenceTarget(diagram, id) : null
+    },
+    (selection) =>
+      selection.elements.map((id) => sequenceTarget(diagram, id)).filter((part) => part !== null),
+  )
 }
 
 const isMenuKey = (event: React.KeyboardEvent) =>
@@ -330,5 +377,6 @@ export {
   type DrawingEdits,
   sequenceMenu,
   type UmlContextActions,
+  type UmlContextPart,
   type UmlContextTarget,
 }

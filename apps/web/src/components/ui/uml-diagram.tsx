@@ -35,6 +35,7 @@ import {
   DiagramContextMenu,
   sequenceMenu,
   type UmlContextActions,
+  type UmlContextPart,
   type UmlContextTarget,
 } from '@/components/ui/uml-diagram-context'
 import { flowEdges, flowNodes, movedLayout, nextSelection } from '@/components/ui/uml-diagram-flow'
@@ -682,6 +683,7 @@ export {
   type UmlAnnotation,
   type UmlAnnotationStatus,
   type UmlContextActions,
+  type UmlContextPart,
   type UmlContextTarget,
   UmlDiagram,
   type UmlDiagramHandle,

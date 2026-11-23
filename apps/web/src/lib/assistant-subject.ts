@@ -64,6 +64,36 @@ export function addItem(
   return [...items, item]
 }
 
+/**
+ * A view, or a part of one, as the diagram workspace names what a right-click landed on; on one
+ * of several selected parts, all of them (`targets`).
+ */
+export type WorkspaceTarget =
+  | { type: 'view'; viewId: string; label: string }
+  | { type: PointedType; viewId: string; label: string }
+  | {
+      type: 'selection'
+      viewId: string
+      targets: readonly { type: PointedType; label: string }[]
+    }
+
+/** The context items a target of the workspace stands for, each once. */
+export function workspaceItems(
+  target: WorkspaceTarget,
+  viewId: number,
+  architectureId: number,
+): ContextItem[] {
+  if (target.type === 'view')
+    return [{ kind: 'view', id: viewId, architectureId, label: target.label }]
+  const parts = target.type === 'selection' ? target.targets : [target]
+  const items: ContextItem[] = []
+  for (const { type, label } of parts) {
+    const item: ContextItem = { kind: 'element', viewId, architectureId, type, label }
+    if (!items.some((other) => sameItem(other, item))) items.push(item)
+  }
+  return items
+}
+
 export type SubjectMode = 'auto' | 'architecture' | 'none'
 
 type Route =

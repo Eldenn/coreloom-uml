@@ -1,10 +1,15 @@
+// Coreloom UI — UmlDiagram labels. What a right-click hit in a drawing is (an element, one of its
+// members, a relation or a sequence step) and the one line that names it: `Payment`,
+// `Payment.total: number`, `Order → Payment: pays`, `Client -> API: login()`. The line is made
+// from the model alone, so it reads the same for everyone and an app can show it or hand it on.
 import type { SequenceArrow, SequenceDiagram, SequenceStep } from '@/lib/uml'
+import type { UmlSelection } from '@/lib/uml-edit'
 import { stepOf, stepPath } from '@/lib/uml-edit-sequence'
 import type { DiagramEdge, DiagramGraph, DiagramNode, DiagramRow } from '@/lib/uml-graph'
 import { relationIndexOf } from '@/lib/uml-graph'
 
-/** What a context menu acts on in a drawing, with the line that names it. */
-type UmlContextTarget =
+/** One thing of a drawing a context menu acts on, with the line that names it. */
+type UmlContextPart =
   | { type: 'element'; id: string; label: string }
   /** `index`: the relation's place in the diagram's list (its transitions, for a state diagram). */
   | { type: 'relation'; index: number; label: string }
@@ -12,6 +17,19 @@ type UmlContextTarget =
   | { type: 'member'; element: string; index: number; label: string }
   /** `id`: the step's id (`step:2`, see uml-edit-sequence.ts). */
   | { type: 'step'; id: string; label: string }
+
+/**
+ * What a context menu acts on in a drawing: one part, or everything selected when the menu opens
+ * on one of several selected parts (`targets`, elements then relations; `label` counts them).
+ */
+type UmlContextTarget =
+  | UmlContextPart
+  | {
+      type: 'selection'
+      selection: UmlSelection
+      targets: readonly UmlContextPart[]
+      label: string
+    }
 
 /** Newlines and runs of spaces become one space. */
 const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim()
@@ -47,7 +65,7 @@ function graphTarget(
   graph: DiagramGraph,
   hit: GraphHit,
   role: (node: DiagramNode) => string,
-): UmlContextTarget | null {
+): UmlContextPart | null {
   const byId = new Map(graph.nodes.map((n) => [n.id, n]))
   if (hit.edge !== undefined) {
     const edge = graph.edges.find((e) => e.id === hit.edge)
@@ -101,7 +119,7 @@ function stepLabel(step: SequenceStep, name: (id: string) => string): string {
 }
 
 /** The target of a participant's or a step's id in a sequence diagram, or null. */
-function sequenceTarget(diagram: SequenceDiagram, id: string): UmlContextTarget | null {
+function sequenceTarget(diagram: SequenceDiagram, id: string): UmlContextPart | null {
   const names = new Map(diagram.participants.map((p) => [p.id, oneLine(p.label ?? p.id)]))
   const name = (who: string) => names.get(who) ?? who
   if (stepPath(id)) {
@@ -119,5 +137,6 @@ export {
   relationLabel,
   sequenceTarget,
   stepLabel,
+  type UmlContextPart,
   type UmlContextTarget,
 }
