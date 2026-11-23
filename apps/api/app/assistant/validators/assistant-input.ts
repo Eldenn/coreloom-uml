@@ -1,12 +1,15 @@
 import { FILE_DIGEST_MAX_LENGTH } from '@coreloom-uml/llm'
 import vine from '@vinejs/vine'
 import {
+  ASSISTANT_CONTEXT_KINDS,
   ASSISTANT_CONTEXT_MAX,
   ASSISTANT_FILE_NAME_MAX_LENGTH,
   ASSISTANT_LOCALES,
   ASSISTANT_MESSAGE_MAX_LENGTH,
   ASSISTANT_TARGET_KINDS,
   ASSISTANT_TITLE_MAX_LENGTH,
+  POINTED_LABEL_MAX_LENGTH,
+  POINTED_TYPES,
   PROPOSALS_ADDED_MAX,
 } from '#app/assistant/constants/assistant'
 import { llmCallFields } from '#app/llm/validators/llm-input'
@@ -41,6 +44,23 @@ const viewSelection = () => ({
  */
 const fileIdInput = () => vine.number().withoutDecimals().positive().optional()
 
+/**
+ * The parts of views the message is about (an element, a relation, a member, a step), each by the
+ * view's id and the line that names it there. Never a position: a view changes between the click
+ * and the message.
+ */
+const pointedInput = () =>
+  vine
+    .array(
+      vine.object({
+        diagramId: vine.number().withoutDecimals().positive(),
+        type: vine.enum(POINTED_TYPES),
+        label: vine.string().trim().minLength(1).maxLength(POINTED_LABEL_MAX_LENGTH),
+      }),
+    )
+    .maxLength(ASSISTANT_CONTEXT_MAX)
+    .optional()
+
 /** `POST /assistant/conversations/:conversationId/files` — a file attached to the conversation. */
 export const attachFileInput = vine.create(
   vine.object({
@@ -59,6 +79,7 @@ export const askAssistantInput = vine.create(
     message: vine.string().trim().minLength(1).maxLength(ASSISTANT_MESSAGE_MAX_LENGTH),
     fileId: fileIdInput(),
     ...viewSelection(),
+    pointed: pointedInput(),
     /** A ready code map of the architecture's project: the message asks for a diagram of it. */
     codeMapId: vine.number().withoutDecimals().positive().optional(),
     /**
@@ -79,6 +100,7 @@ export const readingInput = vine.create(
     message: vine.string().trim().minLength(1).maxLength(ASSISTANT_MESSAGE_MAX_LENGTH),
     locale: vine.enum(ASSISTANT_LOCALES),
     fileId: fileIdInput(),
+    pointed: pointedInput(),
   }),
 )
 
@@ -118,12 +140,13 @@ export const chatInput = vine.create(
     context: vine
       .array(
         vine.object({
-          kind: vine.enum(ASSISTANT_TARGET_KINDS),
+          kind: vine.enum(ASSISTANT_CONTEXT_KINDS),
           id: vine.number().withoutDecimals().positive(),
         }),
       )
       .maxLength(ASSISTANT_CONTEXT_MAX)
       .optional(),
+    pointed: pointedInput(),
   }),
 )
 

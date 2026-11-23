@@ -350,6 +350,64 @@ test.group('Assistant actions - proposing', (group) => {
     assert.include(prompt, `<item kind=\\"project\\" id=\\"${fixture.project.id}\\"`)
   })
 
+  test('names a view of the context with its architecture, and the parts pointed at', async ({
+    client,
+    assert,
+  }) => {
+    const fixture = await setup('actions-context-view@example.com')
+    const other = await setup('actions-context-view-other@example.com')
+    const view = await Diagram.findByOrFail('architectureId', fixture.architecture.id)
+    const foreign = await Diagram.findByOrFail('architectureId', other.architecture.id)
+    const { response, model } = await send(client, fixture, [{ text: 'Read.' }], {
+      context: [
+        { kind: 'view', id: view.id },
+        { kind: 'view', id: foreign.id },
+      ],
+      pointed: [
+        { diagramId: view.id, type: 'member', label: 'Order.total: number' },
+        { diagramId: foreign.id, type: 'element', label: 'Secret' },
+      ],
+    })
+
+    response.assertStatus(200)
+    const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt)
+    assert.equal(prompt.split('<item kind=').length - 1, 1)
+    assert.include(
+      prompt,
+      `<item kind=\\"view\\" id=\\"${view.id}\\" architecture=\\"${fixture.architecture.id}\\" name=\\"Main\\"`,
+    )
+    assert.include(
+      prompt,
+      `<part view=\\"${view.id}\\" type=\\"member\\">Order.total: number</part>`,
+    )
+    assert.notInclude(prompt, 'Secret')
+  })
+
+  test("reads the views of an architecture, never another account's", async ({
+    client,
+    assert,
+  }) => {
+    const fixture = await setup('actions-read-views@example.com')
+    const other = await setup('actions-read-views-other@example.com')
+    const view = await Diagram.findByOrFail('architectureId', fixture.architecture.id)
+    await view
+      .merge({
+        content: { kind: 'class', classes: [{ id: 'Order' }], relations: [] },
+      })
+      .save()
+    const { response, model } = await send(client, fixture, [
+      call('read_views', { architectureId: fixture.architecture.id }),
+      call('read_views', { architectureId: other.architecture.id }),
+      { text: 'One class, Order.' },
+    ])
+
+    response.assertStatus(200)
+    const results = toolResults(model)
+    assert.include(results, 'Order')
+    assert.include(results, 'Main')
+    assert.include(results, 'Not found')
+  })
+
   test('refuses a context of more than eight items', async ({ client }) => {
     const fixture = await setup('actions-context-max@example.com')
     const { response } = await send(client, fixture, [{ text: 'Read.' }], {
