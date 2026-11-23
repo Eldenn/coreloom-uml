@@ -272,6 +272,39 @@ test.group('Assistant - messages about no architecture, streamed', (group) => {
     assert.lengthOf(await stored(conversation.id), 0)
   })
 
+  test('logs an unexpected failure and ends the stream with a 500', async ({
+    client,
+    assert,
+  }) => {
+    const { user, conversation, path } = await setup('chat-stream-500@example.com')
+    // The conversation goes away while the model answers: the exchange cannot be stored.
+    const model = new MockLanguageModelV4({
+      doGenerate: async () => {
+        await AssistantConversation.query().where('id', conversation.id).delete()
+        return {
+          content: [{ type: 'text', text: 'Too late.' }],
+          finishReason: { unified: 'stop', raw: 'stop' },
+          usage: {
+            inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined },
+            outputTokens: { total: 1, text: 1, reasoning: undefined },
+          },
+          warnings: [],
+        }
+      },
+    })
+    useModel(streaming(model))
+    const logs = captureLogs()
+
+    const response = await client.post(path).headers(eventStream).loginAs(user).json(chat)
+    logs.restore()
+
+    response.assertStatus(200)
+    const error = chunks(response.text()).find((chunk) => chunk.type === 'error')
+    assert.equal(JSON.parse(String(error?.errorText)).status, 500)
+    assert.include(logs.lines.join('\n'), 'assistant chat stream failed')
+    assert.notInclude(response.text(), KEY)
+  })
+
   test('refuses before streaming', async ({ client }) => {
     const { user } = await setup('chat-stream-404@example.com')
     const response = await client

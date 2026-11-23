@@ -147,6 +147,11 @@ export async function answerChat(
       return { status: HttpStatus.UnprocessableEntity, body: CONTEXT_FULL }
     }
     if (!(error instanceof LlmCallError)) throw error
+    // Stopped by the owner: not a failure of the provider.
+    if (stream.abortSignal?.aborted) {
+      logger.info({ ...log, durationMs }, 'assistant chat abandoned')
+      return failed(error.reason)
+    }
     logger.warn({ ...log, durationMs, reason: error.reason }, 'assistant chat failed')
     return failed(error.reason)
   } finally {

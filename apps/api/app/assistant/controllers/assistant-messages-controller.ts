@@ -72,6 +72,7 @@ import {
 import { HttpStatus } from '#app/shared/http/http-status'
 
 const MESSAGE_NOT_FOUND = { error: { message: 'Message not found' } } as const
+const STREAM_FAILED = { error: { message: 'Internal server error' } } as const
 const NOT_A_SUMMARY = { error: { message: 'Only a summary can be deleted.' } } as const
 
 const CODE_MAP_NOT_READY = { error: { message: 'This code map is not ready' } } as const
@@ -355,6 +356,15 @@ export default class AssistantMessagesController {
    * is stored, and the screen sends the message again down that path.
    */
   async chat({ params, request, auth, response }: HttpContext) {
+    const streamed =
+      request.accepts(['application/json', 'text/event-stream']) === 'text/event-stream'
+    // Stop (or a dropped connection) stops the model call: nothing is stored. Listened to from the
+    // start, on the response's own close: the request's fires once its body was read.
+    const gone = new AbortController()
+    const raw = response.response
+    raw.once('close', () => {
+      if (!raw.writableFinished) gone.abort()
+    })
     const user = auth.getUserOrFail()
     if (!(await assistantEnabled(user))) return response.notFound(ASSISTANT_NOT_FOUND)
     const conversation = await findOwnedConversation(params.conversationId, user)
@@ -389,21 +399,22 @@ export default class AssistantMessagesController {
       attached,
       log,
     }
-    if (request.accepts(['application/json', 'text/event-stream']) === 'text/event-stream') {
-      // The owner closing the panel (or pressing Stop) stops the model call: nothing is stored.
-      const gone = new AbortController()
-      // The response's own close: the request's fires once its body was read.
-      const raw = response.response
-      raw.once('close', () => {
-        if (!raw.writableFinished) gone.abort()
-      })
+    if (streamed) {
       for (const [name, value] of Object.entries(UI_MESSAGE_STREAM_HEADERS))
         response.header(name, value)
       response.header('Cache-Control', 'no-cache, no-transform')
       // Tells nginx-style proxies not to buffer the stream.
       response.header('X-Accel-Buffering', 'no')
       const body = assistantEventStream(async (writer) => {
-        const answer = await answerChat(input, { onChunk: writer.chunk, abortSignal: gone.signal })
+        let answer: Awaited<ReturnType<typeof answerChat>>
+        try {
+          answer = await answerChat(input, { onChunk: writer.chunk, abortSignal: gone.signal })
+        } catch (error) {
+          // What the exception handler logs for the JSON route: the stream has already begun.
+          logger.error({ ...log, err: error }, 'assistant chat stream failed')
+          writer.fail(HttpStatus.InternalServerError, STREAM_FAILED)
+          return
+        }
         if (gone.signal.aborted) return
         if (answer.status === HttpStatus.Ok) writer.done(answer.body)
         else writer.fail(answer.status, answer.body)
