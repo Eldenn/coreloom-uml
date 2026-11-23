@@ -48,7 +48,7 @@ export const ARCHITECTURE_ACTIONS: readonly AssistantAction[] = [
   readAction({
     name: 'list_architectures',
     description:
-      "Lists the owner's architectures, newest first, in one project when projectId is given: id, title, project id (null outside any project), who can open it (visibility: private, public with the link, protected by the link and an access code) and their views (diagrams) by title and kind.",
+      "Lists the owner's architectures, newest first, in one project when projectId is given: id, title, project id (null outside any project), who can open it (visibility: private, public with the link, protected by the link and an access code) and their views (diagrams) by id, title and kind.",
     input: z.object({ projectId: idInput().optional() }),
     kind: AssistantToolKind.Read,
     async read({ projectId }, user) {
@@ -66,6 +66,7 @@ export const ARCHITECTURE_ACTIONS: readonly AssistantAction[] = [
         // Never the share token or the access code.
         visibility: architecture.visibility,
         views: architecture.diagrams.map((diagram) => ({
+          id: diagram.id,
           title: diagram.title,
           kind: diagram.kind,
         })),

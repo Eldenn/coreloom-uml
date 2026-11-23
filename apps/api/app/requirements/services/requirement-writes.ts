@@ -1,3 +1,4 @@
+import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import type Project from '#app/projects/models/project'
 import {
   REQUIREMENT_LIMITS,
@@ -27,21 +28,33 @@ export async function findOwnedRequirement(id: number, user: User): Promise<Requ
   return requirement
 }
 
+/** Whether the project holds as many requirements as it may. */
+export async function requirementsFull(
+  projectId: number,
+  client?: TransactionClientContract,
+): Promise<boolean> {
+  const held = await Requirement.query({ client }).where('projectId', projectId).count('* as total')
+  return Number(held[0].$extras.total) >= REQUIREMENT_LIMITS.perProject
+}
+
 /** Adds a requirement to an owned project, or answers `full` at the project's limit. */
 export async function createRequirement(
   project: Project,
   fields: RequirementFields,
+  client?: TransactionClientContract,
 ): Promise<Requirement | 'full'> {
-  const held = await Requirement.query().where('projectId', project.id).count('* as total')
-  if (Number(held[0].$extras.total) >= REQUIREMENT_LIMITS.perProject) return 'full'
-  return Requirement.create({
-    projectId: project.id,
-    userId: project.userId,
-    category: fields.category,
-    priority: fields.priority,
-    statement: fields.statement,
-    measure: fields.measure || null,
-  })
+  if (await requirementsFull(project.id, client)) return 'full'
+  return Requirement.create(
+    {
+      projectId: project.id,
+      userId: project.userId,
+      category: fields.category,
+      priority: fields.priority,
+      statement: fields.statement,
+      measure: fields.measure || null,
+    },
+    { client },
+  )
 }
 
 /** Changes an owned requirement; omitted fields are left as is. */

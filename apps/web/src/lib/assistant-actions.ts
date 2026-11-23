@@ -50,6 +50,21 @@ export type ActionRowLabel =
   | 'finding'
   | 'resolution'
   | 'codeReview'
+  | 'requirement'
+  | 'category'
+  | 'priority'
+  | 'measure'
+  | 'question'
+  | 'context'
+  | 'option'
+  | 'optionFor'
+  | 'optionAgainst'
+  | 'chosen'
+  | 'consequences'
+  | 'status'
+  | 'replaces'
+  | 'linkedRequirements'
+  | 'linkedDiagrams'
 
 /**
  * One line of a card; with `from`, the value replaces it. A list is one text, comma-separated;
@@ -169,6 +184,32 @@ function readyRuleRows(value: unknown): Draft[] {
   }))
 }
 
+/** The ids of a list, as `#3, #5`. */
+const idList = (value: unknown): unknown =>
+  Array.isArray(value) ? value.map((id) => `#${String(id)}`).join(', ') : undefined
+
+/** Everything a decision's input says: each option with what speaks for and against it. */
+function decisionRows(input: Record<string, unknown>): Draft[] {
+  const options = Array.isArray(input.options)
+    ? (input.options as { name?: unknown; pros?: unknown; cons?: unknown }[])
+    : []
+  return [
+    { label: 'question', value: input.title },
+    { label: 'context', value: input.context },
+    ...options.flatMap((option): Draft[] => [
+      { label: 'option', value: option.name },
+      { label: 'optionFor', value: option.pros },
+      { label: 'optionAgainst', value: option.cons },
+    ]),
+    { label: 'chosen', value: input.chosen },
+    { label: 'consequences', value: input.consequences },
+    // Left out, the decision is still open.
+    { label: 'status', value: input.status ?? 'proposed' },
+    { label: 'linkedRequirements', value: idList(input.requirementIds) },
+    { label: 'linkedDiagrams', value: idList(input.diagramIds) },
+  ]
+}
+
 /** What the owner would otherwise have to open the target to know. */
 const ROWS: Record<
   string,
@@ -264,6 +305,19 @@ const ROWS: Record<
     { label: 'resolution', value: input.resolution, from: before },
   ],
   delete_code_review: (_input, subject) => [{ label: 'codeReview', value: subject }],
+  add_requirement: (input, subject) => [
+    { label: 'requirement', value: input.statement },
+    { label: 'category', value: input.category },
+    { label: 'priority', value: input.priority },
+    { label: 'measure', value: input.measure },
+    { label: 'in', value: subject },
+  ],
+  add_decision: (input, subject) => [...decisionRows(input), { label: 'in', value: subject }],
+  // `before` is the replaced decision's status: it only has to stay the same.
+  supersede_decision: (input, subject) => [
+    { label: 'replaces', value: subject },
+    ...decisionRows(input),
+  ],
 }
 
 /** Whether a row is shown: a text, or an empty one the input names. */
@@ -281,7 +335,7 @@ export function actionRows({ name, input, subject, before }: ProposedAction): Ac
   })
 }
 
-export type ActionDomain = 'project' | 'architecture' | 'agent-config' | 'code'
+export type ActionDomain = 'project' | 'architecture' | 'agent-config' | 'code' | 'design'
 
 const DOMAINS: Record<string, ActionDomain> = {
   create_project: 'project',
@@ -311,6 +365,9 @@ const DOMAINS: Record<string, ActionDomain> = {
   set_diagram_code_links: 'code',
   resolve_review_finding: 'code',
   delete_code_review: 'code',
+  add_requirement: 'design',
+  add_decision: 'design',
+  supersede_decision: 'design',
 }
 
 /** What accepting an action changes, so its lists and pages are read again; `null` when unknown. */
