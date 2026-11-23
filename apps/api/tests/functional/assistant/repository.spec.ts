@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import app from '@adonisjs/core/services/app'
+import redis from '@adonisjs/redis/services/main'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import type { LanguageModel } from '@coreloom-uml/llm'
 import { NOTHING_TO_READ } from '@coreloom-uml/llm'
@@ -19,6 +20,7 @@ import { CLONE } from '#app/assistant/services/repository-commands'
 import RepositorySandbox, {
   type OpenRepositorySandbox,
 } from '#app/assistant/services/repository-sandbox'
+import { RepositorySession } from '#app/assistant/services/repository-session'
 import GithubCodeMapFollow from '#app/code-maps/models/github-code-map-follow'
 import { updateFlag } from '#app/feature-flags/services/feature-flags'
 import GithubRepositoryGrant from '#app/github/models/github-repository-grant'
@@ -608,5 +610,21 @@ test.group('Assistant repository', (group) => {
       .loginAs(f.user)
       .json({ provider, apiKey: KEY, message: 'Rename B to C', locale: 'en' })
     off.assertStatus(404)
+  })
+
+  test('a close while an open still runs waits for it, then pauses what it made', async ({
+    assert,
+  }) => {
+    const f = await setup('repo-close-during-open@example.com')
+    const session = new RepositorySession(f.user, f.conversation.id)
+    // The tool was stopped (Stop, a timeout): its open goes on, detached, while the message ends.
+    const opening = session.open(f.project.id)
+    await session.close()
+    const opened = await opening
+    assert.notTypeOf(opened, 'string')
+    assert.equal(sandboxes.created, 1)
+    assert.equal(sandboxes.paused, 1)
+    // The conversation is free again: another message can take it.
+    assert.isNull(await redis.get(`assistant:repository:${String(f.conversation.id)}`))
   })
 })

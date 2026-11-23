@@ -39,6 +39,13 @@ export {
   withFile,
 } from './assistant.ts'
 export {
+  type AssistantStreamOptions,
+  type AssistantStreamWriter,
+  assistantEventStream,
+  UI_MESSAGE_STREAM_HEADERS,
+  type UIMessageChunk,
+} from './assistant-stream.ts'
+export {
   ASSISTANT_PROPOSALS_MAX,
   ASSISTANT_READ_RESULT_MAX_LENGTH,
   ASSISTANT_TOOLS_INSTRUCTIONS,

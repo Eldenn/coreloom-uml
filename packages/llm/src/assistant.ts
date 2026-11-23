@@ -1,6 +1,7 @@
 import { type UmlProblem, type UmlSpec, validateDiagram, withoutLayout } from '@coreloom-uml/uml'
 import { generateText, type LanguageModel, type ModelMessage, Output } from 'ai'
 import { z } from 'zod'
+import { type AssistantStreamOptions, completeText } from './assistant-stream.ts'
 import { failureReason, LlmCallError } from './failure.ts'
 
 /** Past this estimate of the input (characters / 4), views are left out whole. */
@@ -716,7 +717,7 @@ export async function chatWithAssistant(
     message: string
     locale: AssistantSource['locale']
   },
-  options: { timeoutMs?: number; maxInputTokens?: number } = {},
+  options: { timeoutMs?: number; maxInputTokens?: number } & AssistantStreamOptions = {},
 ): Promise<string> {
   const instructions = `${CHAT_INSTRUCTIONS}\nWrite the reply in ${LANGUAGES[input.locale]}.`
   const prompt = [
@@ -727,16 +728,19 @@ export async function chatWithAssistant(
   const maxChars = (options.maxInputTokens ?? ASSISTANT_MAX_INPUT_TOKENS) * CHARS_PER_TOKEN
   if (instructions.length + prompt.join('').length > maxChars) throw new AssistantContextFull()
   try {
-    const result = await generateText({
-      model,
-      instructions,
-      prompt: cachedPrompt(prompt),
-      temperature: ASSISTANT_TEMPERATURE,
-      maxOutputTokens: ASSISTANT_MAX_OUTPUT_TOKENS,
-      timeout: options.timeoutMs ?? ASSISTANT_TIMEOUT_MS,
-      maxRetries: 0,
-      telemetry: { isEnabled: false },
-    })
+    const result = await completeText(
+      {
+        model,
+        instructions,
+        prompt: cachedPrompt(prompt),
+        temperature: ASSISTANT_TEMPERATURE,
+        maxOutputTokens: ASSISTANT_MAX_OUTPUT_TOKENS,
+        timeout: options.timeoutMs ?? ASSISTANT_TIMEOUT_MS,
+        maxRetries: 0,
+        telemetry: { isEnabled: false },
+      },
+      options,
+    )
     return result.text.trim()
   } catch (error) {
     throw new LlmCallError(failureReason(error))

@@ -1,4 +1,4 @@
-import { generateText, type LanguageModel, stepCountIs, type ToolSet, tool } from 'ai'
+import { type LanguageModel, stepCountIs, type ToolSet, tool } from 'ai'
 import type { z } from 'zod'
 import {
   ASSISTANT_MAX_INPUT_TOKENS,
@@ -19,6 +19,7 @@ import {
   passagesBlock,
   pointedBlock,
 } from './assistant.ts'
+import { type AssistantStreamOptions, completeText } from './assistant-stream.ts'
 import { failureReason, LlmCallError, LlmFailureReason } from './failure.ts'
 import { cut, unlessAborted } from './research.ts'
 
@@ -163,7 +164,11 @@ function contextBlock(context: readonly AssistantContextItem[] | undefined): str
 export async function runAssistantTools(
   model: LanguageModel,
   input: AssistantToolsInput,
-  options: { timeoutMs?: number; maxSteps?: number; maxInputTokens?: number } = {},
+  options: {
+    timeoutMs?: number
+    maxSteps?: number
+    maxInputTokens?: number
+  } & AssistantStreamOptions = {},
 ): Promise<AssistantToolsResult> {
   const base =
     input.purpose === 'reading' ? DIAGRAM_READING_INSTRUCTIONS : ASSISTANT_TOOLS_INSTRUCTIONS
@@ -224,23 +229,26 @@ export async function runAssistantTools(
   let reply = ''
   let unfinished = false
   try {
-    const result = await generateText({
-      model,
-      instructions,
-      prompt: cachedPrompt(prompt),
-      tools,
-      stopWhen: [stepCountIs(maxSteps), () => route !== null],
-      // The last step may only answer: a model that keeps reading still ends on a reply.
-      prepareStep: ({ stepNumber }) =>
-        stepNumber >= maxSteps - 1 ? { toolChoice: 'none' } : undefined,
-      temperature: ASSISTANT_TOOLS_TEMPERATURE,
-      maxOutputTokens: ASSISTANT_MAX_OUTPUT_TOKENS,
-      timeout: options.timeoutMs ?? ASSISTANT_TOOLS_TIMEOUT_MS,
-      maxRetries: 0,
-      telemetry: { isEnabled: false },
-    })
+    const result = await completeText(
+      {
+        model,
+        instructions,
+        prompt: cachedPrompt(prompt),
+        tools,
+        stopWhen: [stepCountIs(maxSteps), () => route !== null],
+        // The last step may only answer: a model that keeps reading still ends on a reply.
+        prepareStep: ({ stepNumber }) =>
+          stepNumber >= maxSteps - 1 ? { toolChoice: 'none' } : undefined,
+        temperature: ASSISTANT_TOOLS_TEMPERATURE,
+        maxOutputTokens: ASSISTANT_MAX_OUTPUT_TOKENS,
+        timeout: options.timeoutMs ?? ASSISTANT_TOOLS_TIMEOUT_MS,
+        maxRetries: 0,
+        telemetry: { isEnabled: false },
+      },
+      options,
+    )
     reply = result.text.trim()
-    unfinished = result.steps.length >= maxSteps
+    unfinished = result.stepCount >= maxSteps
   } catch (error) {
     const reason = failureReason(error)
     // Out of time with proposals in hand: they are worth more than a failure.

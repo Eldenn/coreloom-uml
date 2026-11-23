@@ -6,6 +6,7 @@ import type {
   LanguageModelV4FunctionTool,
   LanguageModelV4GenerateResult,
 } from '@ai-sdk/provider'
+import { simulateStreamingMiddleware, wrapLanguageModel } from 'ai'
 import { LlmCallError, type LlmFailureReason } from './failure.ts'
 
 /**
@@ -156,7 +157,7 @@ export function createClaudeCodeModel(
   credential: ClaudeCodeCredential,
   run: ClaudeRun,
 ): LanguageModelV4 {
-  return {
+  const generating: LanguageModelV4 = {
     specificationVersion: 'v4',
     provider: 'claude-code',
     modelId: model,
@@ -232,7 +233,9 @@ export function createClaudeCodeModel(
       }
     },
     async doStream() {
-      throw new Error('The claude-code provider does not stream')
+      throw new Error('Replaced by simulateStreamingMiddleware')
     },
   }
+  // The binary answers whole: a stream gets that answer as one delta.
+  return wrapLanguageModel({ model: generating, middleware: simulateStreamingMiddleware() })
 }

@@ -29,6 +29,7 @@ import {
   type FileProblem,
   readAttachment,
   useAskAssistant,
+  useAssistantChat,
   useContextBudget,
   useContinueConversation,
   useConversation,
@@ -37,6 +38,7 @@ import {
   viewTooLarge,
 } from '@/lib/assistant'
 import type { ContextBudget } from '@/lib/assistant-changes'
+import type { ChatDraft } from '@/lib/assistant-chat'
 import type { Workspace } from '@/lib/assistant-context'
 import { getErrorMessage, TuyauError } from '@/lib/client'
 import { providerCallFailure, type StoredProvider } from '@/lib/llm-provider'
@@ -108,7 +110,8 @@ export function Conversation({
     views.selection,
     views.versions,
   )
-  const ask = useAskAssistant(conversationId)
+  const live = useAssistantChat(conversationId)
+  const ask = useAskAssistant(conversationId, live.chat)
   const web = useWebRequest(conversationId, null)
   const proceed = useContinueConversation()
   const deleteSummary = useDeleteSummary(conversationId)
@@ -167,16 +170,18 @@ export function Conversation({
         },
         viewsOf: views.selectionOf,
       })
-      .then(({ handoff }) =>
-        handoff?.kind === 'web' ? research(handoff.agentConfigId) : undefined,
-      )
+      .then(({ handoff, stopped }) => {
+        // Stopped: nothing was stored, so the message comes back to the field.
+        if (stopped) restore()
+        else if (handoff?.kind === 'web') return research(handoff.agentConfigId)
+      })
       // Told by `ask.error`.
       .catch(restore)
       .finally(() => {
         setHanded(null)
       })
   }
-  const pending = pendingOf(subject, ask, web, { handed, reading })
+  const pending = pendingOf(subject, ask, web, { handed, reading, draft: live.draft })
 
   return (
     <>
@@ -188,6 +193,7 @@ export function Conversation({
         asking={pending.text}
         askingFile={ask.isPending ? ask.variables.file?.name : null}
         waiting={pending.typing || proceed.isPending}
+        draft={pending.draft}
         progress={
           <>
             {pending.stage !== null && (
@@ -221,6 +227,7 @@ export function Conversation({
         budget={budget}
         fullness={fullness(budget, messages.length, askError)}
         ask={ask}
+        live={live}
         web={web}
         handing={handed !== null}
         proceed={proceed}
@@ -255,6 +262,7 @@ function Composer({
   budget,
   fullness: { full, tooLarge },
   ask,
+  live,
   web,
   handing,
   proceed,
@@ -269,6 +277,8 @@ function Composer({
   budget: ContextBudget | undefined
   fullness: ReturnType<typeof fullness>
   ask: ReturnType<typeof useAskAssistant>
+  /** The streamed reply: Stop cancels it. */
+  live: ReturnType<typeof useAssistantChat>
   web: ReturnType<typeof useWebRequest>
   /** A handed-over message is on its way to being sent again. */
   handing: boolean
@@ -304,7 +314,13 @@ function Composer({
           web.forget()
         }}
         placeholder={placeholder(t, subject)}
-        status={sending ? 'submitted' : 'ready'}
+        status={promptStatus(sending, live.status)}
+        // Only a streamed reply can be stopped: the other calls run to their end.
+        onStop={
+          live.status === 'submitted' || live.status === 'streaming'
+            ? () => void live.stop()
+            : undefined
+        }
         disabled={!provider || full || proceed.isPending}
         allowAttachments={takesFile(subject)}
         accept={ATTACHMENT_TYPES}
@@ -314,6 +330,12 @@ function Composer({
       />
     </div>
   )
+}
+
+/** What the prompt shows: Send, or Stop while a reply is on its way. */
+function promptStatus(sending: boolean, chat: ReturnType<typeof useAssistantChat>['status']) {
+  if (!sending) return 'ready'
+  return chat === 'streaming' ? 'streaming' : 'submitted'
 }
 
 /** A code request reads a map: it takes no file. */
@@ -359,22 +381,33 @@ function stageOf(auto: boolean, asking: boolean, handed: Handed | null, reading:
  * doing, or the steps of a research. One of the three at a time, with no gap between the server's
  * handoff and the call that follows it.
  */
+/**
+ * The reply as it is written: once its text shows (or a tool runs), it replaces the stage and
+ * the dots.
+ */
+function written(asking: boolean, draft: ChatDraft | null) {
+  const writing = asking ? draft : null
+  return { writing, streaming: writing !== null && (writing.text !== '' || writing.reading) }
+}
+
 function pendingOf(
   subject: Subject,
   ask: ReturnType<typeof useAskAssistant>,
   web: ReturnType<typeof useWebRequest>,
-  { handed, reading }: { handed: Handed | null; reading: boolean },
+  { handed, reading, draft }: { handed: Handed | null; reading: boolean; draft: ChatDraft | null },
 ) {
   const toWeb = handed?.handoff.kind === 'web' ? handed.handoff.agentConfigId : null
   // The research's first step shows from the handoff on, before its own call starts.
   const webStep = web.step ?? (toWeb === null ? null : 'researching')
-  const stage = stageOf(subject.mode === 'auto', ask.isPending, handed, reading)
+  const { writing, streaming } = written(ask.isPending, draft)
+  const stage = streaming ? null : stageOf(subject.mode === 'auto', ask.isPending, handed, reading)
   return {
     text: ask.isPending ? ask.variables.message : (web.request ?? handed?.message ?? null),
-    typing: ask.isPending && stage === null && webStep === null,
+    typing: ask.isPending && stage === null && webStep === null && !streaming,
     stage,
     webStep,
     configId: toWeb,
+    draft: writing,
   }
 }
 

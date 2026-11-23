@@ -1,3 +1,5 @@
+import { Readable } from 'node:stream'
+import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
 import {
@@ -5,10 +7,11 @@ import {
   AssistantToolKind,
   askAssistant,
   assistantBudget,
-  chatWithAssistant,
+  assistantEventStream,
   LlmCallError,
   NOTHING_TO_READ,
   runAssistantTools,
+  UI_MESSAGE_STREAM_HEADERS,
   withFile,
 } from '@coreloom-uml/llm'
 import { actionTools } from '#app/assistant/actions/registry'
@@ -22,12 +25,8 @@ import AssistantMessage from '#app/assistant/models/assistant-message'
 import { serializeMessage } from '#app/assistant/serializers/assistant-serializer'
 import {
   assistantActionsEnabled,
-  handoffOf,
-  handoffTools,
   pointedIn,
-  resolveContext,
   resolvePage,
-  resolvePointed,
 } from '#app/assistant/services/assistant-actions'
 import {
   assistantSource,
@@ -35,6 +34,7 @@ import {
   selectsOwnViews,
 } from '#app/assistant/services/assistant-context'
 import { ASSISTANT_NOT_FOUND, assistantEnabled } from '#app/assistant/services/assistant-flag'
+import { answerChat, type ChatAnswerInput, CONTEXT_FULL } from '#app/assistant/services/chat-answer'
 import { answerFromCode, type CodeAnswer } from '#app/assistant/services/code-request'
 import {
   conversationFiles,
@@ -62,27 +62,24 @@ import {
 import type {
   AskAssistantOutput,
   ChatOutput,
-  HandoffOutput,
   ReadingOutput,
 } from '#app/assistant/validators/assistant-output'
 import { CodeMapStatus } from '#app/code-maps/constants/code-map'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
 import { CODE_MAP_NOT_FOUND, findOwnedCodeMap } from '#app/code-maps/services/owned-code-map'
 import { DIAGRAM_NOT_FOUND } from '#app/diagrams/services/owned-diagram'
-import { LlmFailureReason, llmFailure, userLanguageModel } from '#app/llm/services/language-models'
+import { llmFailure, userLanguageModel } from '#app/llm/services/language-models'
 import {
   ProviderKind,
   SUBSCRIPTION_NOT_FOUND,
 } from '#app/llm-connections/constants/llm-connections'
+import { HttpStatus } from '#app/shared/http/http-status'
 
 const MESSAGE_NOT_FOUND = { error: { message: 'Message not found' } } as const
+const STREAM_FAILED = { error: { message: 'Internal server error' } } as const
 const NOT_A_SUMMARY = { error: { message: 'Only a summary can be deleted.' } } as const
 
 const CODE_MAP_NOT_READY = { error: { message: 'This code map is not ready' } } as const
-
-const CONTEXT_FULL = {
-  error: { message: 'The conversation is too long for the model.', code: 'context_full' },
-} as const
 
 /**
  * The workspace assistant: the user's own model answers a message about the architecture's views
@@ -367,6 +364,15 @@ export default class AssistantMessagesController {
    * is stored, and the screen sends the message again down that path.
    */
   async chat({ params, request, auth, response }: HttpContext) {
+    const streamed =
+      request.accepts(['application/json', 'text/event-stream']) === 'text/event-stream'
+    // Stop (or a dropped connection) stops the model call: nothing is stored. Listened to from the
+    // start, on the response's own close: the request's fires once its body was read.
+    const gone = new AbortController()
+    const raw = response.response
+    raw.once('close', () => {
+      if (!raw.writableFinished) gone.abort()
+    })
     const user = auth.getUserOrFail()
     if (!(await assistantEnabled(user))) return response.notFound(ASSISTANT_NOT_FOUND)
     const conversation = await findOwnedConversation(params.conversationId, user)
@@ -387,112 +393,50 @@ export default class AssistantMessagesController {
       logger.warn({ ...log, reason: built.reason }, 'assistant chat failed')
       return response.badGateway(llmFailure(built.reason))
     }
-    // The ChatGPT subscription is not known to carry a tool call from one step to the next.
-    const withTools =
-      auto === true &&
-      provider.kind !== ProviderKind.OpenAICodex &&
-      (await assistantActionsEnabled(user))
-    const history = await conversationHistory(conversation)
-    const files = await conversationFiles(conversation.id)
-    const read = fileTextReader()
-    // A short file the message attaches goes whole with it; the others by their summaries.
-    const whole = await wholeFile(attached, read)
-    const sent = withFile(message, whole)
-    const recorded: StoredAction[] = []
-    let actions: StoredAction[] = []
-    const started = performance.now()
-    let reply: string
-    let handoff: HandoffOutput | null = null
-    let unfinished = false
-    // Opened by the first repository tool, paused once the message is answered (or failed).
-    const repository = new RepositorySession(user, conversation.id)
-    try {
-      if (withTools) {
-        const tools = [
-          ...(await actionTools(user, recorded, {
-            conversationId: conversation.id,
-            read,
-            repository,
-          })),
-          ...(await handoffTools(user)),
-        ]
-        // With tools, the model reads the files itself (`file-actions.ts`).
-        const result = await runAssistantTools(built.model, {
-          history,
-          files: filesContext(files),
-          message: sent,
-          locale,
-          page: await resolvePage(page, user),
-          context: await resolveContext(context, user),
-          pointed: await resolvePointed(pointed, user),
-          tools,
-        })
-        reply = withFilesRead(result.reply, repository.read, locale)
-        unfinished = result.unfinished
-        // Recorded by the tools as the loop went, in the same order: keep the ones the loop kept.
-        actions = recorded.slice(0, result.proposed.length)
-        if (result.route) handoff = handoffOf(result.route)
-      } else {
-        // Without tools, it reads them through the passages its message is about.
-        const passages = await filePassages(
-          files.filter((item) => !whole || item.id !== fileId),
-          message,
-          read,
-        )
-        reply = await chatWithAssistant(built.model, {
-          history,
-          files: filesContext(files),
-          passages,
-          message: sent,
-          locale,
-        })
-      }
-    } catch (error) {
-      const durationMs = Math.round(performance.now() - started)
-      if (error instanceof AssistantContextFull) {
-        logger.info({ ...log, durationMs }, 'assistant chat refused: context full')
-        return response.unprocessableEntity(CONTEXT_FULL)
-      }
-      if (!(error instanceof LlmCallError)) throw error
-      logger.warn({ ...log, durationMs, reason: error.reason }, 'assistant chat failed')
-      return response.badGateway(llmFailure(error.reason))
-    } finally {
-      await repository.close()
+    const input: ChatAnswerInput = {
+      user,
+      conversation,
+      model: built.model,
+      providerKind: provider.kind,
+      message,
+      locale,
+      page,
+      context,
+      pointed,
+      auto,
+      fileId,
+      attached,
+      log,
     }
-    const durationMs = Math.round(performance.now() - started)
-    if (handoff) {
-      logger.info({ ...log, durationMs, handoff: handoff.kind }, 'assistant chat handed over')
-      return response.ok({ messages: [], handoff, unfinished: false } satisfies ChatOutput)
+    if (streamed) {
+      for (const [name, value] of Object.entries(UI_MESSAGE_STREAM_HEADERS))
+        response.header(name, value)
+      response.header('Cache-Control', 'no-cache, no-transform')
+      // Tells nginx-style proxies not to buffer the stream.
+      response.header('X-Accel-Buffering', 'no')
+      const body = assistantEventStream(async (writer) => {
+        let answer: Awaited<ReturnType<typeof answerChat>>
+        try {
+          answer = await answerChat(input, { onChunk: writer.chunk, abortSignal: gone.signal })
+        } catch (error) {
+          // What the exception handler logs for the JSON route: the stream has already begun.
+          logger.error({ ...log, err: error }, 'assistant chat stream failed')
+          writer.fail(HttpStatus.InternalServerError, STREAM_FAILED)
+          return
+        }
+        if (gone.signal.aborted) return
+        if (answer.status === HttpStatus.Ok) writer.done(answer.body)
+        else writer.fail(answer.status, answer.body)
+      })
+      response.stream(Readable.fromWeb(body as NodeReadableStream<string>))
+      // Answered by the stream: kept out of the JSON response type Tuyau reads.
+      return undefined as never
     }
-    if (!reply.trim() && actions.length === 0) {
-      // A blank answer would be stored as an empty bubble: answered like any failed call.
-      logger.warn({ ...log, durationMs, reason: LlmFailureReason.Unknown }, 'assistant chat failed')
-      return response.badGateway(llmFailure(LlmFailureReason.Unknown))
-    }
-    logger.info(
-      {
-        ...log,
-        durationMs,
-        tools: withTools,
-        actions: actions.map((action) => action.name),
-        // A count only: never a path or what a file holds.
-        repositoryFiles: repository.read.length,
-        unfinished,
-      },
-      'assistant chat',
-    )
-
-    const messages = await storeExchange(conversation, message, {
-      architectureId: null,
-      content: reply,
-      actions,
-      fileName: attached?.name,
-    })
-    return response.ok({
-      messages: messages.map(serializeMessage),
-      handoff: null,
-      unfinished,
-    } satisfies ChatOutput)
+    const answer = await answerChat(input, {})
+    if (answer.status === HttpStatus.UnprocessableEntity)
+      return response.unprocessableEntity(answer.body)
+    if (answer.status === HttpStatus.BadGateway) return response.badGateway(answer.body)
+    return response.ok(answer.body satisfies ChatOutput)
   }
 
   /** `DELETE /assistant/conversations/:conversationId/messages/:messageId` — a summary only. */

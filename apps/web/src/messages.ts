@@ -1190,6 +1190,7 @@ export const en = {
     readingFile:
       'Reading the file: your model summarizes it, part by part. The conversation keeps it for the next messages…',
     continueReading: 'Go on from where you stopped.',
+    reading: 'The assistant is reading your work…',
     summary: 'Summary of the previous conversation',
     deleteSummary: 'Delete the summary',
     deleteSummaryHint:
@@ -2617,6 +2618,7 @@ export const fr: Messages = {
     readingFile:
       'Lecture du fichier : votre modèle le résume, partie par partie. La conversation le garde pour les messages suivants…',
     continueReading: 'Reprenez là où vous vous êtes arrêté.',
+    reading: 'L’assistant lit votre travail…',
     summary: 'Résumé de la conversation précédente',
     deleteSummary: 'Supprimer le résumé',
     deleteSummaryHint:
