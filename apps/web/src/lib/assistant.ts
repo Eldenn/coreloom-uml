@@ -1,6 +1,7 @@
 // Query and mutation hooks for the assistant: the account's conversations, and the messages and
 // view changes that are about one architecture (the pattern of src/lib/query.ts). Model calls (a message, continuing a conversation) send the user's provider in
 // the body, like src/lib/llm-provider.ts, and wait as long as the API bounds them.
+import { useChat } from '@ai-sdk/react'
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -8,13 +9,20 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
+import * as React from 'react'
 
 import { agentConfigKeys } from '@/lib/agent-configs'
 import { architectureKeys } from '@/lib/architectures'
 import { actionDomain } from '@/lib/assistant-actions'
 import type { ChangeAction } from '@/lib/assistant-changes'
+import {
+  type AssistantChatMessage,
+  createAssistantChat,
+  draftOf,
+  sendChat,
+} from '@/lib/assistant-chat'
 import type { AssistantPage } from '@/lib/assistant-subject'
-import { client, TuyauError } from '@/lib/client'
+import { apiBaseUrl, client, TuyauError } from '@/lib/client'
 import { codeReviewKeys } from '@/lib/code-reviews'
 import { useFeature } from '@/lib/feature-flags'
 import { githubKeys } from '@/lib/github'
@@ -41,10 +49,11 @@ export type ProposedChange = NonNullable<AssistantMessage['changes']>[number]
 export type MessageProposals = NonNullable<AssistantMessage['proposals']>
 /** A change to the account's work the assistant proposed, for the owner to accept or reject. */
 export type AssistantAction = NonNullable<AssistantMessage['actions']>[number]
+/** What a plain message answers: the stored exchange, or a handoff. */
+type ChatOutput = Awaited<ReturnType<typeof api.messages.store>>
 /** Where the server sends a plain message instead of answering it. */
-export type AssistantHandoff = NonNullable<
-  Awaited<ReturnType<typeof api.messages.store>>['handoff']
->
+export type AssistantHandoff = NonNullable<ChatOutput['handoff']>
+export type AssistantChat = ReturnType<typeof createAssistantChat<ChatOutput>>
 
 export const assistantKeys = {
   all: ['assistant'] as const,
@@ -224,7 +233,24 @@ export function useDeleteConversation() {
 /** How many times a reply that ran out of steps goes on by itself (about 48 steps in all). */
 const CONTINUATIONS_MAX = 3
 
-export function useAskAssistant(conversationId: number) {
+/**
+ * The conversation's chat, streamed through `useChat`: the reply being written (`draft`), its
+ * `status` and `stop` (which cancels the call: the API then stores nothing). Hand `chat` to
+ * `useAskAssistant`, which sends the plain messages through it.
+ */
+export function useAssistantChat(conversationId: number) {
+  const chat = React.useMemo(
+    () =>
+      createAssistantChat<ChatOutput>(
+        `${apiBaseUrl}/assistant/conversations/${String(conversationId)}/messages`,
+      ),
+    [conversationId],
+  )
+  const { messages, status, stop } = useChat<AssistantChatMessage<ChatOutput>>({ chat })
+  return { chat, draft: draftOf(messages), status, stop }
+}
+
+export function useAskAssistant(conversationId: number, chat: AssistantChat) {
   const { locale } = useLocale()
   const t = useT().assistant
   const invalidate = useInvalidateAssistant()
@@ -262,7 +288,12 @@ export function useAskAssistant(conversationId: number) {
       onReading?: (reading: boolean) => void
       onHandoff?: (handoff: AssistantHandoff) => void
       viewsOf?: (architectureId: number) => ViewSelection
-    }): Promise<{ messages: AssistantMessage[]; handoff: AssistantHandoff | null }> => {
+    }): Promise<{
+      messages: AssistantMessage[]
+      handoff: AssistantHandoff | null
+      /** The owner pressed Stop: what the last call was writing is dropped, nothing stored. */
+      stopped?: boolean
+    }> => {
       const fileId = await attachFile(provider, conversationId, attached, onReading)
       // What the request needs from the code, the maps or the files is read first, in a request
       // of its own (a few rounds at most), and stored in the conversation for the drawing to use.
@@ -311,25 +342,25 @@ export function useAskAssistant(conversationId: number) {
       }
       if (architectureId !== null)
         return { messages: await aboutArchitecture(architectureId, selection), handoff: null }
+      // Streamed: the reply shows as it is written (`useAssistantChat`).
       const send = (text: string, withFile: boolean) =>
-        api.messages.store({
-          params: { conversationId },
-          body: {
-            ...callBody(provider),
-            message: text,
-            locale,
-            ...(fileId === null || !withFile ? {} : { fileId }),
-            ...(auto ? { auto: true, ...(page ? { page } : {}), context: context ?? [] } : {}),
-          },
-          ...MODEL_CALL,
+        sendChat(chat, text, {
+          ...callBody(provider),
+          locale,
+          ...(fileId === null || !withFile ? {} : { fileId }),
+          ...(auto ? { auto: true, ...(page ? { page } : {}), context: context ?? [] } : {}),
         })
       const plain = await send(message, true)
+      if (plain === null) return { messages: [], handoff: null, stopped: true }
       if (plain.handoff === null) {
         // A reply that ran out of steps (reading a repository, say) goes on, a few times at most.
         const messages = [...plain.messages]
-        let last: Awaited<ReturnType<typeof send>> = plain
+        let last: ChatOutput = plain
         for (let round = 0; last.unfinished && round < CONTINUATIONS_MAX; round += 1) {
-          last = await send(t.continueReading, false)
+          const next = await send(t.continueReading, false)
+          // Stopped: what was stored so far stands.
+          if (next === null) break
+          last = next
           // A continuation handed over stored nothing and is not unfinished: the loop ends.
           messages.push(...last.messages)
         }
