@@ -1,7 +1,11 @@
 import { BaseModel, column, manyToMany } from '@adonisjs/lucid/orm'
 import type { ManyToMany } from '@adonisjs/lucid/types/relations'
 import type { DateTime } from 'luxon'
-import type { DecisionOption, DecisionStatus } from '#app/decisions/constants/decision'
+import type {
+  DecisionOption,
+  DecisionOrigin,
+  DecisionStatus,
+} from '#app/decisions/constants/decision'
 import Diagram from '#app/diagrams/models/diagram'
 import Requirement from '#app/requirements/models/requirement'
 
@@ -41,6 +45,14 @@ export default class Decision extends BaseModel {
   /** The decision of the same project that replaced this one. */
   @column()
   declare supersededById: number | null
+
+  /** Who recorded it: a coding agent's waits for the owner's review while it is `proposed`. */
+  @column()
+  declare origin: DecisionOrigin
+
+  /** For a coding agent's proposal: the decision it says no longer holds. A reference only. */
+  @column()
+  declare supersedesId: number | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

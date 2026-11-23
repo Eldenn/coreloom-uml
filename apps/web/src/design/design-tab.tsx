@@ -27,10 +27,12 @@ import {
 import { Popconfirm } from '@/components/ui/popconfirm'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
+import { AgentProposals } from '@/design/agent-proposals'
 import { DecisionForm, RequirementForm } from '@/design/design-forms'
 import { DesignReview } from '@/design/design-review'
 import { getErrorMessage } from '@/lib/client'
 import {
+  awaitsReview,
   type Decision,
   type Requirement,
   useDecisions,
@@ -107,6 +109,12 @@ export function DesignTab({ projectId }: { projectId: number }) {
           />
         ))}
       </Section>
+      <AgentProposals
+        projectId={projectId}
+        proposals={decisions.data.filter(awaitsReview)}
+        decisions={decisions.data}
+        onReviewed={() => addDecisionRef.current?.focus()}
+      />
       <Section
         id="design-decisions-title"
         title={t.design.decisions}
@@ -118,17 +126,19 @@ export function DesignTab({ projectId }: { projectId: number }) {
           setDecision({})
         }}
       >
-        {decisions.data.map((item) => (
-          <DecisionItem
-            key={item.id}
-            projectId={projectId}
-            decision={item}
-            onEdit={() => {
-              setDecision({ item })
-            }}
-            onDeleted={() => addDecisionRef.current?.focus()}
-          />
-        ))}
+        {decisions.data
+          .filter((item) => !awaitsReview(item))
+          .map((item) => (
+            <DecisionItem
+              key={item.id}
+              projectId={projectId}
+              decision={item}
+              onEdit={() => {
+                setDecision({ item })
+              }}
+              onDeleted={() => addDecisionRef.current?.focus()}
+            />
+          ))}
       </Section>
 
       <Dialog

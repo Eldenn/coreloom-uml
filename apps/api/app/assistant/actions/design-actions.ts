@@ -12,6 +12,7 @@ import {
 import { ActionFailure, AssistantTargetKind } from '#app/assistant/constants/assistant'
 import { DECISION_LIMITS, DecisionStatus } from '#app/decisions/constants/decision'
 import Decision from '#app/decisions/models/decision'
+import { awaitsReview, reviewed } from '#app/decisions/services/agent-proposals'
 import {
   createDecision,
   creationProblem,
@@ -79,6 +80,12 @@ const decisionFields = {
 const decisionInput = z.object({ projectId: idInput(), ...decisionFields })
 const supersedeInput = z.object({ decisionId: idInput(), ...decisionFields })
 
+/** An owned decision the model may read or replace: never a coding agent's still waiting. */
+async function findReviewedDecision(id: number, user: User): Promise<Decision | null> {
+  const decision = await findOwnedDecision(id, user)
+  return decision && !awaitsReview(decision) ? decision : null
+}
+
 const sentence = (problem: Awaited<ReturnType<typeof creationProblem>>): string | null =>
   problem === 'full' ? DECISIONS_FULL.error.message : (problem?.error.message ?? null)
 
@@ -108,7 +115,7 @@ export const DESIGN_ACTIONS: readonly AssistantAction[] = [
           .where('projectId', project.id)
           .orderBy('priority', 'asc')
           .orderBy('id', 'asc'),
-        withLinks(Decision.query().where('projectId', project.id)).orderBy('id', 'asc'),
+        withLinks(reviewed(Decision.query().where('projectId', project.id))).orderBy('id', 'asc'),
       ])
       return {
         requirements: requirements.map(({ id, category, priority, statement, measure }) => ({
@@ -152,7 +159,7 @@ export const DESIGN_ACTIONS: readonly AssistantAction[] = [
     kind: AssistantToolKind.Read,
     available,
     async read({ decisionId }, user) {
-      const decision = await findOwnedDecision(decisionId, user)
+      const decision = await findReviewedDecision(decisionId, user)
       if (!decision) return { error: NOT_FOUND_SENTENCE }
       const { id, projectId, title, context, options, chosen, consequences, status } = decision
       return { id, projectId, title, context, options, chosen, consequences, status }
@@ -217,10 +224,10 @@ export const DESIGN_ACTIONS: readonly AssistantAction[] = [
     kind: AssistantToolKind.Write,
     available,
     async subject({ decisionId }, user) {
-      return (await findOwnedDecision(decisionId, user))?.title ?? TARGET_NOT_FOUND
+      return (await findReviewedDecision(decisionId, user))?.title ?? TARGET_NOT_FOUND
     },
     async currentProblem({ decisionId, ...fields }, user) {
-      const replaced = await findOwnedDecision(decisionId, user)
+      const replaced = await findReviewedDecision(decisionId, user)
       const project = replaced && (await findOwnedProject(replaced.projectId, user))
       if (!project) return null
       if (replaced.status === DecisionStatus.Superseded)
@@ -229,10 +236,10 @@ export const DESIGN_ACTIONS: readonly AssistantAction[] = [
     },
     // The card goes stale when the decision is accepted, reopened or replaced meanwhile.
     async before({ decisionId }, user) {
-      return (await findOwnedDecision(decisionId, user))?.status ?? null
+      return (await findReviewedDecision(decisionId, user))?.status ?? null
     },
     async apply({ decisionId, ...fields }, user, client) {
-      const replaced = await findOwnedDecision(decisionId, user)
+      const replaced = await findReviewedDecision(decisionId, user)
       const project = replaced && (await findOwnedProject(replaced.projectId, user))
       if (!project) return { failure: ActionFailure.NotFound }
       const decision = created(await createDecision(project, fields, client))

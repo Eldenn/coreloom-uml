@@ -2,7 +2,11 @@ import type {
   CodeReviewResolution,
   ConformanceSeverity,
 } from '#app/code-reviews/constants/code-review'
-import type { DecisionOption, DecisionStatus } from '#app/decisions/constants/decision'
+import type {
+  DecisionOption,
+  DecisionOrigin,
+  DecisionStatus,
+} from '#app/decisions/constants/decision'
 import type { Paginated } from '#app/shared/pagination/paginate'
 
 /** JSON shape of a decision, with the ids of what it is linked to. */
@@ -18,6 +22,10 @@ export type DecisionOutput = {
   supersededById: number | null
   requirementIds: number[]
   diagramIds: number[]
+  /** `agent` with `proposed`: a coding agent's proposal waiting for the owner's review. */
+  origin: DecisionOrigin
+  /** For a coding agent's proposal: the decision it says no longer holds. */
+  supersedesId: number | null
   createdAt: string
   updatedAt: string
 }

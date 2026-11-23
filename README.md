@@ -107,8 +107,12 @@ silently.
   findings and the deterministic match) and the processes no diagram documents
   (`list_undocumented_processes`). With requirements and decisions turned on, it lists a project's
   requirements and its decisions still standing (`list_requirements`, `list_decisions`), which a
-  generated AGENTS.md also carries (the requirements and the accepted decisions). It only reads,
-  and never calls a model. It is behind
+  generated AGENTS.md also carries (the requirements and the accepted decisions). It never calls
+  a model and only reads, but for one tool: with a key that has the `write` ability, an agent that
+  had to go against the recorded design (or took a structuring decision nothing records) tells the
+  owner with `propose_decision`. The decision is stored as a proposal on the project's Design tab,
+  where the owner keeps or dismisses it; until kept, it counts for nothing, for the assistant or
+  for coding agents (at most ten wait per project). It is behind
   the `mcp-server` feature flag, off by default; generated agent conventions say how to register
   it in each tool.
 

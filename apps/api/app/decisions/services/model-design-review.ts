@@ -6,6 +6,7 @@ import { CodeReviewResolution } from '#app/code-reviews/constants/code-review'
 import { DecisionStatus } from '#app/decisions/constants/decision'
 import Decision from '#app/decisions/models/decision'
 import DesignFinding from '#app/decisions/models/design-finding'
+import { reviewed } from '#app/decisions/services/agent-proposals'
 import type { DesignModelFindingOutput } from '#app/decisions/validators/decisions-output'
 import Diagram from '#app/diagrams/models/diagram'
 import Requirement from '#app/requirements/models/requirement'
@@ -32,8 +33,7 @@ export async function designReviewSource(
       .where('projectId', architecture.projectId)
       .orderBy('priority', 'asc')
       .orderBy('id', 'asc'),
-    Decision.query()
-      .where('projectId', architecture.projectId)
+    reviewed(Decision.query().where('projectId', architecture.projectId))
       .whereNot('status', DecisionStatus.Superseded)
       .orderBy('status', 'asc')
       .orderBy('id', 'asc'),

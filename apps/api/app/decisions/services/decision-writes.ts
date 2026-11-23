@@ -4,9 +4,11 @@ import type { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import {
   DECISION_LIMITS,
   type DecisionOption,
+  type DecisionOrigin,
   DecisionStatus,
 } from '#app/decisions/constants/decision'
 import Decision from '#app/decisions/models/decision'
+import { reviewed } from '#app/decisions/services/agent-proposals'
 import Diagram from '#app/diagrams/models/diagram'
 import type Project from '#app/projects/models/project'
 import Requirement from '#app/requirements/models/requirement'
@@ -30,6 +32,10 @@ export type DecisionFields = {
   supersededById?: number | null
   requirementIds?: number[]
   diagramIds?: number[]
+  /** Set to `agent` by the MCP tool only; the owner's review sets it back to `owner`. */
+  origin?: DecisionOrigin
+  /** A coding agent's proposal: the standing decision of the project it says no longer holds. */
+  supersedesId?: number | null
 }
 
 /** The body of a 422: the field that cannot be stored and why. */
@@ -81,6 +87,16 @@ async function problem(
     if (!other) return refuse('supersededById', 'This is not another decision of the project.')
   }
 
+  if (fields.supersedesId != null) {
+    const replaced = await reviewed(
+      Decision.query({ client }).where({ id: fields.supersedesId, projectId }),
+    )
+      .whereNot('status', DecisionStatus.Superseded)
+      .first()
+    if (!replaced || replaced.id === selfId)
+      return refuse('supersedesId', 'This is not a standing decision of the project.')
+  }
+
   if (fields.requirementIds?.length) {
     const found = await Requirement.query({ client })
       .where('projectId', projectId)
@@ -118,6 +134,8 @@ function assign(decision: Decision, fields: Partial<DecisionFields>) {
   if (fields.consequences !== undefined) decision.consequences = fields.consequences || null
   if (fields.status !== undefined) decision.status = fields.status
   if (fields.supersededById !== undefined) decision.supersededById = fields.supersededById
+  if (fields.origin !== undefined) decision.origin = fields.origin
+  if (fields.supersedesId !== undefined) decision.supersedesId = fields.supersedesId
 }
 
 /** Saves `decision` and, when given, replaces the sets it is linked to; answers it with its links. */
@@ -161,6 +179,7 @@ function draft(project: Project, fields: DecisionFields): Decision {
     consequences: null,
     status: DecisionStatus.Proposed,
     supersededById: null,
+    supersedesId: null,
   })
   assign(decision, fields)
   return decision

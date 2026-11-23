@@ -1,5 +1,6 @@
 import { DecisionStatus } from '#app/decisions/constants/decision'
 import Decision from '#app/decisions/models/decision'
+import { reviewed } from '#app/decisions/services/agent-proposals'
 import { withLinks } from '#app/decisions/services/decision-writes'
 import { RequirementPriority } from '#app/requirements/constants/requirement'
 import Requirement from '#app/requirements/models/requirement'
@@ -67,7 +68,7 @@ export function reviewDesign(
 export async function projectDesignFindings(projectId: number): Promise<DesignFinding[]> {
   const [requirements, decisions] = await Promise.all([
     Requirement.query().where('projectId', projectId).orderBy('id', 'asc'),
-    withLinks(Decision.query().where('projectId', projectId)).orderBy('id', 'asc'),
+    withLinks(reviewed(Decision.query().where('projectId', projectId))).orderBy('id', 'asc'),
   ])
   return reviewDesign(
     requirements,

@@ -3,6 +3,7 @@ import type { DesignContext } from '@coreloom-uml/llm'
 import type Architecture from '#app/architectures/models/architecture'
 import { DecisionStatus } from '#app/decisions/constants/decision'
 import Decision from '#app/decisions/models/decision'
+import { reviewed } from '#app/decisions/services/agent-proposals'
 import Requirement from '#app/requirements/models/requirement'
 import { designRecordsEnabled } from '#app/requirements/services/design-records-flag'
 import User from '#app/users/models/user'
@@ -23,8 +24,7 @@ export async function projectDesign(architecture: Architecture): Promise<DesignC
     .where('projectId', projectId)
     .orderBy('priority', 'asc')
     .orderBy('id', 'asc')
-  const decisions = await Decision.query()
-    .where('projectId', projectId)
+  const decisions = await reviewed(Decision.query().where('projectId', projectId))
     .whereIn('status', [DecisionStatus.Accepted, DecisionStatus.Proposed])
     .orderBy('status', 'asc')
     .orderBy('id', 'asc')
@@ -62,8 +62,7 @@ export async function agentContextDesign(
       .where('projectId', projectId)
       .orderBy('priority', 'asc')
       .orderBy('id', 'asc'),
-    Decision.query()
-      .where('projectId', projectId)
+    reviewed(Decision.query().where('projectId', projectId))
       .where('status', DecisionStatus.Accepted)
       .orderBy('id', 'asc'),
   ])
