@@ -1,14 +1,27 @@
 // Above the prompt: the context of the next message, one chip per item the owner added from an
 // item's menu, each with its way out. With no item, the architecture whose page this is (what a
 // message is about there), else how to add one.
-import { BotIcon, FolderIcon, NetworkIcon, XIcon } from 'lucide-react'
+import {
+  BotIcon,
+  FolderIcon,
+  MousePointerClickIcon,
+  NetworkIcon,
+  ShapesIcon,
+  XIcon,
+} from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { useAssistant } from '@/lib/assistant-context'
-import type { ContextItem } from '@/lib/assistant-subject'
+import { type ContextItem, sameItem } from '@/lib/assistant-subject'
 import { useT } from '@/lib/locale'
 
-const ICONS = { project: FolderIcon, architecture: NetworkIcon, 'agent-config': BotIcon }
+const ICONS = {
+  project: FolderIcon,
+  architecture: NetworkIcon,
+  'agent-config': BotIcon,
+  view: ShapesIcon,
+  element: MousePointerClickIcon,
+}
 
 export function ContextChips({ disabled }: { disabled: boolean }) {
   const t = useT().assistant
@@ -35,7 +48,7 @@ export function ContextChips({ disabled }: { disabled: boolean }) {
   return (
     <ul aria-label={t.context} className="m-0 flex list-none flex-wrap items-center gap-1.5 p-0">
       {items.map((item) => (
-        <li key={`${item.kind}:${String(item.id)}`} className="min-w-0">
+        <li key={items.findIndex((other) => sameItem(other, item))} className="min-w-0">
           <Chip
             item={item}
             remove={

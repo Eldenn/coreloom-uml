@@ -1,9 +1,17 @@
+'use client'
+
+// Coreloom UI — RecurrenceInput. How often something repeats: a meeting every 2 weeks on Monday and
+// Wednesday, an invoice on the 1st of each month, a backup every day until the end of the year.
+// A sentence under the fields reads the rule back ("Every 2 weeks on Mon, Wed, 10 times"). The
+// value is a plain object; `toRRule` and `parseRRule` convert it to and from an iCalendar RRULE
+// ("FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;COUNT=10") for calendars and schedulers.
 import * as React from 'react'
 
 import { ChipGroup } from '@/components/ui/chip-group'
 import { DatePicker } from '@/components/ui/date-picker'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { NumberInput } from '@/components/ui/number-input'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
@@ -94,6 +102,13 @@ function weekdayNames(locale: string, width: 'short' | 'long') {
   return Array.from({ length: 7 }, (_, i) => format.format(new Date(2026, 0, 5 + i)))
 }
 
+/** The end a rule starts with when "On date" or "After" is picked: today, or 10 times. */
+function newEnd(type: string): RecurrenceEnd {
+  if (type === 'on') return { type, date: toDateValue(new Date()) }
+  if (type === 'after') return { type, count: 10 }
+  return { type: 'never' }
+}
+
 function RecurrenceInput({
   value,
   defaultValue = { frequency: 'week', interval: 1, weekdays: [1], end: { type: 'never' } },
@@ -167,23 +182,7 @@ function RecurrenceInput({
   const endRadio = (type: RecurrenceEnd['type'], label: string, control?: React.ReactNode) => (
     <div className="flex min-h-[42px] flex-wrap items-center gap-2.5">
       <label className="flex cursor-pointer items-center gap-2 text-[14px] text-foreground has-disabled:cursor-not-allowed">
-        <input
-          type="radio"
-          name={endsId}
-          checked={rule.end.type === type}
-          disabled={disabled}
-          className="size-4 cursor-[inherit] accent-primary"
-          onChange={() => {
-            set({
-              end:
-                type === 'never'
-                  ? { type }
-                  : type === 'on'
-                    ? { type, date: toDateValue(new Date()) }
-                    : { type, count: 10 },
-            })
-          }}
-        />
+        <RadioGroupItem value={type} className="cursor-[inherit]" />
         {label}
       </label>
       {control}
@@ -287,10 +286,14 @@ function RecurrenceInput({
         </div>
       )}
 
-      <div
-        role="radiogroup"
+      <RadioGroup
+        value={rule.end.type}
+        disabled={disabled}
         aria-labelledby={`${groupId} ${endsId}-label`}
-        className="flex flex-col"
+        className="flex flex-col gap-0"
+        onValueChange={(type) => {
+          set({ end: newEnd(type) })
+        }}
       >
         <span id={`${endsId}-label`} className="text-[14px] font-medium text-foreground">
           {t.ends}
@@ -333,7 +336,7 @@ function RecurrenceInput({
             </span>
           ) : null,
         )}
-      </div>
+      </RadioGroup>
 
       <p
         id={summaryId}

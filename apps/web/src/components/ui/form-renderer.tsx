@@ -1945,9 +1945,9 @@ function SpecForm({
       {!hideHeader && (spec.title ?? spec.description) && (
         <header className="flex flex-col gap-1">
           {spec.title && (
-            <h2 id={headingId} className="font-display text-lg font-semibold text-foreground">
+            <p id={headingId} className="font-display text-lg font-semibold text-foreground">
               {spec.title}
-            </h2>
+            </p>
           )}
           {spec.description && (
             <p className="text-[13px] text-muted-foreground">{spec.description}</p>

@@ -12,6 +12,7 @@ import {
 } from '@/lib/uml-edit'
 import { copyItems, duplicateItems, pasteItems, type UmlClip } from '@/lib/uml-edit-clipboard'
 import {
+  elementFields,
   renameElement,
   reverseRelation,
   setElementFields,
@@ -83,6 +84,19 @@ function editCommands(
       const count = what.elements.length + what.relations.length
       apply(deleteItems(diagram, what), t.deleted(count), NOTHING)
     },
+    /** Removes a class's member or an entity's attribute, by its place in the element's list. */
+    removeMember: (id: string, index: number) => {
+      const fields = diagram ? elementFields(diagram, id) : null
+      if (!diagram || !fields) return
+      const drop = <T>(list: readonly T[]) => list.filter((_, i) => i !== index)
+      const next: UmlElementFields = { ...fields }
+      if (fields.members) next.members = drop(fields.members)
+      else if (fields.attributes !== undefined)
+        next.attributes = drop(fields.attributes.split('\n')).join('\n')
+      else return
+      const result = setElementFields(diagram, id, next)
+      apply(result.diagram, t.deleted(1), { elements: [result.id], relations: [] })
+    },
     changeElement: (id: string, fields: UmlElementFields) => {
       if (!diagram) return
       const result = setElementFields(diagram, id, fields)
@@ -138,6 +152,11 @@ function clipboardCommands(
     say(t.copied(selection.elements.length))
     return true
   }
+  const duplicate = (what: UmlSelection) => {
+    if (!diagram) return
+    const copied = duplicateItems(diagram, what)
+    apply(copied.diagram, t.pasted(count(copied.selection)), copied.selection)
+  }
   return {
     canCopy: Boolean(diagram && copyItems(diagram, selection)),
     canPaste: Boolean(diagram && clip?.diagram.kind === diagram.kind),
@@ -153,10 +172,10 @@ function clipboardCommands(
       apply(pasted.diagram, t.pasted(count(pasted.selection)), pasted.selection)
     },
     duplicate: () => {
-      if (!diagram) return
-      const copied = duplicateItems(diagram, selection)
-      apply(copied.diagram, t.pasted(count(copied.selection)), copied.selection)
+      duplicate(selection)
     },
+    /** Duplicates `what` rather than the selection (a context menu's target). */
+    duplicateOf: duplicate,
   }
 }
 

@@ -262,16 +262,86 @@ interface ShortcutGroup {
   shortcuts: { keys: string; description: string }[]
 }
 
+/** The groups, in a box that takes a tab stop when it scrolls; one status says what the filter left. */
+function ShortcutList({ groups, filtering }: { groups: ShortcutGroup[]; filtering: boolean }) {
+  const t = useCoreloomI18n().messages.utility.shortcuts
+  const count = groups.reduce((n, g) => n + g.shortcuts.length, 0)
+  const ref = React.useRef<HTMLDivElement>(null)
+  const [overflows, setOverflows] = React.useState(false)
+  const measure = React.useCallback(() => {
+    const box = ref.current
+    if (box) setOverflows(box.scrollHeight > box.clientHeight + 1)
+  }, [])
+  React.useLayoutEffect(measure, [count, measure])
+  React.useEffect(() => {
+    const box = ref.current
+    if (!box) return
+    const observer = new ResizeObserver(measure)
+    observer.observe(box)
+    return () => {
+      observer.disconnect()
+    }
+  }, [measure])
+  const result = count ? t.results(count) : t.empty
+  return (
+    <div
+      ref={ref}
+      role={overflows ? 'group' : undefined}
+      aria-label={overflows ? t.title : undefined}
+      tabIndex={overflows ? 0 : undefined}
+      className="-mx-1 min-h-0 overflow-auto px-1 outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-ring"
+    >
+      <span role="status" className="sr-only">
+        {filtering ? result : null}
+      </span>
+      {groups.length ? (
+        <div className="flex flex-col gap-5">
+          {groups.map((group, gi) => (
+            <section
+              // eslint-disable-next-line @eslint-react/no-array-index-key -- groups are given in a fixed order
+              key={gi}
+              aria-label={typeof group.title === 'string' ? group.title : undefined}
+            >
+              <p className="m-0 mb-1.5 font-mono text-[11px] font-medium tracking-[0.06em] text-muted-foreground uppercase">
+                {group.title}
+              </p>
+              <dl className="m-0 divide-y divide-border-subtle">
+                {group.shortcuts.map((s) => (
+                  <div
+                    key={s.keys + s.description}
+                    className="flex items-center justify-between gap-4 py-2"
+                  >
+                    <dt className="text-[13.5px] text-foreground">{s.description}</dt>
+                    <dd className="m-0 shrink-0">
+                      <Hotkey keys={s.keys} />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ))}
+        </div>
+      ) : (
+        <p className="m-0 py-6 text-center text-[13.5px] text-muted-foreground">{t.empty}</p>
+      )}
+    </div>
+  )
+}
+
 function ShortcutsDialog({
   open,
+  defaultOpen,
   onOpenChange,
   groups,
   title,
   description,
   filter = true,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  /** Whether the dialog shows (controlled). */
+  open?: boolean
+  /** Shown at first, when `open` is not set. */
+  defaultOpen?: boolean
+  onOpenChange?: (open: boolean) => void
   groups: ShortcutGroup[]
   /** "Keyboard shortcuts" by default. */
   title?: React.ReactNode
@@ -291,9 +361,10 @@ function ShortcutsDialog({
   return (
     <Dialog
       open={open}
+      defaultOpen={defaultOpen}
       onOpenChange={(next) => {
         if (!next) setQuery('')
-        onOpenChange(next)
+        onOpenChange?.(next)
       }}
     >
       <DialogContent
@@ -312,7 +383,7 @@ function ShortcutsDialog({
             value={query}
             aria-label={t.filter}
             placeholder={t.filter}
-            className="h-9 w-full rounded-md border border-input bg-transparent px-3 font-sans text-[14px] text-foreground outline-none placeholder:text-faint-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40"
+            className="h-9 w-full rounded-md border border-input bg-transparent px-3 font-sans text-[14px] text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring"
             onChange={(e) => {
               setQuery(e.target.value)
             }}
@@ -320,38 +391,7 @@ function ShortcutsDialog({
         ) : (
           <span />
         )}
-        <div className="-mx-1 min-h-0 overflow-auto px-1">
-          {shown.length ? (
-            <div className="flex flex-col gap-5">
-              {shown.map((group, gi) => (
-                <section
-                  // eslint-disable-next-line @eslint-react/no-array-index-key -- groups are given in a fixed order
-                  key={gi}
-                  aria-label={typeof group.title === 'string' ? group.title : undefined}
-                >
-                  <h3 className="m-0 mb-1.5 font-mono text-[11px] font-medium tracking-[0.06em] text-muted-foreground uppercase">
-                    {group.title}
-                  </h3>
-                  <dl className="m-0 divide-y divide-border-subtle">
-                    {group.shortcuts.map((s) => (
-                      <div
-                        key={s.keys + s.description}
-                        className="flex items-center justify-between gap-4 py-2"
-                      >
-                        <dt className="text-[13.5px] text-foreground">{s.description}</dt>
-                        <dd className="m-0 shrink-0">
-                          <Hotkey keys={s.keys} />
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                </section>
-              ))}
-            </div>
-          ) : (
-            <p className="m-0 py-6 text-center text-[13.5px] text-muted-foreground">{t.empty}</p>
-          )}
-        </div>
+        <ShortcutList groups={shown} filtering={q !== ''} />
       </DialogContent>
     </Dialog>
   )

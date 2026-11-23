@@ -1,5 +1,3 @@
-'use client'
-
 import { ChevronLeftIcon, ChevronRightIcon, MoreHorizontalIcon } from 'lucide-react'
 import * as React from 'react'
 

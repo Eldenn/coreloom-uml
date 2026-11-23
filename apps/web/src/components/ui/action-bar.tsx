@@ -1,14 +1,3 @@
-'use client'
-
-// Coreloom UI — ActionBar. A bar that appears when people select rows or items, with how many are
-// selected and what can be done to all of them at once: archive, move, export, delete. It floats
-// at the bottom of the screen by default, says the count out loud when it changes, and Escape (or
-// the close button) clears the selection.
-//
-//   <ActionBar count={selected.length} onClear={() => setSelected([])}>
-//     <Button size="sm" variant="secondary"><ArchiveIcon /> Archive</Button>
-//     <Button size="sm" variant="destructive"><TrashIcon /> Delete</Button>
-//   </ActionBar>
 import { XIcon } from 'lucide-react'
 import * as React from 'react'
 

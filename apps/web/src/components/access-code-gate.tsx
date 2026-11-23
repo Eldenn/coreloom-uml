@@ -1,3 +1,10 @@
+'use client'
+
+// Coreloom UI — AccessCodeGate. The screen in front of a protected link: one box per character of
+// the access code. Letters are upper-cased and characters the codes never use are ignored, a
+// pasted code fills every box, and it sends by itself once the last box is filled. After a wrong
+// code it starts again from the first box; after too many, it waits until `lockedUntil`. The app
+// checks the code; put the gate in AuthLayout.
 import { LockKeyholeIcon } from 'lucide-react'
 import * as React from 'react'
 

@@ -1,8 +1,3 @@
-'use client'
-
-// Coreloom UI — DateRangePicker. A trigger that opens a two-month Calendar in range mode, with
-// shortcuts ("Last 7 days", "This month") down the side. The value is { from, to } (react-day-picker's
-// DateRange); either end may be undefined while the user picks.
 import {
   endOfMonth,
   format,

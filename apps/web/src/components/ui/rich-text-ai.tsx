@@ -619,6 +619,39 @@ function Preview({ blocks, streaming }: { blocks: Block[]; streaming: boolean })
   ))
 }
 
+/** A code block. Long lines scroll sideways; only then does it take focus, so keyboard users can scroll it. */
+function PreviewCode({ text, caret }: { text: string; caret: React.ReactNode }) {
+  const t = useCoreloomI18n().messages.editor
+  const ref = React.useRef<HTMLPreElement>(null)
+  const [overflows, setOverflows] = React.useState(false)
+  const measure = React.useCallback(() => {
+    const pre = ref.current
+    if (pre) setOverflows(pre.scrollWidth > pre.clientWidth + 1)
+  }, [])
+  React.useLayoutEffect(measure, [text, measure])
+  React.useEffect(() => {
+    const pre = ref.current
+    if (!pre) return
+    const observer = new ResizeObserver(measure)
+    observer.observe(pre)
+    return () => {
+      observer.disconnect()
+    }
+  }, [measure])
+  return (
+    <pre
+      ref={ref}
+      role={overflows ? 'group' : undefined}
+      aria-label={overflows ? t.codeBlock : undefined}
+      tabIndex={overflows ? 0 : undefined}
+      className="overflow-x-auto rounded-md bg-surface p-2.5 font-mono text-[12.5px] outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+    >
+      {text}
+      {caret}
+    </pre>
+  )
+}
+
 function PreviewBlock({ block: b, caret }: { block: Block; caret: React.ReactNode }) {
   switch (b.type) {
     case 'heading':
@@ -646,12 +679,7 @@ function PreviewBlock({ block: b, caret }: { block: Block; caret: React.ReactNod
     case 'rule':
       return <hr className="border-border" />
     case 'code':
-      return (
-        <pre className="overflow-x-auto rounded-md bg-surface p-2.5 font-mono text-[12.5px]">
-          {b.text}
-          {caret}
-        </pre>
-      )
+      return <PreviewCode text={b.text} caret={caret} />
     default:
       return (
         <p>

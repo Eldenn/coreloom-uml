@@ -1,3 +1,7 @@
+'use client'
+
+// Coreloom UI — Drawer (shadcn/ui new-york-v4 on vaul, restyled). A bottom sheet you can drag, for phones.
+
 import * as React from 'react'
 import { Drawer as DrawerPrimitive } from 'vaul'
 

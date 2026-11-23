@@ -60,6 +60,18 @@ function arcPath(from: number, to: number, r: number) {
   return `M${point(from)} A${r},${r} 0 ${large} 1 ${point(to)}`
 }
 
+/** What the locale writes between a number and its percent sign: nothing in English, a no-break space in French, Spanish and German. */
+function percentGap(locale: string) {
+  const parts = new Intl.NumberFormat(locale, { style: 'percent' }).formatToParts(0)
+  return parts.find((part) => part.type === 'literal')?.value ?? ''
+}
+
+/** The number and its unit, kept on one line by a narrow no-break space; a percent sign is spaced as the locale does. */
+function withUnit(text: string, unit: string | undefined, locale: string) {
+  if (!unit) return text
+  return `${text}${unit === '%' ? percentGap(locale) : '\u202f'}${unit}`
+}
+
 function Gauge({
   value,
   min = 0,
@@ -74,7 +86,7 @@ function Gauge({
   className,
   ...props
 }: GaugeProps) {
-  const { messages, formatNumber } = useCoreloomI18n()
+  const { messages, locale, formatNumber } = useCoreloomI18n()
   const t = messages.charts.gauge
   const fmt = formatValue ?? formatNumber
   const labelId = React.useId()
@@ -85,13 +97,12 @@ function Gauge({
   const status = gaugeStatus(safe, { warning, critical, higherIsBetter })
   const tone = TONE[status]
   const r = 42
-  // A narrow no-break space keeps the unit on the number's line.
-  const shown = unit ? `${fmt(safe)}\u202f${unit}` : fmt(safe)
+  const shown = withUnit(fmt(safe), unit, locale)
   const ticks = [warning, critical]
     .filter((v): v is number => v !== undefined && v > min && v < max)
     .map((v) => (v - min) / span)
-  // The text sits on the ring's center and stays inside the threshold ticks, which reach in to a
-  // radius of 34.5 (of 100): a width of 0.6 × size leaves them clear. The number shrinks with its
+  // The text sits on the ring's center and stays inside the track, whose inner edge is at a radius
+  // of 37.5 (of 100): a width of 0.6 × size leaves it clear. The number shrinks with its
   // length (about 0.6 em per character) so "99.32 %" fits as well as "7 %".
   const inner = size * 0.6
   const valueSize = Math.min(size * 0.16, inner / (Math.max(shown.length, 3) * 0.6))
@@ -120,6 +131,22 @@ function Gauge({
           strokeLinecap="round"
           className="stroke-inset"
         />
+        {/* Notches across the track, drawn under the value: a threshold already passed is told by
+            the arc's color, and a tick over the arc would collide with its round end. */}
+        {ticks.map((tick) => {
+          const angle = ((START + tick * SWEEP) * Math.PI) / 180
+          return (
+            <line
+              key={tick}
+              x1={50 + (r - 4.5) * Math.cos(angle)}
+              y1={50 + (r - 4.5) * Math.sin(angle)}
+              x2={50 + (r + 4.5) * Math.cos(angle)}
+              y2={50 + (r + 4.5) * Math.sin(angle)}
+              strokeWidth={1.5}
+              className="stroke-border-strong"
+            />
+          )
+        })}
         {ratio > 0 && (
           <path
             d={arcPath(0, Math.max(ratio, 0.002), r)}
@@ -129,20 +156,6 @@ function Gauge({
             strokeLinecap="round"
           />
         )}
-        {ticks.map((tick) => {
-          const angle = ((START + tick * SWEEP) * Math.PI) / 180
-          return (
-            <line
-              key={tick}
-              x1={50 + (r - 7.5) * Math.cos(angle)}
-              y1={50 + (r - 7.5) * Math.sin(angle)}
-              x2={50 + (r + 7.5) * Math.cos(angle)}
-              y2={50 + (r + 7.5) * Math.sin(angle)}
-              strokeWidth={1.5}
-              className="stroke-border-strong"
-            />
-          )
-        })}
       </svg>
       <div
         className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center text-center"

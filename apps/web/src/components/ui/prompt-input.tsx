@@ -60,6 +60,7 @@ function PromptInput({
   const fileInput = React.useRef<HTMLInputElement>(null)
   const textarea = React.useRef<HTMLTextAreaElement>(null)
   const hintId = React.useId()
+  const [announcement, setAnnouncement] = React.useState('')
   const busy = status === 'submitted' || status === 'streaming'
   const canSend = !disabled && !busy && (text.trim().length > 0 || files.length > 0)
 
@@ -68,6 +69,19 @@ function PromptInput({
     onSubmit({ text: text.trim(), files })
     setText('')
     setFiles([])
+  }
+
+  // The chip that had focus goes away: once it has, focus the next chip's button, or the text box.
+  const removeFile = (index: number) => {
+    const name = files[index]?.name ?? ''
+    setFiles((f) => f.filter((_, j) => j !== index))
+    setAnnouncement(t.removedFile(name))
+    requestAnimationFrame(() => {
+      const next = textarea.current?.form?.querySelectorAll<HTMLElement>(
+        '[data-slot="prompt-input-file-remove"]',
+      )[index]
+      ;(next ?? textarea.current)?.focus()
+    })
   }
 
   return (
@@ -90,17 +104,18 @@ function PromptInput({
             <li
               // eslint-disable-next-line @eslint-react/no-array-index-key -- File objects have no id and two may share a name; the index tells them apart.
               key={`${file.name}-${i}`}
-              className="flex items-center gap-1.5 rounded-md border border-border bg-card py-1 pr-1 pl-2 text-[12.5px] text-foreground"
+              className="flex items-center gap-1.5 rounded-md border border-border bg-card py-0.5 pr-0.5 pl-2 text-[12.5px] text-foreground"
             >
               <FileIcon className="size-3.5 text-muted-foreground" aria-hidden />
               <span className="max-w-40 truncate">{file.name}</span>
               <button
                 type="button"
+                data-slot="prompt-input-file-remove"
                 aria-label={t.removeFile(file.name)}
                 onClick={() => {
-                  setFiles((f) => f.filter((_, j) => j !== i))
+                  removeFile(i)
                 }}
-                className="inline-flex size-5 cursor-pointer items-center justify-center rounded-sm text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring"
+                className="inline-flex size-6 cursor-pointer items-center justify-center rounded-sm text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring"
               >
                 <XIcon className="size-3" />
               </button>
@@ -133,6 +148,11 @@ function PromptInput({
       <span id={hintId} className="sr-only">
         {t.hint}
       </span>
+      {allowAttachments && (
+        <span role="status" className="sr-only">
+          {announcement}
+        </span>
+      )}
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1">
           {allowAttachments && (

@@ -1,3 +1,8 @@
+'use client'
+
+// Coreloom UI — MoneyInput. An amount in a currency, typed the way the reader writes numbers:
+// "1 234,50" in French, "1,234.50" in English. The value is a plain number in major units
+// (12.5 = €12.50), or null when empty. The currency symbol sits where the locale puts it.
 import * as React from 'react'
 
 import { useCoreloomI18n } from '@/lib/i18n'

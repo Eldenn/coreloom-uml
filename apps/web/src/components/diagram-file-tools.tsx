@@ -108,7 +108,8 @@ function problemText(p: UmlProblem, t: EditorText): string {
   const where = p.line > 0 ? `${t.line(p.line)} · ` : ''
   // JSON and schema problems carry the parser's own detail; the rest quote the line.
   const detail = p.code === 'json' || p.code === 'schema' ? p.text : undefined
-  return `${where}${what}${detail ? ` ${detail}` : ''}`
+  // The severity in words: the colour of the row isn't the only thing that tells them apart.
+  return `${t.severity[p.severity]} · ${where}${what}${detail ? ` ${detail}` : ''}`
 }
 
 /** Opens the file picker; the file chosen goes to `onImport` (the same file can be picked again). */
@@ -281,7 +282,7 @@ function ProblemList({ problems, t }: { problems: readonly UmlProblem[]; t: Edit
           // eslint-disable-next-line @eslint-react/no-array-index-key -- a line can have several problems
           key={i}
           className={cn(
-            'truncate',
+            'break-words',
             p.severity === 'error' ? 'text-destructive' : 'text-fg-secondary',
           )}
           title={p.text}

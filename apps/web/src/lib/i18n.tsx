@@ -1,15 +1,3 @@
-'use client'
-
-// Coreloom UI — i18n. Every string the components and blocks show or announce (button labels,
-// placeholders, screen-reader text, validation messages) comes from here.
-//
-//   <CoreloomI18nProvider locale="fr" dateLocale={fr}>…</CoreloomI18nProvider>
-//
-// English and French ship built in; Spanish and German are in i18n-es.tsx and i18n-de.tsx (pass them as
-// `messages`); any other language is a `messages` object too (start from `en`).
-// `messages` also overrides single strings: { auth: { login: { title: "Connexion" } } }.
-// Without a provider everything is English. Props on a component (a `title`, a `placeholder`)
-// still win over the messages.
 import * as React from 'react'
 
 type Text = React.ReactNode
@@ -32,7 +20,13 @@ const en = {
     nextPage: 'Go to next page',
     morePages: 'More pages',
   },
-  carousel: { previous: 'Previous slide', next: 'Next slide' },
+  carousel: {
+    previous: 'Previous slide',
+    next: 'Next slide',
+    label: 'Carousel',
+    roleDescription: 'carousel',
+    slide: 'slide',
+  },
   calendar: {
     /** date-fns pattern for the day buttons' accessible names. */
     dayLabel: 'EEEE d MMMM yyyy',
@@ -67,6 +61,7 @@ const en = {
     browse: 'browse',
     dropOne: 'Drop a file here or',
     remove: (name: string) => `Remove ${name}`,
+    removed: (name: string) => `${name} removed`,
     tooLarge: (name: string, max: string) => `${name} is larger than ${max}.`,
     wrongType: (name: string) => `${name} isn’t an accepted file type.`,
     tooMany: (max: number) => `You can add up to ${max} files.`,
@@ -114,7 +109,11 @@ const en = {
       left: (n: number) => (n === 1 ? '1 character left' : `${n} characters left`),
       over: (n: number) => (n === 1 ? '1 character too many' : `${n} characters too many`),
     },
-    editable: { edit: (label: string) => `Edit ${label}`, empty: 'Empty' },
+    editable: {
+      edit: (label: string) => `Edit ${label}`,
+      empty: 'Empty',
+      kept: 'It can’t be empty: the previous text is back.',
+    },
     masked: { invalid: 'Check this number: it isn’t valid.' },
     color: {
       open: 'Choose a color',
@@ -150,6 +149,7 @@ const en = {
     copied: 'Copied',
     emoji: {
       open: 'Add emoji',
+      jump: 'Jump to a category',
       search: 'Search emoji',
       empty: 'No emoji found.',
       results: (n: number) => (n === 1 ? '1 emoji' : `${n} emoji`),
@@ -225,6 +225,7 @@ const en = {
       choose: 'Upload image',
       replace: 'Replace',
       remove: 'Remove',
+      removed: 'Image removed',
       preview: 'Image preview',
       drop: 'Drop the image here',
       hint: (types: string, max?: string) => (max ? `${types}, up to ${max}.` : `${types}.`),
@@ -377,6 +378,9 @@ const en = {
       over: (label: string, position: number) => `${label} is at position ${position}.`,
       dropped: (label: string, position: number) => `${label} dropped at position ${position}.`,
       cancelled: (label: string) => `Moving ${label} was cancelled.`,
+      instructions:
+        'To pick up a field, press Space or Enter. Use the arrow keys to move it, Space or Enter to drop it, Escape to cancel.',
+      roleDescription: 'draggable',
     },
     inspector: {
       title: 'Settings',
@@ -522,6 +526,7 @@ const en = {
     tree: { label: 'Tree' },
     diff: {
       noChanges: 'No differences.',
+      label: 'Differences',
       linesAdded: (n: number): string => (n === 1 ? '1 line added' : `${n} lines added`),
       linesRemoved: (n: number): string => (n === 1 ? '1 line removed' : `${n} lines removed`),
       showUnchanged: (n: number): string =>
@@ -617,6 +622,7 @@ const en = {
       description: 'The shortcuts available in this app.',
       filter: 'Search shortcuts',
       empty: 'No shortcut matches.',
+      results: (n: number) => (n === 1 ? '1 shortcut' : `${n} shortcuts`),
       then: 'then',
     },
     countdown: {
@@ -773,6 +779,7 @@ const en = {
       stop: 'Stop',
       attach: 'Attach files',
       removeFile: (name: string) => `Remove ${name}`,
+      removedFile: (name: string) => `${name} removed`,
     },
     reasoning: {
       thinking: 'Thinking…',
@@ -1247,6 +1254,7 @@ const en = {
       output: 'Output',
       outputs: 'Outputs compared',
       sameOutput: 'Same output in both runs.',
+      noOutput: 'No output.',
       error: 'Error',
       rerun: 'Run again',
     },
@@ -1297,7 +1305,11 @@ const en = {
     description: 'Displays the mobile sidebar.',
   },
   slider: { minimum: 'minimum', maximum: 'maximum' },
-  form: { errorTitle: 'Couldn’t save' },
+  form: {
+    errorTitle: 'Couldn’t save',
+    invalidFields: (n: number) =>
+      n === 1 ? '1 field needs attention.' : `${n} fields need attention.`,
+  },
   theme: {
     toLight: 'Switch to light theme',
     toDark: 'Switch to dark theme',
@@ -1483,7 +1495,7 @@ const en = {
     preview: 'Preview',
     code: 'Code',
   },
-  marketing: { faq: 'Questions' },
+  marketing: { faq: 'Questions', nav: 'Main', mobileNav: 'Main menu' },
   showcase: {
     footer: 'Footer',
     social: 'Social media',
@@ -1622,6 +1634,7 @@ const en = {
   },
   settings: {
     title: 'Settings',
+    sections: 'Settings sections',
     save: 'Save changes',
     dangerZone: 'Danger zone',
     typeToConfirm: (name: Text): Text => (
@@ -1883,7 +1896,9 @@ const en = {
     milestone: (name: string, date: string) => `${name}, milestone on ${date}`,
     progress: (percent: number) => `${String(percent)}% done`,
     dependsOn: (names: string) => `after ${names}`,
-    editHint: 'Left and right arrows move it by a day; with Shift, they move its end.',
+    startsBefore: (names: string) => `starts before ${names} ends`,
+    editHint:
+      'Left and right arrows move it by a day; with Alt, they move its start; with Shift, its end.',
   },
   statusPage: {
     title: 'System status',
@@ -2521,6 +2536,7 @@ const en = {
     empty: 'Drop cards here',
     instructions:
       'To pick up a card, press Space or Enter. Use the arrow keys to move it, Space or Enter to drop it, Escape to cancel.',
+    roleDescription: 'draggable',
     picked: (title: string, column: string) => `Picked up ${title} in ${column}.`,
     over: (title: string, column: string, position: number) =>
       `${title} is over ${column}, position ${position}.`,
@@ -2539,6 +2555,8 @@ const en = {
     size: 'Size',
     modified: 'Modified',
     sortBy: (column: string) => `Sort by ${column}`,
+    sortedBy: (column: string, direction: 'asc' | 'desc') =>
+      `Sort by ${column}, sorted ${direction === 'asc' ? 'ascending' : 'descending'}`,
     contents: (folder: string) => `Contents of ${folder}`,
     emptyFolder: 'This folder is empty',
     emptyFolderHint: 'Drop files here or use Upload.',
@@ -2633,9 +2651,9 @@ const en = {
     selectedAll: 'All cells selected',
     undone: 'Undone',
     redone: 'Redone',
-    help: 'Arrows move, Shift with the arrows selects a range. Type or press Enter to edit, Escape to cancel. Delete clears; copy, cut and paste work with other spreadsheets.',
+    help: 'Arrows move, Shift with the arrows selects a range. Type or press Enter to edit, Escape to cancel. Delete clears; copy, cut and paste work with other spreadsheets. Tab moves along the row and leaves the grid at either end.',
     helpReadOnly:
-      'Arrows move, Shift with the arrows selects a range, copy works with other spreadsheets.',
+      'Arrows move, Shift with the arrows selects a range, copy works with other spreadsheets. Tab moves along the row and leaves the grid at either end.',
   },
   eventCalendar: {
     today: 'Today',
@@ -2645,6 +2663,7 @@ const en = {
     events: (count: string, n: number) => `${count} ${n === 1 ? 'event' : 'events'}`,
     noEvents: 'No events',
     allDay: 'All day',
+    showLess: 'Show less',
   },
   editor: {
     toolbar: 'Formatting',
@@ -2872,6 +2891,7 @@ const en = {
       merge: (from: string, to: string) => `${from} merges ${to}`,
     },
     labelled: (relation: string, label: string) => `${relation}: ${label}`,
+    highlighted: (label: string) => `${label}, highlighted`,
     named: (role: string, name: string) => `${role}: ${name}`,
     withTechnology: (kind: string, technology: string) => `${kind}: ${technology}`,
     cardinality: {
@@ -3184,6 +3204,7 @@ const en = {
       return n === 1 ? '1 problem' : `${n} problems`
     },
     line: (n: number) => `Line ${n}`,
+    severity: { error: 'Error', warning: 'Warning' },
     status: (kind: string, elements: number) =>
       `${kind}, ${elements === 1 ? '1 element' : `${elements} elements`}`,
     problem: {
@@ -3208,6 +3229,7 @@ const en = {
     copy: 'Copy',
     paste: 'Paste',
     duplicate: 'Duplicate',
+    rename: 'Rename',
     layout: 'Layout',
     arrange: 'Arrange automatically',
     flow: 'Direction',
@@ -3413,7 +3435,13 @@ const fr: Messages = {
     nextPage: 'Page suivante',
     morePages: 'Autres pages',
   },
-  carousel: { previous: 'Diapositive précédente', next: 'Diapositive suivante' },
+  carousel: {
+    previous: 'Diapositive précédente',
+    next: 'Diapositive suivante',
+    label: 'Carrousel',
+    roleDescription: 'carrousel',
+    slide: 'diapositive',
+  },
   calendar: { dayLabel: 'EEEE d MMMM yyyy', today: 'Aujourd’hui', selected: 'sélectionné' },
   datePicker: {
     placeholder: 'Choisir une date',
@@ -3442,6 +3470,7 @@ const fr: Messages = {
     browse: 'parcourez',
     dropOne: 'Déposez un fichier ici ou',
     remove: (name) => `Retirer ${name}`,
+    removed: (name) => `${name} retiré`,
     tooLarge: (name, max) => `${name} dépasse ${max}.`,
     wrongType: (name) => `${name} n’est pas un type de fichier accepté.`,
     tooMany: (max) => `Vous pouvez ajouter ${max} fichiers au maximum.`,
@@ -3488,7 +3517,11 @@ const fr: Messages = {
       left: (n: number) => (n <= 1 ? `${n} caractère restant` : `${n} caractères restants`),
       over: (n: number) => (n <= 1 ? `${n} caractère en trop` : `${n} caractères en trop`),
     },
-    editable: { edit: (label: string) => `Modifier ${label}`, empty: 'Vide' },
+    editable: {
+      edit: (label: string) => `Modifier ${label}`,
+      empty: 'Vide',
+      kept: 'Ce texte ne peut pas être vide : l’ancien texte est rétabli.',
+    },
     masked: { invalid: 'Vérifiez ce numéro : il n’est pas valide.' },
     color: {
       open: 'Choisir une couleur',
@@ -3528,6 +3561,7 @@ const fr: Messages = {
     copied: 'Copié',
     emoji: {
       open: 'Ajouter un emoji',
+      jump: 'Aller à une catégorie',
       search: 'Rechercher un emoji (en anglais)',
       empty: 'Aucun emoji trouvé.',
       results: (n) => (n <= 1 ? `${n} emoji` : `${n} emojis`),
@@ -3601,6 +3635,7 @@ const fr: Messages = {
       choose: 'Choisir une image',
       replace: 'Remplacer',
       remove: 'Retirer',
+      removed: 'Image retirée',
       preview: 'Aperçu de l’image',
       drop: 'Déposez l’image ici',
       hint: (types, max) => (max ? `${types}, jusqu’à ${max}.` : `${types}.`),
@@ -3756,6 +3791,9 @@ const fr: Messages = {
       over: (label: string, position: number) => `${label} est en position ${position}.`,
       dropped: (label: string, position: number) => `${label} déposé en position ${position}.`,
       cancelled: (label: string) => `Déplacement de ${label} annulé.`,
+      instructions:
+        'Pour prendre un champ, appuyez sur Espace ou Entrée. Déplacez-le avec les flèches, déposez-le avec Espace ou Entrée, annulez avec Échap.',
+      roleDescription: 'déplaçable',
     },
     inspector: {
       title: 'Réglages',
@@ -3903,6 +3941,7 @@ const fr: Messages = {
     tree: { label: 'Arborescence' },
     diff: {
       noChanges: 'Aucune différence.',
+      label: 'Différences',
       linesAdded: (n) => (n === 1 ? '1 ligne ajoutée' : `${n} lignes ajoutées`),
       linesRemoved: (n) => (n === 1 ? '1 ligne supprimée' : `${n} lignes supprimées`),
       showUnchanged: (n) =>
@@ -3998,6 +4037,7 @@ const fr: Messages = {
       description: 'Les raccourcis disponibles dans cette application.',
       filter: 'Rechercher un raccourci',
       empty: 'Aucun raccourci ne correspond.',
+      results: (n: number) => (n === 1 ? '1 raccourci' : `${n} raccourcis`),
       then: 'puis',
     },
     countdown: {
@@ -4154,6 +4194,7 @@ const fr: Messages = {
       stop: 'Arrêter',
       attach: 'Joindre des fichiers',
       removeFile: (name) => `Retirer ${name}`,
+      removedFile: (name) => `${name} retiré`,
     },
     reasoning: {
       thinking: 'Réflexion…',
@@ -4650,6 +4691,7 @@ const fr: Messages = {
       output: 'Sortie',
       outputs: 'Sorties comparées',
       sameOutput: 'Même sortie dans les deux runs.',
+      noOutput: 'Aucune sortie.',
       error: 'Erreur',
       rerun: 'Relancer',
     },
@@ -4706,7 +4748,11 @@ const fr: Messages = {
     description: 'Affiche la barre latérale sur mobile.',
   },
   slider: { minimum: 'minimum', maximum: 'maximum' },
-  form: { errorTitle: 'Enregistrement impossible' },
+  form: {
+    errorTitle: 'Enregistrement impossible',
+    invalidFields: (n: number) =>
+      n === 1 ? '1 champ est à corriger.' : `${n} champs sont à corriger.`,
+  },
   theme: {
     toLight: 'Passer au thème clair',
     toDark: 'Passer au thème sombre',
@@ -4893,7 +4939,11 @@ const fr: Messages = {
     preview: 'Aperçu',
     code: 'Code',
   },
-  marketing: { faq: 'Questions fréquentes' },
+  marketing: {
+    faq: 'Questions fréquentes',
+    nav: 'Navigation principale',
+    mobileNav: 'Menu principal',
+  },
   showcase: {
     footer: 'Pied de page',
     social: 'Réseaux sociaux',
@@ -5033,6 +5083,7 @@ const fr: Messages = {
   },
   settings: {
     title: 'Paramètres',
+    sections: 'Sections des paramètres',
     save: 'Enregistrer',
     dangerZone: 'Zone de danger',
     typeToConfirm: (name) => (
@@ -5301,8 +5352,9 @@ const fr: Messages = {
     milestone: (name, date) => `${name}, jalon le ${date}`,
     progress: (percent) => `${String(percent)} % fait`,
     dependsOn: (names) => `après ${names}`,
+    startsBefore: (names) => `commence avant la fin de ${names}`,
     editHint:
-      'Les flèches gauche et droite la décalent d’un jour ; avec Maj, elles déplacent sa fin.',
+      'Les flèches gauche et droite la décalent d’un jour ; avec Alt, elles déplacent son début ; avec Maj, sa fin.',
   },
   statusPage: {
     title: 'État des services',
@@ -5976,6 +6028,7 @@ const fr: Messages = {
     empty: 'Déposez des cartes ici',
     instructions:
       'Pour prendre une carte, appuyez sur Espace ou Entrée. Déplacez-la avec les flèches, déposez-la avec Espace ou Entrée, annulez avec Échap.',
+    roleDescription: 'déplaçable',
     picked: (title, column) => `${title} prise dans ${column}.`,
     over: (title, column, position) => `${title} au-dessus de ${column}, position ${position}.`,
     dropped: (title, column, position) => `${title} déposée dans ${column}, position ${position}.`,
@@ -5992,6 +6045,8 @@ const fr: Messages = {
     size: 'Taille',
     modified: 'Modifié',
     sortBy: (column: string) => `Trier par ${column.toLocaleLowerCase('fr')}`,
+    sortedBy: (column: string, direction: 'asc' | 'desc') =>
+      `Trier par ${column.toLocaleLowerCase('fr')}, tri ${direction === 'asc' ? 'croissant' : 'décroissant'}`,
     contents: (folder: string) => `Contenu de ${folder}`,
     emptyFolder: 'Ce dossier est vide',
     emptyFolderHint: 'Déposez des fichiers ici ou utilisez Importer.',
@@ -6096,9 +6151,9 @@ const fr: Messages = {
     selectedAll: 'Toutes les cellules sélectionnées',
     undone: 'Annulé',
     redone: 'Rétabli',
-    help: 'Les flèches déplacent, Maj avec les flèches sélectionne une plage. Tapez ou appuyez sur Entrée pour modifier, Échap pour annuler. Suppr efface ; copier, couper et coller fonctionnent avec les autres tableurs.',
+    help: 'Les flèches déplacent, Maj avec les flèches sélectionne une plage. Tapez ou appuyez sur Entrée pour modifier, Échap pour annuler. Suppr efface ; copier, couper et coller fonctionnent avec les autres tableurs. Tab parcourt la ligne et quitte la grille à chaque extrémité.',
     helpReadOnly:
-      'Les flèches déplacent, Maj avec les flèches sélectionne une plage, copier fonctionne avec les autres tableurs.',
+      'Les flèches déplacent, Maj avec les flèches sélectionne une plage, copier fonctionne avec les autres tableurs. Tab parcourt la ligne et quitte la grille à chaque extrémité.',
   },
   eventCalendar: {
     today: 'Aujourd’hui',
@@ -6108,6 +6163,7 @@ const fr: Messages = {
     events: (count, n) => `${count} évènement${n > 1 ? 's' : ''}`,
     noEvents: 'Aucun évènement',
     allDay: 'Toute la journée',
+    showLess: 'Afficher moins',
   },
   editor: {
     toolbar: 'Mise en forme',
@@ -6335,6 +6391,7 @@ const fr: Messages = {
       merge: (from, to) => `${from} fusionne ${to}`,
     },
     labelled: (relation, label) => `${relation} : ${label}`,
+    highlighted: (label) => `${label}, mis en évidence`,
     named: (role, name) => `${role} : ${name}`,
     withTechnology: (kind, technology) => `${kind} : ${technology}`,
     cardinality: {
@@ -6647,6 +6704,7 @@ const fr: Messages = {
       return n === 1 ? '1 problème' : `${n} problèmes`
     },
     line: (n) => `Ligne ${n}`,
+    severity: { error: 'Erreur', warning: 'Avertissement' },
     status: (kind, elements) =>
       `${kind}, ${elements <= 1 ? `${elements} élément` : `${elements} éléments`}`,
     problem: {
@@ -6671,6 +6729,7 @@ const fr: Messages = {
     copy: 'Copier',
     paste: 'Coller',
     duplicate: 'Dupliquer',
+    rename: 'Renommer',
     layout: 'Disposition',
     arrange: 'Réorganiser automatiquement',
     flow: 'Sens',

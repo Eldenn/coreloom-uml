@@ -1,3 +1,10 @@
+'use client'
+
+// Coreloom UI — EmojiPicker. A small, built-in set of common emoji to react with or insert in a
+// message, grouped by category and searchable by English name. `EmojiPicker` is a button that
+// opens it; `EmojiPickerPanel` is the panel alone, to place in your own popover or toolbar. Arrows
+// move through the grid, Enter picks, and typing in the search narrows it. Pass `emojis` for
+// your own set (or one with names in your language).
 import { SmileIcon } from 'lucide-react'
 import * as React from 'react'
 
@@ -62,6 +69,58 @@ const defaultEmojis: Emoji[] = (Object.keys(DATA) as EmojiCategory[]).flatMap((c
 )
 
 const COLUMNS = 8
+
+/** The row of category shortcuts: one tab stop, Left and Right (Home, End) move between them. */
+function CategoryBar({
+  categories,
+  onJump,
+}: {
+  categories: EmojiCategory[]
+  onJump: (category: EmojiCategory) => void
+}) {
+  const t = useCoreloomI18n().messages.inputs.emoji
+  const [current, setCurrent] = React.useState(0)
+  const stop = Math.min(current, categories.length - 1)
+  return (
+    <div
+      role="toolbar"
+      aria-label={t.jump}
+      className="flex justify-between"
+      onKeyDown={(e) => {
+        const last = categories.length - 1
+        const moves: Partial<Record<string, number>> = {
+          ArrowLeft: Math.max(0, stop - 1),
+          ArrowRight: Math.min(last, stop + 1),
+          Home: 0,
+          End: last,
+        }
+        const next = moves[e.key]
+        if (next === undefined) return
+        e.preventDefault()
+        e.currentTarget.querySelectorAll('button').item(next).focus()
+      }}
+    >
+      {categories.map((category, i) => (
+        <button
+          key={category}
+          type="button"
+          tabIndex={i === stop ? 0 : -1}
+          title={t.categories[category]}
+          aria-label={t.categories[category]}
+          className="flex size-8 cursor-pointer items-center justify-center rounded-md text-[16px] outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring"
+          onFocus={() => {
+            setCurrent(i)
+          }}
+          onClick={() => {
+            onJump(category)
+          }}
+        >
+          <span aria-hidden>{CATEGORY_ICONS[category]}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
 
 function EmojiPickerPanel({
   onSelect,
@@ -135,27 +194,16 @@ function EmojiPickerPanel({
         }}
       />
       {!q && (
-        <div className="flex justify-between">
-          {categories.map((category) => (
-            <button
-              key={category}
-              type="button"
-              tabIndex={-1}
-              title={t.categories[category]}
-              aria-label={t.categories[category]}
-              className="flex size-8 cursor-pointer items-center justify-center rounded-md text-[16px] outline-none hover:bg-accent"
-              onClick={() => {
-                const first = sections.find((s) => s.category === category)?.items.at(0)
-                if (first) focusAt(first.index)
-                gridRef.current
-                  ?.querySelector(`[data-category="${category}"]`)
-                  ?.scrollIntoView({ block: 'start' })
-              }}
-            >
-              <span aria-hidden>{CATEGORY_ICONS[category]}</span>
-            </button>
-          ))}
-        </div>
+        <CategoryBar
+          categories={categories}
+          onJump={(category) => {
+            const first = sections.find((s) => s.category === category)?.items.at(0)
+            if (first) focusAt(first.index)
+            gridRef.current
+              ?.querySelector(`[data-category="${category}"]`)
+              ?.scrollIntoView({ block: 'start' })
+          }}
+        />
       )}
       {/* Arrow keys move the focus between the emoji buttons inside (a roving tab stop). */}
       {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- the keys act on the buttons inside; the wrapper itself is never focused. */}

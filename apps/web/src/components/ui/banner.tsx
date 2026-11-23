@@ -1,3 +1,13 @@
+'use client'
+
+// Coreloom UI — Banner. A message for the whole page or app, across its top: planned maintenance,
+// a trial that ends soon, a failed payment, a new feature. An icon, the message, an optional
+// action, and a close button when it can be dismissed. Unlike an Alert (inside a page section)
+// or a toast (that goes away by itself), it stays until it no longer applies or is dismissed.
+//
+//   <Banner tone="warning" action={<Button size="sm">Update card</Button>} onDismiss={hide}>
+//     Your last payment failed. Update your card to keep your workspace.
+//   </Banner>
 import {
   CircleAlertIcon,
   CircleCheckIcon,

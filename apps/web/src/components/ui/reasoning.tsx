@@ -15,7 +15,9 @@ function Reasoning({
   text,
   streaming = false,
   duration,
+  open: openProp,
   defaultOpen,
+  onOpenChange,
   className,
 }: {
   text: string
@@ -23,12 +25,20 @@ function Reasoning({
   streaming?: boolean
   /** Seconds spent thinking. Measured from the stream when left out. */
   duration?: number
+  /** Whether the thinking shows (controlled). You decide: it doesn't open or fold by itself. */
+  open?: boolean
   /** Open at first. By default it opens while streaming and closes when done. */
   defaultOpen?: boolean
+  onOpenChange?: (open: boolean) => void
   className?: string
 }) {
   const t = useCoreloomI18n().messages.ai.reasoning
-  const [open, setOpen] = React.useState(defaultOpen ?? streaming)
+  const [own, setOwn] = React.useState(defaultOpen ?? streaming)
+  const open = openProp ?? own
+  const setOpen = (next: boolean) => {
+    setOwn(next)
+    onOpenChange?.(next)
+  }
   // eslint-disable-next-line react-hooks/purity -- only the first render's value is kept: when the stream started.
   const started = React.useRef<number | null>(streaming ? Date.now() : null)
   const [measured, setMeasured] = React.useState<number>()
@@ -39,7 +49,7 @@ function Reasoning({
     if (wasStreaming.current && !streaming) {
       if (started.current !== null) setMeasured(Math.round((Date.now() - started.current) / 1000))
       // Done thinking: fold it away unless the reader opened it themselves.
-      if (defaultOpen === undefined) setOpen(false)
+      if (defaultOpen === undefined) setOwn(false)
     }
     wasStreaming.current = streaming
   }, [streaming, defaultOpen])

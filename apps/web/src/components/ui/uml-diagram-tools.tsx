@@ -1,10 +1,10 @@
-'use client'
-
-// Coreloom UI — UmlDiagram tools. What sits on the canvas around the drawing: the zoom, fit,
-// select-an-area and arrange buttons; the bar that aligns and spaces the selected boxes; and the
-// field that renames an element in place (F2 or a double click); and full screen. UmlDiagram
-// places them.
-import { getViewportForBounds, Panel, useReactFlow, useStoreApi } from '@xyflow/react'
+import {
+  getViewportForBounds,
+  Panel,
+  useReactFlow,
+  useStoreApi,
+  type Viewport,
+} from '@xyflow/react'
 import {
   AlignCenterHorizontalIcon,
   AlignCenterVerticalIcon,
@@ -378,6 +378,77 @@ function useRename(input: {
   return { target, start, done, onKeyDown }
 }
 
+/**
+ * Fits the drawing when elements come or go, and again when its box changes size: always with
+ * `refit` (thumbnails, full screen), otherwise only while the view is still the one the last fit
+ * left. Once the reader pans or zooms (dragging, the wheel, the zoom buttons), their view is kept.
+ */
+function useFitView(canvas: React.RefObject<HTMLElement | null>, ids: string, refit: boolean) {
+  const flow = useReactFlow()
+  const fitted = React.useRef<Viewport | null>(null)
+  React.useEffect(() => {
+    // React Flow's fitView, which waits until new elements have their size.
+    const frame = requestAnimationFrame(() => void fitAndKeep(flow, fitted, 0.15))
+    return () => {
+      cancelAnimationFrame(frame)
+    }
+  }, [ids, flow])
+  React.useEffect(() => {
+    if (!canvas.current) return
+    let frame = 0
+    const observer = new ResizeObserver(() => {
+      if (!refit && !sameView(flow.getViewport(), fitted.current)) return
+      cancelAnimationFrame(frame)
+      // A reader's canvas keeps the margin of its first fit; thumbnails and full screen fit tighter.
+      frame = requestAnimationFrame(() => void fitAndKeep(flow, fitted, refit ? 0.08 : 0.15))
+    })
+    observer.observe(canvas.current)
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(frame)
+    }
+  }, [refit, flow, canvas])
+}
+
+/** Fits the view and keeps where the fit left it. */
+async function fitAndKeep(
+  flow: ReturnType<typeof useReactFlow>,
+  fitted: React.RefObject<Viewport | null>,
+  padding: number,
+) {
+  await flow.fitView({ padding, maxZoom: 1 })
+  fitted.current = flow.getViewport()
+}
+
+function sameView(a: Viewport, b: Viewport | null) {
+  return (
+    b !== null &&
+    Math.abs(a.x - b.x) < 0.5 &&
+    Math.abs(a.y - b.y) < 0.5 &&
+    Math.abs(a.zoom - b.zoom) < 0.001
+  )
+}
+
+/**
+ * Full screen fits the diagram to the screen; leaving it puts back the view from before, since
+ * the screen-sized pan and zoom would leave the diagram off to the side of the smaller box.
+ */
+function useViewAcrossFullscreen(fullscreen: Fullscreen | null) {
+  const active = fullscreen?.active ?? false
+  const flow = useReactFlow()
+  const before = React.useRef<Viewport | null>(null)
+  React.useEffect(() => {
+    if (active) {
+      before.current = flow.getViewport()
+      return
+    }
+    const view = before.current
+    if (!view) return
+    before.current = null
+    void flow.setViewport(view)
+  }, [active, flow])
+}
+
 export {
   AlignBar,
   CanvasControls,
@@ -387,6 +458,8 @@ export {
   RenameField,
   type RenameTarget,
   useFitDiagram,
+  useFitView,
   useFullscreen,
   useRename,
+  useViewAcrossFullscreen,
 }
