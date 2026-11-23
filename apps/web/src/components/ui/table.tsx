@@ -1,5 +1,3 @@
-'use client'
-
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'
@@ -12,12 +10,36 @@ function Table({
   /** Props for the scrolling wrapper (a ref, a fixed height, a label for a scrollable region). */
   container?: React.ComponentProps<'div'>
 }) {
+  // A table wider than its box scrolls: only then does the box take a tab stop, so the keyboard
+  // can scroll it. `container` still wins (its own tabIndex, role and label).
+  const ref = React.useRef<HTMLDivElement>(null)
+  React.useImperativeHandle<HTMLDivElement | null, HTMLDivElement | null>(
+    container?.ref,
+    () => ref.current,
+    [],
+  )
+  const [overflows, setOverflows] = React.useState(false)
+  React.useEffect(() => {
+    const box = ref.current
+    if (!box) return
+    const observer = new ResizeObserver(() => {
+      setOverflows(box.scrollWidth > box.clientWidth + 1 || box.scrollHeight > box.clientHeight + 1)
+    })
+    observer.observe(box)
+    if (box.firstElementChild) observer.observe(box.firstElementChild)
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
   return (
     <div
       data-slot="table-container"
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be keyboard-reachable; axe requires it.
+      tabIndex={overflows ? 0 : undefined}
       {...container}
+      ref={ref}
       className={cn(
-        'relative w-full overflow-x-auto rounded-md border border-border-subtle',
+        'relative w-full overflow-x-auto rounded-md border border-border-subtle outline-none focus-visible:ring-[3px] focus-visible:ring-ring',
         container?.className,
       )}
     >

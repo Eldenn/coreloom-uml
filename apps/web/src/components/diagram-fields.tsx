@@ -1,8 +1,3 @@
-'use client'
-
-// Coreloom UI — Diagram fields. The small form parts of the diagram editor's panels: a text field
-// that applies when it loses focus (or on Enter), a choice that applies at once, and the drafts a
-// panel keeps until a field applies.
 import * as React from 'react'
 
 import { Input } from '@/components/ui/input'
@@ -49,7 +44,7 @@ function TextField({
   multiline = false,
   mono = false,
   disabled,
-  onChange,
+  onValueChange,
   onCommit,
   inputRef,
 }: {
@@ -60,7 +55,7 @@ function TextField({
   /** Code-like text (one entity attribute per line): a monospaced font. */
   mono?: boolean
   disabled: boolean
-  onChange: (value: string) => void
+  onValueChange: (value: string) => void
   onCommit: () => void
   inputRef?: React.Ref<NameField> | undefined
 }) {
@@ -79,7 +74,7 @@ function TextField({
           spellCheck={false}
           className={cn('min-h-16 text-[13px]', mono && 'font-mono text-[12px]')}
           onChange={(e) => {
-            onChange(e.target.value)
+            onValueChange(e.target.value)
           }}
           onBlur={onCommit}
           {...described}
@@ -92,7 +87,7 @@ function TextField({
           readOnly={disabled}
           className="h-8 text-[13px]"
           onChange={(e) => {
-            onChange(e.target.value)
+            onValueChange(e.target.value)
           }}
           onBlur={onCommit}
           onKeyDown={(e) => {
@@ -115,13 +110,13 @@ function Choice<T extends string>({
   value,
   options,
   disabled,
-  onChange,
+  onValueChange,
 }: {
   label: string
   value: T
   options: readonly { value: T; label: string }[]
   disabled: boolean
-  onChange: (value: T) => void
+  onValueChange: (value: T) => void
 }) {
   const id = React.useId()
   return (
@@ -134,7 +129,7 @@ function Choice<T extends string>({
         disabled={disabled}
         onChange={(e) => {
           const next = options.find((o) => o.value === e.target.value)
-          if (next) onChange(next.value)
+          if (next) onValueChange(next.value)
         }}
       >
         {options.map((o) => (

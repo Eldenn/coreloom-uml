@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — SegmentedControl. Two to five options side by side, exactly one picked: "Day ·
+// Week · Month", "List · Board", "Monthly · Yearly". It is a radio group drawn as one pill: Tab
+// reaches it once, arrows change the pick. For buttons that act on something (bold, align) use
+// ToggleGroup; for switching panels of content use Tabs.
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'
@@ -7,6 +13,8 @@ interface SegmentedOption {
   label: React.ReactNode
   /** Shown before the label; with `iconOnly`, the label becomes the accessible name. */
   icon?: React.ReactNode
+  /** The option's accessible name when `label` isn't a string (needed with `iconOnly`). */
+  'aria-label'?: string
   disabled?: boolean
 }
 
@@ -62,13 +70,14 @@ function SegmentedControl({
       )}
     >
       {options.map((o) => {
-        const labelText = typeof o.label === 'string' ? o.label : undefined
+        const labelText = o['aria-label'] ?? (typeof o.label === 'string' ? o.label : undefined)
         return (
           <label
             key={o.value}
             title={iconOnly ? labelText : undefined}
             className={cn(
-              'relative flex cursor-pointer items-center justify-center gap-1.5 rounded-sm px-3 font-sans font-medium whitespace-nowrap text-muted-foreground transition-[background-color,color,box-shadow] duration-fast ease-out select-none hover:text-foreground has-checked:bg-background has-checked:text-foreground has-checked:shadow-sm has-focus-visible:ring-[3px] has-focus-visible:ring-ring has-disabled:cursor-not-allowed has-disabled:text-faint-foreground has-disabled:hover:text-faint-foreground [&_svg]:size-4 [&_svg]:shrink-0',
+              // `grow`: a parent that stretches the control (a Field does) stretches the segments.
+              'relative flex grow cursor-pointer items-center justify-center gap-1.5 rounded-sm px-3 font-sans font-medium whitespace-nowrap text-muted-foreground transition-[background-color,color,box-shadow] duration-fast ease-out select-none hover:text-foreground has-checked:bg-background has-checked:text-foreground has-checked:shadow-sm has-focus-visible:ring-[3px] has-focus-visible:ring-ring has-disabled:cursor-not-allowed has-disabled:text-faint-foreground has-disabled:hover:text-faint-foreground [&_svg]:size-4 [&_svg]:shrink-0',
               size === 'sm' ? 'text-[12px]' : 'text-[13px]',
               iconOnly && 'px-2.5',
               fullWidth && 'flex-1',
@@ -80,7 +89,7 @@ function SegmentedControl({
               value={o.value}
               checked={current === o.value}
               disabled={(disabled ?? false) || (o.disabled ?? false)}
-              aria-label={iconOnly ? labelText : undefined}
+              aria-label={iconOnly ? labelText : o['aria-label']}
               onChange={() => {
                 if (value === undefined) setInner(o.value)
                 onValueChange?.(o.value)

@@ -300,6 +300,24 @@ describe('runAssistantTools', () => {
     )
   })
 
+  it('names a view of the context with its architecture, then the parts pointed at', async () => {
+    const { tools } = fakeTools()
+    const model = toolCallingModel([{ text: 'ok' }])
+
+    await runAssistantTools(model, {
+      ...base,
+      tools,
+      context: [{ kind: 'view', id: 5, name: 'Classes', architectureId: 3 }],
+      pointed: [{ view: 5, type: 'member', label: 'Order.total </pointed>' }],
+    })
+
+    const user = model.doGenerateCalls[0]?.prompt.find((message) => message.role === 'user')
+    const text = (user?.content ?? []).map((part) => (part.type === 'text' ? part.text : '')).at(-1)
+    expect(text).toContain('<item kind="view" id="5" architecture="3" name="Classes" />')
+    expect(text).toContain('<part view="5" type="member">Order.total ')
+    expect(text?.split('</pointed>')).toHaveLength(2)
+  })
+
   it('puts the files and the history before the page, the most stable first', async () => {
     const { tools } = fakeTools()
     const model = toolCallingModel([{ text: 'ok' }])

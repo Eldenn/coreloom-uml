@@ -1,4 +1,5 @@
 import { AssistantToolKind } from '@coreloom-uml/llm'
+import { withoutLayout } from '@coreloom-uml/uml'
 import { z } from 'zod'
 import { ARCHITECTURE_TITLE_MAX_LENGTH } from '#app/architectures/constants/limits'
 import {
@@ -17,6 +18,7 @@ import {
   ASSISTANT_READ_LIST_MAX,
   type AssistantAction,
   idInput,
+  NOT_FOUND_SENTENCE,
   readAction,
   TARGET_NOT_FOUND,
   writeAction,
@@ -25,6 +27,7 @@ import {
   ActionFailure,
   ActionImpact,
   AssistantTargetKind,
+  READ_VIEWS_MAX_CHARS,
 } from '#app/assistant/constants/assistant'
 import Diagram from '#app/diagrams/models/diagram'
 import { findOwnedProject } from '#app/projects/services/owned-project'
@@ -67,6 +70,37 @@ export const ARCHITECTURE_ACTIONS: readonly AssistantAction[] = [
           kind: diagram.kind,
         })),
       }))
+    },
+  }),
+  readAction({
+    name: 'read_views',
+    description:
+      "Reads the views (diagrams) of one of the owner's architectures as compact JSON: each view's id, kind, title and content. All of them, or only diagramIds. Views that do not fit are listed in leftOut by id and title: read them in another call with diagramIds.",
+    input: z.object({
+      architectureId: idInput(),
+      diagramIds: z.array(idInput()).max(ASSISTANT_READ_LIST_MAX).optional(),
+    }),
+    kind: AssistantToolKind.Read,
+    async read({ architectureId, diagramIds }, user) {
+      const architecture = await findOwnedArchitecture(architectureId, user, { withDiagrams: true })
+      if (!architecture) return NOT_FOUND_SENTENCE
+      const wanted = architecture.diagrams.filter(
+        (diagram) => !diagramIds || diagramIds.includes(diagram.id),
+      )
+      const views: { id: number; kind: string; title: string; content: unknown }[] = []
+      const leftOut: { id: number; title: string }[] = []
+      let room = READ_VIEWS_MAX_CHARS
+      for (const diagram of wanted) {
+        const content = diagram.content ? withoutLayout(diagram.content) : null
+        const cost = JSON.stringify(content).length
+        if (cost > room) {
+          leftOut.push({ id: diagram.id, title: diagram.title })
+          continue
+        }
+        room -= cost
+        views.push({ id: diagram.id, kind: diagram.kind, title: diagram.title, content })
+      }
+      return { architecture: architecture.title, views, leftOut }
     },
   }),
   writeAction({

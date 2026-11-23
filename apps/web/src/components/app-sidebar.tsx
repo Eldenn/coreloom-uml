@@ -1,8 +1,3 @@
-'use client'
-
-// Coreloom UI — AppSidebar (app-shell block). Workspace switcher, grouped navigation, secondary
-// links and the account menu, on the Sidebar component. Navigation is data: pass your routes.
-// Links go through AppLink: wrap the app in CoreloomLinkProvider to navigate with your router.
 import { ChevronsUpDownIcon, PlusIcon } from 'lucide-react'
 import * as React from 'react'
 

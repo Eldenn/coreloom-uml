@@ -19,6 +19,7 @@ import {
   handoffTools,
   resolveContext,
   resolvePage,
+  resolvePointed,
 } from '#app/assistant/services/assistant-actions'
 import { conversationHistory } from '#app/assistant/services/assistant-context'
 import {
@@ -51,7 +52,8 @@ export type ChatAnswerInput = {
   message: string
   locale: Parameters<typeof chatWithAssistant>[1]['locale']
   page: Target | undefined
-  context: readonly Target[] | undefined
+  context: Parameters<typeof resolveContext>[0]
+  pointed: Parameters<typeof resolvePointed>[0]
   auto: boolean | undefined
   fileId: number | undefined
   attached: AssistantFile | null
@@ -118,6 +120,7 @@ export async function answerChat(
           locale,
           page: await resolvePage(input.page, user),
           context: await resolveContext(input.context, user),
+          pointed: await resolvePointed(input.pointed, user),
           tools,
         },
         stream,

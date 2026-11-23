@@ -1,15 +1,3 @@
-'use client'
-
-// Coreloom UI — Form: TanStack Form wired to Coreloom's Field and controls.
-// `useAppForm` is TanStack's useForm with the field components below attached:
-//
-//   const form = useAppForm({ defaultValues, validators: { onSubmit: schema }, onSubmit })
-//   <form.AppField name="email">{(field) => <field.TextField label="Email" type="email" />}</form.AppField>
-//   <form.AppForm><form.FormErrors /><form.SubmitButton>Save</form.SubmitButton></form.AppForm>
-//
-// Validators accept any Standard Schema (zod, valibot, arktype) or plain functions returning a message.
-// Validate on change (`validators: { onChange: schema }`): errors show once a field has been left or the
-// form submitted, then update as the user types — with aria-invalid on the control.
 import { createFormHook, createFormHookContexts, useSelector } from '@tanstack/react-form'
 import * as React from 'react'
 
@@ -373,6 +361,7 @@ function OTPField({
         onComplete={() => {
           if (submitOnComplete) void field.form.handleSubmit()
         }}
+        aria-invalid={meta.invalid || undefined}
         aria-describedby={describedBy(meta, description)}
         containerClassName="w-auto"
       >
@@ -1737,7 +1726,67 @@ function SwitchField(props: FieldShellProps & { disabled?: boolean }) {
   return <ToggleField {...props} control="switch" />
 }
 
-/** Submit button: stays enabled so a click reveals every error; disabled with a spinner while submitting or `pending`. */
+const FOCUSABLE =
+  'input:not([type="hidden"]), select, textarea, button, [contenteditable="true"], [tabindex]:not([tabindex="-1"])'
+
+/** The control to focus in the first invalid field (in DOM order): the one marked invalid, else the
+ *  one its label names, else the first one. */
+function firstInvalidControl(form: HTMLFormElement | null | undefined) {
+  const field = form?.querySelector('[data-slot="field"][data-invalid="true"]')
+  if (!field) return null
+  const controls = [...field.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+    (el) => !el.matches(':disabled, [aria-hidden="true"]'),
+  )
+  return (
+    controls.find((el) => el.getAttribute('aria-invalid') === 'true') ??
+    field.querySelector('label')?.control ??
+    controls[0]
+  )
+}
+
+/** After a submit that left the form invalid: focus on the first invalid field, and how many fields
+ *  need attention in one polite status. The count follows the fields as they are corrected. */
+function SubmitStatus() {
+  const t = useCoreloomI18n().messages.form
+  const form = useFormContext()
+  const ref = React.useRef<HTMLSpanElement>(null)
+  // Focus only moves after the person submitted the <form>: a `handleSubmit()` called from code
+  // (on mount, from another control) must not take focus away from where they are.
+  const userSubmitted = React.useRef(false)
+  React.useEffect(() => {
+    const el = ref.current?.closest('form')
+    if (!el) return
+    const mark = () => {
+      userSubmitted.current = true
+    }
+    el.addEventListener('submit', mark)
+    return () => {
+      el.removeEventListener('submit', mark)
+    }
+  }, [])
+  const attempts = useSelector(form.store, (s) => s.submissionAttempts)
+  const isSubmitting = useSelector(form.store, (s) => s.isSubmitting)
+  const invalidCount = useSelector(form.store, (s) =>
+    s.submissionAttempts > 0 && !s.isSubmitting
+      ? Object.values(s.fieldMeta as Record<string, { errors?: unknown[] } | undefined>).filter(
+          (m) => toIssues(m?.errors ?? []).length > 0,
+        ).length
+      : 0,
+  )
+  React.useEffect(() => {
+    if (isSubmitting || !userSubmitted.current) return
+    userSubmitted.current = false
+    if (!form.state.isValid) firstInvalidControl(ref.current?.closest('form'))?.focus()
+  }, [attempts, isSubmitting, form])
+  return (
+    <span ref={ref} role="status" className="sr-only">
+      {invalidCount > 0 ? t.invalidFields(invalidCount) : null}
+    </span>
+  )
+}
+
+/** Submit button: stays enabled so a click reveals every error; disabled with a spinner while submitting or `pending`.
+ *  A submit that fails moves focus to the first invalid field and announces how many need attention. */
 function SubmitButton({
   children,
   pendingLabel,
@@ -1753,16 +1802,19 @@ function SubmitButton({
   const isSubmitting = useSelector(form.store, (s) => s.isSubmitting)
   const busy = isSubmitting || pending
   return (
-    <Button
-      {...props}
-      type="submit"
-      data-submitting={isSubmitting || undefined}
-      aria-busy={busy || undefined}
-      disabled={busy || disabled}
-    >
-      {busy && <Spinner className="text-current" />}
-      {busy && pendingLabel ? pendingLabel : children}
-    </Button>
+    <>
+      <SubmitStatus />
+      <Button
+        {...props}
+        type="submit"
+        data-submitting={isSubmitting || undefined}
+        aria-busy={busy || undefined}
+        disabled={busy || disabled}
+      >
+        {busy && <Spinner className="text-current" />}
+        {busy && pendingLabel ? pendingLabel : children}
+      </Button>
+    </>
   )
 }
 

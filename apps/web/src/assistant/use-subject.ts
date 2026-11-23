@@ -4,7 +4,7 @@
 // message needs. Without "Auto" and without an architecture, a plain message.
 import { useCodeMode } from '@/assistant/use-code-mode'
 import { useArchitectures } from '@/lib/architectures'
-import { type ContextItem, pageOf, subjectOf } from '@/lib/assistant-subject'
+import { type ContextItem, pageOf, sentContext, subjectOf } from '@/lib/assistant-subject'
 import { useFeature } from '@/lib/feature-flags'
 import type { StoredProvider } from '@/lib/llm-provider'
 
@@ -61,6 +61,8 @@ export function useSubject({
     mode: route.mode,
     /** The architecture a message is about while `mode` is `architecture`. */
     architectureId,
+    /** The views the context names, sent whatever the owner picked; absent for all of them. */
+    diagramIds: route.mode === 'architecture' ? route.diagramIds : undefined,
     code,
     /** Where the owner is, sent with a message in "Auto". */
     page: pageOf({
@@ -68,8 +70,8 @@ export function useSubject({
       configId: pageConfigId,
       projectId: pageProjectId,
     }),
-    /** What "Auto" reads: the items of the context, as the API takes them. */
-    context: items.map(({ kind, id }) => ({ kind, id })),
+    /** What "Auto" reads and the parts pointed at: the context, as the API takes it. */
+    ...sentContext(items),
     architectures,
   }
 }

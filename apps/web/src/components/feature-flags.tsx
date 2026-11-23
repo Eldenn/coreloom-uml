@@ -1,10 +1,3 @@
-'use client'
-
-// Coreloom UI — FeatureFlags (block). A product's feature flags in one environment at a time: each
-// flag's name, key and tags, an on / off switch, its rollout and rules in a line, and a panel to
-// edit them — on / off, the rollout percentage, targeting rules (FeatureFlagRules) — with the flag's
-// history. Nothing is evaluated or stored here: `onChange` sends a flag's new state in an
-// environment to your API, which serves it to your apps (`evaluateFeatureFlag` shows the logic).
 import { FlagIcon, PlusIcon, SearchIcon, SlidersHorizontalIcon } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'

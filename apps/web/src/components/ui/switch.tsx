@@ -1,5 +1,3 @@
-'use client'
-
 import { Switch as SwitchPrimitive } from 'radix-ui'
 import * as React from 'react'
 
@@ -29,7 +27,7 @@ function Switch({
         className={cn(
           'pointer-events-none block translate-x-[2px] rounded-full transition-[translate,background-color] duration-base ease-spring',
           'group-data-[size=default]/switch:size-[17px] group-data-[size=sm]/switch:size-[13px]',
-          'data-[state=checked]:bg-primary-foreground data-[state=unchecked]:bg-white data-[state=unchecked]:shadow-sm',
+          'data-[state=checked]:bg-primary-foreground data-[state=unchecked]:bg-fg-secondary data-[state=unchecked]:shadow-sm',
           'group-data-[size=default]/switch:data-[state=checked]:translate-x-[21px] group-data-[size=sm]/switch:data-[state=checked]:translate-x-[17px]',
         )}
       />

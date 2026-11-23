@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { addItem, ASSISTANT_CONTEXT_MAX, pageOf, subjectOf } from './assistant-subject'
+import { addItem, ASSISTANT_CONTEXT_MAX, pageOf, sentContext, subjectOf } from './assistant-subject'
 
 describe('addItem', () => {
   const shop = { kind: 'architecture', id: 1, label: 'Shop' } as const
@@ -25,8 +25,8 @@ describe('addItem', () => {
 })
 
 describe('subjectOf', () => {
-  const shop = { kind: 'architecture', id: 1 } as const
-  const rules = { kind: 'agent-config', id: 4 } as const
+  const shop = { kind: 'architecture', id: 1, label: 'Shop' } as const
+  const rules = { kind: 'agent-config', id: 4, label: 'Rules' } as const
   const nowhere = { pageArchitectureId: null, autoOffered: true }
 
   it('sends one architecture alone straight to its diagrams', () => {
@@ -71,5 +71,64 @@ describe('pageOf', () => {
   it('names none elsewhere', () => {
     expect(pageOf({})).toBeUndefined()
     expect(pageOf({ configId: null, projectId: null })).toBeUndefined()
+  })
+})
+
+describe('views and parts of views', () => {
+  const shop = { kind: 'architecture', id: 1, label: 'Shop' } as const
+  const classes = { kind: 'view', id: 10, architectureId: 1, label: 'Classes' } as const
+  const total = {
+    kind: 'element',
+    viewId: 11,
+    architectureId: 1,
+    type: 'member',
+    label: 'Order.total',
+  } as const
+  const elsewhere = { kind: 'view', id: 20, architectureId: 2, label: 'Other' } as const
+  const here = { pageArchitectureId: null, autoOffered: true }
+
+  it('holds a part once per view, type and label', () => {
+    const items = addItem([total], { ...total }, true)
+    expect(items).toEqual([total])
+    expect(addItem(items, { ...total, viewId: 12 }, true)).toHaveLength(2)
+  })
+
+  it('sends views and parts of one architecture to its diagrams, naming their views', () => {
+    expect(
+      subjectOf({ ...here, items: [classes, total, { ...total, label: 'Order.id' }] }),
+    ).toEqual({ mode: 'architecture', architectureId: 1, diagramIds: [10, 11] })
+    // The architecture itself is in the context: all of its views.
+    expect(subjectOf({ ...here, items: [shop, classes] })).toEqual({
+      mode: 'architecture',
+      architectureId: 1,
+    })
+  })
+
+  it('leaves views of two architectures to Auto', () => {
+    expect(subjectOf({ ...here, items: [classes, elsewhere] })).toEqual({ mode: 'auto' })
+  })
+
+  it('keeps to one architecture without Auto', () => {
+    expect(addItem([classes], total, false)).toEqual([classes, total])
+    expect(addItem([classes], elsewhere, false)).toEqual([elsewhere])
+    expect(subjectOf({ pageArchitectureId: null, autoOffered: false, items: [total] })).toEqual({
+      mode: 'architecture',
+      architectureId: 1,
+      diagramIds: [11],
+    })
+  })
+
+  it('sends a part as pointed, with its view in what Auto reads', () => {
+    expect(sentContext([shop, classes, total, { ...total, label: 'Order.id' }])).toEqual({
+      context: [
+        { kind: 'architecture', id: 1 },
+        { kind: 'view', id: 10 },
+        { kind: 'view', id: 11 },
+      ],
+      pointed: [
+        { diagramId: 11, type: 'member', label: 'Order.total' },
+        { diagramId: 11, type: 'member', label: 'Order.id' },
+      ],
+    })
   })
 })

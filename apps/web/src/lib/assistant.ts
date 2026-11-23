@@ -22,7 +22,7 @@ import {
   sendChat,
   stopChat,
 } from '@/lib/assistant-chat'
-import type { AssistantPage } from '@/lib/assistant-subject'
+import type { AssistantPage, PointedPart, sentContext } from '@/lib/assistant-subject'
 import { apiBaseUrl, client, TuyauError } from '@/lib/client'
 import { codeReviewKeys } from '@/lib/code-reviews'
 import { useFeature } from '@/lib/feature-flags'
@@ -264,6 +264,7 @@ export function useAskAssistant(conversationId: number, chat: AssistantChat) {
       auto,
       page,
       context,
+      pointed,
       file: attached,
       onReading,
       onHandoff,
@@ -280,7 +281,9 @@ export function useAskAssistant(conversationId: number, chat: AssistantChat) {
       /** With `auto`: where the owner is, so that "here" means something. */
       page?: AssistantPage
       /** With `auto`: the items the owner put in the context, which the assistant reads. */
-      context?: AssistantPage[]
+      context?: ReturnType<typeof sentContext>['context']
+      /** The parts of views the message is about, whatever route it takes. */
+      pointed?: PointedPart[]
       /**
        * A file attached with this message; it follows a handed-over message. It is attached to
        * the conversation first, and `onReading` hears when that reading starts and ends.
@@ -306,6 +309,7 @@ export function useAskAssistant(conversationId: number, chat: AssistantChat) {
               ...callBody(provider),
               message: text,
               locale,
+              ...(pointed?.length ? { pointed } : {}),
               ...(fileId === null || text !== message ? {} : { fileId }),
             },
             ...MODEL_CALL,
@@ -334,6 +338,7 @@ export function useAskAssistant(conversationId: number, chat: AssistantChat) {
             currentDiagramId: null,
             ...views,
             locale,
+            ...(pointed?.length ? { pointed } : {}),
             ...(fileId === null ? {} : { fileId }),
             ...(reading.length > 0 ? { afterReading: true } : {}),
           },
@@ -350,6 +355,7 @@ export function useAskAssistant(conversationId: number, chat: AssistantChat) {
           locale,
           ...(fileId === null || !withFile ? {} : { fileId }),
           ...(auto ? { auto: true, ...(page ? { page } : {}), context: context ?? [] } : {}),
+          ...(auto && pointed?.length ? { pointed } : {}),
         })
       const plain = await send(message, true)
       if (plain === null) return { messages: [], handoff: null, stopped: true }

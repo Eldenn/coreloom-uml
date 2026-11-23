@@ -1,5 +1,3 @@
-// Coreloom UI — useControllableState. One value that the parent may own (`value` + `onChange`) or
-// leave to the component (`defaultValue`), so a component offers both without two code paths.
 import * as React from 'react'
 
 interface ControllableState<T> {

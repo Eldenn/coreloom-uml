@@ -1,13 +1,3 @@
-'use client'
-
-// Coreloom UI — LogViewer. A long log to read and search: a build, a deploy, a server's output. Lines
-// keep their ANSI colours, and only the visible ones are in the page (TanStack Virtual), so tens of
-// thousands of lines stay smooth. Search filters the lines and marks the words; the level buttons
-// show or hide errors, warnings, info and debug; Follow keeps the newest line in view while the log
-// grows.
-//
-//   <LogViewer text={buildOutput} />                  // raw text: levels and times are detected
-//   <LogViewer entries={[{ time, level: 'error', source: 'api', message }]} />
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { ArrowDownToLineIcon, CheckIcon, CopyIcon, WrapTextIcon } from 'lucide-react'
 import * as React from 'react'
@@ -221,7 +211,9 @@ function LogViewer({
     overscan: 20,
     getItemKey: (i) => {
       const row = visible.at(i)
-      return row ? (row.entry.id ?? row.index) : i
+      // Next.js's React types let a key be a symbol, which TanStack Virtual's keys can't be.
+      const key = row ? (row.entry.id ?? row.index) : i
+      return typeof key === 'symbol' ? i : key
     },
   })
 

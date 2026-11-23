@@ -64,8 +64,13 @@ function useViews(workspace: Workspace | null, subject: Subject) {
     currentDiagramId: page.currentDiagramId,
     ...(picked ? { diagramIds: picked } : {}),
   })
+  // The views the context names are read whatever is picked; with none named, what is picked.
+  const named = (selection: ViewSelection): ViewSelection =>
+    subject.diagramIds
+      ? { ...selection, diagramIds: [...new Set([...subject.diagramIds, ...(picked ?? [])])] }
+      : selection
   return {
-    selection: here ? onPage(here) : { currentDiagramId: null },
+    selection: named(here ? onPage(here) : { currentDiagramId: null }),
     /** The views of a message the assistant sends to an architecture by itself. */
     selectionOf: (architectureId: number): ViewSelection =>
       workspace?.architecture.id === architectureId
@@ -156,6 +161,7 @@ export function Conversation({
         architectureId: architectureOf(subject),
         ...views.selection,
         ...subject.code.sent,
+        pointed: subject.pointed,
         ...(subject.mode === 'auto'
           ? { auto: true, page: subject.page, context: subject.context }
           : {}),

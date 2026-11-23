@@ -272,10 +272,7 @@ test.group('Assistant - messages about no architecture, streamed', (group) => {
     assert.lengthOf(await stored(conversation.id), 0)
   })
 
-  test('logs an unexpected failure and ends the stream with a 500', async ({
-    client,
-    assert,
-  }) => {
+  test('logs an unexpected failure and ends the stream with a 500', async ({ client, assert }) => {
     const { user, conversation, path } = await setup('chat-stream-500@example.com')
     // The conversation goes away while the model answers: the exchange cannot be stored.
     const model = new MockLanguageModelV4({
@@ -331,6 +328,7 @@ test.group('Assistant - messages about no architecture, streamed', (group) => {
         locale: 'en',
         page: undefined,
         context: undefined,
+        pointed: undefined,
         auto: undefined,
         fileId: undefined,
         attached: null,
