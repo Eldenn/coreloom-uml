@@ -7,6 +7,7 @@ import {
   ASSISTANT_READ_RESULT_MAX_LENGTH,
   type AssistantTool,
   AssistantToolKind,
+  DESIGN_BRIEF_INSTRUCTIONS,
   NOTHING_TO_READ,
   runAssistantTools,
 } from './assistant-tools.ts'
@@ -90,6 +91,36 @@ describe('runAssistantTools', () => {
     expect(system).toContain(NOTHING_TO_READ)
     expect(system).toContain('you cannot change them yourself')
     expect(system).not.toContain('work_on_diagrams')
+  })
+
+  it('adds the design-brief steps to the instructions only, the brief staying in the message', async () => {
+    const { tools } = fakeTools()
+    const brief = 'A shop for 10k users'
+    const model = toolCallingModel([{ text: 'How many orders a day?' }])
+
+    await runAssistantTools(model, {
+      ...base,
+      purpose: 'brief',
+      message: brief,
+      page: { kind: 'project', id: 7, name: 'Shop' },
+      tools,
+    })
+
+    const [system, ...prompt] = model.doGenerateCalls[0]?.prompt ?? []
+    const instructions = JSON.stringify(system)
+    // After the assistant's own instructions, before the reply's language.
+    const at = instructions.indexOf(JSON.stringify(DESIGN_BRIEF_INSTRUCTIONS).slice(1, -1))
+    expect(at).toBeGreaterThan(instructions.indexOf('work_on_diagrams'))
+    expect(at).toBeLessThan(instructions.indexOf('Write the reply in'))
+    const sent = JSON.stringify(prompt)
+    expect(sent).not.toContain('design brief')
+    expect(sent).toContain('kind=\\"project\\" id=\\"7\\"')
+    // The brief is the owner's message, last in the prompt like any other.
+    expect(sent).toContain(`<message>\\n${brief}\\n</message>`)
+
+    const plain = toolCallingModel([{ text: 'Hello.' }])
+    await runAssistantTools(plain, { ...base, tools })
+    expect(JSON.stringify(plain.doGenerateCalls[0]?.prompt[0])).not.toContain('design brief')
   })
 
   it('records a write as a proposal and tells the model it awaits the owner', async () => {

@@ -30,6 +30,39 @@ export interface Workspace {
   codeMapId?: number
 }
 
+/**
+ * A conversation that is a design brief for a project: every message of it carries the marker,
+ * and `first` is the brief itself until it is sent. Which conversation is a brief for which
+ * project is a browser preference in `localStorage`, so the path survives a reload; the brief's
+ * text is not kept there.
+ */
+interface DesignBrief {
+  projectId: number
+  first: string | null
+}
+
+const BRIEFS_KEY = 'assistant-briefs'
+/** The newest conversations kept; an older one becomes a plain conversation again. */
+const BRIEFS_KEPT = 50
+
+function storedBriefs(): Map<number, DesignBrief> {
+  try {
+    const pairs = JSON.parse(window.localStorage.getItem(BRIEFS_KEY) ?? '[]') as [number, number][]
+    return new Map(pairs.map(([id, projectId]) => [id, { projectId, first: null }]))
+  } catch {
+    return new Map()
+  }
+}
+
+function storeBriefs(briefs: Map<number, DesignBrief>) {
+  const pairs = [...briefs].slice(-BRIEFS_KEPT).map(([id, brief]) => [id, brief.projectId])
+  try {
+    window.localStorage.setItem(BRIEFS_KEY, JSON.stringify(pairs))
+  } catch {
+    // Storage refused (private mode, full): the brief then lasts as long as the tab.
+  }
+}
+
 interface AssistantState {
   open: boolean
   conversationId: number | null
@@ -46,6 +79,12 @@ interface AssistantControls {
   setItems: (items: readonly ContextItem[]) => void
   /** The context as it is now, for a caller that must not render again with the chat. */
   readItems: () => readonly ContextItem[]
+  /** Opens the chat on a new conversation that is a brief for the project; `brief` goes first. */
+  startBrief: (conversationId: number, projectId: number, brief: string) => void
+  /** The project this conversation is a design brief for, if it is one. */
+  briefOf: (conversationId: number) => number | null
+  /** The brief to send first, once: `null` when there is none or it was taken already. */
+  takeBrief: (conversationId: number) => string | null
 }
 
 const StateContext = React.createContext<AssistantState | null>(null)
@@ -56,6 +95,9 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const [conversationId, setConversationId] = React.useState<number | null>(null)
   const [items, setItems] = React.useState<readonly ContextItem[]>([])
   const [workspace, setWorkspace] = React.useState<Workspace | null>(null)
+  // Read when a conversation opens, never rendered: a ref, not a state.
+  const briefs = React.useRef<Map<number, DesignBrief> | null>(null)
+  const readBriefs = () => (briefs.current ??= storedBriefs())
   // The setters of `useState`: stable, so the object is too.
   const held = React.useRef(items)
   React.useEffect(() => {
@@ -68,6 +110,19 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       setWorkspace,
       setItems,
       readItems: () => held.current,
+      startBrief: (conversationId, projectId, brief) => {
+        readBriefs().set(conversationId, { projectId, first: brief })
+        storeBriefs(readBriefs())
+        setConversationId(conversationId)
+        setOpen(true)
+      },
+      briefOf: (conversationId) => readBriefs().get(conversationId)?.projectId ?? null,
+      takeBrief: (conversationId) => {
+        const brief = readBriefs().get(conversationId)
+        const first = brief?.first ?? null
+        if (brief) brief.first = null
+        return first
+      },
     }),
     [],
   )
