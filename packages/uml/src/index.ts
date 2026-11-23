@@ -124,6 +124,14 @@ export type {
 } from './uml-elements.ts'
 export { keepLayout, withoutLayout } from './uml-layout-merge.ts'
 export { isMermaidSpec, type MermaidSpec, parseMermaid, toMermaid } from './uml-mermaid.ts'
+export {
+  hasUmlPart,
+  UML_PART_ROLES,
+  type UmlPart,
+  type UmlPartRole,
+  type UmlPartType,
+  umlParts,
+} from './uml-parts.ts'
 export { isPlantUml, parsePlantUml, toPlantUml } from './uml-plantuml.ts'
 export {
   stateToXState,

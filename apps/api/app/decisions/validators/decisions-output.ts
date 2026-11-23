@@ -2,7 +2,11 @@ import type {
   CodeReviewResolution,
   ConformanceSeverity,
 } from '#app/code-reviews/constants/code-review'
-import type { DecisionOption, DecisionStatus } from '#app/decisions/constants/decision'
+import type {
+  DecisionOption,
+  DecisionPartRef,
+  DecisionStatus,
+} from '#app/decisions/constants/decision'
 import type { Paginated } from '#app/shared/pagination/paginate'
 
 /** JSON shape of a decision, with the ids of what it is linked to. */
@@ -18,6 +22,8 @@ export type DecisionOutput = {
   supersededById: number | null
   requirementIds: number[]
   diagramIds: number[]
+  /** The parts of views it names, in the order they were given. */
+  parts: DecisionPartRef[]
   createdAt: string
   updatedAt: string
 }

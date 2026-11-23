@@ -86,7 +86,10 @@ silently.
   **decisions** (`GET`/`POST /projects/:id/decisions`, `PATCH`/`DELETE /decisions/:id`: the
   question, one to five options with what speaks for and against each, the one chosen, the
   consequences, a status `proposed`, `accepted` or `superseded`, and the requirements and diagrams
-  of the project it names). A decision that does not hold together is refused (422): an accepted
+  of the project it names). A decision can also name parts of those diagrams (an element, a
+  relation, a member, a step), each by its diagram and the one line that names it there, as the
+  assistant's pointed parts are: the Design tab marks a part its view no longer has, and so does
+  the design review. A decision that does not hold together is refused (422): an accepted
   one names its option, a superseded one may name the decision of the project that replaced it. The
   diagram assistant reads the requirements and the decisions still standing before it draws a view
   of the project. At most a hundred of each per project. These routes call no model. Behind the

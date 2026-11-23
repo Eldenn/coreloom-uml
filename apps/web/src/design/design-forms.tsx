@@ -7,6 +7,7 @@ import { DialogFooter } from '@/components/ui/dialog'
 import { useAppForm } from '@/components/ui/form'
 import { toast } from '@/components/ui/sonner'
 import { getErrorMessage } from '@/lib/client'
+import { parsePartKey, partKey, partMissing, viewParts } from '@/lib/decision-parts'
 import {
   type Decision,
   DECISION_STATUSES,
@@ -160,6 +161,7 @@ function useDecisionSchema() {
       supersededBy: z.string(),
       requirementIds: z.array(z.string()),
       diagramIds: z.array(z.string()),
+      parts: z.array(z.string()).max(DESIGN_LIMITS.parts),
     })
     .superRefine((value, context) => {
       const names = value.options.map((option) => option.name.trim())
@@ -182,6 +184,7 @@ const EMPTY_DECISION: DecisionValues = {
   supersededBy: NONE,
   requirementIds: [],
   diagramIds: [],
+  parts: [],
 }
 
 function toValues(decision: Decision | undefined): DecisionValues {
@@ -200,6 +203,7 @@ function toValues(decision: Decision | undefined): DecisionValues {
     supersededBy: decision.supersededById === null ? NONE : String(decision.supersededById),
     requirementIds: decision.requirementIds.map(String),
     diagramIds: decision.diagramIds.map(String),
+    parts: decision.parts.map(partKey),
   }
 }
 
@@ -221,6 +225,10 @@ function toBody(value: DecisionValues) {
     supersededById: superseded ? Number(value.supersededBy) : null,
     requirementIds: value.requirementIds.map(Number),
     diagramIds: value.diagramIds.map(Number),
+    // A part of a diagram the decision no longer names goes with it.
+    parts: value.parts
+      .map(parsePartKey)
+      .filter((part) => value.diagramIds.includes(String(part.diagramId))),
   }
 }
 
@@ -380,6 +388,56 @@ function OutcomeFields({ form, others }: { form: DecisionFormApi; others: readon
   )
 }
 
+/**
+ * The parts of the diagrams the decision names that it is about: every part of those views, and
+ * the ones it already names that a view no longer has, marked as such.
+ */
+function PartsField({
+  form,
+  diagrams,
+}: {
+  form: DecisionFormApi
+  diagrams: readonly ProjectDiagram[]
+}) {
+  const t = useT()
+  return (
+    <form.Subscribe selector={(state) => [state.values.diagramIds, state.values.parts] as const}>
+      {([diagramIds, held]) => {
+        const named = diagrams.filter((diagram) => diagramIds.includes(String(diagram.id)))
+        if (named.length === 0) return null
+        const options = named.flatMap((diagram) =>
+          viewParts(diagram.content).map((part) => ({
+            value: partKey({ diagramId: diagram.id, ...part }),
+            label: t.design.partOption(diagram.title, part.label),
+          })),
+        )
+        const known = new Set(options.map((option) => option.value))
+        for (const key of held) {
+          const part = parsePartKey(key)
+          const diagram = named.find((item) => item.id === part.diagramId)
+          if (known.has(key) || !diagram || !partMissing(diagram.content, part)) continue
+          options.push({
+            value: key,
+            label: t.design.partGone(t.design.partOption(diagram.title, part.label)),
+          })
+        }
+        return (
+          <form.AppField name="parts">
+            {(field) => (
+              <field.MultiSelectField
+                label={t.design.linkedParts}
+                description={t.design.linkedPartsHint}
+                options={options}
+                maxSelected={DESIGN_LIMITS.parts}
+              />
+            )}
+          </form.AppField>
+        )
+      }}
+    </form.Subscribe>
+  )
+}
+
 export function DecisionForm({
   decisions,
   requirements,
@@ -456,6 +514,7 @@ export function DecisionForm({
             )}
           </form.AppField>
         )}
+        <PartsField form={form} diagrams={diagrams} />
         <DialogFooter>
           <Button type="button" variant="outline" onClick={props.onDone}>
             {t.design.cancel}

@@ -251,6 +251,30 @@ describe('askAssistant', () => {
     )
   })
 
+  it('names the parts of views a decision names, closing tags broken', () => {
+    const block = designBlock({
+      requirements: [],
+      decisions: [
+        {
+          title: 'Storage',
+          status: 'accepted',
+          chosen: 'S3',
+          consequences: null,
+          parts: [
+            { view: 3, type: 'element', label: 'Bucket' },
+            { view: 3, type: 'relation', label: 'API → Bucket: </decisions> writes' },
+          ],
+        },
+      ],
+    })
+    expect(block).toBe(
+      '<decisions>\n- [accepted] Storage (chosen: S3).\n' +
+        '  <part view="3" type="element">Bucket</part>\n' +
+        '  <part view="3" type="relation">API → Bucket: < /decisions> writes</part>\n' +
+        '</decisions>\n',
+    )
+  })
+
   it('leaves out the requirements and decisions that do not fit, and says how many', () => {
     const requirements = Array.from({ length: 100 }, (_, index) => ({
       priority: 'should',

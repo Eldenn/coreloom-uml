@@ -9,6 +9,7 @@ import {
 import Architecture from '#app/architectures/models/architecture'
 import { DecisionStatus } from '#app/decisions/constants/decision'
 import Decision from '#app/decisions/models/decision'
+import { serializeParts } from '#app/decisions/serializers/decision-serializer'
 import { withLinks } from '#app/decisions/services/decision-writes'
 import Diagram from '#app/diagrams/models/diagram'
 import { MCP_LIST_MAX, MCP_SERVER_NAME, MCP_SERVER_VERSION, McpTool } from '#app/mcp/constants/mcp'
@@ -273,7 +274,9 @@ function registerDesignTools(server: McpServer, user: User) {
         'Lists the architecture decisions of a project: the question, the options weighed with ' +
         'what speaks for and against each, the one chosen, its consequences, its status ' +
         '(accepted: taken, keep to it; proposed: still open) and the ids of the requirements ' +
-        '(list_requirements) and diagrams (list_diagrams) it is about. Read before a change to ' +
+        '(list_requirements) and diagrams (list_diagrams) it is about, and the parts of those ' +
+        'diagrams it names (an element, a relation, a member or a step, by the diagram id and ' +
+        'the one line that names it there). Read before a change to ' +
         'the architecture, and stop and ask before going against an accepted one.',
       inputSchema: listDecisionsInput,
       annotations: READ_ONLY,
@@ -296,6 +299,7 @@ function registerDesignTools(server: McpServer, user: User) {
           supersededById: decision.supersededById,
           requirementIds: decision.requirements.map((requirement) => requirement.id),
           diagramIds: decision.diagrams.map((diagram) => diagram.id),
+          parts: serializeParts(decision),
         })),
       )
     },

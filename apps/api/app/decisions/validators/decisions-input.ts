@@ -1,4 +1,5 @@
 import vine from '@vinejs/vine'
+import { POINTED_LABEL_MAX_LENGTH, POINTED_TYPES } from '#app/assistant/constants/assistant'
 import {
   CODE_REVIEW_LOCALES,
   CODE_REVIEW_RESOLUTIONS,
@@ -25,6 +26,17 @@ const chosenInput = () =>
   vine.string().trim().minLength(1).maxLength(DECISION_LIMITS.optionNameLength).nullable()
 const idInput = () => vine.number().withoutDecimals().min(1)
 const idsInput = () => vine.array(idInput()).maxLength(DECISION_LIMITS.links).distinct()
+/** Parts of views, named as the assistant's `pointed` parts are: a view, a type and one line. */
+const partsInput = () =>
+  vine
+    .array(
+      vine.object({
+        diagramId: idInput(),
+        type: vine.enum(POINTED_TYPES),
+        label: vine.string().trim().minLength(1).maxLength(POINTED_LABEL_MAX_LENGTH),
+      }),
+    )
+    .maxLength(DECISION_LIMITS.parts)
 
 /** `POST /projects/:id/decisions` — `proposed` unless a status is given. */
 export const createDecisionInput = vine.create(
@@ -38,12 +50,13 @@ export const createDecisionInput = vine.create(
     supersededById: idInput().nullable().optional(),
     requirementIds: idsInput().optional(),
     diagramIds: idsInput().optional(),
+    parts: partsInput().optional(),
   }),
 )
 
 /**
- * `PATCH /decisions/:id` — omitted fields are left as-is; `requirementIds` and `diagramIds`
- * replace the whole set when given.
+ * `PATCH /decisions/:id` — omitted fields are left as-is; `requirementIds`, `diagramIds` and
+ * `parts` replace the whole set when given.
  */
 export const updateDecisionInput = vine.create(
   vine.object({
@@ -56,6 +69,7 @@ export const updateDecisionInput = vine.create(
     supersededById: idInput().nullable().optional(),
     requirementIds: idsInput().optional(),
     diagramIds: idsInput().optional(),
+    parts: partsInput().optional(),
   }),
 )
 

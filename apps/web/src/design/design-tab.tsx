@@ -27,6 +27,7 @@ import {
 import { Popconfirm } from '@/components/ui/popconfirm'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
+import { DecisionParts } from '@/design/decision-parts'
 import { DecisionForm, RequirementForm } from '@/design/design-forms'
 import { DesignReview } from '@/design/design-review'
 import { getErrorMessage } from '@/lib/client'
@@ -39,7 +40,7 @@ import {
   useRequirements,
 } from '@/lib/design-records'
 import { useT } from '@/lib/locale'
-import { useProjectDiagrams } from '@/lib/project-diagrams'
+import { type ProjectDiagram, useProjectDiagrams } from '@/lib/project-diagrams'
 
 /** The dialog's subject: a new one, or the one being changed; null while closed. */
 type Draft<T> = { item?: T } | null
@@ -123,6 +124,7 @@ export function DesignTab({ projectId }: { projectId: number }) {
             key={item.id}
             projectId={projectId}
             decision={item}
+            diagrams={diagrams}
             onEdit={() => {
               setDecision({ item })
             }}
@@ -281,7 +283,8 @@ function DecisionItem({
   decision,
   onEdit,
   onDeleted,
-}: ItemProps & { decision: Decision }) {
+  diagrams,
+}: ItemProps & { decision: Decision; diagrams: readonly ProjectDiagram[] }) {
   const t = useT()
   const remove = useDeleteDecision(projectId)
   const links = [
@@ -310,6 +313,7 @@ function DecisionItem({
         {links.length > 0 && (
           <p className="m-0 text-[13px] text-muted-foreground">{links.join(' · ')}</p>
         )}
+        <DecisionParts parts={decision.parts} diagrams={diagrams} />
       </ItemContent>
       <RowActions
         name={decision.title}
