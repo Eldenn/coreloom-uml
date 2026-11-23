@@ -1,13 +1,3 @@
-'use client'
-
-// Coreloom UI — NotificationBadge. A count or a dot on the corner of an icon or an avatar: unread
-// messages on a bell, items in a cart, someone online. It caps at "99+", hides at 0 (unless you
-// ask), and adds the count in words for screen readers.
-//
-//   <Button variant="ghost" size="icon">
-//     <span className="sr-only">Notifications</span>
-//     <NotificationBadge count={unread}><BellIcon /></NotificationBadge>
-//   </Button>
 import * as React from 'react'
 
 import { useCoreloomI18n } from '@/lib/i18n'

@@ -1,5 +1,3 @@
-'use client'
-
 import { cva, type VariantProps } from 'class-variance-authority'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -213,7 +211,6 @@ function FieldError({
 
   return (
     <div
-      role="alert"
       data-slot="field-error"
       className={cn('text-[11px] font-normal text-destructive', className)}
       {...props}

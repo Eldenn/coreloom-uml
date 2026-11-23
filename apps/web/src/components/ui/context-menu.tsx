@@ -1,7 +1,3 @@
-'use client'
-
-// Coreloom UI — ContextMenu (shadcn/ui new-york-v4, restyled like DropdownMenu). Right-click / long-press menu.
-
 import { CheckIcon, ChevronRightIcon, CircleIcon } from 'lucide-react'
 import { ContextMenu as ContextMenuPrimitive } from 'radix-ui'
 import * as React from 'react'

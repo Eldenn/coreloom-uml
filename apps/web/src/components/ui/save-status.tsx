@@ -89,7 +89,7 @@ function SaveStatus({ state, savedAt, onRetry, className }: SaveStatusProps) {
       // Retry goes away once the save starts: focus lands here instead of on the page.
       tabIndex={-1}
       className={cn(
-        'inline-flex min-w-0 items-center gap-1.5 text-[12.5px] text-muted-foreground outline-none [&_svg]:size-3.5 [&_svg]:shrink-0',
+        'inline-flex min-w-0 items-center gap-1.5 rounded-sm text-[12.5px] text-muted-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring [&_svg]:size-3.5 [&_svg]:shrink-0',
         state === 'error' && 'text-destructive',
         className,
       )}

@@ -196,6 +196,18 @@ const CONTENT = [
   '[&_.ProseMirror_p.is-editor-empty:first-child]:before:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child]:before:float-left [&_.ProseMirror_p.is-editor-empty:first-child]:before:h-0 [&_.ProseMirror_p.is-editor-empty:first-child]:before:text-muted-foreground [&_.ProseMirror_p.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]',
 ].join(' ')
 
+/**
+ * Whether `value` is the app handing back text this editor reported through its change callback,
+ * possibly a keystroke or two late: React can commit after the next key. Applying such an echo
+ * would undo what was typed since. Forgets the reports up to that one; any other value is the
+ * app's own, and forgets them all.
+ */
+function isEcho(reported: string[], value: string) {
+  const at = reported.lastIndexOf(value)
+  reported.splice(0, at === -1 ? reported.length : at + 1)
+  return at !== -1
+}
+
 function RichTextEditor({
   value,
   defaultValue = '',
@@ -248,6 +260,8 @@ function RichTextEditor({
   // Filled by the "/" menu while it's mounted; until then the slash extension lets "/" through.
   const slashHandlersRef = React.useRef<SlashHandlers | null>(null)
 
+  // The HTML reported through onValueChange that `value` hasn't caught up with yet (see isEcho).
+  const reported = React.useRef<string[]>([])
   const editor = useEditor({
     // Render on the client after mount (no SSR mismatch in Next.js).
     immediatelyRender: false,
@@ -278,7 +292,11 @@ function RichTextEditor({
         style: `min-height:${minHeight}px`,
       },
     },
-    onUpdate: ({ editor }) => onValueChange?.(editor.isEmpty ? '' : editor.getHTML()),
+    onUpdate: ({ editor }) => {
+      const html = editor.isEmpty ? '' : editor.getHTML()
+      reported.current = [...reported.current.slice(-49), html]
+      onValueChange?.(html)
+    },
     onBlur: () => onBlur?.(),
   })
 
@@ -301,7 +319,7 @@ function RichTextEditor({
 
   // Follow the value when it changes from outside (a form reset, loaded content).
   React.useEffect(() => {
-    if (!editor || value === undefined) return
+    if (!editor || value === undefined || isEcho(reported.current, value)) return
     const current = editor.isEmpty ? '' : editor.getHTML()
     if (value !== current) editor.commands.setContent(value || '', { emitUpdate: false })
   }, [editor, value])

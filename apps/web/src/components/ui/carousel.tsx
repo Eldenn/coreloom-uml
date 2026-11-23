@@ -1,3 +1,7 @@
+'use client'
+
+// Coreloom UI — Carousel (shadcn/ui new-york-v4 on Embla, restyled). Swipeable slides with previous / next.
+
 import useEmblaCarousel, { type UseEmblaCarouselType } from 'embla-carousel-react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import * as React from 'react'
@@ -39,6 +43,10 @@ function useCarousel() {
   return context
 }
 
+// Controls inside a slide that use the arrow keys themselves: the carousel leaves the keys to them.
+const ARROW_KEY_OWNERS =
+  'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="listbox"], [role="radio"], [role="slider"], [role="spinbutton"], [role="tab"], [role="menuitem"]'
+
 function Carousel({
   orientation = 'horizontal',
   opts,
@@ -48,6 +56,7 @@ function Carousel({
   children,
   ...props
 }: React.ComponentProps<'div'> & CarouselProps) {
+  const t = useCoreloomI18n().messages.carousel
   const [carouselRef, api] = useEmblaCarousel(
     {
       ...opts,
@@ -74,15 +83,17 @@ function Carousel({
 
   const handleKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (event.key === 'ArrowLeft') {
+      if (event.target instanceof Element && event.target.closest(ARROW_KEY_OWNERS)) return
+      const vertical = orientation === 'vertical'
+      if (event.key === (vertical ? 'ArrowUp' : 'ArrowLeft')) {
         event.preventDefault()
         scrollPrev()
-      } else if (event.key === 'ArrowRight') {
+      } else if (event.key === (vertical ? 'ArrowDown' : 'ArrowRight')) {
         event.preventDefault()
         scrollNext()
       }
     },
-    [scrollPrev, scrollNext],
+    [orientation, scrollPrev, scrollNext],
   )
 
   React.useEffect(() => {
@@ -119,7 +130,8 @@ function Carousel({
         onKeyDownCapture={handleKeyDown}
         className={cn('relative', className)}
         role="region"
-        aria-roledescription="carousel"
+        aria-roledescription={t.roleDescription}
+        aria-label={t.label}
         data-slot="carousel"
         {...props}
       >
@@ -143,12 +155,13 @@ function CarouselContent({ className, ...props }: React.ComponentProps<'div'>) {
 }
 
 function CarouselItem({ className, ...props }: React.ComponentProps<'div'>) {
+  const t = useCoreloomI18n().messages.carousel
   const { orientation } = useCarousel()
 
   return (
     <div
       role="group"
-      aria-roledescription="slide"
+      aria-roledescription={t.slide}
       data-slot="carousel-item"
       className={cn(
         'min-w-0 shrink-0 grow-0 basis-full',

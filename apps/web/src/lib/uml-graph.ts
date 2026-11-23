@@ -146,7 +146,7 @@ function stateGraph(d: StateDiagram): DiagramGraph {
   const used = new Map<string, DiagramNode>()
   // A start or end sits in the region of the state at its other end.
   const regionIn = (scope: string | undefined, other: string) =>
-    (scope && nodes.find((n) => n.id === other && n.parent === scope)?.region) || 0
+    (scope ? nodes.find((n) => n.id === other && n.parent === scope)?.region : undefined) ?? 0
   const end = (id: string, kind: 'start' | 'end', scope: string | undefined, other: string) => {
     if (id !== '[*]') return id
     const region = regionIn(scope, other)
@@ -182,10 +182,9 @@ function stateGraph(d: StateDiagram): DiagramGraph {
   const all = [...used.values(), ...nodes]
   const notes = noteNodes(d.notes, (id) => all.find((n) => n.id === id)?.parent)
   // A note stays in the region of the state it's about.
-  ;(d.notes ?? []).forEach((note, i) => {
-    const region = nodes.find((n) => n.id === note.for)?.region
-    const node = notes.nodes[i]
-    if (region && node) node.region = region
+  notes.nodes.forEach((node, i) => {
+    const region = nodes.find((n) => n.id === d.notes?.[i]?.for)?.region
+    if (region) node.region = region
   })
   return {
     direction: d.direction ?? 'TB',

@@ -1,7 +1,3 @@
-'use client'
-
-// Coreloom UI — Resizable (shadcn/ui new-york-v4 on react-resizable-panels 4, restyled). Panels the user can resize.
-
 import { GripVerticalIcon } from 'lucide-react'
 import * as ResizablePrimitive from 'react-resizable-panels'
 

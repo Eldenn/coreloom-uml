@@ -248,7 +248,10 @@ function SuggestionList({
       data-slot="suggestion-list"
       // Focus lands here when the last suggestion is handled.
       tabIndex={-1}
-      className={cn('flex flex-col outline-none', className)}
+      className={cn(
+        'flex flex-col rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring',
+        className,
+      )}
     >
       {suggestions.length > 0 ? (
         <ul

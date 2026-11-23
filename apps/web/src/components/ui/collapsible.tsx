@@ -1,3 +1,7 @@
+'use client'
+
+// Coreloom UI — Collapsible (shadcn/ui, Radix). Unstyled show / hide; style the trigger and content yourself.
+
 import { Collapsible as CollapsiblePrimitive } from 'radix-ui'
 
 function Collapsible({ ...props }: React.ComponentProps<typeof CollapsiblePrimitive.Root>) {

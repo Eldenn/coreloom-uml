@@ -1,3 +1,7 @@
+'use client'
+
+// Coreloom UI — AlertDialog (shadcn/ui new-york-v4, restyled). A confirmation that must be answered.
+
 import { AlertDialog as AlertDialogPrimitive } from 'radix-ui'
 import * as React from 'react'
 

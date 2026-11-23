@@ -378,6 +378,19 @@ function between(spans: readonly [number, number][]): number[] {
   return at
 }
 
+/** The boxes inside each frame, by frame id then by region. What sits on a frame's edge is left out. */
+function boxesByRegion(nodes: readonly LayoutNode[], boxes: ReadonlyMap<string, LayoutBox>) {
+  const frames = new Map<string, Map<number, LayoutBox[]>>()
+  for (const n of nodes) {
+    const box = boxes.get(n.id)
+    if (!n.parent || n.border || !box) continue
+    const regions = frames.get(n.parent) ?? new Map<number, LayoutBox[]>()
+    regions.set(n.region ?? 0, [...(regions.get(n.region ?? 0) ?? []), box])
+    frames.set(n.parent, regions)
+  }
+  return frames
+}
+
 /**
  * The dashed lines that separate the concurrent regions of each frame, by frame id, read from
  * where its nodes really are (`boxes`, from `layoutDiagram`): halfway between two neighbouring
@@ -390,14 +403,7 @@ function regionLines(
   boxes: ReadonlyMap<string, LayoutBox>,
   direction: UmlDirection = 'TB',
 ): Map<string, RegionLines> {
-  const frames = new Map<string, Map<number, LayoutBox[]>>()
-  for (const n of nodes) {
-    const box = boxes.get(n.id)
-    if (!n.parent || n.border || !box) continue
-    const regions = frames.get(n.parent) ?? new Map<number, LayoutBox[]>()
-    regions.set(n.region ?? 0, [...(regions.get(n.region ?? 0) ?? []), box])
-    frames.set(n.parent, regions)
-  }
+  const frames = boxesByRegion(nodes, boxes)
   const horizontal = direction === 'LR' || direction === 'RL'
   const out = new Map<string, RegionLines>()
   for (const [frame, regions] of frames) {
@@ -505,6 +511,6 @@ export {
   layoutDiagram,
   type LayoutEdge,
   type LayoutNode,
-  regionLines,
   type RegionLines,
+  regionLines,
 }

@@ -72,10 +72,13 @@ function ChartCard({
   className?: string
 }) {
   return (
-    <Card className={cn('gap-4', className)}>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        {!!description && <CardDescription>{description}</CardDescription>}
+    <Card className={cn('min-w-0 gap-4', className)}>
+      {/* A wrapping row: on a narrow card the actions go under the title instead of squeezing it. */}
+      <CardHeader className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+        <div className="flex min-w-0 flex-1 basis-48 flex-col gap-1.5">
+          <CardTitle>{title}</CardTitle>
+          {!!description && <CardDescription>{description}</CardDescription>}
+        </div>
         {!!actions && <CardAction className="flex items-center gap-2">{actions}</CardAction>}
       </CardHeader>
       <CardContent>{children}</CardContent>
@@ -307,7 +310,7 @@ function ActivityFeed({
 }) {
   const t = useCoreloomI18n().messages.dashboard
   return (
-    <Card className={cn('gap-3', className)}>
+    <Card className={cn('min-w-0 gap-3', className)}>
       <CardHeader>
         <CardTitle>{title ?? t.activity}</CardTitle>
       </CardHeader>

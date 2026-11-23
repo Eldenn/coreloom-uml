@@ -179,7 +179,8 @@ function Comment({
   mentionables?: MentionOption[]
   now?: Date | number
   onReact?: (commentId: string, emoji: string) => void
-  onReply?: () => void
+  /** Gets the Reply button, where the focus returns once the reply box closes. */
+  onReply?: (trigger: HTMLButtonElement) => void
 }) {
   const t = useCoreloomI18n().messages.display.comments
   return (
@@ -239,7 +240,10 @@ function Comment({
               size="sm"
               className="h-7 px-2 text-[12.5px] text-muted-foreground"
               aria-label={t.replyTo(comment.author.name)}
-              onClick={onReply}
+              data-comment-reply=""
+              onClick={(e) => {
+                onReply(e.currentTarget)
+              }}
             >
               {t.reply}
             </Button>
@@ -280,6 +284,19 @@ function CommentThread({
   const t = useCoreloomI18n().messages.display.comments
   const [replyingTo, setReplyingTo] = React.useState<string | null>(null)
   const [unfolded, setUnfolded] = React.useState<ReadonlySet<string>>(() => new Set())
+  const replyTrigger = React.useRef<HTMLButtonElement>(null)
+  // The reply box goes away with the focus inside it: hand the focus back to the Reply button that
+  // opened it. If that one is gone too (its reply folded away), to the comment's own Reply button.
+  const closeReply = () => {
+    setReplyingTo(null)
+    const trigger = replyTrigger.current
+    const fallback = trigger
+      ?.closest('[data-comment-root]')
+      ?.querySelector<HTMLElement>('[data-comment-reply]')
+    requestAnimationFrame(() => {
+      ;(trigger?.isConnected ? trigger : fallback)?.focus()
+    })
+  }
 
   return (
     <section
@@ -299,7 +316,7 @@ function CommentThread({
                 : 0
             const shown = folded ? replies.slice(-1) : replies
             return (
-              <li key={comment.id} className="flex flex-col gap-3">
+              <li key={comment.id} data-comment-root="" className="flex flex-col gap-3">
                 <Comment
                   comment={comment}
                   mentionables={mentionables}
@@ -307,7 +324,8 @@ function CommentThread({
                   onReact={onReact}
                   onReply={
                     onSubmit
-                      ? () => {
+                      ? (trigger) => {
+                          replyTrigger.current = trigger
                           setReplyingTo(comment.id)
                         }
                       : undefined
@@ -344,7 +362,8 @@ function CommentThread({
                               onReact={onReact}
                               onReply={
                                 onSubmit
-                                  ? () => {
+                                  ? (trigger) => {
+                                      replyTrigger.current = trigger
                                       setReplyingTo(comment.id)
                                     }
                                   : undefined
@@ -363,11 +382,9 @@ function CommentThread({
                         aria-label={t.replyTo(comment.author.name)}
                         onSubmit={(text) => {
                           onSubmit(text, comment.id)
-                          setReplyingTo(null)
+                          closeReply()
                         }}
-                        onCancel={() => {
-                          setReplyingTo(null)
-                        }}
+                        onCancel={closeReply}
                       />
                     ) : null}
                   </div>

@@ -56,7 +56,12 @@ function VirtualList<T>({
     estimateSize: () => estimateSize,
     overscan,
     gap,
-    getItemKey: (index) => (index < items.length ? getKey(items[index], index) : '__footer'),
+    getItemKey: (index) => {
+      if (index >= items.length) return '__footer'
+      // Next.js's React types let a key be a symbol, which TanStack Virtual's keys can't be.
+      const key = getKey(items[index], index)
+      return typeof key === 'symbol' ? index : key
+    },
   })
   const virtualItems = virtualizer.getVirtualItems()
   const lastIndex = virtualItems[virtualItems.length - 1]?.index ?? -1

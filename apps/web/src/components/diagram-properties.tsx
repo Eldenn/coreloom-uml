@@ -1,9 +1,3 @@
-'use client'
-
-// Coreloom UI — Diagram properties. The diagram editor's panel for what's selected: an element's
-// name, stereotype, members, attributes, description or technology; a relation's kind, label and
-// ends; a sequence step's fields. A text field applies when it loses focus (or on Enter); a
-// choice applies at once.
 import { ArrowLeftRightIcon } from 'lucide-react'
 import * as React from 'react'
 
@@ -142,7 +136,7 @@ function ElementForm({
         multiline={note}
         disabled={locked}
         inputRef={nameRef}
-        onChange={(v) => {
+        onValueChange={(v) => {
           set('name', v)
         }}
         onCommit={commit}
@@ -153,7 +147,7 @@ function ElementForm({
           value={text('stereotype')}
           hint={stereotypeHint(kind, p)}
           disabled={locked}
-          onChange={(v) => {
+          onValueChange={(v) => {
             set('stereotype', v)
           }}
           onCommit={commit}
@@ -164,7 +158,7 @@ function ElementForm({
           members={fields.members}
           disabled={locked}
           p={{ ...p, moveUp: t.steps.moveUp, moveDown: t.steps.moveDown }}
-          onChange={(members) => {
+          onValueChange={(members) => {
             onChange(id, { ...fields, ...drafts, members })
           }}
         />
@@ -180,7 +174,7 @@ function ElementForm({
               mono={k === 'attributes'}
               {...(k === 'attributes' ? { hint: p.attributesHint } : {})}
               disabled={locked}
-              onChange={(v) => {
+              onValueChange={(v) => {
                 set(k, v)
               }}
               onCommit={commit}
@@ -196,7 +190,7 @@ function ElementForm({
             ...(regions.next === null ? [] : [{ value: String(regions.next), label: p.newRegion }]),
           ]}
           disabled={locked}
-          onChange={(region) => {
+          onValueChange={(region) => {
             onChange(id, { ...fields, ...drafts, region: Number(region) })
           }}
         />
@@ -206,7 +200,7 @@ function ElementForm({
           label={p.technology}
           value={text('technology')}
           disabled={locked}
-          onChange={(v) => {
+          onValueChange={(v) => {
             set('technology', v)
           }}
           onCommit={commit}
@@ -259,7 +253,7 @@ function RelationForm({
       label={label}
       value={text(k)}
       disabled={locked}
-      onChange={(v) => {
+      onValueChange={(v) => {
         set(k, v)
       }}
       onCommit={commit}
@@ -276,7 +270,7 @@ function RelationForm({
           value={fields.type}
           options={types.map((x) => ({ value: x, label: t.relations[x] }))}
           disabled={locked}
-          onChange={(type) => {
+          onValueChange={(type) => {
             onChange(index, { ...fields, ...drafts, type })
           }}
         />
@@ -296,7 +290,7 @@ function RelationForm({
             value={current}
             options={ER_ENDS.map((x) => ({ value: x, label: cardinality[x] }))}
             disabled={locked}
-            onChange={(v) => {
+            onValueChange={(v) => {
               onChange(index, { ...fields, ...drafts, [k]: v })
             }}
           />

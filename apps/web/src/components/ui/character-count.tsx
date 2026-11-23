@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — CharacterCount. "120/280" under a text field with a length limit. It turns amber
+// near the limit and red past it, and tells screen readers how many characters are left only at a
+// few thresholds, so typing isn't drowned in announcements. Link it to the field with
+// `aria-describedby` (its `id`). It shows the count; whether going over is an error is the form's call.
 import * as React from 'react'
 
 import { useCoreloomI18n } from '@/lib/i18n'

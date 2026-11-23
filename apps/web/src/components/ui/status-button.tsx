@@ -1,10 +1,3 @@
-'use client'
-
-// Coreloom UI — StatusButton. A button that shows what its action is doing: a spinner while it
-// runs, a check that draws itself when it worked, a short shake when it failed, then back to its
-// label. The new state is announced to screen readers. The consumer owns the state.
-//
-//   <StatusButton status={status} onClick={save}>Save</StatusButton>
 import { XIcon } from 'lucide-react'
 import * as React from 'react'
 

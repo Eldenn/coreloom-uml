@@ -98,7 +98,12 @@ function DonutChart({
   const { messages, locale, formatNumber } = useCoreloomI18n()
   const t = messages.charts
   const fmt = formatValue ?? formatNumber
-  const percent = new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 1 })
+  // One decimal on every row, so the shares line up ("32.0%" under "53.6%").
+  const percent = new Intl.NumberFormat(locale, {
+    style: 'percent',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })
   const [active, setActive] = React.useState<string | null>(null)
   const { parts, total } = donutParts(data, maxSlices, t.other)
 
@@ -154,7 +159,7 @@ function DonutChart({
               strokeWidth={stroke}
               strokeDasharray={`${dash} ${circumference}`}
               strokeDashoffset={-start}
-              className="transition-opacity duration-150 motion-reduce:transition-none"
+              className="transition-opacity duration-fast motion-reduce:transition-none"
               opacity={active && active !== part.key ? 0.3 : 1}
               onPointerEnter={() => {
                 setActive(part.key)
