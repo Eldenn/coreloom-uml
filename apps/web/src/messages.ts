@@ -1010,9 +1010,7 @@ export const en = {
     },
   },
   assistant: {
-    open: 'Assistant',
     title: 'Assistant',
-    close: 'Close the assistant',
     noProvider:
       'The assistant answers with your own model. Choose a provider in the settings first.',
     openSettings: 'Open the settings',
@@ -1033,9 +1031,7 @@ export const en = {
       'Ask for a change or a new view of an architecture, for agent conventions from web pages, or anything else.',
     placeholder: 'Ask about this architecture',
     plainPlaceholder: 'Ask anything',
-    webPlaceholder: 'For example: the testing rules of https://example.com/guide',
     autoPlaceholder: 'Ask a question, or ask for a change to your work',
-    aboutAuto: 'Auto: the assistant decides',
     deciding: 'Working out what this message needs…',
     workingOnDiagrams: (title: string | null) =>
       title === null ? 'Working on the diagrams…' : `Working on the diagrams of ${title}…`,
@@ -1146,16 +1142,21 @@ export const en = {
       conflict: 'This change conflicts with what exists now.',
       unavailable: 'This could not be started. Ask for it again later.',
     },
-    about: 'About',
-    aboutNothing: 'Nothing in particular',
-    aboutWeb: 'From the web',
-    aboutArchitectures: 'An architecture',
-    conventions: 'Agent conventions the rules are for',
-    chooseConventions: 'Choose agent conventions',
-    noConventions:
-      'Create agent conventions first: the rules found on the web are proposed for them.',
-    addressFound: 'This message names a web page.',
-    useWeb: 'Read it with “From the web”',
+    context: 'About',
+    contextEmpty:
+      'Right-click a project, an architecture or agent conventions to add it to this message.',
+    contextKinds: {
+      project: 'Project',
+      architecture: 'Architecture',
+      'agent-config': 'Agent conventions',
+    },
+    addToContext: 'Add to the assistant’s context',
+    removeFromContext: 'Remove from the assistant’s context',
+    removeItem: (name: string) => `Remove ${name} from the context`,
+    contextFull: 'The context is full: remove an item first.',
+    subtitle: 'Reads and changes your work, with your approval',
+    expand: 'Enlarge the assistant',
+    shrink: 'Shrink the assistant',
     proposalsLoading: 'Loading the proposals…',
     proposalsDone: 'Done with these proposals',
     proposalsSettled: (n: number) => {
@@ -2425,9 +2426,7 @@ export const fr: Messages = {
     },
   },
   assistant: {
-    open: 'Assistant',
     title: 'Assistant',
-    close: 'Fermer l’assistant',
     noProvider:
       'L’assistant répond avec votre propre modèle. Choisissez d’abord un fournisseur dans les paramètres.',
     openSettings: 'Ouvrir les paramètres',
@@ -2448,9 +2447,7 @@ export const fr: Messages = {
       'Demandez une modification ou une nouvelle vue d’une architecture, des conventions d’agents à partir de pages web, ou autre chose.',
     placeholder: 'Posez une question sur cette architecture',
     plainPlaceholder: 'Posez votre question',
-    webPlaceholder: 'Par exemple : les règles de test de https://example.com/guide',
     autoPlaceholder: 'Posez une question, ou demandez un changement dans votre travail',
-    aboutAuto: 'Auto : l’assistant décide',
     deciding: 'Recherche de ce que demande ce message…',
     workingOnDiagrams: (title: string | null) =>
       title === null ? 'Travail sur les diagrammes…' : `Travail sur les diagrammes de ${title}…`,
@@ -2566,16 +2563,21 @@ export const fr: Messages = {
       conflict: 'Ce changement entre en conflit avec ce qui existe maintenant.',
       unavailable: 'Cela n’a pas pu démarrer. Redemandez-le plus tard.',
     },
-    about: 'Sujet',
-    aboutNothing: 'Rien de particulier',
-    aboutWeb: 'Depuis le web',
-    aboutArchitectures: 'Une architecture',
-    conventions: 'Conventions d’agents visées par les règles',
-    chooseConventions: 'Choisissez des conventions d’agents',
-    noConventions:
-      'Créez d’abord des conventions d’agents : les règles trouvées sur le web leur sont proposées.',
-    addressFound: 'Ce message cite une page web.',
-    useWeb: 'La lire avec « Depuis le web »',
+    context: 'À propos de',
+    contextEmpty:
+      'Clic droit sur un projet, une architecture ou des conventions d’agents pour l’ajouter à ce message.',
+    contextKinds: {
+      project: 'Projet',
+      architecture: 'Architecture',
+      'agent-config': 'Conventions d’agents',
+    },
+    addToContext: 'Ajouter au contexte de l’assistant',
+    removeFromContext: 'Retirer du contexte de l’assistant',
+    removeItem: (name: string) => `Retirer ${name} du contexte`,
+    contextFull: 'Le contexte est plein : retirez d’abord un élément.',
+    subtitle: 'Lit et modifie votre travail, avec votre accord',
+    expand: 'Agrandir l’assistant',
+    shrink: 'Réduire l’assistant',
     proposalsLoading: 'Chargement des propositions…',
     proposalsDone: 'J’ai fini avec ces propositions',
     proposalsSettled: (n: number) => {

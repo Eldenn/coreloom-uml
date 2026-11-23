@@ -1,13 +1,10 @@
-// What an assistant message is about: one of the account's architectures (its views go with the
-// message, or a diagram is drawn from its project's code map), agent conventions made from web
-// pages ("From the web"), nothing, or "Auto": the assistant then decides by itself what the
-// message needs. Held by the panel, so it stays from one conversation to the next.
-import * as React from 'react'
-
+// What an assistant message is about, read from the context the owner made (`useAssistant`): one
+// architecture alone (its views go with the message, or a diagram is drawn from its project's
+// code map), or "Auto": the assistant reads the context's items and decides by itself what the
+// message needs. Without "Auto" and without an architecture, a plain message.
 import { useCodeMode } from '@/assistant/use-code-mode'
-import { useAgentConfigs } from '@/lib/agent-configs'
 import { useArchitectures } from '@/lib/architectures'
-import { defaultConventions, pageOf, type SubjectMode, subjectMode } from '@/lib/assistant-subject'
+import { type ContextItem, pageOf, subjectOf } from '@/lib/assistant-subject'
 import { useFeature } from '@/lib/feature-flags'
 import type { StoredProvider } from '@/lib/llm-provider'
 
@@ -24,24 +21,16 @@ function drivesTools(provider: StoredProvider | null) {
   return provider !== null && provider.kind !== 'openai-codex'
 }
 
-// ponytail: the first 100 architectures and conventions, as their own pages list them; a search in
-// the picker if an account ever holds more.
+/** Whether a message can be left to "Auto": behind its flag, but for the ChatGPT subscription. */
+export function useAutoOffered(provider: StoredProvider | null) {
+  return useFeature('assistant-actions') && drivesTools(provider)
+}
+
+// ponytail: the first 100 architectures, as their own page lists them; the project of one further
+// down is not known here, so "Draw from the code" is not offered for it.
 function useArchitectureOptions(page: PageArchitecture | undefined): PageArchitecture[] {
   const listed = useArchitectures(undefined, '').data?.data ?? []
   return page && !listed.some((a) => a.id === page.id) ? [page, ...listed] : listed
-}
-
-/** The agent conventions "From the web" adds rules to: the owner's pick, else the default. */
-function useConventions(pageConfigId: number | null, projectId: number | null) {
-  const configs = useAgentConfigs({}).data?.data ?? []
-  const [picked, setPicked] = React.useState<number | null>(null)
-  return {
-    configs,
-    configId:
-      configs.find((config) => config.id === picked)?.id ??
-      defaultConventions({ pageConfigId, projectId, configs }),
-    choose: setPicked,
-  }
 }
 
 export function useSubject({
@@ -50,58 +39,37 @@ export function useSubject({
   codeMapId,
   pageConfigId,
   pageProjectId,
+  items,
 }: {
-  /** The architecture whose page the panel is on: what a message is about at first. */
+  /** The architecture whose page the owner is on: what a message is about with no context. */
   architecture?: PageArchitecture
   provider: StoredProvider | null
   codeMapId?: number
-  /** On agent conventions' page: the ones "From the web" targets first. */
   pageConfigId?: number | null
-  /** On a project's page: "From the web" targets its conventions first. */
   pageProjectId?: number | null
+  /** The context the owner made. */
+  items: readonly ContextItem[]
 }) {
-  const webOffered = useFeature('web-research') && drivesTools(provider)
+  const autoOffered = useAutoOffered(provider)
   const architectures = useArchitectureOptions(architecture)
-  // The server routes a message by itself behind this flag, but for the ChatGPT subscription.
-  const autoOffered = useFeature('assistant-actions') && drivesTools(provider)
-  /** `null` until the owner chooses: the flags are not read yet when the panel opens. */
-  const [wanted, setWanted] = React.useState<SubjectMode | null>(null)
-  const [architectureId, setArchitectureId] = React.useState(architecture?.id ?? null)
-  const mode = subjectMode({
-    wanted,
-    autoOffered,
-    webOffered,
-    onArchitecture: architecture !== undefined,
-  })
-  // Kept while the message is about something else: its project still names the conventions.
+  const route = subjectOf({ items, pageArchitectureId: architecture?.id ?? null, autoOffered })
+  const architectureId = route.mode === 'architecture' ? route.architectureId : null
   const projectId = architectures.find((a) => a.id === architectureId)?.projectId ?? null
-  const code = useCodeMode(mode === 'architecture' ? projectId : null, codeMapId)
-  const conventions = useConventions(pageConfigId ?? null, pageProjectId ?? projectId)
+  const code = useCodeMode(projectId, codeMapId)
 
   return {
-    mode,
+    mode: route.mode,
     /** The architecture a message is about while `mode` is `architecture`. */
     architectureId,
-    /** `null` until the owner picks some, when neither the page nor a project names any. */
-    configId: conventions.configId,
     code,
-    webOffered,
-    autoOffered,
     /** Where the owner is, sent with a message in "Auto". */
     page: pageOf({
       architectureId: architecture?.id,
       configId: pageConfigId,
       projectId: pageProjectId,
     }),
+    /** What "Auto" reads: the items of the context, as the API takes them. */
+    context: items.map(({ kind, id }) => ({ kind, id })),
     architectures,
-    configs: conventions.configs,
-    choose: (next: 'auto' | 'web' | 'none') => {
-      setWanted(next)
-    },
-    chooseArchitecture: (id: number) => {
-      setArchitectureId(id)
-      setWanted('architecture')
-    },
-    chooseConventions: conventions.choose,
   }
 }

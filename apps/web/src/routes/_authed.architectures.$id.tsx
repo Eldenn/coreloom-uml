@@ -8,13 +8,12 @@ import {
 } from '@coreloom-uml/uml'
 import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { DownloadIcon, Share2Icon, SparklesIcon } from 'lucide-react'
+import { DownloadIcon, Share2Icon } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
 import { ReviewFindingsButton, ReviewFindingsPanel } from '@/architectures/review-findings-panel'
 import { StateSimulationButton, StateSimulationPanel } from '@/architectures/state-simulation-panel'
-import { AssistantLayout } from '@/assistant/assistant-panel'
 import type { DiagramFormat } from '@/components/diagram-editor'
 import { DiagramWorkspace } from '@/components/diagram-workspace'
 import { ShareDialog } from '@/components/share-dialog'
@@ -37,6 +36,7 @@ import {
   useSharingActions,
   useUpdateArchitecture,
 } from '@/lib/architectures'
+import { useAssistantWorkspace } from '@/lib/assistant-context'
 import { getErrorMessage } from '@/lib/client'
 import { annotationsOf } from '@/lib/code-review-findings'
 import {
@@ -137,9 +137,6 @@ function isKind(kind: UmlDiagramKind): kind is DiagramKind {
  * the findings.
  */
 function useSidePanel(view: { id: number; kind: DiagramKind } | undefined) {
-  // `?assistant=<conversation>` opens the assistant on that conversation.
-  const { assistant: conversationId, code: codeMapId } = Route.useSearch()
-  const [assisting, setAssisting] = React.useState(conversationId !== undefined)
   const [simulated, setSimulated] = React.useState<number | null>(null)
   const [reviewed, setReviewed] = React.useState<number | null>(null)
   const [focus, setFocus] = React.useState<string | null>(null)
@@ -147,24 +144,11 @@ function useSidePanel(view: { id: number; kind: DiagramKind } | undefined) {
   const [activeStates, setActiveStates] = React.useState<readonly string[]>([])
   const simulateButton = React.useRef<HTMLButtonElement>(null)
   const findingsButton = React.useRef<HTMLButtonElement>(null)
-  const only = (panel: 'assistant' | 'simulation' | 'findings') => {
-    if (panel !== 'assistant') setAssisting(false)
+  const only = (panel: 'simulation' | 'findings') => {
     if (panel !== 'simulation') setSimulated(null)
     if (panel !== 'findings') setReviewed(null)
   }
-  const assist = (on: boolean) => {
-    setAssisting(on)
-    if (on) only('assistant')
-  }
   return {
-    assisting,
-    /** What the assistant's layout takes from the side panel. */
-    assistantPanel: {
-      open: assisting,
-      onOpenChange: assist,
-      initialConversationId: conversationId ?? null,
-      ...(codeMapId === undefined ? {} : { codeMapId }),
-    },
     simulating: view?.kind === 'state' && simulated === view.id,
     reviewing: reviewed !== null && reviewed === view?.id,
     focus,
@@ -174,7 +158,6 @@ function useSidePanel(view: { id: number; kind: DiagramKind } | undefined) {
     simulateButton,
     findingsButton,
     focusRequest,
-    assist,
     simulate: (on: boolean) => {
       setSimulated(on && view ? view.id : null)
       if (on) only('simulation')
@@ -230,124 +213,124 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
   const failed = (error: unknown) => toast.error(getErrorMessage(error, t.editor.failed))
   const open = active && { ...active, ...autosave.draftOf(active) }
   const side = useSidePanel(open)
+  // `?assistant=<conversation>` opens the assistant on that conversation, `?code=` on a code map.
+  const { assistant: conversationId, code: codeMapId } = Route.useSearch()
+  useAssistantWorkspace(
+    {
+      architecture,
+      currentDiagramId: active?.id ?? null,
+      autosave,
+      ...(codeMapId === undefined ? {} : { codeMapId }),
+    },
+    conversationId,
+  )
   const reviewed = useOpenViewFindings(architecture.projectId, active?.id)
 
   return (
     <div className="flex flex-col gap-3">
       <ConflictAlert architectureId={architecture.id} autosave={autosave} />
-      {/* The simulation and the assistant share the side of the workspace: one at a time. */}
       <div className="flex flex-col gap-3 lg:flex-row">
         <div className="min-w-0 lg:flex-1">
-          <AssistantLayout
-            {...side.assistantPanel}
-            architecture={architecture}
-            currentDiagramId={active?.id ?? null}
-            autosave={autosave}
-            height={WORKSPACE_HEIGHT}
-          >
-            <DiagramWorkspace
-              title={architecture.title}
-              onTitleChange={(title) => {
-                updateArchitecture.mutate(
-                  { title },
-                  // The breadcrumbs read the title through the route loader.
-                  { onSuccess: () => void router.invalidate(), onError: failed },
-                )
-              }}
-              diagrams={workspaceViews({ diagrams, autosave, active: active?.id, reviewed, t })}
-              onAnnotationSelect={(element) => {
-                side.review(true, element)
-              }}
-              activeId={active ? String(active.id) : ''}
-              onActiveChange={(viewId) => {
-                select(Number(viewId))
-              }}
-              onDiagramChange={(viewId, value, result, format) => {
-                const diagram = byId(viewId)
-                if (diagram) autosave.onDiagramChange(diagram, value, result, format)
-              }}
-              onAdd={(kind) => {
-                if (!isKind(kind)) return
-                add.mutate(
-                  { title: kinds[kind], kind },
-                  {
-                    onSuccess: ({ diagram }) => {
-                      select(diagram.id)
-                    },
-                    onError: failed,
-                  },
-                )
-              }}
-              onImport={({ title, value, result, format }) => {
-                // A file that can't be read yet still opens, as a draft, in the kind the editor falls
-                // back to; it is saved once its text reads.
-                const kind = result.diagram?.kind ?? IMPORT_FALLBACK_KIND
-                if (!isKind(kind)) {
-                  toast.error(t.editor.importUnsupported)
-                  return
-                }
-                // Several dropped files arrive in one event: they are added one after the other, in
-                // order, each with its own text (mutate's callbacks would only run for the last one).
-                imports.current = imports.current.then(() =>
-                  add.mutateAsync({ title, kind }).then(
-                    ({ diagram }) => {
-                      select(diagram.id)
-                      autosave.onDiagramChange(diagram, value, result, format)
-                    },
-                    (error: unknown) => {
-                      failed(error)
-                    },
-                  ),
-                )
-              }}
-              onRename={(viewId, title) => {
-                save.mutate({ diagramId: Number(viewId), title }, { onError: failed })
-              }}
-              onReorder={(ids) => {
-                queryClient.setQueryData<ArchitectureDetail>(
-                  architectureKeys.detail(architecture.id),
-                  (old) =>
-                    old && {
-                      ...old,
-                      diagrams: ids.flatMap((viewId) =>
-                        old.diagrams.filter((d) => String(d.id) === viewId),
-                      ),
-                    },
-                )
-                reorder.mutate(ids.map(Number), { onError: failed })
-              }}
-              onDelete={(viewId) => {
-                remove.mutate(Number(viewId), {
-                  onSuccess: () => {
-                    toast.success(t.editor.diagramDeleted)
-                    const next = diagrams.find((d) => String(d.id) !== viewId)
-                    if (next && String(active?.id) === viewId) select(next.id)
+          <DiagramWorkspace
+            title={architecture.title}
+            onTitleChange={(title) => {
+              updateArchitecture.mutate(
+                { title },
+                // The breadcrumbs read the title through the route loader.
+                { onSuccess: () => void router.invalidate(), onError: failed },
+              )
+            }}
+            diagrams={workspaceViews({ diagrams, autosave, active: active?.id, reviewed, t })}
+            onAnnotationSelect={(element) => {
+              side.review(true, element)
+            }}
+            activeId={active ? String(active.id) : ''}
+            onActiveChange={(viewId) => {
+              select(Number(viewId))
+            }}
+            onDiagramChange={(viewId, value, result, format) => {
+              const diagram = byId(viewId)
+              if (diagram) autosave.onDiagramChange(diagram, value, result, format)
+            }}
+            onAdd={(kind) => {
+              if (!isKind(kind)) return
+              add.mutate(
+                { title: kinds[kind], kind },
+                {
+                  onSuccess: ({ diagram }) => {
+                    select(diagram.id)
                   },
                   onError: failed,
-                })
-              }}
-              height={WORKSPACE_HEIGHT}
-              highlighted={side.reviewing && side.focus !== null ? [side.focus] : side.activeStates}
-              saveState={autosave.state}
-              savedAt={autosave.savedAt}
-              onRetrySave={autosave.retry}
-              actions={
-                <WorkspaceActions
-                  diagram={open}
-                  simulating={side.simulating}
-                  onSimulatingChange={side.simulate}
-                  simulateButton={side.simulateButton}
-                  findings={reviewed?.findings}
-                  reviewing={side.reviewing}
-                  onReviewingChange={side.review}
-                  findingsButton={side.findingsButton}
-                  assisting={side.assisting}
-                  onAssistingChange={side.assist}
-                  onSharingChange={setSharing}
-                />
+                },
+              )
+            }}
+            onImport={({ title, value, result, format }) => {
+              // A file that can't be read yet still opens, as a draft, in the kind the editor falls
+              // back to; it is saved once its text reads.
+              const kind = result.diagram?.kind ?? IMPORT_FALLBACK_KIND
+              if (!isKind(kind)) {
+                toast.error(t.editor.importUnsupported)
+                return
               }
-            />
-          </AssistantLayout>
+              // Several dropped files arrive in one event: they are added one after the other, in
+              // order, each with its own text (mutate's callbacks would only run for the last one).
+              imports.current = imports.current.then(() =>
+                add.mutateAsync({ title, kind }).then(
+                  ({ diagram }) => {
+                    select(diagram.id)
+                    autosave.onDiagramChange(diagram, value, result, format)
+                  },
+                  (error: unknown) => {
+                    failed(error)
+                  },
+                ),
+              )
+            }}
+            onRename={(viewId, title) => {
+              save.mutate({ diagramId: Number(viewId), title }, { onError: failed })
+            }}
+            onReorder={(ids) => {
+              queryClient.setQueryData<ArchitectureDetail>(
+                architectureKeys.detail(architecture.id),
+                (old) =>
+                  old && {
+                    ...old,
+                    diagrams: ids.flatMap((viewId) =>
+                      old.diagrams.filter((d) => String(d.id) === viewId),
+                    ),
+                  },
+              )
+              reorder.mutate(ids.map(Number), { onError: failed })
+            }}
+            onDelete={(viewId) => {
+              remove.mutate(Number(viewId), {
+                onSuccess: () => {
+                  toast.success(t.editor.diagramDeleted)
+                  const next = diagrams.find((d) => String(d.id) !== viewId)
+                  if (next && String(active?.id) === viewId) select(next.id)
+                },
+                onError: failed,
+              })
+            }}
+            height={WORKSPACE_HEIGHT}
+            highlighted={side.reviewing && side.focus !== null ? [side.focus] : side.activeStates}
+            saveState={autosave.state}
+            savedAt={autosave.savedAt}
+            onRetrySave={autosave.retry}
+            actions={
+              <WorkspaceActions
+                diagram={open}
+                simulating={side.simulating}
+                onSimulatingChange={side.simulate}
+                simulateButton={side.simulateButton}
+                findings={reviewed?.findings}
+                reviewing={side.reviewing}
+                onReviewingChange={side.review}
+                findingsButton={side.findingsButton}
+                onSharingChange={setSharing}
+              />
+            }
+          />
         </div>
         {open && (
           <SidePanels
@@ -517,7 +500,7 @@ interface OpenDiagram {
 
 /**
  * The workspace toolbar: Simulate and the XState download (state diagrams), the code review's
- * findings (when a review covers the open view), the assistant (behind its flag), Share.
+ * findings (when a review covers the open view), Share.
  */
 function WorkspaceActions({
   diagram,
@@ -528,8 +511,6 @@ function WorkspaceActions({
   reviewing,
   onReviewingChange,
   findingsButton,
-  assisting,
-  onAssistingChange,
   onSharingChange,
 }: {
   diagram: OpenDiagram | undefined
@@ -541,12 +522,9 @@ function WorkspaceActions({
   reviewing: boolean
   onReviewingChange: (open: boolean) => void
   findingsButton: React.Ref<HTMLButtonElement>
-  assisting: boolean
-  onAssistingChange: (open: boolean) => void
   onSharingChange: (open: boolean) => void
 }) {
   const t = useT()
-  const assistant = useFeature('diagram-assistant')
   return (
     <>
       {diagram?.kind === 'state' && (
@@ -566,19 +544,6 @@ function WorkspaceActions({
           pressed={reviewing}
           onPressedChange={onReviewingChange}
         />
-      )}
-      {assistant && (
-        <Button
-          size="sm"
-          variant="outline"
-          aria-pressed={assisting}
-          onClick={() => {
-            onAssistingChange(!assisting)
-          }}
-        >
-          <SparklesIcon />
-          {t.assistant.open}
-        </Button>
       )}
       <Button
         size="sm"

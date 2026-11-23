@@ -872,6 +872,7 @@ const en = {
       search: 'Search conversations',
       empty: 'No conversations yet.',
       noResults: 'No conversation matches.',
+      results: (count: number) => (count === 1 ? '1 conversation' : `${count} conversations`),
       today: 'Today',
       yesterday: 'Yesterday',
       week: 'Previous 7 days',
@@ -974,6 +975,8 @@ const en = {
       minimise: 'Minimise chat',
       close: 'Close chat',
       dismissGreeting: 'Dismiss message',
+      expand: 'Expand chat',
+      shrink: 'Shrink chat',
     },
     artifact: {
       kinds: { markdown: 'Document', code: 'Code', text: 'Text' },
@@ -4249,6 +4252,7 @@ const fr: Messages = {
       search: 'Rechercher une conversation',
       empty: "Aucune conversation pour l'instant.",
       noResults: 'Aucune conversation ne correspond.',
+      results: (count) => `${count} ${count <= 1 ? 'conversation' : 'conversations'}`,
       today: "Aujourd'hui",
       yesterday: 'Hier',
       week: '7 derniers jours',
@@ -4351,6 +4355,8 @@ const fr: Messages = {
       minimise: 'Réduire le chat',
       close: 'Fermer le chat',
       dismissGreeting: 'Ignorer le message',
+      expand: 'Agrandir le chat',
+      shrink: 'Rétrécir le chat',
     },
     artifact: {
       kinds: { markdown: 'Document', code: 'Code', text: 'Texte' },

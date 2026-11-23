@@ -12,7 +12,7 @@ import { assistantKeys } from '@/lib/assistant'
 import { apiBaseUrl, client } from '@/lib/client'
 import { useFeature } from '@/lib/feature-flags'
 import { githubKeys } from '@/lib/github'
-import { MODEL_CALL, type StoredProvider } from '@/lib/llm-provider'
+import { MODEL_CALL, type StoredProvider, useStoredProvider } from '@/lib/llm-provider'
 import { callBody } from '@/lib/llm-provider-body'
 import { projectKeys } from '@/lib/projects'
 
@@ -409,4 +409,13 @@ export function useDraftSuggestion(mapId: number) {
       ])
     },
   })
+}
+
+export type DrawnMap = Pick<CodeMapDetail, 'id' | 'projectId' | 'status'>
+
+/** Drawing from a map with the assistant: for a ready map, with the assistant on and a provider set. */
+export function useDrawsWithAssistant(map: DrawnMap): boolean {
+  const assistant = useFeature('diagram-assistant')
+  const provider = useStoredProvider()
+  return assistant && provider !== null && map.status === 'ready'
 }

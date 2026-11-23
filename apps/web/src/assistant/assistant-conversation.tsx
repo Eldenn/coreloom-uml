@@ -10,8 +10,8 @@ import * as React from 'react'
 import { ProposalsFailed } from '@/agent-configs/agent-config-proposals'
 import { ResearchSteps } from '@/agent-configs/import-review'
 import { CodeSwitch } from '@/assistant/assistant-code'
+import { ContextChips } from '@/assistant/assistant-context-chips'
 import { MessageList } from '@/assistant/assistant-messages'
-import { SubjectPicker } from '@/assistant/assistant-subject'
 import { useChangeActions } from '@/assistant/use-change-actions'
 import type { Subject } from '@/assistant/use-subject'
 import { useWebRequest } from '@/assistant/use-web-request'
@@ -25,7 +25,6 @@ import { Spinner } from '@/components/ui/spinner'
 import type { ArchitectureDetail } from '@/lib/architectures'
 import {
   type AssistantHandoff,
-  type AutosaveControl,
   budgetLevel,
   type FileProblem,
   readAttachment,
@@ -38,19 +37,13 @@ import {
   viewTooLarge,
 } from '@/lib/assistant'
 import type { ContextBudget } from '@/lib/assistant-changes'
-import { containsWebAddress } from '@/lib/assistant-subject'
+import type { Workspace } from '@/lib/assistant-context'
 import { getErrorMessage, TuyauError } from '@/lib/client'
 import { providerCallFailure, type StoredProvider } from '@/lib/llm-provider'
 import { useT } from '@/lib/locale'
 import { useProviderFailureText } from '@/llm/provider-failure'
 
 /** The architecture whose page the panel is on: the open view and the editor's autosave. */
-export interface Workspace {
-  architecture: ArchitectureDetail
-  currentDiagramId: number | null
-  autosave: AutosaveControl
-}
-
 /** The architecture a message is about, if any. */
 function architectureOf(subject: Subject): number | null {
   return subject.mode === 'architecture' ? subject.architectureId : null
@@ -111,7 +104,7 @@ export function Conversation({
     views.versions,
   )
   const ask = useAskAssistant(conversationId)
-  const web = useWebRequest(conversationId, subject.configId)
+  const web = useWebRequest(conversationId, null)
   const proceed = useContinueConversation()
   const deleteSummary = useDeleteSummary(conversationId)
   const changes = useChangeActions(
@@ -145,14 +138,10 @@ export function Conversation({
     const restore = () => {
       setDraft((now) => (now === '' ? text : now))
     }
-    const research = (configId?: number) =>
+    const research = (configId: number) =>
       web.send(provider, text, configId).then((stored) => {
         if (!stored) restore()
       })
-    if (subject.mode === 'web') {
-      void research()
-      return
-    }
     // A promise, not callbacks: a handed-over message is sent again even once the panel closed,
     // since the server stored nothing of it. Sent once: a failure waits for the owner.
     void ask
@@ -164,7 +153,9 @@ export function Conversation({
         architectureId: architectureOf(subject),
         ...views.selection,
         ...subject.code.sent,
-        ...(subject.mode === 'auto' ? { auto: true, page: subject.page } : {}),
+        ...(subject.mode === 'auto'
+          ? { auto: true, page: subject.page, context: subject.context }
+          : {}),
         onHandoff: (handoff) => {
           setHanded({ handoff, message: text })
         },
@@ -283,8 +274,6 @@ function Composer({
 }) {
   const t = useT().assistant
   const sending = ask.isPending || web.step !== null || handing
-  /** "From the web" with no agent conventions to add the rules to. */
-  const noTarget = subject.mode === 'web' && subject.configId === null
   return (
     <div className="flex flex-col gap-2 border-t border-border p-3">
       <Notices
@@ -299,22 +288,7 @@ function Composer({
       />
       {web.error !== null && <ProposalsFailed error={web.error} />}
       <FileProblemNotice problem={fileProblem} />
-      {subject.webOffered && manual(subject) && containsWebAddress(draft) && (
-        <p className="m-0 flex flex-wrap items-center gap-x-2 text-[12px] text-muted-foreground">
-          {t.addressFound}
-          <Button
-            size="sm"
-            variant="link"
-            className="h-auto p-0"
-            onClick={() => {
-              subject.choose('web')
-            }}
-          >
-            {t.useWeb}
-          </Button>
-        </p>
-      )}
-      <SubjectPicker subject={subject} disabled={sending} />
+      <ContextChips disabled={sending} />
       <PromptInput
         value={draft}
         onValueChange={(value) => {
@@ -325,7 +299,7 @@ function Composer({
         }}
         placeholder={placeholder(t, subject)}
         status={sending ? 'submitted' : 'ready'}
-        disabled={!provider || full || proceed.isPending || noTarget}
+        disabled={!provider || full || proceed.isPending}
         allowAttachments={takesFile(subject)}
         accept={ATTACHMENT_TYPES}
         onSubmit={({ text, files }) => {
@@ -336,9 +310,9 @@ function Composer({
   )
 }
 
-/** A web research reads pages and a code request reads a map: neither takes a file. */
+/** A code request reads a map: it takes no file. */
 function takesFile(subject: Subject) {
-  return subject.mode !== 'web' && subject.code.sent === undefined
+  return subject.code.sent === undefined
 }
 
 function FileProblemNotice({ problem }: { problem: FileProblem | null }) {
@@ -351,13 +325,7 @@ function FileProblemNotice({ problem }: { problem: FileProblem | null }) {
   )
 }
 
-/** Neither "From the web" nor "Auto", which reads a web page by itself when one is named. */
-function manual(subject: Subject) {
-  return subject.mode !== 'web' && subject.mode !== 'auto'
-}
-
 function placeholder(t: ReturnType<typeof useT>['assistant'], subject: Subject) {
-  if (subject.mode === 'web') return t.webPlaceholder
   if (subject.mode === 'auto') return t.autoPlaceholder
   if (subject.mode === 'none') return t.plainPlaceholder
   return subject.code.sent === undefined ? t.placeholder : t.codePlaceholder
@@ -400,7 +368,7 @@ function pendingOf(
     typing: ask.isPending && stage === null && webStep === null,
     stage,
     webStep,
-    configId: toWeb ?? subject.configId,
+    configId: toWeb,
   }
 }
 

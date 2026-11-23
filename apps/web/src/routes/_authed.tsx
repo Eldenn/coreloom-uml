@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import * as React from 'react'
 
-import { AssistantButton } from '@/assistant/assistant-button'
+import { AssistantWidget } from '@/assistant/assistant-widget'
 import { meQueryOptions, useAuth } from '@/auth/auth-context'
 import { AppShell } from '@/components/app-shell'
 import { CatMark } from '@/components/brand'
@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { AssistantProvider } from '@/lib/assistant-context'
 import { apiBaseUrl } from '@/lib/client'
 import { type Locale, useLocale, useT } from '@/lib/locale'
 
@@ -191,89 +192,91 @@ function AuthedLayout() {
     location.pathname === path || location.pathname.startsWith(`${path}/`)
 
   return (
-    <AppShell
-      workspaces={[
-        { name: t.brand, plan: t.shell.workspace, logo: <CatMark className="size-5" /> },
-      ]}
-      user={{
-        name: user.fullName ?? user.email,
-        email: user.email,
-        avatar: user.avatarUrl ? `${apiBaseUrl}${user.avatarUrl}` : undefined,
-      }}
-      menu={[
-        {
-          label: t.nav.settings,
-          icon: SettingsIcon,
-          onSelect: () => void navigate({ to: '/settings' }),
-        },
-      ]}
-      onSignOut={async () => {
-        signingOut.current = true
-        try {
-          await logout()
-          await navigate({ to: '/login' })
-        } finally {
-          signingOut.current = false
+    <AssistantProvider>
+      <AppShell
+        workspaces={[
+          { name: t.brand, plan: t.shell.workspace, logo: <CatMark className="size-5" /> },
+        ]}
+        user={{
+          name: user.fullName ?? user.email,
+          email: user.email,
+          avatar: user.avatarUrl ? `${apiBaseUrl}${user.avatarUrl}` : undefined,
+        }}
+        menu={[
+          {
+            label: t.nav.settings,
+            icon: SettingsIcon,
+            onSelect: () => void navigate({ to: '/settings' }),
+          },
+        ]}
+        onSignOut={async () => {
+          signingOut.current = true
+          try {
+            await logout()
+            await navigate({ to: '/login' })
+          } finally {
+            signingOut.current = false
+          }
+        }}
+        groups={[
+          {
+            label: t.shell.main,
+            items: [
+              {
+                title: t.nav.projects,
+                url: '/projects',
+                icon: FolderIcon,
+                isActive: isActive('/projects'),
+              },
+              {
+                title: t.nav.architectures,
+                url: '/architectures',
+                icon: NetworkIcon,
+                isActive: isActive('/architectures'),
+              },
+              {
+                title: t.nav.agentConfigs,
+                url: '/agent-configs',
+                icon: BotIcon,
+                isActive: isActive('/agent-configs'),
+              },
+              {
+                title: t.nav.skills,
+                url: '/skills',
+                icon: SparklesIcon,
+                isActive: isActive('/skills'),
+              },
+              ...(user.isAdmin
+                ? [
+                    {
+                      title: t.nav.featureFlags,
+                      url: '/feature-flags',
+                      icon: FlagIcon,
+                      isActive: isActive('/feature-flags'),
+                    },
+                  ]
+                : []),
+              {
+                title: t.nav.settings,
+                url: '/settings',
+                icon: SettingsIcon,
+                isActive: isActive('/settings'),
+              },
+            ],
+          },
+        ]}
+        breadcrumbs={[{ label: t.brand, href: '/projects' }, ...crumbs]}
+        commands={commands}
+        headerActions={
+          <>
+            <LanguageMenu />
+          </>
         }
-      }}
-      groups={[
-        {
-          label: t.shell.main,
-          items: [
-            {
-              title: t.nav.projects,
-              url: '/projects',
-              icon: FolderIcon,
-              isActive: isActive('/projects'),
-            },
-            {
-              title: t.nav.architectures,
-              url: '/architectures',
-              icon: NetworkIcon,
-              isActive: isActive('/architectures'),
-            },
-            {
-              title: t.nav.agentConfigs,
-              url: '/agent-configs',
-              icon: BotIcon,
-              isActive: isActive('/agent-configs'),
-            },
-            {
-              title: t.nav.skills,
-              url: '/skills',
-              icon: SparklesIcon,
-              isActive: isActive('/skills'),
-            },
-            ...(user.isAdmin
-              ? [
-                  {
-                    title: t.nav.featureFlags,
-                    url: '/feature-flags',
-                    icon: FlagIcon,
-                    isActive: isActive('/feature-flags'),
-                  },
-                ]
-              : []),
-            {
-              title: t.nav.settings,
-              url: '/settings',
-              icon: SettingsIcon,
-              isActive: isActive('/settings'),
-            },
-          ],
-        },
-      ]}
-      breadcrumbs={[{ label: t.brand, href: '/projects' }, ...crumbs]}
-      commands={commands}
-      headerActions={
-        <>
-          <AssistantButton />
-          <LanguageMenu />
-        </>
-      }
-      fullWidth={fullWidth}
-    >
-      <Outlet />
-    </AppShell>
+        fullWidth={fullWidth}
+      >
+        <Outlet />
+        <AssistantWidget />
+      </AppShell>
+    </AssistantProvider>
   )
 }
