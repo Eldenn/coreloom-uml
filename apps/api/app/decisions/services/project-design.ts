@@ -1,3 +1,4 @@
+import type { AgentContextProject } from '@coreloom-uml/catalog'
 import type { DesignContext } from '@coreloom-uml/llm'
 import type Architecture from '#app/architectures/models/architecture'
 import { DecisionStatus } from '#app/decisions/constants/decision'
@@ -42,5 +43,44 @@ export async function projectDesign(architecture: Architecture): Promise<DesignC
       chosen,
       consequences,
     })),
+  }
+}
+
+/**
+ * What a project's generated agent files say of its design: its requirements (the ones that must
+ * hold first) and its accepted decisions, oldest first. A key is left out when there is nothing
+ * to say (no record, or `design-records` off for the owner), so the inputs a generation stores
+ * stay what they were for a project that records none.
+ */
+export async function agentContextDesign(
+  projectId: number,
+  ownerId: number,
+): Promise<Pick<AgentContextProject, 'requirements' | 'decisions'>> {
+  if (!(await designRecordsEnabled(await User.findOrFail(ownerId)))) return {}
+  const [requirements, decisions] = await Promise.all([
+    Requirement.query()
+      .where('projectId', projectId)
+      .orderBy('priority', 'asc')
+      .orderBy('id', 'asc'),
+    Decision.query()
+      .where('projectId', projectId)
+      .where('status', DecisionStatus.Accepted)
+      .orderBy('id', 'asc'),
+  ])
+  return {
+    ...(requirements.length > 0 && {
+      requirements: requirements.map(({ priority, statement, measure }) => ({
+        priority,
+        statement,
+        measure,
+      })),
+    }),
+    ...(decisions.length > 0 && {
+      decisions: decisions.map(({ title, chosen, consequences }) => ({
+        title,
+        chosen,
+        consequences,
+      })),
+    }),
   }
 }

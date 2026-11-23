@@ -5,7 +5,7 @@ import type { CreatedApiTokenOutput } from '#app/api-tokens/validators/api-token
 import Architecture from '#app/architectures/models/architecture'
 import Diagram from '#app/diagrams/models/diagram'
 import { updateFlag } from '#app/feature-flags/services/feature-flags'
-import { CODE_MAP_TOOLS, McpTool } from '#app/mcp/constants/mcp'
+import { CODE_MAP_TOOLS, DESIGN_TOOLS, McpTool } from '#app/mcp/constants/mcp'
 import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
@@ -133,9 +133,14 @@ test.group('MCP server', (group) => {
       response.body().result.tools.map((tool: { name: string }) => tool.name)
     assert.sameMembers(
       names(listed),
-      Object.values(McpTool).filter((tool) => !CODE_MAP_TOOLS.includes(tool)),
+      Object.values(McpTool).filter(
+        (tool) => !CODE_MAP_TOOLS.includes(tool) && !DESIGN_TOOLS.includes(tool),
+      ),
     )
-    assert.sameMembers(names(withCodeMaps), Object.values(McpTool))
+    assert.sameMembers(
+      names(withCodeMaps),
+      Object.values(McpTool).filter((tool) => !DESIGN_TOOLS.includes(tool)),
+    )
   })
 
   test('lists projects and diagrams and returns a diagram as text', async ({ client, assert }) => {

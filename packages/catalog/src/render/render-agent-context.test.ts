@@ -123,6 +123,48 @@ describe('renderAgentContext', () => {
     )
   })
 
+  it('lists the requirements and the decisions taken in the Project section', () => {
+    const plain = agentsMd(INPUT)
+    expect(
+      agentsMd({ ...INPUT, project: { ...INPUT.project, requirements: [], decisions: [] } }),
+    ).toBe(plain)
+
+    const text = agentsMd({
+      ...INPUT,
+      project: {
+        ...INPUT.project,
+        requirements: [
+          {
+            priority: 'must',
+            statement: 'Checkout stays up\nwhen mail is down.',
+            measure: '99.9 %',
+          },
+          { priority: 'should', statement: 'Hosting stays <b>cheap</b>.', measure: null },
+        ],
+        decisions: [
+          {
+            title: 'How are mails sent?',
+            chosen: 'Queue',
+            consequences: 'One more worker to run.',
+          },
+          ...Array.from({ length: 31 }, (_, index) => ({
+            title: `Decision ${String(index)}`,
+            chosen: null,
+            consequences: null,
+          })),
+        ],
+      },
+    })
+
+    expect(text).toContain('- Must: Checkout stays up when mail is down. Met when: 99.9 %')
+    expect(text).toContain('- Should: Hosting stays \\<b\\>cheap\\</b\\>.')
+    expect(text).toContain('- **How are mails sent?** Queue. One more worker to run.')
+    expect(text).toContain('- **Decision 28**\n- (2 more in Coreloom UML)')
+    // Both lists are part of the Project section: before the next heading.
+    const project = text.slice(text.indexOf('## Project'))
+    expect(project.slice(0, project.indexOf('\n## '))).toContain('(2 more in Coreloom UML)')
+  })
+
   it('renders the whole AGENTS.md block', () => {
     expect(agentsMd(INPUT)).toMatchSnapshot()
   })

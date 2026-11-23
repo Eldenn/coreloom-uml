@@ -24,6 +24,7 @@ import type AgentConfigGeneration from '#app/agent-configs/models/agent-config-g
 import { heldReadyRules } from '#app/agent-configs/serializers/agent-config-serializer'
 import { whereConfigArchitecture } from '#app/agent-configs/services/agent-config-diagrams'
 import Architecture from '#app/architectures/models/architecture'
+import { agentContextDesign } from '#app/decisions/services/project-design'
 import Project from '#app/projects/models/project'
 
 /** Everything a configuration's files are rendered from. */
@@ -78,7 +79,8 @@ function packageShape(diagram: PackageDiagram): PackageDiagramShape {
  * What the `Project` section shows: the project's name and description (the configuration's
  * name outside any project), then the architectures it reads from with the kind and title of
  * their diagrams. Of their content, only what a package diagram draws (its elements and the
- * arrows between them), which the dependency rules are rendered from.
+ * arrows between them), which the dependency rules are rendered from. Then, for a project
+ * that records them, its requirements and its accepted decisions (`agentContextDesign`).
  */
 export async function projectContext(config: AgentConfig): Promise<AgentContextProject> {
   const project = config.projectId === null ? null : await Project.findOrFail(config.projectId)
@@ -98,6 +100,7 @@ export async function projectContext(config: AgentConfig): Promise<AgentContextP
         ...(diagram.content?.kind === 'package' ? { packages: packageShape(diagram.content) } : {}),
       })),
     })),
+    ...(project && (await agentContextDesign(project.id, config.userId))),
   }
 }
 

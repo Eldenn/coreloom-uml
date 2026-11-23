@@ -35,6 +35,18 @@ export const getCodeConformanceInput = {
     .describe('A diagram id from list_diagrams, to read that diagram only. Leave out for all.'),
 }
 
+export const listRequirementsInput = {
+  projectId: id().describe('A project id from list_projects.'),
+}
+
+export const listDecisionsInput = {
+  projectId: id().describe('A project id from list_projects.'),
+  includeSuperseded: z
+    .boolean()
+    .optional()
+    .describe('Also list the decisions another one replaced. Left out, only those still standing.'),
+}
+
 export const listUndocumentedProcessesInput = {
   projectId: id().describe('A project id from list_projects.'),
 }
