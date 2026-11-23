@@ -91,6 +91,14 @@ silently.
   diagram assistant reads the requirements and the decisions still standing before it draws a view
   of the project. At most a hundred of each per project. These routes call no model. Behind the
   `design-records` feature flag, off by default; session only.
+- **Milestones.** An architecture keeps named states of all its views (a release, a target, a
+  state before a migration): `GET`/`POST /architectures/:id/milestones`,
+  `GET`/`DELETE /architectures/:id/milestones/:milestoneId` and
+  `POST /architectures/:id/milestones/:milestoneId/restore`. The editor's « History » button
+  lists them, compares one with the current state or with another milestone (view by view, as a
+  diff of the view's text) and restores one: a view that still exists keeps its id and links, one
+  deleted since comes back, one added since is deleted. A milestone never changes; at most fifty
+  per architecture (409 past it). No feature flag.
 - **MCP server.** `POST /mcp` is a Model Context Protocol endpoint (Streamable HTTP, stateless)
   for coding agents: with an account API key (`Authorization: Bearer clu_…`, the `read` ability
   is enough) an agent lists the account's projects and their diagrams, reads a diagram as Mermaid,

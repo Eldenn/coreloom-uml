@@ -666,6 +666,36 @@ const routes = {
     tokens: [{"old":"/architectures/:id/sharing/regenerate-code","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/sharing/regenerate-code","type":1,"val":"id","end":""},{"old":"/architectures/:id/sharing/regenerate-code","type":0,"val":"sharing","end":""},{"old":"/architectures/:id/sharing/regenerate-code","type":0,"val":"regenerate-code","end":""}],
     types: placeholder as Registry['architectures.sharing.regenerate_code']['types'],
   },
+  'architectures.milestones.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/architectures/:id/milestones',
+    tokens: [{"old":"/architectures/:id/milestones","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/milestones","type":1,"val":"id","end":""},{"old":"/architectures/:id/milestones","type":0,"val":"milestones","end":""}],
+    types: placeholder as Registry['architectures.milestones.index']['types'],
+  },
+  'architectures.milestones.store': {
+    methods: ["POST"],
+    pattern: '/architectures/:id/milestones',
+    tokens: [{"old":"/architectures/:id/milestones","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/milestones","type":1,"val":"id","end":""},{"old":"/architectures/:id/milestones","type":0,"val":"milestones","end":""}],
+    types: placeholder as Registry['architectures.milestones.store']['types'],
+  },
+  'architectures.milestones.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/architectures/:id/milestones/:milestoneId',
+    tokens: [{"old":"/architectures/:id/milestones/:milestoneId","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/milestones/:milestoneId","type":1,"val":"id","end":""},{"old":"/architectures/:id/milestones/:milestoneId","type":0,"val":"milestones","end":""},{"old":"/architectures/:id/milestones/:milestoneId","type":1,"val":"milestoneId","end":""}],
+    types: placeholder as Registry['architectures.milestones.show']['types'],
+  },
+  'architectures.milestones.destroy': {
+    methods: ["DELETE"],
+    pattern: '/architectures/:id/milestones/:milestoneId',
+    tokens: [{"old":"/architectures/:id/milestones/:milestoneId","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/milestones/:milestoneId","type":1,"val":"id","end":""},{"old":"/architectures/:id/milestones/:milestoneId","type":0,"val":"milestones","end":""},{"old":"/architectures/:id/milestones/:milestoneId","type":1,"val":"milestoneId","end":""}],
+    types: placeholder as Registry['architectures.milestones.destroy']['types'],
+  },
+  'architectures.milestones.restore': {
+    methods: ["POST"],
+    pattern: '/architectures/:id/milestones/:milestoneId/restore',
+    tokens: [{"old":"/architectures/:id/milestones/:milestoneId/restore","type":0,"val":"architectures","end":""},{"old":"/architectures/:id/milestones/:milestoneId/restore","type":1,"val":"id","end":""},{"old":"/architectures/:id/milestones/:milestoneId/restore","type":0,"val":"milestones","end":""},{"old":"/architectures/:id/milestones/:milestoneId/restore","type":1,"val":"milestoneId","end":""},{"old":"/architectures/:id/milestones/:milestoneId/restore","type":0,"val":"restore","end":""}],
+    types: placeholder as Registry['architectures.milestones.restore']['types'],
+  },
   'mcp': {
     methods: ["GET","POST","DELETE"],
     pattern: '/mcp',

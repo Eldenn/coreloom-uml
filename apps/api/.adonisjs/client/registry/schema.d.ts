@@ -1327,6 +1327,66 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/sharing/controllers/sharing-controller').default['regenerateCode']>>>
     }
   }
+  'architectures.milestones.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/architectures/:id/milestones'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/milestones/validators/milestones-input').listMilestonesInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/milestones/controllers/milestones-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/milestones/controllers/milestones-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'architectures.milestones.store': {
+    methods: ["POST"]
+    pattern: '/architectures/:id/milestones'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/milestones/validators/milestones-input').createMilestoneInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/milestones/validators/milestones-input').createMilestoneInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/milestones/controllers/milestones-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/milestones/controllers/milestones-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'architectures.milestones.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/architectures/:id/milestones/:milestoneId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; milestoneId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/milestones/controllers/milestones-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/milestones/controllers/milestones-controller').default['show']>>>
+    }
+  }
+  'architectures.milestones.destroy': {
+    methods: ["DELETE"]
+    pattern: '/architectures/:id/milestones/:milestoneId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; milestoneId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/milestones/controllers/milestones-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/milestones/controllers/milestones-controller').default['destroy']>>>
+    }
+  }
+  'architectures.milestones.restore': {
+    methods: ["POST"]
+    pattern: '/architectures/:id/milestones/:milestoneId/restore'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; milestoneId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/milestones/controllers/restore-milestone-controller').default['handle']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/milestones/controllers/restore-milestone-controller').default['handle']>>>
+    }
+  }
   'mcp': {
     methods: ["GET","POST","DELETE"]
     pattern: '/mcp'
