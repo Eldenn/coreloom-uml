@@ -13,8 +13,8 @@ import {
   DecisionStatus,
 } from '#app/decisions/constants/decision'
 import Decision from '#app/decisions/models/decision'
-import { reviewed, waitingProposals } from '#app/decisions/services/agent-proposals'
 import { serializeParts } from '#app/decisions/serializers/decision-serializer'
+import { reviewed, waitingProposals } from '#app/decisions/services/agent-proposals'
 import { createDecision, DECISIONS_FULL, withLinks } from '#app/decisions/services/decision-writes'
 import Diagram from '#app/diagrams/models/diagram'
 import { MCP_LIST_MAX, MCP_SERVER_NAME, MCP_SERVER_VERSION, McpTool } from '#app/mcp/constants/mcp'
