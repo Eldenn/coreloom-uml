@@ -8,6 +8,11 @@ import {
   type UmlAnnotation,
   type UmlAnnotationStatus,
 } from '@/components/ui/uml-diagram-annotations'
+import {
+  DiagramContextMenu,
+  sequenceMenu,
+  type UmlContextActions,
+} from '@/components/ui/uml-diagram-context'
 import { type Messages, useCoreloomI18n } from '@/lib/i18n'
 import type { SequenceArrow, SequenceDiagram, SequenceStep } from '@/lib/uml'
 import {
@@ -37,6 +42,12 @@ interface SequenceDiagramViewProps {
    * accessible name, no step list. Default: false.
    */
   fit?: boolean
+  /**
+   * The app's entries in the menu a right-click, a long press or the context-menu key opens on a
+   * participant (`element`) or a step (on the focused drawing: the one selected). Without it, or
+   * when it returns none, the browser's own menu stays.
+   */
+  contextActions?: UmlContextActions
   ref?: React.Ref<HTMLDivElement>
   className?: string
 }
@@ -482,7 +493,8 @@ function SequenceSvg({
     <svg
       aria-hidden
       {...size}
-      className={cn('block', onSelect && '[&_[data-id]]:cursor-pointer')}
+      // Centered when the box is wider than the drawing, like the other kinds on their canvas.
+      className={cn('mx-auto block', onSelect && '[&_[data-id]]:cursor-pointer')}
       {...(onSelect
         ? {
             onClick: (e: React.MouseEvent) => {
@@ -534,10 +546,12 @@ function SequenceDiagramView({
   annotations,
   onAnnotationSelect,
   fit = false,
+  contextActions,
   ref,
   className,
 }: SequenceDiagramViewProps) {
-  const messages = useCoreloomI18n().messages.diagram
+  const all = useCoreloomI18n().messages
+  const messages = all.diagram
   const t: SequenceText = { ...messages.sequence, say: messages.labelled }
   const layout = layoutSequence(diagram)
   const names = new Map(layout.columns.map((c) => [c.id, c.label]))
@@ -564,47 +578,58 @@ function SequenceDiagramView({
         )}
       </div>
     )
+  const menu = sequenceMenu({
+    diagram,
+    contextActions,
+    selection: { elements: [...selected], relations: [] },
+    select: (next) => {
+      onSelect?.(next.elements[0] ?? null, false)
+    },
+    messages: all,
+  })
   return (
-    <div
-      ref={ref}
-      data-slot="sequence-diagram"
-      role="region"
-      aria-label={name}
-      // A focusable region, so keyboard users can scroll a wide diagram.
-      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scrollable content must be reachable
-      tabIndex={0}
-      className={cn(
-        'overflow-auto rounded-lg border border-border bg-background outline-none focus-visible:ring-[3px] focus-visible:ring-ring',
-        className,
-      )}
-      style={style}
-    >
-      {diagram.title && (
-        <p className="px-4 pt-3 text-[13px] font-semibold text-foreground">{diagram.title}</p>
-      )}
-      {drawn ? (
-        // The badges sit over the drawing, at the drawing's own coordinates.
-        <div className="relative w-fit">
-          <SequenceSvg
-            layout={layout}
-            selected={selected}
-            onSelect={onSelect}
-            fit={false}
-            t={t}
-            tones={tones}
-          />
-          <AnnotationContext value={{ onSelect: onAnnotationSelect }}>
-            <SequenceAnnotations layout={layout} annotations={marks} />
-          </AnnotationContext>
+    <DiagramContextMenu {...menu}>
+      <div
+        ref={ref}
+        data-slot="sequence-diagram"
+        role="region"
+        aria-label={name}
+        // A focusable region, so keyboard users can scroll a wide diagram.
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scrollable content must be reachable
+        tabIndex={0}
+        className={cn(
+          'overflow-auto rounded-lg border border-border bg-background outline-none focus-visible:ring-[3px] focus-visible:ring-ring',
+          className,
+        )}
+        style={style}
+      >
+        {diagram.title && (
+          <p className="px-4 pt-3 text-[13px] font-semibold text-foreground">{diagram.title}</p>
+        )}
+        {drawn ? (
+          // The badges sit over the drawing, at the drawing's own coordinates.
+          <div className="relative w-fit">
+            <SequenceSvg
+              layout={layout}
+              selected={selected}
+              onSelect={onSelect}
+              fit={false}
+              t={t}
+              tones={tones}
+            />
+            <AnnotationContext value={{ onSelect: onAnnotationSelect }}>
+              <SequenceAnnotations layout={layout} annotations={marks} />
+            </AnnotationContext>
+          </div>
+        ) : (
+          <p className="p-6 text-center text-[13px] text-muted-foreground">{messages.empty}</p>
+        )}
+        <div className="sr-only">
+          <p>{t.steps}</p>
+          <StepList steps={diagram.steps} names={names} t={t} />
         </div>
-      ) : (
-        <p className="p-6 text-center text-[13px] text-muted-foreground">{messages.empty}</p>
-      )}
-      <div className="sr-only">
-        <p>{t.steps}</p>
-        <StepList steps={diagram.steps} names={names} t={t} />
       </div>
-    </div>
+    </DiagramContextMenu>
   )
 }
 

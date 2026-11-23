@@ -1,7 +1,3 @@
-'use client'
-
-// Coreloom UI — MultiSelect. Several values from a known list: a trigger that shows the picks as
-// chips, and a searchable checklist in a Popover (Command). For free-form values, use TagsInput.
 import { CheckIcon, ChevronsUpDownIcon } from 'lucide-react'
 import * as React from 'react'
 
@@ -82,6 +78,16 @@ function MultiSelect({
     commit(current.includes(v) ? current.filter((x) => x !== v) : [...current, v])
   }
   const selectable = options.filter((o) => !o.disabled)
+  const allSelected = current.length >= selectable.length
+  // Both footer buttons stay in place and focusable when they have nothing left to do: the one
+  // just pressed would otherwise vanish and drop the focus.
+  // Command listens for keys on everything inside it and gives Enter to the highlighted option:
+  // the footer buttons keep their own keys.
+  const keepKeys = (e: React.KeyboardEvent) => {
+    e.stopPropagation()
+  }
+  const footerButton =
+    'cursor-pointer rounded-sm px-1.5 py-1 text-primary-text outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring aria-disabled:cursor-default aria-disabled:text-faint-foreground aria-disabled:hover:no-underline'
 
   return (
     <Popover
@@ -134,6 +140,7 @@ function MultiSelect({
       <PopoverContent align="start" className="w-(--radix-popover-trigger-width) min-w-60 p-0">
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
+          {/* cmdk owns aria-selected (the keyboard highlight), so the picked state is aria-checked. */}
           <CommandList aria-multiselectable="true">
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
@@ -145,7 +152,7 @@ function MultiSelect({
                     value={option.value}
                     keywords={[option.label, ...(option.keywords ?? [])]}
                     disabled={!!option.disabled || (full && !isSelected)}
-                    aria-selected={isSelected}
+                    aria-checked={isSelected}
                     data-checked={isSelected || undefined}
                     onSelect={() => {
                       toggle(option.value)
@@ -176,28 +183,30 @@ function MultiSelect({
               )}
             </span>
             <span className="flex gap-1">
-              {maxSelected === undefined && current.length < selectable.length && (
+              {maxSelected === undefined && (
                 <button
                   type="button"
-                  className="cursor-pointer rounded-sm px-1.5 py-1 text-primary-text outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring"
+                  aria-disabled={allSelected || undefined}
+                  className={footerButton}
+                  onKeyDown={keepKeys}
                   onClick={() => {
-                    commit(selectable.map((o) => o.value))
+                    if (!allSelected) commit(selectable.map((o) => o.value))
                   }}
                 >
                   {t.selectAll}
                 </button>
               )}
-              {current.length > 0 && (
-                <button
-                  type="button"
-                  className="cursor-pointer rounded-sm px-1.5 py-1 text-primary-text outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring"
-                  onClick={() => {
-                    commit([])
-                  }}
-                >
-                  {t.clear}
-                </button>
-              )}
+              <button
+                type="button"
+                aria-disabled={current.length === 0 || undefined}
+                className={footerButton}
+                onKeyDown={keepKeys}
+                onClick={() => {
+                  if (current.length > 0) commit([])
+                }}
+              >
+                {t.clear}
+              </button>
             </span>
           </div>
         </Command>

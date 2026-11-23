@@ -1,3 +1,10 @@
+'use client'
+
+// Coreloom UI — DiagramWorkspace. Where a document of several diagrams is written: its name,
+// whether it's saved, the list of its views (add one of a chosen kind or from a file, picked or
+// dropped on the workspace; rename, reorder, delete) and the diagram editor for the view that's
+// open. On a phone the list moves into a side sheet.
+// The app keeps the document: every change comes back through a callback, and it saves.
 import { FileUpIcon, ListIcon, PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 
@@ -8,6 +15,12 @@ import {
   readDiagramFile,
   useFileDrop,
 } from '@/components/diagram-import'
+import {
+  type DiagramContextTarget,
+  forView,
+  viewMenu,
+  type WorkspaceContextActions,
+} from '@/components/diagram-workspace-menu'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -21,7 +34,8 @@ import { Popconfirm } from '@/components/ui/popconfirm'
 import { type SaveState, SaveStatus } from '@/components/ui/save-status'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { SortableList } from '@/components/ui/sortable-list'
-import type { UmlAnnotation } from '@/components/ui/uml-diagram'
+import type { DiagramContextAction, UmlAnnotation } from '@/components/ui/uml-diagram'
+import { DiagramContextMenu } from '@/components/ui/uml-diagram-context'
 import { type Messages, useCoreloomI18n } from '@/lib/i18n'
 import type { UmlDiagramKind, UmlParseResult } from '@/lib/uml'
 import { cn } from '@/lib/utils'
@@ -86,6 +100,13 @@ interface DiagramWorkspaceProps {
   height?: string
   /** Element ids to point out on the open view's drawing (see DiagramEditor's `highlighted`). */
   highlighted?: readonly string[]
+  /**
+   * The app's entries in the menu a right-click, a long press or the context-menu key opens on a
+   * view in the list, or on an element, a member, a relation or a sequence step of the open view,
+   * after the workspace's own (Rename and Delete on a view; Rename, Duplicate and Delete in the
+   * drawing). Without it, no menu: the browser's own stays.
+   */
+  contextActions?: WorkspaceContextActions
   className?: string
 }
 
@@ -187,6 +208,7 @@ function ViewRow({
   active,
   only,
   renaming,
+  confirm,
   t,
   onOpen,
   onStartRename,
@@ -197,6 +219,8 @@ function ViewRow({
   active: boolean
   only: boolean
   renaming: boolean
+  /** Whether the deletion is being asked (from the button or the context menu). */
+  confirm: { open: boolean; onOpenChange: (open: boolean) => void }
   t: WorkspaceText
   onOpen: () => void
   onStartRename: () => void
@@ -239,6 +263,7 @@ function ViewRow({
         confirmLabel={t.removeConfirm}
         destructive
         onConfirm={onDelete}
+        {...confirm}
       >
         <Button
           type="button"
@@ -353,6 +378,7 @@ type ViewsPanelProps = Pick<
   importFiles?: (files: File[]) => void
   /** Why the last files didn't all become views; null when they did. */
   importError: string | null
+  contextActions: WorkspaceContextActions | undefined
 }
 
 /** The document's views: open, add, rename, delete, or reorder them. */
@@ -366,10 +392,20 @@ function ViewsPanel({
   onRename,
   onReorder,
   onDelete,
+  contextActions,
 }: ViewsPanelProps) {
-  const t = useCoreloomI18n().messages.diagramWorkspace
+  const { messages } = useCoreloomI18n()
+  const t = messages.diagramWorkspace
   const [reordering, setReordering] = React.useState(false)
   const [renaming, setRenaming] = React.useState<string | null>(null)
+  const [confirming, setConfirming] = React.useState<string | null>(null)
+  const menu = viewMenu({
+    diagrams,
+    contextActions,
+    tools: messages.diagramTools,
+    onRename: setRenaming,
+    onDelete: setConfirming,
+  })
   const list = React.useRef<HTMLDivElement>(null)
   const labelId = React.useId()
   return (
@@ -408,34 +444,42 @@ function ViewsPanel({
           onValueChange={onReorder}
         />
       ) : (
-        <ul aria-labelledby={labelId} className="m-0 flex list-none flex-col gap-0.5 p-0">
-          {diagrams.map((item) => (
-            <ViewRow
-              key={item.id}
-              item={item}
-              active={item.id === activeId}
-              only={diagrams.length === 1}
-              renaming={renaming === item.id}
-              t={t}
-              onOpen={() => {
-                onOpen(item.id)
-              }}
-              onStartRename={() => {
-                setRenaming(item.id)
-              }}
-              onRenamed={(title) => {
-                setRenaming(null)
-                if (title) onRename(item.id, title)
-                focusView(list.current, item.id)
-              }}
-              onDelete={() => {
-                onDelete(item.id)
-                // The row goes away with its buttons: focus the open view instead.
-                focusView(list.current)
-              }}
-            />
-          ))}
-        </ul>
+        <DiagramContextMenu {...menu}>
+          <ul aria-labelledby={labelId} className="m-0 flex list-none flex-col gap-0.5 p-0">
+            {diagrams.map((item) => (
+              <ViewRow
+                key={item.id}
+                item={item}
+                active={item.id === activeId}
+                only={diagrams.length === 1}
+                renaming={renaming === item.id}
+                confirm={{
+                  open: confirming === item.id,
+                  onOpenChange: (open) => {
+                    setConfirming(open ? item.id : null)
+                  },
+                }}
+                t={t}
+                onOpen={() => {
+                  onOpen(item.id)
+                }}
+                onStartRename={() => {
+                  setRenaming(item.id)
+                }}
+                onRenamed={(title) => {
+                  setRenaming(null)
+                  if (title) onRename(item.id, title)
+                  focusView(list.current, item.id)
+                }}
+                onDelete={() => {
+                  onDelete(item.id)
+                  // The row goes away with its buttons: focus the open view instead.
+                  focusView(list.current)
+                }}
+              />
+            ))}
+          </ul>
+        </DiagramContextMenu>
       )}
     </div>
   )
@@ -506,6 +550,7 @@ function DiagramWorkspace({
   onAnnotationSelect,
   height,
   highlighted,
+  contextActions,
   className,
 }: DiagramWorkspaceProps) {
   const t = useCoreloomI18n().messages.diagramWorkspace
@@ -523,6 +568,7 @@ function DiagramWorkspace({
     onRename,
     onReorder,
     onDelete,
+    contextActions,
   }
 
   return (
@@ -591,7 +637,7 @@ function DiagramWorkspace({
             key={active.id}
             value={active.value}
             format={active.format}
-            onChange={reports.onChange}
+            onValueChange={reports.onChange}
             onFormatChange={reports.onFormatChange}
             fileName={downloadName(active.title)}
             {...(active.annotations ? { annotations: active.annotations } : {})}
@@ -604,6 +650,7 @@ function DiagramWorkspace({
               : {})}
             height={height ? 'fill' : undefined}
             {...(highlighted ? { highlighted } : {})}
+            {...forView(contextActions, active.id)}
             className="min-w-0"
           />
         ) : null}
@@ -613,6 +660,8 @@ function DiagramWorkspace({
 }
 
 export {
+  type DiagramContextAction,
+  type DiagramContextTarget,
   DiagramWorkspace,
   type DiagramWorkspaceImport,
   type DiagramWorkspaceItem,

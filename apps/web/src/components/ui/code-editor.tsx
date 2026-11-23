@@ -1,3 +1,12 @@
+'use client'
+
+// Coreloom UI — CodeEditor. Code to write: a script field, a config file, a query, the editor of
+// an IDE. CodeMirror 6 underneath, themed with Coreloom's tokens (it follows light and dark), with
+// syntax colours for JavaScript / TypeScript (JSX), JSON, CSS, HTML, Markdown and Python, line
+// numbers, folding, bracket matching, autocompletion, search (Mod-F), undo history and inline
+// diagnostics. Tab indents; Escape then Tab leaves the editor (Ctrl-M, or Shift-Alt-M on macOS,
+// turns Tab into a focus key until pressed again). Pass `path` to keep one undo history and
+// cursor per file when the same editor shows several files.
 import {
   autocompletion,
   closeBrackets,
@@ -385,6 +394,9 @@ interface CodeEditorProps {
   /** The text (controlled). */
   value?: string
   defaultValue?: string
+  /** Called with the new text after each edit the user makes. */
+  onValueChange?: (value: string) => void
+  /** @deprecated Use `onValueChange`, the name every Coreloom field uses. Removed in 2.0. */
   onChange?: (value: string) => void
   /** A built-in language, or one derived from `path` when omitted. */
   language?: CodeEditorLanguage
@@ -424,9 +436,23 @@ interface CodeEditorProps {
   id?: string
 }
 
+/**
+ * Whether `value` is the app handing back text this editor reported through its change callback,
+ * possibly a keystroke or two late: React can commit after the next key. Applying such an echo
+ * would undo what was typed since. Forgets the reports up to that one; any other value is the
+ * app's own, and forgets them all.
+ */
+function isEcho(reported: string[], value: string) {
+  const at = reported.lastIndexOf(value)
+  reported.splice(0, at === -1 ? reported.length : at + 1)
+  return at !== -1
+}
+
 function CodeEditor({
   value,
   defaultValue = '',
+  onValueChange,
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- kept working until 2.0
   onChange,
   language: languageProp,
   path,
@@ -459,11 +485,13 @@ function CodeEditor({
   // One saved state per path, so switching files keeps each one's undo history and cursor.
   const states = React.useRef(new Map<string, EditorState>())
   const pathRef = React.useRef(path)
+  // The texts reported through onChange that `value` hasn't caught up with yet (see isEcho).
+  const reported = React.useRef<string[]>([])
 
   // The latest callbacks, read by CodeMirror's listeners (which are set up once).
-  const callbacks = React.useRef({ onChange, onSave, onCursorChange })
+  const callbacks = React.useRef({ onValueChange, onChange, onSave, onCursorChange })
   React.useLayoutEffect(() => {
-    callbacks.current = { onChange, onSave, onCursorChange }
+    callbacks.current = { onValueChange, onChange, onSave, onCursorChange }
   })
 
   const compartments = React.useMemo(
@@ -564,7 +592,10 @@ function CodeEditor({
             update.docChanged &&
             !update.transactions.some((tr) => tr.annotation(external) === true)
           ) {
-            callbacks.current.onChange?.(update.state.doc.toString())
+            const text = update.state.doc.toString()
+            reported.current = [...reported.current.slice(-49), text]
+            callbacks.current.onValueChange?.(text)
+            callbacks.current.onChange?.(text)
           }
           if (update.docChanged || update.selectionSet) {
             const range = update.state.selection.main
@@ -610,6 +641,7 @@ function CodeEditor({
     if (!view || pathRef.current === path) return
     if (pathRef.current !== undefined) states.current.set(pathRef.current, view.state)
     pathRef.current = path
+    reported.current = []
     const saved = path === undefined ? undefined : states.current.get(path)
     view.setState(saved ?? createState(value ?? ''))
   }, [path, value])
@@ -655,7 +687,7 @@ function CodeEditor({
   // A new `value` from outside replaces the text (keeping the cursor where it can).
   React.useEffect(() => {
     const view = viewInstance.current
-    if (!view || value === undefined) return
+    if (!view || value === undefined || isEcho(reported.current, value)) return
     const current = view.state.doc.toString()
     if (value === current) return
     const head = Math.min(view.state.selection.main.head, value.length)
@@ -700,6 +732,7 @@ function useLanguageName() {
  */
 function CodeEditorLanguageSelect({
   value,
+  defaultValue,
   onValueChange,
   languages = CODE_EDITOR_LANGUAGES.map((l) => l.value),
   size = 'sm',
@@ -707,8 +740,11 @@ function CodeEditorLanguageSelect({
   className,
   'aria-label': ariaLabel,
 }: {
-  value: CodeEditorLanguage
-  onValueChange: (language: CodeEditorLanguage) => void
+  /** The chosen language (controlled). */
+  value?: CodeEditorLanguage
+  /** The first language when `value` is not set. */
+  defaultValue?: CodeEditorLanguage
+  onValueChange?: (language: CodeEditorLanguage) => void
   /** The languages to offer, in order (all built-in ones by default). */
   languages?: readonly CodeEditorLanguage[]
   size?: 'sm' | 'default'
@@ -721,8 +757,9 @@ function CodeEditorLanguageSelect({
   return (
     <Select
       value={value}
+      defaultValue={defaultValue}
       onValueChange={(next) => {
-        onValueChange(next as CodeEditorLanguage)
+        onValueChange?.(next as CodeEditorLanguage)
       }}
       disabled={disabled}
     >

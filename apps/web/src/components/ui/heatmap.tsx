@@ -12,7 +12,7 @@ import * as React from 'react'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
-/** Share of the color in each of the five steps; step 0 (nothing) is the empty well. */
+/** Share of the color in each of the five steps; step 0 (nothing) is a faint neutral tint. */
 const STEPS = [0, 28, 48, 72, 100] as const
 const LEVELS = [0, 1, 2, 3, 4] as const
 
@@ -23,10 +23,13 @@ function heatmapLevel(value: number | null | undefined, max: number) {
   return Math.min(4, Math.max(1, Math.ceil((value / max) * 4)))
 }
 
+// Every step is a tint over whatever surface the heatmap sits on (a card, the page), so the ramp
+// runs from faint to strong in both themes. A fixed dark well for "nothing" was the strongest
+// mark on a dark card and vanished on a light one.
 function levelColor(level: number, color: string) {
   return level === 0
-    ? 'var(--surface-inset)'
-    : `color-mix(in oklab, ${color} ${STEPS[level]}%, var(--surface-inset))`
+    ? 'color-mix(in oklab, var(--fg-1) 8%, transparent)'
+    : `color-mix(in oklab, ${color} ${STEPS[level]}%, transparent)`
 }
 
 interface GridColumn {

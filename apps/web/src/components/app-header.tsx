@@ -1,7 +1,3 @@
-'use client'
-
-// Coreloom UI — AppHeader (app-shell block). Sticky bar above the page: sidebar toggle,
-// breadcrumb, then your actions (search, notifications, theme) on the right.
 import * as React from 'react'
 
 import {

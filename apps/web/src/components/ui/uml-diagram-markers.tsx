@@ -1,3 +1,7 @@
+'use client'
+
+// Coreloom UI — UmlDiagram markers: the ends of UML lines (arrows, triangles, diamonds, crow's
+// feet, a socket and a ball in a socket), defined once per diagram for every line to point at.
 import type * as React from 'react'
 
 import type { DiagramMarker } from '@/lib/uml-graph'

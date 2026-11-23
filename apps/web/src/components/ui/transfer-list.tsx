@@ -1,9 +1,3 @@
-'use client'
-
-// Coreloom UI — TransferList. Two lists side by side, "Available" and "Selected", with buttons to
-// move ticked items between them: columns to show in a table, members of a group, the permissions
-// of a role. Each list can be filtered. The value is the selected items' values, in the options'
-// order. On a narrow screen the lists stack, the buttons between them.
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -13,6 +7,7 @@ import {
 import * as React from 'react'
 
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
@@ -77,16 +72,20 @@ function TransferPane({
         {shown.map((item) => (
           <li key={item.value}>
             <label className="flex cursor-pointer items-start gap-2.5 rounded-sm px-2 py-1.5 text-[13px] text-foreground hover:bg-accent has-focus-visible:ring-[3px] has-focus-visible:ring-ring has-disabled:cursor-not-allowed has-disabled:opacity-55">
-              <input
-                type="checkbox"
+              {/* The row draws the focus ring, around the box and its label. */}
+              <Checkbox
                 checked={marked.has(item.value)}
                 disabled={(disabled ?? false) || (item.disabled ?? false)}
-                onChange={(e) => {
-                  onMark(item.value, e.target.checked)
+                onCheckedChange={(checked) => {
+                  onMark(item.value, checked === true)
                 }}
-                className="mt-0.5 size-4 shrink-0 cursor-[inherit] accent-primary outline-none"
+                className="mt-0.5 size-4 cursor-[inherit] focus-visible:ring-0"
               />
-              <span className="flex min-w-0 flex-col">
+              {/* Says the dimmed text belongs to a disabled choice. */}
+              <span
+                aria-disabled={(disabled ?? false) || (item.disabled ?? false) || undefined}
+                className="flex min-w-0 flex-col"
+              >
                 <span className="truncate">{item.label}</span>
                 {item.description ? (
                   <span className="truncate text-[12px] text-muted-foreground">
@@ -99,6 +98,42 @@ function TransferPane({
         ))}
       </ul>
     </div>
+  )
+}
+
+/**
+ * One of the four buttons between the lists. With nothing to move it is `aria-disabled`, not
+ * `disabled`: a move empties what the button acts on, and the focus must stay on it.
+ */
+function MoveButton({
+  label,
+  count,
+  disabled,
+  onMove,
+  children,
+}: {
+  label: string
+  /** How many items a press moves. */
+  count: number
+  disabled?: boolean
+  onMove: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      aria-label={label}
+      aria-disabled={count === 0 || undefined}
+      disabled={disabled}
+      className="aria-disabled:cursor-not-allowed aria-disabled:opacity-55 aria-disabled:hover:bg-transparent aria-disabled:active:translate-y-0"
+      onClick={() => {
+        if (count > 0) onMove()
+      }}
+    >
+      {children}
+    </Button>
   )
 }
 
@@ -160,6 +195,8 @@ function TransferList({
   const toAdd = markedIn(available)
   const toRemove = markedIn(selected)
   const movable = (list: TransferOption[]) => list.filter((o) => !o.disabled).map((o) => o.value)
+  const allAvailable = movable(available)
+  const allSelected = movable(selected)
 
   return (
     <div
@@ -179,55 +216,45 @@ function TransferList({
         disabled={disabled}
       />
       <div className="flex flex-row items-center justify-center gap-1.5 sm:flex-col">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label={t.add(toAdd.length)}
-          disabled={(disabled ?? false) || toAdd.length === 0}
-          onClick={() => {
+        <MoveButton
+          label={t.add(toAdd.length)}
+          count={toAdd.length}
+          disabled={disabled}
+          onMove={() => {
             set([...chosen, ...toAdd], toAdd.length, sLabel)
           }}
         >
           <ChevronRightIcon className="max-sm:rotate-90" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={t.addAll}
-          disabled={(disabled ?? false) || movable(available).length === 0}
-          onClick={() => {
-            const all = movable(available)
-            set([...chosen, ...all], all.length, sLabel)
+        </MoveButton>
+        <MoveButton
+          label={t.addAll}
+          count={allAvailable.length}
+          disabled={disabled}
+          onMove={() => {
+            set([...chosen, ...allAvailable], allAvailable.length, sLabel)
           }}
         >
           <ChevronsRightIcon className="max-sm:rotate-90" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={t.removeAll}
-          disabled={(disabled ?? false) || movable(selected).length === 0}
-          onClick={() => {
-            const all = movable(selected)
+        </MoveButton>
+        <MoveButton
+          label={t.removeAll}
+          count={allSelected.length}
+          disabled={disabled}
+          onMove={() => {
             set(
-              chosen.filter((v) => !all.includes(v)),
-              all.length,
+              chosen.filter((v) => !allSelected.includes(v)),
+              allSelected.length,
               aLabel,
             )
           }}
         >
           <ChevronsLeftIcon className="max-sm:rotate-90" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label={t.remove(toRemove.length)}
-          disabled={(disabled ?? false) || toRemove.length === 0}
-          onClick={() => {
+        </MoveButton>
+        <MoveButton
+          label={t.remove(toRemove.length)}
+          count={toRemove.length}
+          disabled={disabled}
+          onMove={() => {
             set(
               chosen.filter((v) => !toRemove.includes(v)),
               toRemove.length,
@@ -236,7 +263,7 @@ function TransferList({
           }}
         >
           <ChevronLeftIcon className="max-sm:rotate-90" />
-        </Button>
+        </MoveButton>
       </div>
       <TransferPane
         title={sLabel}

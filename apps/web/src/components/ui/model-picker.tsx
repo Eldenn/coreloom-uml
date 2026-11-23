@@ -12,6 +12,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { type AiModel, formatTokenPrice, formatTokens } from '@/lib/ai'
 import { useCoreloomI18n } from '@/lib/i18n'
+import { useControllableState } from '@/lib/use-controllable-state'
 import { cn } from '@/lib/utils'
 
 /** The provider's first letter in a small square: a mark that needs no logo. */
@@ -117,18 +118,28 @@ function matches(value: string, search: string, keywords?: string[]) {
 /** The searchable list of models on its own: inside ModelPicker's popover, or inline on a settings page. */
 function ModelList({
   models,
-  value,
+  value: valueProp,
+  defaultValue,
   onValueChange,
   autoFocus,
   className,
 }: {
   models: readonly AiModel[]
-  /** The chosen model's id: checked, and highlighted when the list opens. */
+  /** The chosen model's id (controlled): checked, and highlighted when the list opens. */
   value?: string
-  onValueChange: (id: string) => void
+  /** The first chosen id when `value` is not set. */
+  defaultValue?: string
+  onValueChange?: (id: string) => void
   autoFocus?: boolean
   className?: string
 }) {
+  const [value, setValue] = useControllableState<string | undefined>({
+    value: valueProp,
+    defaultValue,
+    onChange: (id) => {
+      if (id !== undefined) onValueChange?.(id)
+    },
+  })
   const t = useCoreloomI18n().messages.ai.model
   const labels = t.capabilities as Record<string, string>
   return (
@@ -156,7 +167,7 @@ function ModelList({
                 ]}
                 disabled={m.disabled}
                 onSelect={() => {
-                  onValueChange(m.id)
+                  setValue(m.id)
                 }}
                 data-checked={m.id === value || undefined}
                 className="items-start gap-2.5"

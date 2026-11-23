@@ -1,3 +1,10 @@
+'use client'
+
+// Coreloom UI — ImageGallery. A grid of thumbnails that opens a full-screen viewer: product
+// photos, screenshots attached to a ticket, generated images, a property's pictures. In the
+// viewer, the arrows (buttons or keys) go through the images, the zoom button (or a click on the
+// image) shows it at full size, and Escape closes. `ImageLightbox` is the viewer alone, for your
+// own thumbnails.
 import { ChevronLeftIcon, ChevronRightIcon, XIcon, ZoomInIcon, ZoomOutIcon } from 'lucide-react'
 import { Dialog as DialogPrimitive } from 'radix-ui'
 import * as React from 'react'
@@ -20,14 +27,18 @@ function ImageLightbox({
   index,
   onIndexChange,
   open,
+  defaultOpen,
   onOpenChange,
   onCloseAutoFocus,
 }: {
   images: GalleryImage[]
   index: number
   onIndexChange: (index: number) => void
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  /** Whether the viewer shows (controlled). */
+  open?: boolean
+  /** Shown at first, when `open` is not set. */
+  defaultOpen?: boolean
+  onOpenChange?: (open: boolean) => void
   /** Where the focus goes on close (Radix Dialog's event); call preventDefault to move it yourself. */
   onCloseAutoFocus?: (event: Event) => void
 }) {
@@ -44,9 +55,10 @@ function ImageLightbox({
   return (
     <DialogPrimitive.Root
       open={open}
+      defaultOpen={defaultOpen}
       onOpenChange={(next) => {
         if (!next) setZoomed(false)
-        onOpenChange(next)
+        onOpenChange?.(next)
       }}
     >
       <DialogPrimitive.Portal>

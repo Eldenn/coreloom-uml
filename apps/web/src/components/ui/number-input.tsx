@@ -1,10 +1,3 @@
-'use client'
-
-// Coreloom UI — NumberInput. A number typed the way the reader writes it ("1 234,5" in French,
-// "1,234.5" in English), with − / + buttons and the keyboard of a spin button: arrows step,
-// Page Up / Page Down take big steps, Home / End jump to the bounds. The value is a number, or null
-// when empty. Units, percents and other displays come from `formatOptions` (Intl.NumberFormat).
-// For amounts of money, use MoneyInput.
 import { ChevronDownIcon, ChevronUpIcon, MinusIcon, PlusIcon } from 'lucide-react'
 import * as React from 'react'
 

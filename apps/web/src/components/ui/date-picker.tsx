@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — DatePicker. A date field: Popover + Calendar, following shadcn's date-picker
+// pattern. The value is a Date (or undefined); the label is formatted with date-fns.
+// With `typing`, the field is a text input too: people type "14/10/2026" (in the locale's order)
+// and the calendar button stays for those who prefer to pick.
 import { format, isValid, type Locale, parse } from 'date-fns'
 import { CalendarIcon } from 'lucide-react'
 import * as React from 'react'

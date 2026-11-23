@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — AppShell (app-shell block). The whole product layout in one component:
+// sidebar, sticky header with breadcrumb, ⌘K palette and theme toggle, and your page
+// centered at --container-app (or across the whole width, for editors and canvases). Pass data;
+// edit this file when the layout itself must change.
 import * as React from 'react'
 
 import { AppHeader, type Crumb } from '@/components/app-header'

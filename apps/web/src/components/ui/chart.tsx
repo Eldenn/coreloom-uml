@@ -1,8 +1,3 @@
-'use client'
-
-// Coreloom UI — Chart (shadcn/ui new-york-v4 on Recharts 3, restyled). Series colors come from
-// ChartConfig: use the validated `var(--chart-1)` … `var(--chart-5)` tokens, in order.
-
 import * as React from 'react'
 import type { TooltipValueType } from 'recharts'
 import * as RechartsPrimitive from 'recharts'

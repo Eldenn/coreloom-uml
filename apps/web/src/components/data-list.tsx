@@ -1,17 +1,3 @@
-'use client'
-
-// Coreloom UI — DataList (data-list block). A filterable list whose state lives in the URL, so a
-// filtered view can be bookmarked, shared and survives a reload: ?q=api&status=ready,building&page=2.
-//
-//   const list = useDataList({ rows, searchKeys: ["name"], facets: [{ key: "status", label: "Status", options }] })
-//   <DataListToolbar list={list} />
-//   {list.pageRows.map(…)}            // render rows as a Table, cards, Items…
-//   <DataListPagination list={list} />
-//
-// By default it reads and writes window.location (history.replaceState). With a router, pass
-// `searchParams` and `onSearchParamsChange` (Next.js: useSearchParams() and router.replace).
-// When the server filters and paginates, pass the page it returned as `rows` and its figures as
-// `server`:  useDataList({ rows: page.rows, searchKeys: [], facets, server: { total, counts } })
 import {
   CheckIcon,
   ChevronLeftIcon,
@@ -38,6 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 import { useCoreloomI18n } from '@/lib/i18n'
+import { useControllableState } from '@/lib/use-controllable-state'
 import { cn } from '@/lib/utils'
 
 interface FacetOption {
@@ -243,16 +230,25 @@ type DataList<T extends object = any> = ReturnType<typeof useDataList<T>>
 function FacetedFilter({
   title,
   options,
-  value,
+  value: valueProp,
+  defaultValue = [],
   onValueChange,
   counts,
 }: {
   title: string
   options: FacetOption[]
-  value: string[]
-  onValueChange: (values: string[]) => void
+  /** The chosen option values (controlled). */
+  value?: string[]
+  /** The first chosen values when `value` is not set. Default: none. */
+  defaultValue?: string[]
+  onValueChange?: (values: string[]) => void
   counts?: Record<string, number>
 }) {
+  const [value, setValue] = useControllableState({
+    value: valueProp,
+    defaultValue,
+    onChange: onValueChange,
+  })
   const { messages, formatNumber } = useCoreloomI18n()
   const t = messages.dataList
   const selected = new Set(value)
@@ -288,7 +284,8 @@ function FacetedFilter({
       <PopoverContent align="start" className="w-56 p-0">
         <Command>
           <CommandInput placeholder={title} />
-          <CommandList>
+          {/* cmdk owns aria-selected (the keyboard highlight), so the picked state is aria-checked. */}
+          <CommandList aria-multiselectable="true">
             <CommandEmpty>{messages.common.noResults}</CommandEmpty>
             <CommandGroup>
               {options.map((o) => {
@@ -297,10 +294,9 @@ function FacetedFilter({
                   <CommandItem
                     key={o.value}
                     value={o.label}
-                    role="option"
-                    aria-selected={on}
+                    aria-checked={on}
                     onSelect={() => {
-                      onValueChange(on ? value.filter((v) => v !== o.value) : [...value, o.value])
+                      setValue(on ? value.filter((v) => v !== o.value) : [...value, o.value])
                     }}
                   >
                     <span
@@ -330,8 +326,17 @@ function FacetedFilter({
                 variant="ghost"
                 size="sm"
                 className="w-full"
-                onClick={() => {
-                  onValueChange([])
+                // Command gives Enter to its highlighted option: this button keeps its own keys.
+                onKeyDown={(e) => {
+                  e.stopPropagation()
+                }}
+                onClick={(e) => {
+                  setValue([])
+                  // The button hides with nothing picked: keep focus in the panel, on its search box.
+                  e.currentTarget
+                    .closest('[data-slot=command]')
+                    ?.querySelector<HTMLElement>('[data-slot=command-input]')
+                    ?.focus()
                 }}
               >
                 {t.clear}
@@ -342,6 +347,15 @@ function FacetedFilter({
       </PopoverContent>
     </Popover>
   )
+}
+
+/** The search box of the toolbar closest to `from`, going up the page (several lists can share it). */
+function nearestSearch(from: Element) {
+  for (let el = from.parentElement; el; el = el.parentElement) {
+    const input = el.querySelector<HTMLElement>('[data-slot=data-list-toolbar] input[type=search]')
+    if (input) return input
+  }
+  return undefined
 }
 
 /** Search box, one FacetedFilter per facet, "Clear filters" and the result count. */
@@ -405,7 +419,15 @@ function DataListToolbar({
           />
         ))}
         {list.isFiltered && (
-          <Button variant="ghost" size="sm" onClick={list.clear}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              list.clear()
+              // The button hides once nothing is filtered: hand focus to the search box.
+              nearestSearch(e.currentTarget)?.focus()
+            }}
+          >
             {t.clear}
             <XIcon />
           </Button>
@@ -432,7 +454,15 @@ function DataListEmpty({ list, className }: { list: DataList; className?: string
         <EmptyDescription>{t.emptyHint}</EmptyDescription>
       </EmptyHeader>
       {list.isFiltered && (
-        <Button variant="secondary" size="sm" onClick={list.clear}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={(e) => {
+            list.clear()
+            // This empty state goes with the filters: hand focus to the toolbar's search box.
+            nearestSearch(e.currentTarget)?.focus()
+          }}
+        >
           {t.clear}
         </Button>
       )}

@@ -1,3 +1,7 @@
+'use client'
+
+// Coreloom UI — TagsInput. A field that turns what you type into removable tags: Enter or a comma
+// adds one, Backspace on the empty input removes the last, pasting "a, b, c" adds three.
 import { XIcon } from 'lucide-react'
 import * as React from 'react'
 
