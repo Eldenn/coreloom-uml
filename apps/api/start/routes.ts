@@ -260,6 +260,15 @@ router
     router
       .get('/projects/:id/design-review', [designReviewController, 'show'])
       .as('projects.design_review.show')
+    router
+      .post('/architectures/:id/design-review', [designReviewController, 'store'])
+      .as('architectures.design_review.store')
+    router
+      .patch('/design-findings/:id', [
+        () => import('#app/decisions/controllers/design-findings-controller'),
+        'update',
+      ])
+      .as('design_findings.update')
   })
   .where('id', router.matchers.number())
   .use(middleware.auth())

@@ -445,6 +445,35 @@ export class DecisionSchema extends BaseModel {
   declare userId: number
 }
 
+export class DesignFindingSchema extends BaseModel {
+  static $columns = ['architectureId', 'comment', 'createdAt', 'decisionId', 'diagramId', 'id', 'projectId', 'requirementId', 'resolution', 'severity', 'updatedAt', 'userId'] as const
+  $columns = DesignFindingSchema.$columns
+  @column()
+  declare architectureId: number
+  @column()
+  declare comment: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare decisionId: number | null
+  @column()
+  declare diagramId: number | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare projectId: number
+  @column()
+  declare requirementId: number | null
+  @column()
+  declare resolution: string
+  @column()
+  declare severity: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
+}
+
 export class DiagramCodeLinkSchema extends BaseModel {
   static $columns = ['codeKey', 'createdAt', 'diagramId', 'elementId', 'id', 'status', 'updatedAt'] as const
   $columns = DiagramCodeLinkSchema.$columns

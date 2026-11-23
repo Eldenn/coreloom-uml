@@ -102,6 +102,48 @@ export interface ApiDefinition {
     update: typeof routes['decisions.update']
     destroy: typeof routes['decisions.destroy']
   }
+  architectures: {
+    designReview: {
+      store: typeof routes['architectures.design_review.store']
+    }
+    index: typeof routes['architectures.index']
+    store: typeof routes['architectures.store']
+    show: typeof routes['architectures.show']
+    update: typeof routes['architectures.update']
+    destroy: typeof routes['architectures.destroy']
+    duplicate: typeof routes['architectures.duplicate']
+    diagrams: {
+      store: typeof routes['architectures.diagrams.store']
+      reorder: typeof routes['architectures.diagrams.reorder']
+      update: typeof routes['architectures.diagrams.update']
+      destroy: typeof routes['architectures.diagrams.destroy']
+      sourceShow: typeof routes['architectures.diagrams.source_show']
+      sourceUpdate: typeof routes['architectures.diagrams.source_update']
+    }
+    sharing: {
+      show: typeof routes['architectures.sharing.show']
+      update: typeof routes['architectures.sharing.update']
+      regenerateLink: typeof routes['architectures.sharing.regenerate_link']
+      regenerateCode: typeof routes['architectures.sharing.regenerate_code']
+    }
+    assistant: {
+      messages: {
+        store: typeof routes['architectures.assistant.messages.store']
+      }
+      readings: {
+        store: typeof routes['architectures.assistant.readings.store']
+      }
+      context: typeof routes['architectures.assistant.context']
+      changes: {
+        accept: typeof routes['architectures.assistant.changes.accept']
+        reject: typeof routes['architectures.assistant.changes.reject']
+        undo: typeof routes['architectures.assistant.changes.undo']
+      }
+    }
+  }
+  designFindings: {
+    update: typeof routes['design_findings.update']
+  }
   codeReviews: {
     store: typeof routes['code_reviews.store']
     show: typeof routes['code_reviews.show']
@@ -183,42 +225,6 @@ export interface ApiDefinition {
     stats: typeof routes['skills.stats']
     events: typeof routes['skills.events']
     show: typeof routes['skills.show']
-  }
-  architectures: {
-    index: typeof routes['architectures.index']
-    store: typeof routes['architectures.store']
-    show: typeof routes['architectures.show']
-    update: typeof routes['architectures.update']
-    destroy: typeof routes['architectures.destroy']
-    duplicate: typeof routes['architectures.duplicate']
-    diagrams: {
-      store: typeof routes['architectures.diagrams.store']
-      reorder: typeof routes['architectures.diagrams.reorder']
-      update: typeof routes['architectures.diagrams.update']
-      destroy: typeof routes['architectures.diagrams.destroy']
-      sourceShow: typeof routes['architectures.diagrams.source_show']
-      sourceUpdate: typeof routes['architectures.diagrams.source_update']
-    }
-    sharing: {
-      show: typeof routes['architectures.sharing.show']
-      update: typeof routes['architectures.sharing.update']
-      regenerateLink: typeof routes['architectures.sharing.regenerate_link']
-      regenerateCode: typeof routes['architectures.sharing.regenerate_code']
-    }
-    assistant: {
-      messages: {
-        store: typeof routes['architectures.assistant.messages.store']
-      }
-      readings: {
-        store: typeof routes['architectures.assistant.readings.store']
-      }
-      context: typeof routes['architectures.assistant.context']
-      changes: {
-        accept: typeof routes['architectures.assistant.changes.accept']
-        reject: typeof routes['architectures.assistant.changes.reject']
-        undo: typeof routes['architectures.assistant.changes.undo']
-      }
-    }
   }
   mcp: typeof routes['mcp']
   assistant: {

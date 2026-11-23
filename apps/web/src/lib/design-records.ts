@@ -2,8 +2,11 @@
 // what its architecture has to hold, and the decisions taken to hold it. A project holds at most
 // a hundred of each, so one page reads them all.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import * as React from 'react'
 
 import { client } from '@/lib/client'
+import { MODEL_CALL, type StoredProvider } from '@/lib/llm-provider'
+import { callBody } from '@/lib/llm-provider-body'
 import { projectKeys } from '@/lib/projects'
 
 export type Requirement = Awaited<
@@ -73,16 +76,80 @@ export function useDecisions(projectId: number) {
   })
 }
 
-export type DesignFinding = Awaited<
-  ReturnType<typeof client.api.projects.designReview.show>
->['findings'][number]
+type DesignReview = Awaited<ReturnType<typeof client.api.projects.designReview.show>>
+export type DesignFinding = DesignReview['findings'][number]
+export type DesignModelFinding = DesignReview['modelFindings'][number]
 
-/** What the records say against themselves; read again with the decisions after any write. */
+const reviewKey = (projectId: number) => [...keys.decisions(projectId), 'review'] as const
+
+/**
+ * What the records say against themselves, and what the owner's model found in the views; read
+ * again with the decisions after any write.
+ */
 export function useDesignReview(projectId: number) {
   return useQuery({
-    queryKey: [...keys.decisions(projectId), 'review'],
-    queryFn: async () =>
-      (await client.api.projects.designReview.show({ params: { id: projectId } })).findings,
+    queryKey: reviewKey(projectId),
+    queryFn: () => client.api.projects.designReview.show({ params: { id: projectId } }),
+  })
+}
+
+/**
+ * Reviews architectures with the owner's model, one call after the other; a failure stops the
+ * run, so a wrong key is not repeated for each. `current` is the architecture being read.
+ */
+export function useModelDesignReview(projectId: number) {
+  const queryClient = useQueryClient()
+  const [current, setCurrent] = React.useState<number | null>(null)
+  const mutation = useMutation({
+    mutationFn: async ({
+      provider,
+      architectureIds,
+      locale,
+    }: {
+      provider: StoredProvider
+      architectureIds: readonly number[]
+      locale: 'en' | 'fr'
+    }) => {
+      for (const id of architectureIds) {
+        setCurrent(id)
+        await client.api.architectures.designReview.store({
+          params: { id },
+          body: { ...callBody(provider), locale },
+          ...MODEL_CALL,
+        })
+      }
+    },
+    onSettled: () => {
+      setCurrent(null)
+      return queryClient.invalidateQueries({ queryKey: reviewKey(projectId) })
+    },
+  })
+  return { ...mutation, current }
+}
+
+/** Marks a finding of the model done, dismissed or open again. */
+export function useResolveDesignFinding(projectId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      resolution,
+    }: {
+      id: number
+      resolution: DesignModelFinding['resolution']
+    }) => client.api.designFindings.update({ params: { id }, body: { resolution } }),
+    onSuccess: ({ finding }) => {
+      queryClient.setQueryData<DesignReview>(
+        reviewKey(projectId),
+        (old) =>
+          old && {
+            ...old,
+            modelFindings: old.modelFindings.map((item) =>
+              item.id === finding.id ? finding : item,
+            ),
+          },
+      )
+    },
   })
 }
 

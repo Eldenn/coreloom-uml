@@ -71,9 +71,24 @@ export const en = {
     retry: 'Retry',
   },
   design: {
+    modelReview: 'With your model',
+    modelReviewText: (model: string) =>
+      `${model} reads the views of each architecture against the requirements and decisions, one call per architecture, with your key. A new review replaces the findings of the last one.`,
+    modelReviewNoProvider:
+      'Set your LLM provider in Settings first: the review calls your own model, with your key.',
+    modelReviewOpenSettings: 'Open Settings',
+    modelReviewStart: 'Review the views',
+    modelReviewRunning: (title: string) => `Reading ${title}…`,
+    modelReviewNothing: 'Add a requirement or a decision, and draw a view, to review.',
+    modelReviewNone: 'No finding yet.',
+    modelReviewFailed: 'The review stopped.',
+    modelReviewResolveFailed: 'The finding could not be updated.',
+    modelReviewWhere: (architecture: string, view: string | null) =>
+      view === null ? architecture : `${architecture} · ${view}`,
+    modelReviewGone: 'A requirement or a decision deleted since',
     review: 'Review',
     reviewDescription:
-      'What the requirements and decisions say against themselves. Read from what is written here: no model is called.',
+      'What the requirements and decisions say against themselves, read from what is written here with no model. Then, when you ask for it, what your own model finds in the views.',
     reviewClear: 'Nothing to report.',
     findings: {
       unserved_requirement: 'No accepted decision serves this requirement, which must hold.',
@@ -1566,9 +1581,25 @@ export const fr: Messages = {
     retry: 'Réessayer',
   },
   design: {
+    modelReview: 'Avec votre modèle',
+    modelReviewText: (model: string) =>
+      `${model} lit les vues de chaque architecture au regard des exigences et des décisions, un appel par architecture, avec votre clé. Une nouvelle revue remplace les constats de la précédente.`,
+    modelReviewNoProvider:
+      'Renseignez d’abord votre fournisseur de LLM dans les réglages : la revue appelle votre propre modèle, avec votre clé.',
+    modelReviewOpenSettings: 'Ouvrir les réglages',
+    modelReviewStart: 'Passer les vues en revue',
+    modelReviewRunning: (title: string) => `Lecture de ${title}…`,
+    modelReviewNothing:
+      'Ajoutez une exigence ou une décision, et dessinez une vue, pour lancer la revue.',
+    modelReviewNone: 'Aucun constat pour l’instant.',
+    modelReviewFailed: 'La revue s’est arrêtée.',
+    modelReviewResolveFailed: 'Le constat n’a pas pu être mis à jour.',
+    modelReviewWhere: (architecture: string, view: string | null) =>
+      view === null ? architecture : `${architecture} · ${view}`,
+    modelReviewGone: 'Une exigence ou une décision supprimée depuis',
     review: 'Revue',
     reviewDescription:
-      'Ce que les exigences et les décisions disent contre elles-mêmes. Lu depuis ce qui est écrit ici : aucun modèle n’est appelé.',
+      'Ce que les exigences et les décisions disent contre elles-mêmes, lu depuis ce qui est écrit ici, sans modèle. Puis, à votre demande, ce que votre propre modèle trouve dans les vues.',
     reviewClear: 'Rien à signaler.',
     findings: {
       unserved_requirement: 'Aucune décision acceptée ne sert cette exigence indispensable.',

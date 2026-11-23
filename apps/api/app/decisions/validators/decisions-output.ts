@@ -1,3 +1,7 @@
+import type {
+  CodeReviewResolution,
+  ConformanceSeverity,
+} from '#app/code-reviews/constants/code-review'
 import type { DecisionOption, DecisionStatus } from '#app/decisions/constants/decision'
 import type { Paginated } from '#app/shared/pagination/paginate'
 
@@ -20,3 +24,16 @@ export type DecisionOutput = {
 
 /** Shape returned by `GET /projects/:id/decisions`. */
 export type DecisionsListOutput = Paginated<DecisionOutput>
+
+/** A finding of the owner's model about an architecture, with what it names when it still exists. */
+export type DesignModelFindingOutput = {
+  id: number
+  architectureId: number
+  requirementId: number | null
+  decisionId: number | null
+  diagramId: number | null
+  severity: ConformanceSeverity
+  comment: string
+  resolution: CodeReviewResolution
+  createdAt: string
+}

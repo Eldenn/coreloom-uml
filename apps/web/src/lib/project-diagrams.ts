@@ -10,6 +10,7 @@ export interface ProjectDiagram {
   title: string
   kind: string
   architecture: string
+  architectureId: number
   content: UmlSpec | null
 }
 
@@ -22,12 +23,13 @@ export function useProjectDiagrams(projectId: number) {
     combine: (results) => ({
       pending: results.some((result) => result.isPending),
       failed: results.some((result) => result.isError),
-      diagrams: results.flatMap((result): ProjectDiagram[] =>
+      diagrams: results.flatMap((result, index): ProjectDiagram[] =>
         (result.data?.diagrams ?? []).map((diagram) => ({
           id: diagram.id,
           title: diagram.title,
           kind: diagram.kind,
           architecture: result.data?.title ?? '',
+          architectureId: ids[index],
           content: diagram.content,
         })),
       ),
