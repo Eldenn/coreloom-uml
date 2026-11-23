@@ -20,6 +20,7 @@ import {
   createAssistantChat,
   draftOf,
   sendChat,
+  stopChat,
 } from '@/lib/assistant-chat'
 import type { AssistantPage } from '@/lib/assistant-subject'
 import { apiBaseUrl, client, TuyauError } from '@/lib/client'
@@ -246,8 +247,8 @@ export function useAssistantChat(conversationId: number) {
       ),
     [conversationId],
   )
-  const { messages, status, stop } = useChat<AssistantChatMessage<ChatOutput>>({ chat })
-  return { chat, draft: draftOf(messages), status, stop }
+  const { messages, status } = useChat<AssistantChatMessage<ChatOutput>>({ chat })
+  return { chat, draft: draftOf(messages), status, stop: () => stopChat(chat) }
 }
 
 export function useAskAssistant(conversationId: number, chat: AssistantChat) {

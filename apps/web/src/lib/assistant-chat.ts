@@ -64,9 +64,18 @@ export function createAssistantChat<Output>(url: string): Chat<AssistantChatMess
   })
 }
 
+/** The chats the owner stopped since their last message: a stream they end is no failure. */
+const stopped = new WeakSet<Chat<UIMessage>>()
+
+/** Stop: cancels the reply being written (the API then stores nothing). */
+export function stopChat<Output>(chat: Chat<AssistantChatMessage<Output>>): Promise<void> {
+  stopped.add(chat as unknown as Chat<UIMessage>)
+  return chat.stop()
+}
+
 /**
- * Sends one message and waits for the stream to end: the stored exchange, `null` when it was
- * stopped (nothing is stored then), or the failure as a `TuyauError`. The `Chat` is emptied
+ * Sends one message and waits for the stream to end: the stored exchange, `null` when the owner
+ * stopped it (`stopChat`; nothing is stored then), or the failure as a `TuyauError`. The `Chat` is emptied
  * afterwards either way: what was stored comes back through the conversation's query.
  */
 export async function sendChat<Output>(
@@ -74,13 +83,17 @@ export async function sendChat<Output>(
   text: string,
   body: Record<string, unknown>,
 ): Promise<Output | null> {
+  const key = chat as unknown as Chat<UIMessage>
+  stopped.delete(key)
   chat.messages = []
   try {
     await chat.sendMessage({ text }, { body })
     if (chat.status === 'error' && chat.error) throw chatFailure(chat.error)
     const done = chat.lastMessage?.parts.find((part) => part.type === 'data-chat')
-    // A stream that ended without its last part was stopped: the API stored nothing.
-    return done ? done.data : null
+    if (done) return done.data
+    // Stopped by the owner: the API stored nothing. Otherwise the stream was cut short.
+    if (stopped.has(key)) return null
+    throw chatFailure(new Error('The stream ended before its answer'))
   } finally {
     chat.messages = []
   }

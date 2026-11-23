@@ -2,7 +2,7 @@ import { TuyauError } from '@tuyau/core/client'
 import type { UIMessage } from 'ai'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { chatFailure, createAssistantChat, draftOf, sendChat } from '@/lib/assistant-chat'
+import { chatFailure, createAssistantChat, draftOf, sendChat, stopChat } from '@/lib/assistant-chat'
 
 const URL = 'http://api.test/assistant/conversations/7/messages'
 
@@ -76,6 +76,46 @@ describe('sendChat', () => {
     expect(error).toBeInstanceOf(TuyauError)
     expect((error as TuyauError).status).toBe(502)
     expect((error as TuyauError).response).toEqual({ reason: 'rate_limited' })
+  })
+})
+
+describe('sendChat, cut short or stopped', () => {
+  const partial = () =>
+    streamOf([
+      { type: 'start' },
+      { type: 'start-step' },
+      { type: 'text-start', id: '1' },
+      { type: 'text-delta', id: '1', delta: 'Hel' },
+    ])
+
+  it('fails a stream that ends before its answer', async () => {
+    stubFetch(partial)
+    const error = await sendChat(createAssistantChat(URL), 'hi', {}).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(TuyauError)
+    expect((error as TuyauError).kind).toBe('network')
+  })
+
+  it('answers null once the owner stopped it', async () => {
+    let started = false
+    vi.stubGlobal('fetch', (_url: string, init: RequestInit) => {
+      const body = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('data: {"type":"start"}\n\n'))
+          started = true
+          init.signal?.addEventListener('abort', () =>
+            controller.error(new DOMException('', 'AbortError')),
+          )
+        },
+      })
+      return Promise.resolve(
+        new Response(body, { headers: { 'content-type': 'text/event-stream' } }),
+      )
+    })
+    const chat = createAssistantChat(URL)
+    const sent = sendChat(chat, 'hi', {})
+    await vi.waitFor(() => expect(started).toBe(true))
+    await stopChat(chat)
+    expect(await sent).toBeNull()
   })
 })
 
