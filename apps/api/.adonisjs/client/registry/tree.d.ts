@@ -38,6 +38,14 @@ export interface ApiDefinition {
         destroy: typeof routes['projects.code_maps.follow.destroy']
       }
     }
+    requirements: {
+      index: typeof routes['projects.requirements.index']
+      store: typeof routes['projects.requirements.store']
+    }
+    decisions: {
+      index: typeof routes['projects.decisions.index']
+      store: typeof routes['projects.decisions.store']
+    }
     codeReviews: {
       index: typeof routes['projects.code_reviews.index']
     }
@@ -82,6 +90,14 @@ export interface ApiDefinition {
       index: typeof routes['admin.feature_flags.index']
       update: typeof routes['admin.feature_flags.update']
     }
+  }
+  requirements: {
+    update: typeof routes['requirements.update']
+    destroy: typeof routes['requirements.destroy']
+  }
+  decisions: {
+    update: typeof routes['decisions.update']
+    destroy: typeof routes['decisions.destroy']
   }
   codeReviews: {
     store: typeof routes['code_reviews.store']

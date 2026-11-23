@@ -227,6 +227,41 @@ router
 
 /*
 |--------------------------------------------------------------------------
+| Requirements and decisions: why a project's architecture is what it is (behind `design-records`)
+|--------------------------------------------------------------------------
+|
+| What the architecture has to hold, and the decisions taken to hold it, with the options weighed.
+| The assistant reads both before it draws a view of the project. These routes call no model.
+| Session only.
+*/
+const requirementsController = () => import('#app/requirements/controllers/requirements-controller')
+const decisionsController = () => import('#app/decisions/controllers/decisions-controller')
+router
+  .group(() => {
+    router
+      .get('/projects/:id/requirements', [requirementsController, 'index'])
+      .as('projects.requirements.index')
+    router
+      .post('/projects/:id/requirements', [requirementsController, 'store'])
+      .as('projects.requirements.store')
+    router.patch('/requirements/:id', [requirementsController, 'update']).as('requirements.update')
+    router
+      .delete('/requirements/:id', [requirementsController, 'destroy'])
+      .as('requirements.destroy')
+    router
+      .get('/projects/:id/decisions', [decisionsController, 'index'])
+      .as('projects.decisions.index')
+    router
+      .post('/projects/:id/decisions', [decisionsController, 'store'])
+      .as('projects.decisions.store')
+    router.patch('/decisions/:id', [decisionsController, 'update']).as('decisions.update')
+    router.delete('/decisions/:id', [decisionsController, 'destroy']).as('decisions.destroy')
+  })
+  .where('id', router.matchers.number())
+  .use(middleware.auth())
+
+/*
+|--------------------------------------------------------------------------
 | Conformance reviews: diagrams checked against a code map by the user's own model (`code-maps`)
 |--------------------------------------------------------------------------
 |

@@ -4,12 +4,15 @@ import type { DateTime } from 'luxon'
 import AgentConfig from '#app/agent-configs/models/agent-config'
 import Architecture from '#app/architectures/models/architecture'
 import CodeMap from '#app/code-maps/models/code-map'
+import Decision from '#app/decisions/models/decision'
+import Requirement from '#app/requirements/models/requirement'
 import User from '#app/users/models/user'
 
 /**
  * A project: the container of one piece of design work, owned by one user.
  * It holds the project's artifacts: architectures (sets of UML diagrams), at
- * most one agent configuration, and code maps (the structure of its code). A new kind of artifact gets its own table
+ * most one agent configuration, code maps (the structure of its code), requirements and
+ * decisions. A new kind of artifact gets its own table
  * with a `project_id` and a relation here.
  */
 export default class Project extends BaseModel {
@@ -42,4 +45,10 @@ export default class Project extends BaseModel {
 
   @hasMany(() => CodeMap)
   declare codeMaps: HasMany<typeof CodeMap>
+
+  @hasMany(() => Requirement)
+  declare requirements: HasMany<typeof Requirement>
+
+  @hasMany(() => Decision)
+  declare decisions: HasMany<typeof Decision>
 }
