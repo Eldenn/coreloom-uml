@@ -52,6 +52,8 @@ export type ChatAnswerInput = {
   message: string
   locale: Parameters<typeof chatWithAssistant>[1]['locale']
   page: Target | undefined
+  /** A design brief for the project of `page`: the loop runs with its steps. */
+  brief?: boolean
   context: Parameters<typeof resolveContext>[0]
   pointed: Parameters<typeof resolvePointed>[0]
   auto: boolean | undefined
@@ -114,6 +116,7 @@ export async function answerChat(
       const result = await runAssistantTools(
         input.model,
         {
+          purpose: input.brief ? 'brief' : 'answer',
           history,
           files: filesContext(files),
           message: sent,

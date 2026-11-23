@@ -30,6 +30,16 @@ export interface Workspace {
   codeMapId?: number
 }
 
+/**
+ * A conversation that is a design brief for a project: every message of it carries the marker,
+ * and `first` is the brief itself until it is sent. Held in this tab only: a reload makes it a
+ * plain conversation again.
+ */
+interface DesignBrief {
+  projectId: number
+  first: string | null
+}
+
 interface AssistantState {
   open: boolean
   conversationId: number | null
@@ -46,6 +56,12 @@ interface AssistantControls {
   setItems: (items: readonly ContextItem[]) => void
   /** The context as it is now, for a caller that must not render again with the chat. */
   readItems: () => readonly ContextItem[]
+  /** Opens the chat on a new conversation that is a brief for the project; `brief` goes first. */
+  startBrief: (conversationId: number, projectId: number, brief: string) => void
+  /** The project this conversation is a design brief for, if it is one. */
+  briefOf: (conversationId: number) => number | null
+  /** The brief to send first, once: `null` when there is none or it was taken already. */
+  takeBrief: (conversationId: number) => string | null
 }
 
 const StateContext = React.createContext<AssistantState | null>(null)
@@ -56,6 +72,8 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const [conversationId, setConversationId] = React.useState<number | null>(null)
   const [items, setItems] = React.useState<readonly ContextItem[]>([])
   const [workspace, setWorkspace] = React.useState<Workspace | null>(null)
+  // Read when a conversation opens, never rendered: a ref, not a state.
+  const briefs = React.useRef(new Map<number, DesignBrief>())
   // The setters of `useState`: stable, so the object is too.
   const held = React.useRef(items)
   React.useEffect(() => {
@@ -68,6 +86,18 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       setWorkspace,
       setItems,
       readItems: () => held.current,
+      startBrief: (conversationId, projectId, brief) => {
+        briefs.current.set(conversationId, { projectId, first: brief })
+        setConversationId(conversationId)
+        setOpen(true)
+      },
+      briefOf: (conversationId) => briefs.current.get(conversationId)?.projectId ?? null,
+      takeBrief: (conversationId) => {
+        const brief = briefs.current.get(conversationId)
+        const first = brief?.first ?? null
+        if (brief) brief.first = null
+        return first
+      },
     }),
     [],
   )

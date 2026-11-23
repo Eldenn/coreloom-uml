@@ -39,7 +39,7 @@ import {
 } from '@/lib/assistant'
 import type { ContextBudget } from '@/lib/assistant-changes'
 import type { ChatDraft } from '@/lib/assistant-chat'
-import type { Workspace } from '@/lib/assistant-context'
+import { useAssistant, type Workspace } from '@/lib/assistant-context'
 import { getErrorMessage, TuyauError } from '@/lib/client'
 import { providerCallFailure, type StoredProvider } from '@/lib/llm-provider'
 import { useT } from '@/lib/locale'
@@ -130,6 +130,7 @@ export function Conversation({
   const messages = detail.data?.messages ?? []
   const { budget, askError } = watched(fromCode, context.data, ask.error)
 
+  const briefProjectId = useAssistant().briefOf(conversationId)
   const send = async (typed: string, files: File[]) => {
     if (!provider) return
     const attachment = await readAttachment(files)
@@ -162,9 +163,7 @@ export function Conversation({
         ...views.selection,
         ...subject.code.sent,
         pointed: subject.pointed,
-        ...(subject.mode === 'auto'
-          ? { auto: true, page: subject.page, context: subject.context }
-          : {}),
+        ...autoFields(subject, briefProjectId),
         onHandoff: (handoff) => {
           setHanded({ handoff, message: text })
         },
@@ -182,6 +181,7 @@ export function Conversation({
       })
   }
   const pending = pendingOf(subject, ask, web, { handed, reading, draft: live.draft })
+  useFirstBrief(conversationId, provider !== null, (first) => void send(first, []))
 
   return (
     <>
@@ -247,6 +247,43 @@ export function Conversation({
       />
     </>
   )
+}
+
+/**
+ * The brief the Design tab started this conversation with: sent once, as its first message, once
+ * a provider is set. Taken in a timer the cleanup cancels, so a remount does not send it twice.
+ */
+function useFirstBrief(conversationId: number, ready: boolean, send: (first: string) => void) {
+  const { takeBrief } = useAssistant()
+  const onReady = React.useEffectEvent(() => {
+    const first = takeBrief(conversationId)
+    if (first !== null) send(first)
+  })
+  React.useEffect(() => {
+    if (!ready) return
+    const timer = setTimeout(onReady)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [ready])
+}
+
+/**
+ * What "Auto" sends with a message. A design brief is about its project, in "Auto", whatever the
+ * page or the context.
+ */
+function autoFields(subject: Subject, projectId: number | null) {
+  if (projectId === null)
+    return subject.mode === 'auto'
+      ? { auto: true, page: subject.page, context: subject.context }
+      : {}
+  return {
+    architectureId: null,
+    auto: true,
+    page: { kind: 'project' as const, id: projectId },
+    context: subject.context,
+    brief: { projectId },
+  }
 }
 
 /** The text files the picker offers; anything else that reads as text is taken too. */

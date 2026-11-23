@@ -59,6 +59,7 @@ export {
   AssistantToolKind,
   type AssistantToolsInput,
   type AssistantToolsResult,
+  DESIGN_BRIEF_INSTRUCTIONS,
   DIAGRAM_READING_INSTRUCTIONS,
   NOTHING_TO_READ,
   runAssistantTools,

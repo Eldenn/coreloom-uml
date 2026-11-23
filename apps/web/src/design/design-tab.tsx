@@ -27,6 +27,7 @@ import {
 import { Popconfirm } from '@/components/ui/popconfirm'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
+import { DesignBrief } from '@/design/design-brief'
 import { DecisionForm, RequirementForm } from '@/design/design-forms'
 import { DesignReview } from '@/design/design-review'
 import { getErrorMessage } from '@/lib/client'
@@ -83,6 +84,7 @@ export function DesignTab({ projectId }: { projectId: number }) {
   return (
     <div className="flex flex-col gap-4">
       <p className="m-0 max-w-prose text-sm text-muted-foreground">{t.design.intro}</p>
+      <DesignBrief projectId={projectId} />
       <DesignReview projectId={projectId} />
       <Section
         id="design-requirements-title"

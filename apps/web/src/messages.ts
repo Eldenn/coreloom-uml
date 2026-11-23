@@ -71,6 +71,17 @@ export const en = {
     retry: 'Retry',
   },
   design: {
+    briefAction: 'Design from a brief',
+    briefTitle: 'Design from a brief',
+    briefDescription:
+      'Say what you need to build. The assistant opens a new conversation and leads it, one step at a time, to requirements, then to one decision with its options weighed, then to an architecture and its views. Every step is a proposal you accept or reject in the chat.',
+    brief: 'Brief',
+    briefHint:
+      'What the system is for, who uses it, how many, the constraints, what exists already. You can attach files in the chat afterwards.',
+    briefRequired: 'Write the brief first.',
+    briefStart: 'Start',
+    briefConversation: 'Design brief',
+    briefFailed: 'The conversation could not be started.',
     modelReview: 'With your model',
     modelReviewText: (model: string) =>
       `${model} reads the views of each architecture against the requirements and decisions, one call per architecture, with your key. A new review replaces the findings of the last one.`,
@@ -1616,6 +1627,17 @@ export const fr: Messages = {
     retry: 'Réessayer',
   },
   design: {
+    briefAction: 'Concevoir à partir d’un cahier des charges',
+    briefTitle: 'Concevoir à partir d’un cahier des charges',
+    briefDescription:
+      'Dites ce que vous devez construire. L’assistant ouvre une nouvelle conversation et la mène, une étape à la fois, vers des exigences, puis vers une décision aux options pesées, puis vers une architecture et ses vues. Chaque étape est une proposition que vous acceptez ou refusez dans le chat.',
+    brief: 'Cahier des charges',
+    briefHint:
+      'À quoi sert le système, qui l’utilise, combien, les contraintes, ce qui existe déjà. Vous pourrez joindre des fichiers dans le chat ensuite.',
+    briefRequired: 'Écrivez d’abord le cahier des charges.',
+    briefStart: 'Commencer',
+    briefConversation: 'Cahier des charges',
+    briefFailed: 'La conversation n’a pas pu démarrer.',
     modelReview: 'Avec votre modèle',
     modelReviewText: (model: string) =>
       `${model} lit les vues de chaque architecture au regard des exigences et des décisions, un appel par architecture, avec votre clé. Une nouvelle revue remplace les constats de la précédente.`,

@@ -80,6 +80,13 @@ silently.
   over to an architecture's diagram assistant or to a web research; nothing is stored then and the
   panel sends it again down that path. It is behind the `diagram-assistant` feature flag, off by
   default; session only.
+  With `design-records` too, « Design from a brief » on a project's Design tab opens a new
+  conversation whose messages carry `brief: { projectId }` (404 without the flags or for a project
+  that is not the caller's): the model reads what the project records, then takes only the next
+  step not done yet (asks at most three questions, proposes requirements, one decision with its
+  options weighed, an architecture, then hands over to the diagram assistant). Each step waits for
+  the owner to accept its card; the browser tab keeps which conversation is a brief, nothing more
+  is stored.
 - **Requirements and decisions.** A project keeps why its architecture is what it is:
   **requirements** (`GET`/`POST /projects/:id/requirements`, `PATCH`/`DELETE /requirements/:id`:
   one checkable sentence, the quality it is about, `must` or `should`, an optional measure) and
