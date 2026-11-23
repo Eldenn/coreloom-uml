@@ -109,6 +109,8 @@ export const AssistantTargetKind = {
 } as const
 export type AssistantTargetKind = (typeof AssistantTargetKind)[keyof typeof AssistantTargetKind]
 export const ASSISTANT_TARGET_KINDS = Object.values(AssistantTargetKind)
+/** How many items the owner can put in the context of one message. */
+export const ASSISTANT_CONTEXT_MAX = 8
 
 export const ActionStatus = {
   Pending: 'pending',

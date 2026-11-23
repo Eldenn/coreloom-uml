@@ -50,6 +50,19 @@ export async function resolvePage(
   return name === undefined ? null : { ...page, name }
 }
 
+/**
+ * What the owner put in the message's context, named: each item once, and only the caller's (one
+ * deleted since, or someone else's, is left out).
+ */
+export async function resolveContext(
+  context: readonly { kind: AssistantTargetKind; id: number }[] | undefined,
+  user: User,
+): Promise<AssistantPage[]> {
+  const once = new Map((context ?? []).map((item) => [`${item.kind}:${String(item.id)}`, item]))
+  const named = await Promise.all([...once.values()].map((item) => resolvePage(item, user)))
+  return named.filter((item) => item !== null)
+}
+
 const HandoffTool = { WorkOnDiagrams: 'work_on_diagrams', ResearchWeb: 'research_web' } as const
 
 /**

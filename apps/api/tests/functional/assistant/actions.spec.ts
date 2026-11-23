@@ -333,6 +333,32 @@ test.group('Assistant actions - proposing', (group) => {
     assert.isNull(answered?.actions)
   })
 
+  test("names the context of a message: the caller's items, each once", async ({
+    client,
+    assert,
+  }) => {
+    const fixture = await setup('actions-context@example.com')
+    const other = await setup('actions-context-other@example.com')
+    const mine = { kind: 'project', id: fixture.project.id }
+    const { response, model } = await send(client, fixture, [{ text: 'Read.' }], {
+      context: [mine, mine, { kind: 'project', id: other.project.id }],
+    })
+
+    response.assertStatus(200)
+    const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt)
+    assert.equal(prompt.split('<item kind=').length - 1, 1)
+    assert.include(prompt, `<item kind=\\"project\\" id=\\"${fixture.project.id}\\"`)
+  })
+
+  test('refuses a context of more than eight items', async ({ client }) => {
+    const fixture = await setup('actions-context-max@example.com')
+    const { response } = await send(client, fixture, [{ text: 'Read.' }], {
+      context: Array.from({ length: 9 }, (_, index) => ({ kind: 'project', id: index + 1 })),
+    })
+
+    response.assertStatus(422)
+  })
+
   test('reads agent conventions and finds ready-made rules', async ({ client, assert }) => {
     const fixture = await setup('actions-read-config@example.com')
     const { response, model } = await send(client, fixture, [

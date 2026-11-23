@@ -1,6 +1,7 @@
 import { FILE_DIGEST_MAX_LENGTH } from '@coreloom-uml/llm'
 import vine from '@vinejs/vine'
 import {
+  ASSISTANT_CONTEXT_MAX,
   ASSISTANT_FILE_NAME_MAX_LENGTH,
   ASSISTANT_LOCALES,
   ASSISTANT_MESSAGE_MAX_LENGTH,
@@ -112,6 +113,16 @@ export const chatInput = vine.create(
         kind: vine.enum(ASSISTANT_TARGET_KINDS),
         id: vine.number().withoutDecimals().positive(),
       })
+      .optional(),
+    /** What the owner put in the message's context: the work it is about, read in "Auto". */
+    context: vine
+      .array(
+        vine.object({
+          kind: vine.enum(ASSISTANT_TARGET_KINDS),
+          id: vine.number().withoutDecimals().positive(),
+        }),
+      )
+      .maxLength(ASSISTANT_CONTEXT_MAX)
       .optional(),
   }),
 )
