@@ -1144,11 +1144,13 @@ export const en = {
     },
     context: 'About',
     contextEmpty:
-      'Right-click a project, an architecture or agent conventions to add it to this message.',
+      'Right-click a project, an architecture, a view, a part of a diagram or agent conventions to add it to this message.',
     contextKinds: {
       project: 'Project',
       architecture: 'Architecture',
       'agent-config': 'Agent conventions',
+      view: 'View',
+      element: 'Part of a view',
     },
     addToContext: 'Add to the assistant’s context',
     removeFromContext: 'Remove from the assistant’s context',
@@ -2565,11 +2567,13 @@ export const fr: Messages = {
     },
     context: 'À propos de',
     contextEmpty:
-      'Clic droit sur un projet, une architecture ou des conventions d’agents pour l’ajouter à ce message.',
+      'Clic droit sur un projet, une architecture, une vue, une partie d’un diagramme ou des conventions d’agents pour l’ajouter à ce message.',
     contextKinds: {
       project: 'Projet',
       architecture: 'Architecture',
       'agent-config': 'Conventions d’agents',
+      view: 'Vue',
+      element: 'Partie d’une vue',
     },
     addToContext: 'Ajouter au contexte de l’assistant',
     removeFromContext: 'Retirer du contexte de l’assistant',
