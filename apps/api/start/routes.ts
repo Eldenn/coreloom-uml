@@ -577,6 +577,7 @@ const architecturesController = () =>
 const diagramsController = () => import('#app/diagrams/controllers/diagrams-controller')
 const diagramSourceController = () => import('#app/diagrams/controllers/diagram-source-controller')
 const sharingController = () => import('#app/sharing/controllers/sharing-controller')
+const milestonesController = () => import('#app/milestones/controllers/milestones-controller')
 router
   .group(() => {
     router.get('/', [architecturesController, 'index']).as('architectures.index')
@@ -622,10 +623,31 @@ router
     router
       .post('/:id/sharing/regenerate-code', [sharingController, 'regenerateCode'])
       .as('architectures.sharing.regenerate_code')
+
+    // Milestones: named states of all the views, to compare with and to go back to.
+    router
+      .get('/:id/milestones', [milestonesController, 'index'])
+      .as('architectures.milestones.index')
+    router
+      .post('/:id/milestones', [milestonesController, 'store'])
+      .as('architectures.milestones.store')
+    router
+      .get('/:id/milestones/:milestoneId', [milestonesController, 'show'])
+      .as('architectures.milestones.show')
+    router
+      .delete('/:id/milestones/:milestoneId', [milestonesController, 'destroy'])
+      .as('architectures.milestones.destroy')
+    router
+      .post('/:id/milestones/:milestoneId/restore', [
+        () => import('#app/milestones/controllers/restore-milestone-controller'),
+        'handle',
+      ])
+      .as('architectures.milestones.restore')
   })
   .prefix('/architectures')
   .where('id', router.matchers.number())
   .where('diagramId', router.matchers.number())
+  .where('milestoneId', router.matchers.number())
   // The session or an API token (see `app/api-tokens`).
   .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
 

@@ -1,15 +1,14 @@
 // One view change the assistant proposed: what it does, its diff in the view's own text format,
 // and the owner's answer (accept or reject while pending, undo once accepted). Away from its
 // architecture's page it links there; once that architecture is deleted it only tells what it was.
-import type { UmlSpec } from '@coreloom-uml/uml'
 import { Link } from '@tanstack/react-router'
 import type * as React from 'react'
 
-import { canWrite, type DiagramFormat, writeDiagram } from '@/components/diagram-editor'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DiffViewer } from '@/components/ui/diff-viewer'
 import type { ChangeAction, ProposedChange } from '@/lib/assistant'
+import { diffText } from '@/lib/diff-text'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { useT } from '@/lib/locale'
 
@@ -21,16 +20,6 @@ const STATUS_VARIANT = {
   undone: 'secondary',
   failed: 'destructive',
 } as const
-
-/**
- * The text of one side of the diff, in the view's format as the editor writes it (JSON when that
- * format can't hold the kind). A view not created yet has no format: Mermaid, as the server saves it.
- */
-function diffText(spec: UmlSpec | null, format: DiagramFormat | null): string {
-  if (!spec) return ''
-  const wanted = format ?? 'mermaid'
-  return writeDiagram(spec, canWrite(spec.kind, wanted) ? wanted : 'json')
-}
 
 /**
  * The frame of a proposal's card, shared with the actions on the account's work: what it does, a

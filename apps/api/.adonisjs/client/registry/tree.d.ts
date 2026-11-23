@@ -205,6 +205,13 @@ export interface ApiDefinition {
       regenerateLink: typeof routes['architectures.sharing.regenerate_link']
       regenerateCode: typeof routes['architectures.sharing.regenerate_code']
     }
+    milestones: {
+      index: typeof routes['architectures.milestones.index']
+      store: typeof routes['architectures.milestones.store']
+      show: typeof routes['architectures.milestones.show']
+      destroy: typeof routes['architectures.milestones.destroy']
+      restore: typeof routes['architectures.milestones.restore']
+    }
     assistant: {
       messages: {
         store: typeof routes['architectures.assistant.messages.store']

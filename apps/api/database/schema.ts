@@ -130,6 +130,25 @@ export class AgentConfigSchema extends BaseModel {
   declare userId: number
 }
 
+export class ArchitectureMilestoneSchema extends BaseModel {
+  static $columns = ['architectureId', 'createdAt', 'diagramCount', 'diagrams', 'id', 'name', 'userId'] as const
+  $columns = ArchitectureMilestoneSchema.$columns
+  @column()
+  declare architectureId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare diagramCount: number
+  @column()
+  declare diagrams: any
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column()
+  declare userId: number
+}
+
 export class ArchitectureSchema extends BaseModel {
   static $columns = ['accessCode', 'accessVersion', 'createdAt', 'description', 'id', 'projectId', 'shareToken', 'title', 'updatedAt', 'userId', 'visibility'] as const
   $columns = ArchitectureSchema.$columns

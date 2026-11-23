@@ -12,6 +12,7 @@ import { DownloadIcon, Share2Icon } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
+import { HistoryButton } from '@/architectures/milestones-dialog'
 import { ReviewFindingsButton, ReviewFindingsPanel } from '@/architectures/review-findings-panel'
 import { StateSimulationButton, StateSimulationPanel } from '@/architectures/state-simulation-panel'
 import type { DiagramFormat } from '@/components/diagram-editor'
@@ -191,7 +192,8 @@ function useOpenViewFindings(projectId: number | null, diagramId: number | undef
 function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
   const t = useT()
   const kinds = useCoreloomI18n().messages.diagram.kinds
-  const { diagram: selected } = Route.useSearch()
+  // `?assistant=<conversation>` opens the assistant on that conversation, `?code=` on a code map.
+  const { diagram: selected, assistant: conversationId, code: codeMapId } = Route.useSearch()
   const navigate = Route.useNavigate()
   const router = useRouter()
   const autosave = useDiagramAutosave(architecture)
@@ -213,8 +215,6 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
   const failed = (error: unknown) => toast.error(getErrorMessage(error, t.editor.failed))
   const open = active && { ...active, ...autosave.draftOf(active) }
   const side = useSidePanel(open)
-  // `?assistant=<conversation>` opens the assistant on that conversation, `?code=` on a code map.
-  const { assistant: conversationId, code: codeMapId } = Route.useSearch()
   useAssistantWorkspace(
     {
       architecture,
@@ -330,6 +330,7 @@ function Workspace({ architecture }: { architecture: ArchitectureDetail }) {
                 onReviewingChange={side.review}
                 findingsButton={side.findingsButton}
                 onSharingChange={setSharing}
+                history={<HistoryButton architecture={architecture} autosave={autosave} />}
               />
             }
           />
@@ -502,7 +503,7 @@ interface OpenDiagram {
 
 /**
  * The workspace toolbar: Simulate and the XState download (state diagrams), the code review's
- * findings (when a review covers the open view), Share.
+ * findings (when a review covers the open view), History (the milestones), Share.
  */
 function WorkspaceActions({
   diagram,
@@ -514,6 +515,7 @@ function WorkspaceActions({
   onReviewingChange,
   findingsButton,
   onSharingChange,
+  history,
 }: {
   diagram: OpenDiagram | undefined
   simulating: boolean
@@ -525,6 +527,7 @@ function WorkspaceActions({
   onReviewingChange: (open: boolean) => void
   findingsButton: React.Ref<HTMLButtonElement>
   onSharingChange: (open: boolean) => void
+  history: React.ReactNode
 }) {
   const t = useT()
   return (
@@ -547,6 +550,7 @@ function WorkspaceActions({
           onPressedChange={onReviewingChange}
         />
       )}
+      {history}
       <Button
         size="sm"
         onClick={() => {
