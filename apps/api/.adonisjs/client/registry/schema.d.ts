@@ -571,6 +571,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/decisions/controllers/decisions-controller').default['destroy']>>>
     }
   }
+  'projects.design_review.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/projects/:id/design-review'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/decisions/controllers/design-review-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/decisions/controllers/design-review-controller').default['show']>>>
+    }
+  }
   'projects.code_reviews.index': {
     methods: ["GET","HEAD"]
     pattern: '/projects/:id/code-reviews'

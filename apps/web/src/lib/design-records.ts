@@ -73,6 +73,19 @@ export function useDecisions(projectId: number) {
   })
 }
 
+export type DesignFinding = Awaited<
+  ReturnType<typeof client.api.projects.designReview.show>
+>['findings'][number]
+
+/** What the records say against themselves; read again with the decisions after any write. */
+export function useDesignReview(projectId: number) {
+  return useQuery({
+    queryKey: [...keys.decisions(projectId), 'review'],
+    queryFn: async () =>
+      (await client.api.projects.designReview.show({ params: { id: projectId } })).findings,
+  })
+}
+
 /** After a write: the list, the project's counts and, for a requirement, the decisions' links. */
 function useRefresh(projectId: number) {
   const queryClient = useQueryClient()

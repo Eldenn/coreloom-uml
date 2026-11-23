@@ -288,6 +288,12 @@ const routes = {
     tokens: [{"old":"/decisions/:id","type":0,"val":"decisions","end":""},{"old":"/decisions/:id","type":1,"val":"id","end":""}],
     types: placeholder as Registry['decisions.destroy']['types'],
   },
+  'projects.design_review.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/projects/:id/design-review',
+    tokens: [{"old":"/projects/:id/design-review","type":0,"val":"projects","end":""},{"old":"/projects/:id/design-review","type":1,"val":"id","end":""},{"old":"/projects/:id/design-review","type":0,"val":"design-review","end":""}],
+    types: placeholder as Registry['projects.design_review.show']['types'],
+  },
   'projects.code_reviews.index': {
     methods: ["GET","HEAD"],
     pattern: '/projects/:id/code-reviews',

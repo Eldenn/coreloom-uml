@@ -26,6 +26,7 @@ const chat = {
 const DESIGN_TOOLS = [
   'read_project_design',
   'read_decision',
+  'read_design_review',
   'add_requirement',
   'add_decision',
   'supersede_decision',

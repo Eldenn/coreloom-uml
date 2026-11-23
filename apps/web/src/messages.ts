@@ -71,6 +71,15 @@ export const en = {
     retry: 'Retry',
   },
   design: {
+    review: 'Review',
+    reviewDescription:
+      'What the requirements and decisions say against themselves. Read from what is written here: no model is called.',
+    reviewClear: 'Nothing to report.',
+    findings: {
+      unserved_requirement: 'No accepted decision serves this requirement, which must hold.',
+      decision_without_diagram: 'This accepted decision names no diagram.',
+      superseded_still_linked: 'This superseded decision is still named on diagrams.',
+    },
     tab: 'Design',
     intro:
       'What this project’s architecture has to hold, and the decisions taken to hold it. The assistant reads both before it draws a view of the project.',
@@ -1557,6 +1566,15 @@ export const fr: Messages = {
     retry: 'Réessayer',
   },
   design: {
+    review: 'Revue',
+    reviewDescription:
+      'Ce que les exigences et les décisions disent contre elles-mêmes. Lu depuis ce qui est écrit ici : aucun modèle n’est appelé.',
+    reviewClear: 'Rien à signaler.',
+    findings: {
+      unserved_requirement: 'Aucune décision acceptée ne sert cette exigence indispensable.',
+      decision_without_diagram: 'Cette décision acceptée ne nomme aucun diagramme.',
+      superseded_still_linked: 'Cette décision remplacée est encore nommée sur des diagrammes.',
+    },
     tab: 'Conception',
     intro:
       'Ce que l’architecture de ce projet doit tenir, et les décisions prises pour le tenir. L’assistant lit les deux avant de dessiner une vue du projet.',

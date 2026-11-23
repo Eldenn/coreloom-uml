@@ -46,6 +46,9 @@ export interface ApiDefinition {
       index: typeof routes['projects.decisions.index']
       store: typeof routes['projects.decisions.store']
     }
+    designReview: {
+      show: typeof routes['projects.design_review.show']
+    }
     codeReviews: {
       index: typeof routes['projects.code_reviews.index']
     }
