@@ -475,6 +475,102 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/github-webhook-controller').default['handle']>>>
     }
   }
+  'projects.requirements.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/projects/:id/requirements'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/requirements/validators/requirements-input').listRequirementsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/requirements/controllers/requirements-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/requirements/controllers/requirements-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'projects.requirements.store': {
+    methods: ["POST"]
+    pattern: '/projects/:id/requirements'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/requirements/validators/requirements-input').createRequirementInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/requirements/validators/requirements-input').createRequirementInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/requirements/controllers/requirements-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/requirements/controllers/requirements-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'requirements.update': {
+    methods: ["PATCH"]
+    pattern: '/requirements/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/requirements/validators/requirements-input').updateRequirementInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/requirements/validators/requirements-input').updateRequirementInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/requirements/controllers/requirements-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/requirements/controllers/requirements-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'requirements.destroy': {
+    methods: ["DELETE"]
+    pattern: '/requirements/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/requirements/controllers/requirements-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/requirements/controllers/requirements-controller').default['destroy']>>>
+    }
+  }
+  'projects.decisions.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/projects/:id/decisions'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/decisions/validators/decisions-input').listDecisionsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/decisions/controllers/decisions-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/decisions/controllers/decisions-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'projects.decisions.store': {
+    methods: ["POST"]
+    pattern: '/projects/:id/decisions'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/decisions/validators/decisions-input').createDecisionInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/decisions/validators/decisions-input').createDecisionInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/decisions/controllers/decisions-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/decisions/controllers/decisions-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'decisions.update': {
+    methods: ["PATCH"]
+    pattern: '/decisions/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/decisions/validators/decisions-input').updateDecisionInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/decisions/validators/decisions-input').updateDecisionInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/decisions/controllers/decisions-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/decisions/controllers/decisions-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'decisions.destroy': {
+    methods: ["DELETE"]
+    pattern: '/decisions/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/decisions/controllers/decisions-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/decisions/controllers/decisions-controller').default['destroy']>>>
+    }
+  }
   'projects.code_reviews.index': {
     methods: ["GET","HEAD"]
     pattern: '/projects/:id/code-reviews'

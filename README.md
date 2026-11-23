@@ -80,6 +80,17 @@ silently.
   over to an architecture's diagram assistant or to a web research; nothing is stored then and the
   panel sends it again down that path. It is behind the `diagram-assistant` feature flag, off by
   default; session only.
+- **Requirements and decisions.** A project keeps why its architecture is what it is:
+  **requirements** (`GET`/`POST /projects/:id/requirements`, `PATCH`/`DELETE /requirements/:id`:
+  one checkable sentence, the quality it is about, `must` or `should`, an optional measure) and
+  **decisions** (`GET`/`POST /projects/:id/decisions`, `PATCH`/`DELETE /decisions/:id`: the
+  question, one to five options with what speaks for and against each, the one chosen, the
+  consequences, a status `proposed`, `accepted` or `superseded`, and the requirements and diagrams
+  of the project it names). A decision that does not hold together is refused (422): an accepted
+  one names its option, a superseded one may name the decision of the project that replaced it. The
+  diagram assistant reads the requirements and the decisions still standing before it draws a view
+  of the project. At most a hundred of each per project. These routes call no model. Behind the
+  `design-records` feature flag, off by default; session only.
 - **MCP server.** `POST /mcp` is a Model Context Protocol endpoint (Streamable HTTP, stateless)
   for coding agents: with an account API key (`Authorization: Bearer clu_…`, the `read` ability
   is enough) an agent lists the account's projects and their diagrams, reads a diagram as Mermaid,

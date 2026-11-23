@@ -31,6 +31,7 @@ export {
   type ConversationFileContext,
   changeLine,
   chatWithAssistant,
+  type DesignContext,
   FILE_PASSAGES_MAX_LENGTH,
   type FilePassageText,
   type ProposedChange,

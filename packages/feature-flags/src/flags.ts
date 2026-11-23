@@ -13,6 +13,7 @@ export const FeatureFlagKey = {
   WebResearch: 'web-research',
   AssistantActions: 'assistant-actions',
   AssistantRepository: 'assistant-repository',
+  DesignRecords: 'design-records',
 } as const
 
 export type FeatureFlagKey = (typeof FeatureFlagKey)[keyof typeof FeatureFlagKey]
@@ -98,6 +99,14 @@ export const FEATURE_FLAGS: readonly FeatureFlagDeclaration[] = [
     description:
       "Lets the workspace assistant read a project's GitHub repository, cloned in a sandbox kept (paused) with the conversation. Needs code maps, E2B_API_KEY and ANALYZER_URL on the server.",
     tags: ['code', 'llm'],
+    defaultState: OFF,
+  },
+  {
+    key: FeatureFlagKey.DesignRecords,
+    name: 'Requirements and decisions',
+    description:
+      "Lets people record a project's requirements and architecture decisions, which the assistant reads before it draws.",
+    tags: ['design', 'llm'],
     defaultState: OFF,
   },
 ]

@@ -22,6 +22,8 @@ export default class ProjectsController {
       .withCount('architectures')
       .withCount('agentConfig', (query) => query.as('agent_configs_count'))
       .withCount('codeMaps', (query) => query.as('code_maps_count'))
+      .withCount('requirements')
+      .withCount('decisions')
       .orderBy('updatedAt', 'desc')
       .orderBy('id', 'desc')
     if (search) query.whereILike('name', likePattern(search))

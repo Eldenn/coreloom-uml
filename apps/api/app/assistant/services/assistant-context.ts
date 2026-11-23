@@ -13,6 +13,7 @@ import {
 import type AssistantConversation from '#app/assistant/models/assistant-conversation'
 import AssistantMessage from '#app/assistant/models/assistant-message'
 import { conversationFiles, filesContext } from '#app/assistant/services/conversation-files'
+import { projectDesign } from '#app/decisions/services/project-design'
 
 export type ViewSelection = {
   message: string
@@ -32,8 +33,8 @@ export function selectsOwnViews(architecture: Architecture, selection: ViewSelec
 /**
  * What `askAssistant` (and `assistantBudget`) is given for the next message: the selected views
  * as they are now, the stored conversation, where a proposed change is one `changeLine`, never
- * its diagrams, and the conversation's files by name and summary, with the `passages` read for
- * this message.
+ * its diagrams, the conversation's files by name and summary, with the `passages` read for
+ * this message, and the requirements and decisions of the architecture's project.
  */
 export async function assistantSource(
   architecture: Architecture,
@@ -58,6 +59,7 @@ export async function assistantSource(
       })),
     history: await conversationHistory(conversation),
     files: filesContext(await conversationFiles(conversation.id)),
+    design: await projectDesign(architecture),
     passages,
     message,
     locale,

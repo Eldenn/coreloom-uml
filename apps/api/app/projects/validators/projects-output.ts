@@ -10,6 +10,8 @@ export type ProjectOutput = {
   agentConfigCount: number
   /** At most `CODE_MAP_LIMITS.perProject`: older maps are dropped. */
   codeMapCount: number
+  requirementCount: number
+  decisionCount: number
   createdAt: string
   updatedAt: string
 }

@@ -1,6 +1,7 @@
 // One project: its architectures as cards, its agent conventions in a second tab, its code (maps
-// of the repository, matched against the diagrams) in a third when `code-maps` is on, and the
-// project's own actions (rename, delete).
+// of the repository, matched against the diagrams) in a third when `code-maps` is on, its
+// requirements and decisions in another when `design-records` is on, and the project's own
+// actions (rename, delete).
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
 import { PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
@@ -18,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DesignTab } from '@/design/design-tab'
 import { useAgentConfig, useAgentConfigs } from '@/lib/agent-configs'
 import { useArchitectures } from '@/lib/architectures'
 import { CODE_VIEWS, type CodeTabState, useCodeConformance } from '@/lib/code-maps'
@@ -35,10 +37,11 @@ export const Route = createFileRoute('/_authed/projects/$projectId')({
   // `?new=true` opens the "New architecture" dialog; `?tab=agents` shows the agent conventions,
   // with `step=rules` for the catalog of ready-made rules (and `pack=<id>`, `group=<slot>`) and
   // `generation=<id>` for generated files;
-  // `?tab=code` shows the code maps, with `view`, `map=<id>`, `diagram=<id>` and `review=<id>`.
+  // `?tab=code` shows the code maps, with `view`, `map=<id>`, `diagram=<id>` and `review=<id>`;
+  // `?tab=design` shows the requirements and decisions.
   validateSearch: z.object({
     new: z.boolean().optional().catch(undefined),
-    tab: z.enum(['architectures', 'agents', 'code']).optional().catch(undefined),
+    tab: z.enum(['architectures', 'agents', 'code', 'design']).optional().catch(undefined),
     step: z.enum(['rules']).optional().catch(undefined),
     pack: z.string().optional().catch(undefined),
     group: z.string().optional().catch(undefined),
@@ -92,8 +95,11 @@ function ProjectView({ project }: { project: Project }) {
     review,
   } = Route.useSearch()
   const codeMaps = useFeature('code-maps')
-  // While the flag is off (or still loading), `?tab=code` falls back to the architectures.
-  const tab = requestedTab === 'code' && !codeMaps ? 'architectures' : requestedTab
+  const designRecords = useFeature('design-records')
+  // While its flag is off (or still loading), a tab falls back to the architectures.
+  const hidden =
+    (requestedTab === 'code' && !codeMaps) || (requestedTab === 'design' && !designRecords)
+  const tab = hidden ? 'architectures' : requestedTab
   const [editing, setEditing] = React.useState(false)
   const [deleting, setDeleting] = React.useState(false)
   const [search, setSearch] = React.useState('')
@@ -117,7 +123,7 @@ function ProjectView({ project }: { project: Project }) {
     void navigate({ search: open ? { new: true } : {}, replace: true })
   const setTab = (next: string) =>
     void navigate({
-      search: next === 'agents' || next === 'code' ? { tab: next } : {},
+      search: next === 'agents' || next === 'code' || next === 'design' ? { tab: next } : {},
       replace: true,
     })
   const setCodeState = (state: CodeTabState) =>
@@ -131,31 +137,17 @@ function ProjectView({ project }: { project: Project }) {
         title={project.name}
         description={project.description ?? t.architectures.description}
         actions={
-          <>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setEditing(true)
-              }}
-            >
-              <PencilIcon /> {t.projects.rename}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setDeleting(true)
-              }}
-            >
-              <Trash2Icon /> {t.projects.delete}
-            </Button>
-            <Button
-              onClick={() => {
-                setCreating(true)
-              }}
-            >
-              <PlusIcon /> {t.architectures.new}
-            </Button>
-          </>
+          <ProjectActions
+            onEdit={() => {
+              setEditing(true)
+            }}
+            onDelete={() => {
+              setDeleting(true)
+            }}
+            onCreate={() => {
+              setCreating(true)
+            }}
+          />
         }
       />
       <Tabs value={tab} onValueChange={setTab}>
@@ -171,6 +163,7 @@ function ProjectView({ project }: { project: Project }) {
               <CodeBadge project={project} />
             </TabsTrigger>
           )}
+          {designRecords && <TabsTrigger value="design">{t.design.tab}</TabsTrigger>}
         </TabsList>
         <TabsContent value="architectures" className="flex flex-col gap-4">
           <Input
@@ -209,6 +202,11 @@ function ProjectView({ project }: { project: Project }) {
             />
           </TabsContent>
         )}
+        {designRecords && (
+          <TabsContent value="design">
+            <DesignTab projectId={project.id} />
+          </TabsContent>
+        )}
       </Tabs>
       <CreateArchitectureDialog projectId={project.id} open={creating} onOpenChange={setCreating} />
       <EditProjectDialog
@@ -224,6 +222,32 @@ function ProjectView({ project }: { project: Project }) {
         onOpenChange={setDeleting}
         onDeleted={() => void navigate({ to: '/projects', replace: true })}
       />
+    </>
+  )
+}
+
+/** The page's buttons: rename, delete and, as its one main action, a new architecture. */
+function ProjectActions({
+  onEdit,
+  onDelete,
+  onCreate,
+}: {
+  onEdit: () => void
+  onDelete: () => void
+  onCreate: () => void
+}) {
+  const t = useT()
+  return (
+    <>
+      <Button variant="outline" onClick={onEdit}>
+        <PencilIcon /> {t.projects.rename}
+      </Button>
+      <Button variant="outline" onClick={onDelete}>
+        <Trash2Icon /> {t.projects.delete}
+      </Button>
+      <Button onClick={onCreate}>
+        <PlusIcon /> {t.architectures.new}
+      </Button>
     </>
   )
 }

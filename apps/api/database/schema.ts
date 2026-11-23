@@ -398,6 +398,53 @@ export class CodeReviewSchema extends BaseModel {
   declare userId: number
 }
 
+export class DecisionDiagramSchema extends BaseModel {
+  static $columns = ['decisionId', 'diagramId'] as const
+  $columns = DecisionDiagramSchema.$columns
+  @column({ isPrimary: true })
+  declare decisionId: number
+  @column()
+  declare diagramId: number
+}
+
+export class DecisionRequirementSchema extends BaseModel {
+  static $columns = ['decisionId', 'requirementId'] as const
+  $columns = DecisionRequirementSchema.$columns
+  @column({ isPrimary: true })
+  declare decisionId: number
+  @column()
+  declare requirementId: number
+}
+
+export class DecisionSchema extends BaseModel {
+  static $columns = ['chosen', 'consequences', 'context', 'createdAt', 'id', 'options', 'projectId', 'status', 'supersededById', 'title', 'updatedAt', 'userId'] as const
+  $columns = DecisionSchema.$columns
+  @column()
+  declare chosen: string | null
+  @column()
+  declare consequences: string | null
+  @column()
+  declare context: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare options: any
+  @column()
+  declare projectId: number
+  @column()
+  declare status: string
+  @column()
+  declare supersededById: number | null
+  @column()
+  declare title: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
+}
+
 export class DiagramCodeLinkSchema extends BaseModel {
   static $columns = ['codeKey', 'createdAt', 'diagramId', 'elementId', 'id', 'status', 'updatedAt'] as const
   $columns = DiagramCodeLinkSchema.$columns
@@ -579,6 +626,29 @@ export class ProjectSchema extends BaseModel {
   declare id: number
   @column()
   declare name: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
+}
+
+export class RequirementSchema extends BaseModel {
+  static $columns = ['category', 'createdAt', 'id', 'measure', 'priority', 'projectId', 'statement', 'updatedAt', 'userId'] as const
+  $columns = RequirementSchema.$columns
+  @column()
+  declare category: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare measure: string | null
+  @column()
+  declare priority: string
+  @column()
+  declare projectId: number
+  @column()
+  declare statement: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
   @column()
