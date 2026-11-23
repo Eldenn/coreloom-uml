@@ -109,8 +109,17 @@ export const AssistantTargetKind = {
 } as const
 export type AssistantTargetKind = (typeof AssistantTargetKind)[keyof typeof AssistantTargetKind]
 export const ASSISTANT_TARGET_KINDS = Object.values(AssistantTargetKind)
-/** How many items the owner can put in the context of one message. */
+/** What the owner can put in the context of a message: a target, or one view of an architecture. */
+export const AssistantContextKind = { ...AssistantTargetKind, View: 'view' } as const
+export type AssistantContextKind = (typeof AssistantContextKind)[keyof typeof AssistantContextKind]
+export const ASSISTANT_CONTEXT_KINDS = Object.values(AssistantContextKind)
+/** How many items the owner can put in the context of one message, pointed parts included. */
 export const ASSISTANT_CONTEXT_MAX = 8
+/** A part of a view the owner points at: named by one line, never by a position in the view. */
+export const POINTED_TYPES = ['element', 'relation', 'member', 'step'] as const
+export const POINTED_LABEL_MAX_LENGTH = 200
+/** The most `read_views` answers, in characters of views; the views past it are named only. */
+export const READ_VIEWS_MAX_CHARS = 60_000
 
 export const ActionStatus = {
   Pending: 'pending',
