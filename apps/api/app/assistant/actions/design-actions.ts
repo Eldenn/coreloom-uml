@@ -20,6 +20,7 @@ import {
   updateDecision,
   withLinks,
 } from '#app/decisions/services/decision-writes'
+import { projectDesignFindings } from '#app/decisions/services/design-review'
 import { findOwnedProject } from '#app/projects/services/owned-project'
 import {
   REQUIREMENT_CATEGORIES,
@@ -128,6 +129,19 @@ export const DESIGN_ACTIONS: readonly AssistantAction[] = [
           diagramIds: decision.diagrams.map((diagram) => diagram.id),
         })),
       }
+    },
+  }),
+  readAction({
+    name: 'read_design_review',
+    description:
+      "Reads what the requirements and decisions of one of the owner's projects say against themselves: a requirement that must hold and that no accepted decision serves, an accepted decision that names no view, a superseded decision still named on views. Each finding names the requirement or the decision it is about.",
+    input: z.object({ projectId: idInput() }),
+    kind: AssistantToolKind.Read,
+    available,
+    async read({ projectId }, user) {
+      const project = await findOwnedProject(projectId, user)
+      if (!project) return { error: NOT_FOUND_SENTENCE }
+      return { findings: await projectDesignFindings(project.id) }
     },
   }),
   readAction({

@@ -236,6 +236,7 @@ router
 */
 const requirementsController = () => import('#app/requirements/controllers/requirements-controller')
 const decisionsController = () => import('#app/decisions/controllers/decisions-controller')
+const designReviewController = () => import('#app/decisions/controllers/design-review-controller')
 router
   .group(() => {
     router
@@ -256,6 +257,9 @@ router
       .as('projects.decisions.store')
     router.patch('/decisions/:id', [decisionsController, 'update']).as('decisions.update')
     router.delete('/decisions/:id', [decisionsController, 'destroy']).as('decisions.destroy')
+    router
+      .get('/projects/:id/design-review', [designReviewController, 'show'])
+      .as('projects.design_review.show')
   })
   .where('id', router.matchers.number())
   .use(middleware.auth())
