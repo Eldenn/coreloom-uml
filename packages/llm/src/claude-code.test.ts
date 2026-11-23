@@ -1,4 +1,4 @@
-import { generateText, Output, stepCountIs, tool } from 'ai'
+import { generateText, Output, stepCountIs, streamText, tool } from 'ai'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { type ClaudeRun, createClaudeCodeModel, jsonFromText } from './claude-code.ts'
@@ -95,6 +95,18 @@ describe('createClaudeCodeModel', () => {
     const args = calls[0]?.[0] ?? []
     const schema = JSON.parse(args[args.indexOf('--json-schema') + 1] ?? '{}')
     expect(schema.properties.answer.type).toBe('string')
+  })
+
+  it('streams through the binary as one delta', async () => {
+    const { run } = fakeRun({ json: success({ result: 'hello' }) })
+    const result = streamText({
+      model: createClaudeCodeModel('sonnet', CREDENTIAL, run),
+      prompt: 'P',
+      maxRetries: 0,
+    })
+    const chunks: string[] = []
+    for await (const chunk of result.textStream) chunks.push(chunk)
+    expect(chunks.join('')).toBe('hello')
   })
 
   it('reads JSON out of the text when no structured output came back', async () => {

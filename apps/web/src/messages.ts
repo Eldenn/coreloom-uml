@@ -1222,14 +1222,18 @@ export const en = {
     },
     context: 'About',
     contextEmpty:
-      'Right-click a project, an architecture or agent conventions to add it to this message.',
+      'Right-click a project, an architecture, a view, a part of a diagram or agent conventions to add it to this message.',
     contextKinds: {
       project: 'Project',
       architecture: 'Architecture',
       'agent-config': 'Agent conventions',
+      view: 'View',
+      element: 'Part of a view',
     },
     addToContext: 'Add to the assistant’s context',
     removeFromContext: 'Remove from the assistant’s context',
+    addManyToContext: (n: number) => `Add ${String(n)} to the assistant’s context`,
+    removeManyFromContext: (n: number) => `Remove ${String(n)} from the assistant’s context`,
     removeItem: (name: string) => `Remove ${name} from the context`,
     contextFull: 'The context is full: remove an item first.',
     subtitle: 'Reads and changes your work, with your approval',
@@ -1264,6 +1268,7 @@ export const en = {
     readingFile:
       'Reading the file: your model summarizes it, part by part. The conversation keeps it for the next messages…',
     continueReading: 'Go on from where you stopped.',
+    reading: 'The assistant is reading your work…',
     summary: 'Summary of the previous conversation',
     deleteSummary: 'Delete the summary',
     deleteSummaryHint:
@@ -2722,14 +2727,18 @@ export const fr: Messages = {
     },
     context: 'À propos de',
     contextEmpty:
-      'Clic droit sur un projet, une architecture ou des conventions d’agents pour l’ajouter à ce message.',
+      'Clic droit sur un projet, une architecture, une vue, une partie d’un diagramme ou des conventions d’agents pour l’ajouter à ce message.',
     contextKinds: {
       project: 'Projet',
       architecture: 'Architecture',
       'agent-config': 'Conventions d’agents',
+      view: 'Vue',
+      element: 'Partie d’une vue',
     },
     addToContext: 'Ajouter au contexte de l’assistant',
     removeFromContext: 'Retirer du contexte de l’assistant',
+    addManyToContext: (n) => `Ajouter ${String(n)} éléments au contexte de l’assistant`,
+    removeManyFromContext: (n) => `Retirer ${String(n)} éléments du contexte de l’assistant`,
     removeItem: (name: string) => `Retirer ${name} du contexte`,
     contextFull: 'Le contexte est plein : retirez d’abord un élément.',
     subtitle: 'Lit et modifie votre travail, avec votre accord',
@@ -2766,6 +2775,7 @@ export const fr: Messages = {
     readingFile:
       'Lecture du fichier : votre modèle le résume, partie par partie. La conversation le garde pour les messages suivants…',
     continueReading: 'Reprenez là où vous vous êtes arrêté.',
+    reading: 'L’assistant lit votre travail…',
     summary: 'Résumé de la conversation précédente',
     deleteSummary: 'Supprimer le résumé',
     deleteSummaryHint:

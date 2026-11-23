@@ -1,17 +1,3 @@
-'use client'
-
-// Coreloom UI — Toolbar. A row of tools for one thing on screen: text formatting above an editor,
-// zoom and layout above a canvas, actions above a table. It is one Tab stop, and the arrow keys
-// move between its tools (Home and End to the ends). Buttons, toggles (one or several on),
-// links, separators, menus ("Add ▾"), and a "More" menu for the tools that don't fit.
-//
-//   <Toolbar aria-label="Formatting">
-//     <ToolbarToggleGroup type="multiple" aria-label="Style">
-//       <ToolbarToggleItem value="bold" aria-label="Bold"><BoldIcon /></ToolbarToggleItem>
-//     </ToolbarToggleGroup>
-//     <ToolbarSeparator />
-//     <ToolbarButton><LinkIcon /> Link</ToolbarButton>
-//   </Toolbar>
 import { ChevronDownIcon, MoreHorizontalIcon } from 'lucide-react'
 import { Toolbar as ToolbarPrimitive } from 'radix-ui'
 import * as React from 'react'

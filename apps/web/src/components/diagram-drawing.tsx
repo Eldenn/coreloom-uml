@@ -1,9 +1,17 @@
+'use client'
+
+// Coreloom UI — Diagram drawing. The right half of the diagram editor: the drawing tools, the
+// drawing itself, and the side panel (the properties of what's selected; for a sequence diagram,
+// its participants and steps too). Keyboard shortcuts on the drawing: Ctrl or ⌘ with Z / Y (undo,
+// redo), C, X, V and D (copy, cut, paste, duplicate). Read only, the tools and properties are
+// off and nothing can be dragged; selecting, zoom and full screen stay.
 import * as React from 'react'
 
 import { DiagramProperties } from '@/components/diagram-properties'
 import { SequenceOutline } from '@/components/diagram-sequence'
 import { DiagramTools } from '@/components/diagram-tools'
 import {
+  type UmlContextActions,
   UmlDiagram,
   type UmlDiagramHandle,
   type UmlDiagramProps,
@@ -109,6 +117,7 @@ function Drawing({
   imageRef,
   onLayoutChange,
   review = {},
+  contextActions,
 }: {
   diagram: UmlSpec | null
   label: string
@@ -128,6 +137,8 @@ function Drawing({
   imageRef: React.Ref<UmlDiagramHandle>
   /** The app's annotations on the elements, and what a badge does. */
   review?: Pick<UmlDiagramProps, 'annotations' | 'onAnnotationSelect'>
+  /** The app's entries in the drawing's context menu, after the editor's own. */
+  contextActions?: UmlContextActions | undefined
 }) {
   const empty = useCoreloomI18n().messages.diagram.empty
   const locked = problems || readOnly
@@ -151,6 +162,8 @@ function Drawing({
         onDelete: editing.remove,
         onRename: editing.rename,
         onElementDrop: drop,
+        onDuplicate: editing.duplicateOf,
+        onMemberDelete: editing.removeMember,
       }
   return (
     // The keys are shortcuts for tools in the toolbar, which stay the way to reach them.
@@ -197,6 +210,7 @@ function Drawing({
               {...(highlighted ? { highlighted } : {})}
               {...editable}
               {...review}
+              {...(contextActions ? { contextActions } : {})}
               height="100%"
               label={label}
               className="h-full"

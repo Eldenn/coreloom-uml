@@ -1,7 +1,3 @@
-'use client'
-
-// Coreloom UI — Calendar (shadcn/ui new-york-v4 on react-day-picker 9, restyled). Single dates or ranges.
-
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import * as React from 'react'
 import { DateLib, type DayButton, DayPicker, getDefaultClassNames } from 'react-day-picker'

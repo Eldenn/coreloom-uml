@@ -4,10 +4,12 @@ import db from '@adonisjs/lucid/services/db'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import {
+  type AssistantContextItem,
   type AssistantPage,
   type AssistantTool,
   type AssistantToolCall,
   AssistantToolKind,
+  type PointedPart,
 } from '@coreloom-uml/llm'
 import { z } from 'zod'
 import { findOwnedAgentConfig } from '#app/agent-configs/services/owned-agent-config'
@@ -17,6 +19,7 @@ import { currentState, findAction, isAvailable } from '#app/assistant/actions/re
 import {
   ActionFailure,
   ActionStatus,
+  AssistantContextKind,
   AssistantRole,
   AssistantTargetKind,
   HandoffKind,
@@ -25,6 +28,7 @@ import {
 import AssistantMessage from '#app/assistant/models/assistant-message'
 import { serializeAction } from '#app/assistant/serializers/assistant-serializer'
 import type { ActionOutput, HandoffOutput } from '#app/assistant/validators/assistant-output'
+import Diagram from '#app/diagrams/models/diagram'
 import { isFeatureEnabled } from '#app/feature-flags/services/feature-flags'
 import { findOwnedProject } from '#app/projects/services/owned-project'
 import { researchConfig } from '#app/research/services/research-config'
@@ -50,17 +54,69 @@ export async function resolvePage(
   return name === undefined ? null : { ...page, name }
 }
 
+/** The views with these ids that are in one of the caller's architectures. */
+export function ownedViews(ids: readonly number[], user: User): Promise<Diagram[]> {
+  if (ids.length === 0) return Promise.resolve([])
+  return Diagram.query()
+    .whereIn('id', [...ids])
+    .whereHas('architecture', (architecture) => architecture.where('userId', user.id))
+}
+
 /**
  * What the owner put in the message's context, named: each item once, and only the caller's (one
  * deleted since, or someone else's, is left out).
  */
 export async function resolveContext(
-  context: readonly { kind: AssistantTargetKind; id: number }[] | undefined,
+  context: readonly { kind: AssistantContextKind; id: number }[] | undefined,
   user: User,
-): Promise<AssistantPage[]> {
+): Promise<AssistantContextItem[]> {
   const once = new Map((context ?? []).map((item) => [`${item.kind}:${String(item.id)}`, item]))
-  const named = await Promise.all([...once.values()].map((item) => resolvePage(item, user)))
+  const items = [...once.values()]
+  const views = await ownedViews(
+    items.filter((item) => item.kind === AssistantContextKind.View).map((item) => item.id),
+    user,
+  )
+  const named = await Promise.all(
+    items.map((item): Promise<AssistantContextItem | null> => {
+      if (item.kind !== AssistantContextKind.View)
+        return resolvePage({ kind: item.kind, id: item.id }, user)
+      const view = views.find((diagram) => diagram.id === item.id)
+      return Promise.resolve(
+        view
+          ? { kind: 'view', id: view.id, name: view.title, architectureId: view.architectureId }
+          : null,
+      )
+    }),
+  )
   return named.filter((item) => item !== null)
+}
+
+type PointedInput = { diagramId: number; type: PointedPart['type']; label: string }
+
+/**
+ * The parts the owner points at, kept when their view is one of `views` (the caller's, checked by
+ * whoever read them), each once.
+ */
+export function pointedIn(
+  pointed: readonly PointedInput[] | undefined,
+  views: readonly { id: number }[],
+): PointedPart[] {
+  const ids = new Set(views.map((view) => view.id))
+  const once = new Map(
+    (pointed ?? [])
+      .filter((part) => ids.has(part.diagramId))
+      .map((part) => [`${String(part.diagramId)}:${part.type}:${part.label}`, part]),
+  )
+  return [...once.values()].map(({ diagramId, type, label }) => ({ view: diagramId, type, label }))
+}
+
+/** The parts the owner points at in any of their architectures' views. */
+export async function resolvePointed(
+  pointed: readonly PointedInput[] | undefined,
+  user: User,
+): Promise<PointedPart[]> {
+  const views = await ownedViews([...new Set((pointed ?? []).map((part) => part.diagramId))], user)
+  return pointedIn(pointed, views)
 }
 
 const HandoffTool = { WorkOnDiagrams: 'work_on_diagrams', ResearchWeb: 'research_web' } as const

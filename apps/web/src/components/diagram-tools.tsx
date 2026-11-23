@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — Diagram tools. The drawing toolbar of the diagram editor: add the elements this
+// kind of diagram holds (or drag them onto the drawing), connect two of them, delete, copy, paste
+// and duplicate what's selected, arrange the layout or turn it, undo and redo. It only says what
+// was asked; the editor changes the diagram (with the functions in uml-edit*.ts).
 import {
   AppWindowIcon,
   BoxIcon,

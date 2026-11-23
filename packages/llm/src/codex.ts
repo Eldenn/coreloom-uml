@@ -1,5 +1,5 @@
 import { createOpenAI } from '@ai-sdk/openai'
-import type { LanguageModel } from 'ai'
+import { type LanguageModel, simulateStreamingMiddleware, wrapLanguageModel } from 'ai'
 import { fetchWithoutRedirects } from './fetch.ts'
 
 /**
@@ -305,7 +305,7 @@ export function createCodexModel(
   credential: CodexCredential,
   fetch: typeof globalThis.fetch = fetchWithoutRedirects,
 ): LanguageModel {
-  return createOpenAI({
+  const responses = createOpenAI({
     apiKey: credential.accessToken,
     baseURL: CODEX_OAUTH.inferenceBaseUrl,
     headers: {
@@ -315,4 +315,6 @@ export function createCodexModel(
     },
     fetch: codexFetch(fetch),
   }).responses(model)
+  // `codexFetch` reads the endpoint's stream back into one answer: a stream gets it as one delta.
+  return wrapLanguageModel({ model: responses, middleware: simulateStreamingMiddleware() })
 }

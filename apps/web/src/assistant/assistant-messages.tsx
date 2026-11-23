@@ -11,6 +11,7 @@ import { Markdown } from '@/components/ui/markdown'
 import { Popconfirm } from '@/components/ui/popconfirm'
 import { TypingIndicator } from '@/components/ui/typing-indicator'
 import type { AssistantMessage, ChangeAction, ProposedChange } from '@/lib/assistant'
+import type { ChatDraft } from '@/lib/assistant-chat'
 import { useT } from '@/lib/locale'
 
 /** What the change buttons call (`useChangeActions` in the panel). */
@@ -29,6 +30,7 @@ export function MessageList({
   asking,
   askingFile,
   waiting,
+  draft = null,
   progress,
   pageArchitectureId,
   changes,
@@ -42,6 +44,8 @@ export function MessageList({
   /** The name of the file it is sent with. */
   askingFile?: string | null
   waiting: boolean
+  /** The reply as it is being written, and whether a tool is running for it. */
+  draft?: ChatDraft | null
   /** What a web research is doing, shown under the message being sent. */
   progress?: React.ReactNode
   /** The architecture whose page the panel is on; `null` elsewhere. */
@@ -53,7 +57,7 @@ export function MessageList({
   const end = React.useRef<HTMLDivElement>(null)
   React.useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' })
-  }, [messages.length, waiting, asking])
+  }, [messages.length, waiting, asking, draft?.text, draft?.reading])
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
       {loaded && messages.length === 0 && asking === null && (
@@ -75,7 +79,16 @@ export function MessageList({
       ))}
       {asking !== null && <UserBubble text={asking} fileName={askingFile ?? null} />}
       {progress}
-      {waiting && <TypingIndicator name={t.title} />}
+      {draft !== null && draft.text !== '' && (
+        <div className="mr-6 flex flex-col gap-2">
+          <Markdown>{draft.text}</Markdown>
+        </div>
+      )}
+      {draft?.reading ? (
+        <TypingIndicator name={t.title} label={t.reading} />
+      ) : (
+        waiting && <TypingIndicator name={t.title} />
+      )}
       <div ref={end} />
     </div>
   )

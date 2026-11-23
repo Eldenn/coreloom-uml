@@ -3,6 +3,7 @@ import {
   type AssistantTurn,
   changeLine,
   type FilePassageText,
+  type PointedPart,
 } from '@coreloom-uml/llm'
 import type Architecture from '#app/architectures/models/architecture'
 import {
@@ -20,6 +21,8 @@ export type ViewSelection = {
   currentDiagramId: number | null
   /** The views to send; all of them when absent. The current view is always sent. */
   diagramIds?: number[]
+  /** The parts of views the message is about; their views are sent whatever `diagramIds`. */
+  pointed?: readonly PointedPart[]
   locale: AssistantSource['locale']
 }
 
@@ -42,13 +45,17 @@ export async function assistantSource(
   selection: ViewSelection,
   passages: FilePassageText[] = [],
 ): Promise<AssistantSource> {
-  const { message, currentDiagramId, diagramIds, locale } = selection
+  const { message, currentDiagramId, diagramIds, pointed = [], locale } = selection
   return {
     architecture: architecture.title,
+    pointed,
     views: architecture.diagrams
       .filter(
         (diagram) =>
-          !diagramIds || diagramIds.includes(diagram.id) || diagram.id === currentDiagramId,
+          !diagramIds ||
+          diagramIds.includes(diagram.id) ||
+          diagram.id === currentDiagramId ||
+          pointed.some((part) => part.view === diagram.id),
       )
       .map((diagram) => ({
         id: diagram.id,

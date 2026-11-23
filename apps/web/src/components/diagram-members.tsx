@@ -1,3 +1,9 @@
+'use client'
+
+// Coreloom UI — Diagram members. The class members part of the diagram editor's properties panel:
+// one row per attribute or method, with its visibility, static and abstract flags, order and
+// removal under a menu at the start of the row. A row's text applies when it loses focus (or on
+// Enter); typing `-total() Money$` sets the flags the Mermaid way.
 import { ArrowDownIcon, ArrowUpIcon, EllipsisIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 
@@ -144,12 +150,12 @@ function RowMenu({
 function MemberList({
   members,
   disabled,
-  onChange,
+  onValueChange,
   p,
 }: {
   members: readonly ClassMember[]
   disabled: boolean
-  onChange: (members: ClassMember[]) => void
+  onValueChange: (members: ClassMember[]) => void
   p: PropertiesText
 }) {
   const id = React.useId()
@@ -172,7 +178,7 @@ function MemberList({
     if (text === undefined || !member) return
     setDrafts({})
     if (text === member.text) return
-    onChange(members.map((m, i) => (i === index ? memberFromText(text, m) : m)))
+    onValueChange(members.map((m, i) => (i === index ? memberFromText(text, m) : m)))
   }
   const add = (method: boolean) => {
     const member: ClassMember = {
@@ -182,7 +188,7 @@ function MemberList({
     // Attributes stay before methods, as the class box shows them.
     const at = method ? members.length : members.filter((m) => !isMethod(m)).length
     focusRow.current = at
-    onChange([...members.slice(0, at), member, ...members.slice(at)])
+    onValueChange([...members.slice(0, at), member, ...members.slice(at)])
   }
 
   return (
@@ -202,14 +208,14 @@ function MemberList({
                 disabled={disabled}
                 p={p}
                 onChange={(next) => {
-                  onChange(members.map((x, k) => (k === i ? next : x)))
+                  onValueChange(members.map((x, k) => (k === i ? next : x)))
                 }}
                 onMove={(to) => {
                   focusRow.current = to
-                  onChange(move(members, i, to))
+                  onValueChange(move(members, i, to))
                 }}
                 onRemove={() => {
-                  onChange(members.filter((_, k) => k !== i))
+                  onValueChange(members.filter((_, k) => k !== i))
                 }}
               />
               <Input

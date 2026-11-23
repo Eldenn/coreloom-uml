@@ -16,8 +16,14 @@ import {
   summarizeConversation,
   withFile,
 } from './assistant.ts'
+import type { UIMessageChunk } from './assistant-stream.ts'
 import { LlmCallError } from './failure.ts'
-import { answeringModel, failingModel, MockLanguageModelV4 } from './testing/mock-model.ts'
+import {
+  answeringModel,
+  failingModel,
+  MockLanguageModelV4,
+  streaming,
+} from './testing/mock-model.ts'
 
 const PAYMENT: UmlSpec = {
   kind: 'class',
@@ -342,6 +348,38 @@ describe('summarizeConversation', () => {
 })
 
 describe('chatWithAssistant', () => {
+  it('streams the chat reply', async () => {
+    const chunks: UIMessageChunk[] = []
+    const reply = await chatWithAssistant(
+      streaming(answeringModel('Hello there')),
+      { history: [], message: 'hi', locale: 'en' },
+      { onChunk: (chunk) => chunks.push(chunk) },
+    )
+    expect(reply).toBe('Hello there')
+    const deltas = chunks.flatMap((chunk) => (chunk.type === 'text-delta' ? [chunk.delta] : []))
+    expect(deltas.join('')).toBe('Hello there')
+  })
+
+  it('fails a stream like a call', async () => {
+    const refused = () =>
+      failingModel(
+        new APICallError({
+          message: 'Unauthorized',
+          url: 'https://api.example.com',
+          requestBodyValues: {},
+          statusCode: 401,
+        }),
+      )
+    const input = { history: [], message: 'hi', locale: 'en' as const }
+    const plain = await chatWithAssistant(refused(), input).catch((error: unknown) => error)
+    const streamed = await chatWithAssistant(streaming(refused()), input, {
+      onChunk: () => {},
+    }).catch((error: unknown) => error)
+    expect(streamed).toBeInstanceOf(LlmCallError)
+    expect((streamed as LlmCallError).reason).toBe((plain as LlmCallError).reason)
+    expect((streamed as LlmCallError).reason).toBe('unauthorized')
+  })
+
   it('answers from the history, with no view and no tool, in the locale', async () => {
     const model = answeringModel('  Pick an architecture first.  ')
     const reply = await chatWithAssistant(model, {

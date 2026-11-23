@@ -1,12 +1,3 @@
-'use client'
-
-// Coreloom UI — LogoLoader. Your logo as the loading screen of the app (or of a panel) while it
-// starts: the logo draws itself or breathes, an optional line says what is happening, and when
-// `loading` turns false it fades away and hands the place to the content. Screen readers hear
-// "Loading" once, through a busy status. For people who ask for reduced motion the logo stays
-// still and the screen simply disappears.
-//
-//   <LogoLoader loading={!ready} logo={<AtlasLogo />} label="Atlas" fullscreen />
 import * as React from 'react'
 
 import { Logo, type LogoAnimation } from '@/components/ui/logo'

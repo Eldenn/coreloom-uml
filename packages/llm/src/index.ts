@@ -34,16 +34,25 @@ export {
   type DesignContext,
   FILE_PASSAGES_MAX_LENGTH,
   type FilePassageText,
+  type PointedPart,
   type ProposedChange,
   summarizeConversation,
   withFile,
 } from './assistant.ts'
+export {
+  type AssistantStreamOptions,
+  type AssistantStreamWriter,
+  assistantEventStream,
+  UI_MESSAGE_STREAM_HEADERS,
+  type UIMessageChunk,
+} from './assistant-stream.ts'
 export {
   ASSISTANT_PROPOSALS_MAX,
   ASSISTANT_READ_RESULT_MAX_LENGTH,
   ASSISTANT_TOOLS_INSTRUCTIONS,
   ASSISTANT_TOOLS_MAX_STEPS,
   ASSISTANT_TOOLS_TIMEOUT_MS,
+  type AssistantContextItem,
   type AssistantPage,
   type AssistantTool,
   type AssistantToolCall,

@@ -1,8 +1,3 @@
-'use client'
-
-// Coreloom UI — Stepper. Where the user is in a multi-step flow: done steps get a check, the current
-// one is highlighted and announced (aria-current="step"). With `onStepChange`, finished steps
-// become buttons that go back to them.
 import { CheckIcon } from 'lucide-react'
 import * as React from 'react'
 

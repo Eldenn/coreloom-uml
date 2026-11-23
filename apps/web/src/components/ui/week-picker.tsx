@@ -1,3 +1,8 @@
+'use client'
+
+// Coreloom UI — WeekPicker. An ISO week (Monday to Sunday), for timesheets, sprints and weekly
+// reports. The value is "YYYY-Www" ("2026-W44"), the format of <input type="week">. The calendar
+// shows week numbers and highlights the whole week; clicking any day picks its week.
 import {
   endOfISOWeek,
   format,

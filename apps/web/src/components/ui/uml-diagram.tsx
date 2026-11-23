@@ -18,7 +18,6 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
-  type Viewport,
   ViewportPortal,
 } from '@xyflow/react'
 import * as React from 'react'
@@ -30,6 +29,15 @@ import {
   type UmlAnnotationStatus,
   useAnnotationLayer,
 } from '@/components/ui/uml-diagram-annotations'
+import {
+  canvasMenu,
+  type DiagramContextAction,
+  DiagramContextMenu,
+  sequenceMenu,
+  type UmlContextActions,
+  type UmlContextPart,
+  type UmlContextTarget,
+} from '@/components/ui/uml-diagram-context'
 import { flowEdges, flowNodes, movedLayout, nextSelection } from '@/components/ui/uml-diagram-flow'
 import {
   type DiagramFlowEdge,
@@ -45,15 +53,17 @@ import {
   type Fullscreen,
   FullscreenButton,
   RenameField,
+  useFitView,
   useFullscreen,
   useRename,
+  useViewAcrossFullscreen,
 } from '@/components/ui/uml-diagram-tools'
 import { type Messages, useCoreloomI18n } from '@/lib/i18n'
 import type { SequenceDiagram, UmlLayout, UmlPoint, UmlSpec } from '@/lib/uml'
 import { alignBoxes, type UmlAlignment } from '@/lib/uml-arrange'
 import type { UmlSelection } from '@/lib/uml-edit'
 import { type DiagramGraph, toDiagramGraph } from '@/lib/uml-graph'
-import { elementImage, type UmlImageFormat } from '@/lib/uml-image'
+import { canvasImage, elementImage, type UmlImageFormat } from '@/lib/uml-image'
 import { type LayoutBox, layoutDiagram } from '@/lib/uml-layout'
 import { cn } from '@/lib/utils'
 
@@ -106,13 +116,32 @@ interface UmlDiagramProps {
   annotations?: readonly UmlAnnotation[]
   /** Makes each badge a button that hands its element's id back (the app shows its findings). */
   onAnnotationSelect?: (element: string) => void
-  /** `toImage` draws the diagram as it shows now into an SVG or PNG data URL. */
+  /**
+   * The app's entries in the menu a right-click, a long press or the context-menu key opens on an
+   * element, a member, a relation or a sequence step, after the drawing's own ones (with
+   * `editable`: Rename, Duplicate, Delete, those wired). Without it, or when both lists are
+   * empty, no menu opens and the browser's own stays.
+   */
+  contextActions?: UmlContextActions
+  /** With `editable` and `contextActions`, the menu's Duplicate on an element. */
+  onDuplicate?: (selection: UmlSelection) => void
+  /**
+   * With `editable` and `contextActions`, the menu's Delete on a member: the element's id and the
+   * member's place in its list (attributes, then methods).
+   */
+  onMemberDelete?: (element: string, index: number) => void
+  /** `toImage` draws the diagram as it shows now into an SVG or PNG data URL (`{ light: true }`: in the light theme). */
   ref?: React.Ref<UmlDiagramHandle>
   className?: string
 }
 
+interface UmlImageOptions {
+  /** Draws it in the light theme whatever the page's: for paper. */
+  light?: boolean
+}
+
 interface UmlDiagramHandle {
-  toImage: (format: UmlImageFormat) => Promise<string>
+  toImage: (format: UmlImageFormat, options?: UmlImageOptions) => Promise<string>
 }
 
 const NOTHING: UmlSelection = { elements: [], relations: [] }
@@ -149,28 +178,6 @@ function nextFrames(): Promise<void> {
         done()
       })
     })
-  })
-}
-
-/** Space around the boxes in an exported image. */
-const IMAGE_PAD = 24
-
-/** The canvas's boxes and lines as an image, framed to fit them at their real size. */
-function canvasImage(
-  root: HTMLElement | null,
-  b: { x: number; y: number; width: number; height: number },
-  format: UmlImageFormat,
-): Promise<string> {
-  const viewport = root?.querySelector<HTMLElement>('.react-flow__viewport')
-  if (!viewport) return Promise.reject(new Error('Nothing drawn yet'))
-  return elementImage(viewport, format, {
-    width: b.width + 2 * IMAGE_PAD,
-    height: b.height + 2 * IMAGE_PAD,
-    style: {
-      width: `${String(b.width + 2 * IMAGE_PAD)}px`,
-      height: `${String(b.height + 2 * IMAGE_PAD)}px`,
-      transform: `translate(${String(IMAGE_PAD - b.x)}px, ${String(IMAGE_PAD - b.y)}px) scale(1)`,
-    },
   })
 }
 
@@ -216,78 +223,28 @@ function usePositions(layout: UmlLayout | undefined, graph: DiagramGraph | null)
   return { fixed, boxes, setDragged }
 }
 
-/** The image handle, and fitting the view again when elements come or go or the box resizes. */
-function useCanvasEffects({
+/** The image handle: the drawing as an image, without the selection. */
+function useCanvasImage({
   ref,
   canvas,
   setExporting,
-  ids,
-  refit,
 }: {
   ref: React.Ref<UmlDiagramHandle> | undefined
   canvas: React.RefObject<HTMLDivElement | null>
   /** True while an image is made, so the selection isn't in it. */
   setExporting: (on: boolean) => void
-  /** The node ids, joined: a change means elements were added or removed. */
-  ids: string
-  /** Fit again whenever the box changes size (thumbnails, full screen). */
-  refit: boolean
 }) {
-  const flow = useReactFlow()
-  const moved = React.useRef(false)
   React.useImperativeHandle(ref, () => ({
-    toImage: async (format) => {
+    toImage: async (format, options) => {
       setExporting(true)
       try {
         await nextFrames()
-        return await canvasImage(canvas.current, flow.getNodesBounds(flow.getNodes()), format)
+        return await canvasImage(canvas.current, { format, ...options })
       } finally {
         setExporting(false)
       }
     },
   }))
-  React.useEffect(() => {
-    // React Flow's fitView, which waits until new elements have their size.
-    const frame = requestAnimationFrame(() => void flow.fitView({ padding: 0.15, maxZoom: 1 }))
-    return () => {
-      cancelAnimationFrame(frame)
-    }
-  }, [ids, flow])
-  React.useEffect(() => {
-    if (!canvas.current) return
-    let frame = 0
-    const observer = new ResizeObserver(() => {
-      if (!refit && moved.current) return // Kept once the reader pans or zooms.
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => void flow.fitView({ padding: 0.08, maxZoom: 1 }))
-    })
-    observer.observe(canvas.current)
-    return () => {
-      observer.disconnect()
-      cancelAnimationFrame(frame)
-    }
-  }, [refit, flow, canvas])
-  return { onMoveStart: (event: MouseEvent | TouchEvent | null) => (moved.current ||= !!event) }
-}
-
-/**
- * Full screen fits the diagram to the screen; leaving it puts back the view from before, since
- * the screen-sized pan and zoom would leave the diagram off to the side of the smaller box.
- */
-function useViewAcrossFullscreen(fullscreen: Fullscreen | null) {
-  const active = fullscreen?.active ?? false
-  const flow = useReactFlow()
-  const before = React.useRef<Viewport | null>(null)
-  React.useEffect(() => {
-    if (active) {
-      before.current = flow.getViewport()
-      return
-    }
-    const view = before.current
-    if (!view) return
-    before.current = null
-    void flow.setViewport(view)
-  }, [active, flow])
 }
 
 /** What React Flow's own live region and descriptions say, in the reader's language. */
@@ -374,6 +331,7 @@ function useCanvasChanges(input: {
   } = useSelection(input.controlled, input.onSelectionChange)
   return {
     selection: current,
+    select: update,
     moveTo: (next: UmlLayout) => {
       setDragged(next)
       onLayoutChange?.(next)
@@ -396,8 +354,12 @@ function useCanvasChanges(input: {
     remove: () => {
       const now = selection.current
       if (now.elements.length || now.relations.length) {
+        // A focused element or line is about to go: move focus to the canvas first. Waiting for
+        // it to disappear is a guess, since the app hands the new diagram back when it wants.
+        if (document.activeElement?.closest('.react-flow__node, .react-flow__edge'))
+          canvas.current?.focus()
         onDelete?.(now)
-        // The focused element is about to go: keep focus on the canvas, not the page.
+        // Anything else that held focus and goes with the selection (the align bar).
         requestAnimationFrame(() => {
           if (!canvas.current?.contains(document.activeElement)) canvas.current?.focus()
         })
@@ -427,34 +389,38 @@ function canvasNaming(preview: boolean, label: string, title: string | undefined
   return { flow: { 'aria-label': label }, title }
 }
 
-/** Any diagram but a sequence one (class to package) on a React Flow canvas. */
-function DiagramCanvas({
-  diagram,
-  editable = false,
-  onLayoutChange,
-  controls = true,
-  preview,
-  refit,
-  fullscreen,
-  label,
-  selection: selectionProp,
-  onSelectionChange,
-  highlighted,
-  onConnect,
-  onDelete,
-  onRename,
-  onElementDrop,
-  annotations,
-  onAnnotationSelect,
-  ref,
-}: Omit<UmlDiagramProps, 'diagram' | 'preview'> & {
+type CanvasProps = Omit<UmlDiagramProps, 'diagram' | 'preview'> & {
   diagram: GraphDiagram
   preview: boolean
   /** Fit again when the box changes size. */
   refit: boolean
   fullscreen: Fullscreen | null
-}) {
-  const t = useCoreloomI18n().messages.diagram
+}
+
+/** Any diagram but a sequence one (class to package) on a React Flow canvas. */
+function DiagramCanvas(props: CanvasProps) {
+  const {
+    diagram,
+    editable = false,
+    onLayoutChange,
+    controls = true,
+    preview,
+    refit,
+    fullscreen,
+    label,
+    selection: selectionProp,
+    onSelectionChange,
+    highlighted,
+    onConnect,
+    onDelete,
+    onRename,
+    onElementDrop,
+    annotations,
+    onAnnotationSelect,
+    ref,
+  } = props
+  const { messages } = useCoreloomI18n()
+  const t = messages.diagram
   const markers = `uml${React.useId().replace(/[^a-zA-Z0-9]/g, '')}`
   const graph = React.useMemo(() => toDiagramGraph(diagram), [diagram])
   const [selecting, setSelecting] = React.useState(false)
@@ -476,23 +442,17 @@ function DiagramCanvas({
   const [exporting, setExporting] = React.useState(false)
   const shown = exporting ? NOTHING : selection
   const selected = new Set(shown.elements)
-  const pointed = exporting ? undefined : new Set(highlighted)
   const layer = useAnnotationLayer({ annotations, onAnnotationSelect, exporting, preview })
   const nodes = graph
-    ? flowNodes({ graph, boxes, editable, connectable, selected, highlighted: pointed, layer, t })
+    ? flowNodes({ graph, boxes, editable, connectable, selected, highlighted, exporting, layer, t })
     : []
   const pickedLines = new Set(shown.relations)
   const edges = graph ? flowEdges({ graph, markers, selected: pickedLines, t }) : []
 
   const flow = useReactFlow()
   const rename = useRename({ canvas, graph, onRename: editable ? onRename : undefined, diagram })
-  const view = useCanvasEffects({
-    ref,
-    canvas,
-    setExporting,
-    ids: nodes.map((n) => n.id).join('\u0000'),
-    refit,
-  })
+  useCanvasImage({ ref, canvas, setExporting })
+  useFitView(canvas, nodes.map((n) => n.id).join('\u0000'), refit)
   useViewAcrossFullscreen(fullscreen)
 
   const toAlign = editable ? alignable(selection.elements, boxes, graph) : []
@@ -502,64 +462,66 @@ function DiagramCanvas({
 
   const ariaLabelConfig = a11yConfig(t, editable, Boolean(onRename))
   const naming = canvasNaming(preview, label ?? t.kinds[diagram.kind], diagram.title)
+  const menu = canvasMenu({ ...props, graph, rename, selection, select: change.select, messages })
 
   return (
     <AnnotationContext value={layer.scope}>
-      <ReactFlow<DiagramFlowNode, DiagramFlowEdge>
-        ref={canvas}
-        tabIndex={-1}
-        onMoveStart={view.onMoveStart}
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={NODE_TYPES}
-        edgeTypes={EDGE_TYPES}
-        onNodesChange={change.onNodesChange}
-        onEdgesChange={change.onEdgesChange}
-        onConnect={change.connect}
-        onBeforeDelete={change.remove}
-        onNodeDoubleClick={(_, node) => {
-          rename.start(node.id)
-        }}
-        onKeyDown={rename.onKeyDown}
-        {...(editable ? dropHandlers(onElementDrop, flow.screenToFlowPosition) : {})}
-        nodesDraggable={editable}
-        nodesConnectable={connectable}
-        connectionMode={ConnectionMode.Loose}
-        nodesFocusable
-        edgesFocusable
-        elementsSelectable
-        selectionOnDrag={selecting}
-        panOnDrag={!selecting}
-        zoomOnDoubleClick={!(editable && onRename)}
-        deleteKeyCode={onDelete ? ['Delete', 'Backspace'] : null}
-        // A selected frame must stay behind what it holds.
-        elevateNodesOnSelect={false}
-        fitView
-        fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
-        minZoom={0.15}
-        maxZoom={2}
-        proOptions={{ hideAttribution: true }}
-        ariaLabelConfig={ariaLabelConfig}
-        {...naming.flow}
-      >
-        <ViewportPortal>
-          {/* Inside the viewport, so an exported image keeps the arrowheads. */}
-          <DiagramMarkers prefix={markers} />
-        </ViewportPortal>
-        <CanvasPanels
-          title={naming.title}
-          controls={controls}
-          fullscreen={fullscreen}
-          editable={editable}
-          selecting={selecting}
-          onSelecting={setSelecting}
-          onArrange={() => {
-            change.moveTo({})
+      <DiagramContextMenu {...menu}>
+        <ReactFlow<DiagramFlowNode, DiagramFlowEdge>
+          ref={canvas}
+          tabIndex={-1}
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={NODE_TYPES}
+          edgeTypes={EDGE_TYPES}
+          onNodesChange={change.onNodesChange}
+          onEdgesChange={change.onEdgesChange}
+          onConnect={change.connect}
+          onBeforeDelete={change.remove}
+          onNodeDoubleClick={(_, node) => {
+            rename.start(node.id)
           }}
-          aligning={toAlign.length}
-          onAlign={align}
-        />
-      </ReactFlow>
+          onKeyDown={rename.onKeyDown}
+          {...(editable ? dropHandlers(onElementDrop, flow.screenToFlowPosition) : {})}
+          nodesDraggable={editable}
+          nodesConnectable={connectable}
+          connectionMode={ConnectionMode.Loose}
+          nodesFocusable
+          edgesFocusable
+          elementsSelectable
+          selectionOnDrag={selecting}
+          panOnDrag={!selecting}
+          zoomOnDoubleClick={!(editable && onRename)}
+          deleteKeyCode={onDelete ? ['Delete', 'Backspace'] : null}
+          // A selected frame must stay behind what it holds.
+          elevateNodesOnSelect={false}
+          fitView
+          fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
+          minZoom={0.15}
+          maxZoom={2}
+          proOptions={{ hideAttribution: true }}
+          ariaLabelConfig={ariaLabelConfig}
+          {...naming.flow}
+        >
+          <ViewportPortal>
+            {/* Inside the viewport, so an exported image keeps the arrowheads. */}
+            <DiagramMarkers prefix={markers} />
+          </ViewportPortal>
+          <CanvasPanels
+            title={naming.title}
+            controls={controls}
+            fullscreen={fullscreen}
+            editable={editable}
+            selecting={selecting}
+            onSelecting={setSelecting}
+            onArrange={() => {
+              change.moveTo({})
+            }}
+            aligning={toAlign.length}
+            onAlign={align}
+          />
+        </ReactFlow>
+      </DiagramContextMenu>
       {rename.target && (
         <RenameField
           key={rename.target.id}
@@ -600,22 +562,25 @@ function SequencePane({
   fullscreen,
   frame,
   ref,
+  ...edits
 }: UmlDiagramProps & {
   diagram: SequenceDiagram
   fullscreen: Fullscreen | null
   frame: React.Ref<HTMLDivElement>
 }) {
+  const { messages } = useCoreloomI18n()
   const root = React.useRef<HTMLDivElement>(null)
   const [exporting, setExporting] = React.useState(false)
   const layer = useAnnotationLayer({ annotations, onAnnotationSelect, exporting, preview })
   React.useImperativeHandle(ref, () => ({
-    toImage: async (format) => {
+    toImage: async (format, options) => {
       const el = root.current
       if (!el) throw new Error('Nothing drawn yet')
       setExporting(true)
       try {
         await nextFrames()
         return await elementImage(el, format, {
+          ...options,
           width: el.scrollWidth,
           height: el.scrollHeight,
           style: { maxHeight: 'none', overflow: 'visible', border: 'none', borderRadius: '0' },
@@ -635,24 +600,34 @@ function SequencePane({
     : undefined
   const full = fullscreen?.active ?? false
   const classes = sequenceClasses(preview, full, className)
+  const menu = sequenceMenu({
+    ...edits,
+    diagram,
+    preview,
+    selection,
+    select: onSelectionChange,
+    messages,
+  })
   return (
-    <div ref={frame} data-slot="uml-diagram" className={cn('relative', classes.outer)}>
-      <SequenceDiagramView
-        ref={root}
-        diagram={diagram}
-        {...(height === undefined || full ? {} : { maxHeight: height })}
-        {...(label ? { label } : {})}
-        {...(classes.inner ? { className: classes.inner } : {})}
-        {...(selection && !exporting ? { selected: selection.elements } : {})}
-        {...(select && !preview ? { onSelect: select } : {})}
-        annotations={[...layer.marks.values()]}
-        onAnnotationSelect={layer.scope.onSelect}
-        fit={preview}
-      />
-      {fullscreen && (
-        <FullscreenButton fullscreen={fullscreen} className="absolute top-2 right-2" />
-      )}
-    </div>
+    <DiagramContextMenu {...menu}>
+      <div ref={frame} data-slot="uml-diagram" className={cn('relative', classes.outer)}>
+        <SequenceDiagramView
+          ref={root}
+          diagram={diagram}
+          {...(height === undefined || full ? {} : { maxHeight: height })}
+          {...(label ? { label } : {})}
+          {...(classes.inner ? { className: classes.inner } : {})}
+          {...(selection && !exporting ? { selected: selection.elements } : {})}
+          {...(select && !preview ? { onSelect: select } : {})}
+          annotations={[...layer.marks.values()]}
+          onAnnotationSelect={layer.scope.onSelect}
+          fit={preview}
+        />
+        {fullscreen && (
+          <FullscreenButton fullscreen={fullscreen} className="absolute top-2 right-2" />
+        )}
+      </div>
+    </DiagramContextMenu>
   )
 }
 
@@ -704,8 +679,12 @@ function UmlDiagram(props: UmlDiagramProps) {
 }
 
 export {
+  type DiagramContextAction,
   type UmlAnnotation,
   type UmlAnnotationStatus,
+  type UmlContextActions,
+  type UmlContextPart,
+  type UmlContextTarget,
   UmlDiagram,
   type UmlDiagramHandle,
   type UmlDiagramProps,

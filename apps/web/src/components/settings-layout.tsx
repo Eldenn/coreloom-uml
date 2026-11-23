@@ -49,7 +49,7 @@ function SettingsLayout({
       </div>
       <div className="flex flex-col gap-6 md:flex-row md:gap-10">
         <nav
-          aria-label="Settings sections"
+          aria-label={t.settings.sections}
           className="-mx-1 shrink-0 overflow-x-auto md:mx-0 md:w-52 md:overflow-visible"
         >
           <ul className="m-0 flex list-none gap-1 p-1 md:sticky md:top-20 md:flex-col md:p-0">

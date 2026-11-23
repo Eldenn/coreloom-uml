@@ -26,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { type UmlAnnotation, UmlDiagram, type UmlDiagramHandle } from '@/components/ui/uml-diagram'
 import { useCoreloomI18n } from '@/lib/i18n'
 import type { UmlLayout, UmlSpec } from '@/lib/uml'
-import type { UmlImageFormat } from '@/lib/uml-image'
+import { printImage, type UmlDownloadFormat } from '@/lib/uml-image'
 import { cn } from '@/lib/utils'
 
 /** One view of the document: a diagram and, for drawn diagrams, where its elements were placed. */
@@ -144,7 +144,7 @@ function DownloadMenu({
   onDownload,
   className,
 }: {
-  onDownload: (format: UmlImageFormat) => void
+  onDownload: (format: UmlDownloadFormat) => void
   className?: string
 }) {
   const t = useCoreloomI18n().messages.diagramViewer
@@ -170,6 +170,13 @@ function DownloadMenu({
           }}
         >
           {t.png}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => {
+            onDownload('pdf')
+          }}
+        >
+          {t.pdf}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -248,18 +255,19 @@ function DiagramViewer({
   const keysId = React.useId()
   const image = React.useRef<UmlDiagramHandle>(null)
 
-  const download = (format: UmlImageFormat) => {
+  const download = (format: UmlDownloadFormat) => {
     const item = diagrams.find((d) => d.id === view.active)
     if (!item) return
     const name = fileName ? `${fileSlug(fileName)}-${fileSlug(item.title)}` : fileSlug(item.title)
-    image.current
-      ?.toImage(format)
-      .then((url) => {
-        save(url, `${name}.${format}`)
-      })
-      .catch(() => {
-        view.setSaid(t.imageFailed)
-      })
+    const made =
+      format === 'pdf'
+        ? image.current?.toImage('svg', { light: true }).then((url) => printImage(url, name))
+        : image.current?.toImage(format).then((url) => {
+            save(url, `${name}.${format}`)
+          })
+    made?.catch(() => {
+      view.setSaid(t.imageFailed)
+    })
   }
 
   return (

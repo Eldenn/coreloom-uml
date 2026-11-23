@@ -1,3 +1,26 @@
+'use client'
+
+// Coreloom UI — Terminal. A command line in the page: a prompt, an input with history (↑ ↓) and
+// Tab completion, and the output with its ANSI colours. It runs nothing itself: your app gets each
+// command and answers with text, a promise or a stream, so the commands can be a fake shell, calls
+// to your API, or a real process behind a WebSocket.
+//
+//   const terminal = useTerminal({
+//     prompt: '~/orbit $ ',
+//     onCommand: async function* (command, { signal }) {
+//       const res = await fetch('/api/run', { method: 'POST', body: command, signal })
+//       for await (const chunk of res.body!.pipeThrough(new TextDecoderStream())) yield chunk
+//     },
+//   })
+//   <Terminal terminal={terminal} />
+//
+// Two ways to plug it in:
+// - Commands (`onCommand`): the terminal draws the prompt, echoes the command and shows what you
+//   return. `context.read()` asks a question mid-command (a confirmation, a password).
+// - A session (`session`): a process that prints its own prompt, like a shell on a PTY. Enter sends
+//   the line with "\r", Ctrl+C sends "\x03" (or calls `interrupt`), and the size follows the box.
+//   The same `TerminalSession` shape fits xterm.js if you later need full-screen programs (vim,
+//   htop): this terminal is line based and doesn't draw them.
 import { CheckIcon, CopyIcon, EraserIcon, SquareIcon, SquareTerminalIcon } from 'lucide-react'
 import * as React from 'react'
 

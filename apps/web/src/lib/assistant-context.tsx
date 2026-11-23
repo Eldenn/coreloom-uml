@@ -9,7 +9,14 @@ import { useAutoOffered } from '@/assistant/use-subject'
 import { toast } from '@/components/ui/sonner'
 import type { ArchitectureDetail } from '@/lib/architectures'
 import type { AutosaveControl } from '@/lib/assistant'
-import { addItem, type ContextItem, sameItem } from '@/lib/assistant-subject'
+import {
+  addItem,
+  architectureOfItem,
+  type ContextItem,
+  sameItem,
+  workspaceItems,
+  type WorkspaceTarget,
+} from '@/lib/assistant-subject'
 import { useFeature } from '@/lib/feature-flags'
 import { useStoredProvider } from '@/lib/llm-provider'
 import { useT } from '@/lib/locale'
@@ -37,6 +44,8 @@ interface AssistantControls {
   showConversation: (conversationId: number | null) => void
   setWorkspace: (workspace: Workspace | null) => void
   setItems: (items: readonly ContextItem[]) => void
+  /** The context as it is now, for a caller that must not render again with the chat. */
+  readItems: () => readonly ContextItem[]
 }
 
 const StateContext = React.createContext<AssistantState | null>(null)
@@ -48,8 +57,18 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = React.useState<readonly ContextItem[]>([])
   const [workspace, setWorkspace] = React.useState<Workspace | null>(null)
   // The setters of `useState`: stable, so the object is too.
+  const held = React.useRef(items)
+  React.useEffect(() => {
+    held.current = items
+  }, [items])
   const controls = React.useMemo<AssistantControls>(
-    () => ({ setOpen, showConversation: setConversationId, setWorkspace, setItems }),
+    () => ({
+      setOpen,
+      showConversation: setConversationId,
+      setWorkspace,
+      setItems,
+      readItems: () => held.current,
+    }),
     [],
   )
   const state = React.useMemo(
@@ -112,7 +131,7 @@ export function useContextItem(item: ContextItem) {
   const autoOffered = useAutoOffered(useStoredProvider())
   const held = items.some((other) => sameItem(other, item))
   return {
-    offered: enabled && (autoOffered || item.kind === 'architecture'),
+    offered: enabled && (autoOffered || architectureOfItem(item) !== null),
     held,
     label: held ? t.removeFromContext : t.addToContext,
     toggle: () => {
@@ -126,6 +145,49 @@ export function useContextItem(item: ContextItem) {
       // The owner sees the item land next to the prompt.
       setOpen(true)
     },
+  }
+}
+
+/**
+ * What a right-click in an architecture's workspace adds to the menu of a view or of a part of
+ * one: putting it in the assistant's context, or taking it out (several selected parts go in or
+ * out together: out when every one is held, in otherwise). Parts that read the same in one view
+ * are one item. The context is read when the menu opens: the page that calls this tells the
+ * chat its workspace, and must not render again each time the chat's state changes.
+ */
+export function useWorkspaceContextActions(architectureId: number) {
+  const t = useT().assistant
+  const { readItems, setItems, setOpen } = useControls()
+  const enabled = useFeature('diagram-assistant')
+  const autoOffered = useAutoOffered(useStoredProvider())
+  return (target: WorkspaceTarget): ItemAction[] => {
+    const items = readItems()
+    const viewId = Number(target.viewId)
+    if (!enabled || !Number.isInteger(viewId)) return []
+    const wanted = workspaceItems(target, viewId, architectureId)
+    const holds = (all: readonly ContextItem[], item: ContextItem) =>
+      all.some((other) => sameItem(other, item))
+    const held = wanted.every((item) => holds(items, item))
+    const many = wanted.length > 1
+    const remove = many ? t.removeManyFromContext(wanted.length) : t.removeFromContext
+    const add = many ? t.addManyToContext(wanted.length) : t.addToContext
+    return [
+      {
+        label: held ? remove : add,
+        icon: <SparklesIcon />,
+        onSelect: () => {
+          if (held) {
+            setItems(items.filter((other) => !holds(wanted, other)))
+            return
+          }
+          const next = wanted.reduce((all, item) => addItem(all, item, autoOffered), items)
+          // Some may not fit: what fits goes in, and the owner is told.
+          if (wanted.some((item) => !holds(next, item))) toast.error(t.contextFull)
+          if (next !== items) setItems(next)
+          setOpen(true)
+        },
+      },
+    ]
   }
 }
 

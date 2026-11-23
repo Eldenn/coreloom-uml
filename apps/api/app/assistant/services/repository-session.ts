@@ -84,8 +84,24 @@ export class RepositorySession {
     private conversationId: number,
   ) {}
 
+  /**
+   * Opens and token requests still running: a tool stopped mid-way (Stop, a timeout) leaves its
+   * `open` going on its own, and `close` waits for it, so what it makes is paused and revoked.
+   */
+  #running = new Set<Promise<unknown>>()
+
+  #track<T>(work: Promise<T>): Promise<T> {
+    this.#running.add(work)
+    void work.finally(() => this.#running.delete(work)).catch(() => {})
+    return work
+  }
+
   /** The sandbox of the project's repository, or the sentence the model is told. */
-  async open(projectId: number): Promise<OpenRepository | string> {
+  open(projectId: number): Promise<OpenRepository | string> {
+    return this.#track(this.#open(projectId))
+  }
+
+  async #open(projectId: number): Promise<OpenRepository | string> {
     const repository = await projectRepository(projectId, this.user)
     if (!repository) return REPOSITORY_SENTENCES.noRepository
     const current = this.#opened
@@ -197,12 +213,13 @@ export class RepositorySession {
   }
 
   /** `#auth` for a command that may fetch older files of the open repository. */
-  async fetchEnvs(opened: OpenRepository): Promise<Record<string, string> | string> {
-    return this.#auth(opened.repositoryUrl)
+  fetchEnvs(opened: OpenRepository): Promise<Record<string, string> | string> {
+    return this.#track(this.#auth(opened.repositoryUrl))
   }
 
   /** Pauses the sandbox until the next message and frees the conversation. Never throws. */
   async close(): Promise<void> {
+    await Promise.allSettled(this.#running)
     const opened = this.#opened
     this.#opened = null
     try {

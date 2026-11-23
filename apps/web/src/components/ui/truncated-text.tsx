@@ -1,8 +1,3 @@
-'use client'
-
-// Coreloom UI — TruncatedText. A long text cut after a few lines, with "Show more" to read the
-// rest: a product description, a review, a commit message, a ticket's body. The button only
-// appears when the text is actually cut, and it follows the width as the layout changes.
 import * as React from 'react'
 
 import { useCoreloomI18n } from '@/lib/i18n'

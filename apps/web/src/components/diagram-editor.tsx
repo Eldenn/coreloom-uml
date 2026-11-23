@@ -11,7 +11,11 @@ import {
 } from '@/components/diagram-file-tools'
 import { sniffFormat, useFileImport } from '@/components/diagram-import'
 import { CodeEditor, type CodeEditorDiagnostic } from '@/components/ui/code-editor'
-import type { UmlAnnotation, UmlDiagramHandle } from '@/components/ui/uml-diagram'
+import type {
+  UmlAnnotation,
+  UmlContextActions,
+  UmlDiagramHandle,
+} from '@/components/ui/uml-diagram'
 import { useDiagramEditing } from '@/components/use-diagram-editing'
 import { type Messages, useCoreloomI18n } from '@/lib/i18n'
 import {
@@ -24,15 +28,19 @@ import {
   type UmlSpec,
 } from '@/lib/uml'
 import { DIRECTIONS } from '@/lib/uml-arrange'
-import type { UmlImageFormat } from '@/lib/uml-image'
+import { printImage, type UmlDownloadFormat } from '@/lib/uml-image'
 import { parseMermaid, toMermaid } from '@/lib/uml-mermaid'
 import { isPlantUml, parsePlantUml, toPlantUml } from '@/lib/uml-plantuml'
+import { useControllableState } from '@/lib/use-controllable-state'
 import { cn } from '@/lib/utils'
 
 interface DiagramEditorProps {
   /** The text (controlled), in `format`. */
   value?: string
   defaultValue?: string
+  /** Called with the new text after each edit, import, template or format switch. */
+  onValueChange?: (text: string) => void
+  /** @deprecated Use `onValueChange`, the name every Coreloom field uses. Removed in 2.0. */
   onChange?: (text: string) => void
   format?: DiagramFormat
   /** Default: mermaid. */
@@ -75,6 +83,12 @@ interface DiagramEditorProps {
   annotations?: readonly UmlAnnotation[]
   /** Makes each badge a button that hands its element's id back (the app shows its findings). */
   onAnnotationSelect?: (element: string) => void
+  /**
+   * The app's entries in the menu a right-click, a long press or the context-menu key opens on
+   * the drawing's elements, members, relations and sequence steps, after the editor's own (Rename,
+   * Duplicate, Delete, while the text can be changed). Without it, no menu.
+   */
+  contextActions?: UmlContextActions
   className?: string
 }
 
@@ -303,17 +317,18 @@ function useDownload({
   text: () => string
 }) {
   const [failed, setFailed] = React.useState(false)
-  const download = (what: DiagramFormat | UmlImageFormat) => {
-    if (what === 'svg' || what === 'png') {
+  const download = (what: DiagramFormat | UmlDownloadFormat) => {
+    if (what === 'svg' || what === 'png' || what === 'pdf') {
       setFailed(false)
-      image.current
-        ?.toImage(what)
-        .then((url) => {
-          save(url, `${fileName}.${what}`)
-        })
-        .catch(() => {
-          setFailed(true)
-        })
+      const made =
+        what === 'pdf'
+          ? image.current?.toImage('svg', { light: true }).then((url) => printImage(url, fileName))
+          : image.current?.toImage(what).then((url) => {
+              save(url, `${fileName}.${what}`)
+            })
+      made?.catch(() => {
+        setFailed(true)
+      })
       return
     }
     const blob = new Blob([text()], { type: format === 'json' ? 'application/json' : 'text/plain' })
@@ -322,16 +337,6 @@ function useDownload({
     URL.revokeObjectURL(url)
   }
   return { download, failed }
-}
-
-function useControlled<T>(value: T | undefined, initial: T, onChange?: (next: T) => void) {
-  const [own, setOwn] = React.useState(initial)
-  const current = value ?? own
-  const set = (next: T) => {
-    if (value === undefined) setOwn(next)
-    onChange?.(next)
-  }
-  return [current, set] as const
 }
 
 /** "Copied" for a moment after copying text. */
@@ -365,6 +370,47 @@ function paneHeight(height: string) {
     style: { '--diagram-editor-h': fill ? '560px' : height } as React.CSSProperties,
     className: cn('lg:auto-rows-[minmax(0,1fr)]', fill ? 'lg:flex-1' : 'lg:h-(--diagram-editor-h)'),
   }
+}
+
+// The text a new editor starts with when the app gives none: a small class diagram.
+const FIRST_TEMPLATE = DIAGRAM_TEMPLATES[0]?.text ?? ''
+
+/** The editor's text, format and view, each owned by the app or kept here. */
+function useEditorState(
+  props: Pick<
+    DiagramEditorProps,
+    | 'value'
+    | 'defaultValue'
+    | 'onValueChange'
+    | 'onChange'
+    | 'format'
+    | 'defaultFormat'
+    | 'onFormatChange'
+    | 'view'
+    | 'defaultView'
+    | 'onViewChange'
+  >,
+) {
+  const [text, setText] = useControllableState({
+    value: props.value,
+    defaultValue: props.defaultValue ?? FIRST_TEMPLATE,
+    onChange: (next: string) => {
+      props.onValueChange?.(next)
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- kept working until 2.0
+      props.onChange?.(next)
+    },
+  })
+  const [format, setFormat] = useControllableState({
+    value: props.format,
+    defaultValue: props.defaultFormat ?? 'mermaid',
+    onChange: props.onFormatChange,
+  })
+  const [view, setView] = useControllableState({
+    value: props.view,
+    defaultValue: props.defaultView ?? 'split',
+    onChange: props.onViewChange,
+  })
+  return { text, setText, format, setFormat, view, setView }
 }
 
 /** The text, its marks and the problems under it. */
@@ -421,32 +467,23 @@ function TextPane({
 }
 
 function DiagramEditor({
-  value,
-  defaultValue = DIAGRAM_TEMPLATES[0]?.text ?? '',
-  onChange,
-  format: formatProp,
-  defaultFormat = 'mermaid',
-  onFormatChange,
   onDiagramChange,
   templates = DIAGRAM_TEMPLATES,
   height = '560px',
   fileName = 'diagram',
   autoFocus = false,
-  view: viewProp,
-  defaultView = 'split',
-  onViewChange,
   actions,
   readOnly = false,
   highlighted,
   annotations,
   onAnnotationSelect,
+  contextActions,
   className,
+  ...owned
 }: DiagramEditorProps) {
   const { messages } = useCoreloomI18n()
   const t = messages.diagramEditor
-  const [text, setText] = useControlled(value, defaultValue, onChange)
-  const [format, setFormat] = useControlled(formatProp, defaultFormat, onFormatChange)
-  const [view, setView] = useControlled(viewProp, defaultView, onViewChange)
+  const { text, setText, format, setFormat, view, setView } = useEditorState(owned)
   // Positions dragged on the canvas; null until someone drags (the JSON's own layout applies).
   const [layout, setLayout] = React.useState<UmlLayout | null>(null)
 
@@ -559,7 +596,7 @@ function DiagramEditor({
             view={view}
             label={t.source}
             value={text}
-            onChange={type}
+            onValueChange={type}
             readOnly={readOnly}
             format={format}
             fileName={fileName}
@@ -578,13 +615,14 @@ function DiagramEditor({
             editing={editing}
             directions={keptDirections(diagram, format)}
             notes={keepsNotes(diagram, format)}
-            highlighted={highlighted}
+            {...(highlighted ? { highlighted } : {})}
             imageRef={image}
             onLayoutChange={setLayout}
             review={{
               ...(annotations ? { annotations } : {}),
               ...(onAnnotationSelect ? { onAnnotationSelect } : {}),
             }}
+            contextActions={contextActions}
           />
         )}
       </div>

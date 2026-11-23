@@ -1,3 +1,4 @@
+import { type LanguageModel, simulateStreamingMiddleware, wrapLanguageModel } from 'ai'
 import { MockLanguageModelV4 } from 'ai/test'
 
 /**
@@ -28,6 +29,11 @@ export function failingModel(error: unknown): MockLanguageModelV4 {
       throw error
     },
   })
+}
+
+/** The same model, streamed: each call's answer arrives through `doStream`, as one delta. */
+export function streaming(model: MockLanguageModelV4): LanguageModel {
+  return wrapLanguageModel({ model, middleware: simulateStreamingMiddleware() })
 }
 
 /** To simulate a provider's HTTP errors (401, 404, 429, 500…). */

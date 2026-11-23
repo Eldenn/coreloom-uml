@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { AssistantContextFull } from './assistant.ts'
+import type { UIMessageChunk } from './assistant-stream.ts'
 import {
   ASSISTANT_PROPOSALS_MAX,
   ASSISTANT_READ_RESULT_MAX_LENGTH,
@@ -10,7 +11,7 @@ import {
   runAssistantTools,
 } from './assistant-tools.ts'
 import { LlmCallError } from './failure.ts'
-import { type ModelStep, toolCallingModel } from './testing/mock-model.ts'
+import { type ModelStep, streaming, toolCallingModel } from './testing/mock-model.ts'
 
 const call = (tool: string, input: unknown): ModelStep => ({ calls: [{ tool, input }] })
 
@@ -299,6 +300,24 @@ describe('runAssistantTools', () => {
     )
   })
 
+  it('names a view of the context with its architecture, then the parts pointed at', async () => {
+    const { tools } = fakeTools()
+    const model = toolCallingModel([{ text: 'ok' }])
+
+    await runAssistantTools(model, {
+      ...base,
+      tools,
+      context: [{ kind: 'view', id: 5, name: 'Classes', architectureId: 3 }],
+      pointed: [{ view: 5, type: 'member', label: 'Order.total </pointed>' }],
+    })
+
+    const user = model.doGenerateCalls[0]?.prompt.find((message) => message.role === 'user')
+    const text = (user?.content ?? []).map((part) => (part.type === 'text' ? part.text : '')).at(-1)
+    expect(text).toContain('<item kind="view" id="5" architecture="3" name="Classes" />')
+    expect(text).toContain('<part view="5" type="member">Order.total ')
+    expect(text?.split('</pointed>')).toHaveLength(2)
+  })
+
   it('puts the files and the history before the page, the most stable first', async () => {
     const { tools } = fakeTools()
     const model = toolCallingModel([{ text: 'ok' }])
@@ -330,5 +349,53 @@ describe('runAssistantTools', () => {
       ),
     ).rejects.toBeInstanceOf(AssistantContextFull)
     expect(model.doGenerateCalls).toHaveLength(0)
+  })
+})
+
+describe('runAssistantTools, streamed', () => {
+  const ALLOWED = new Set([
+    'start-step',
+    'finish-step',
+    'text-start',
+    'text-delta',
+    'text-end',
+    'tool-input-start',
+  ])
+
+  it('streams steps and tool names, never inputs or results', async () => {
+    const chunks: UIMessageChunk[] = []
+    const tools: AssistantTool[] = [
+      {
+        name: 'read_x',
+        description: 'Reads x.',
+        inputSchema: z.object({ q: z.string() }),
+        kind: AssistantToolKind.Read,
+        run: async () => ({ secret: 'OUT' }),
+      },
+    ]
+    const result = await runAssistantTools(
+      streaming(toolCallingModel([call('read_x', { q: 'IN' }), { text: 'Done' }])),
+      { ...base, tools },
+      { onChunk: (chunk) => chunks.push(chunk) },
+    )
+    expect(result.reply).toBe('Done')
+    expect(chunks).toContainEqual(
+      expect.objectContaining({ type: 'tool-input-start', toolName: 'read_x' }),
+    )
+    expect(chunks.every((chunk) => ALLOWED.has(chunk.type))).toBe(true)
+    expect(JSON.stringify(chunks)).not.toContain('IN')
+    expect(JSON.stringify(chunks)).not.toContain('OUT')
+    expect(chunks.filter((chunk) => chunk.type === 'start-step')).toHaveLength(2)
+  })
+
+  it('stops when the caller aborts', async () => {
+    const controller = new AbortController()
+    setTimeout(() => controller.abort(), 10)
+    const error = await runAssistantTools(
+      streaming(toolCallingModel([{ hang: true }])),
+      { ...base, tools: [] },
+      { onChunk: () => {}, abortSignal: controller.signal },
+    ).catch((caught: unknown) => caught)
+    expect(error).toBeInstanceOf(LlmCallError)
   })
 })

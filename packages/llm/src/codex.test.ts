@@ -1,4 +1,4 @@
-import { generateText, Output } from 'ai'
+import { generateText, Output, streamText } from 'ai'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import {
@@ -219,6 +219,18 @@ describe('createCodexModel', () => {
         ['system', 'developer'].includes(item.role ?? ''),
       ),
     ).toBe(false)
+  })
+
+  it('streams as one delta, the endpoint read back into one answer', async () => {
+    const { fetch } = fakeFetch(completed('Hello'))
+    const result = streamText({
+      model: createCodexModel('gpt-5.5', CREDENTIAL, fetch),
+      prompt: 'P',
+      maxRetries: 0,
+    })
+    const chunks: string[] = []
+    for await (const chunk of result.textStream) chunks.push(chunk)
+    expect(chunks.join('')).toBe('Hello')
   })
 
   it('asks for structured output', async () => {
