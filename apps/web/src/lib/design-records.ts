@@ -43,6 +43,8 @@ export const DESIGN_LIMITS = {
   optionName: 120,
   optionText: 1000,
   options: 5,
+  /** Parts of views one decision names. */
+  parts: 50,
 } as const
 
 const keys = {

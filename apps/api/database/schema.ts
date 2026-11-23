@@ -426,6 +426,21 @@ export class DecisionDiagramSchema extends BaseModel {
   declare diagramId: number
 }
 
+export class DecisionPartSchema extends BaseModel {
+  static $columns = ['decisionId', 'diagramId', 'id', 'label', 'type'] as const
+  $columns = DecisionPartSchema.$columns
+  @column()
+  declare decisionId: number
+  @column()
+  declare diagramId: number
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare label: string
+  @column()
+  declare type: string
+}
+
 export class DecisionRequirementSchema extends BaseModel {
   static $columns = ['decisionId', 'requirementId'] as const
   $columns = DecisionRequirementSchema.$columns

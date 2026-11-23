@@ -1,7 +1,8 @@
-import { BaseModel, column, manyToMany } from '@adonisjs/lucid/orm'
-import type { ManyToMany } from '@adonisjs/lucid/types/relations'
+import { BaseModel, column, hasMany, manyToMany } from '@adonisjs/lucid/orm'
+import type { HasMany, ManyToMany } from '@adonisjs/lucid/types/relations'
 import type { DateTime } from 'luxon'
 import type { DecisionOption, DecisionStatus } from '#app/decisions/constants/decision'
+import DecisionPart from '#app/decisions/models/decision-part'
 import Diagram from '#app/diagrams/models/diagram'
 import Requirement from '#app/requirements/models/requirement'
 
@@ -53,4 +54,8 @@ export default class Decision extends BaseModel {
 
   @manyToMany(() => Diagram, { pivotTable: 'decision_diagrams' })
   declare diagrams: ManyToMany<typeof Diagram>
+
+  /** The parts of views it names, each by its view and the line that names it there. */
+  @hasMany(() => DecisionPart)
+  declare parts: HasMany<typeof DecisionPart>
 }

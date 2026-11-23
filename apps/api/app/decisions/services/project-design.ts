@@ -24,6 +24,7 @@ export async function projectDesign(architecture: Architecture): Promise<DesignC
     .orderBy('priority', 'asc')
     .orderBy('id', 'asc')
   const decisions = await Decision.query()
+    .preload('parts', (parts) => parts.orderBy('id', 'asc'))
     .where('projectId', projectId)
     .whereIn('status', [DecisionStatus.Accepted, DecisionStatus.Proposed])
     .orderBy('status', 'asc')
@@ -37,11 +38,12 @@ export async function projectDesign(architecture: Architecture): Promise<DesignC
       statement,
       measure,
     })),
-    decisions: decisions.map(({ title, status, chosen, consequences }) => ({
+    decisions: decisions.map(({ title, status, chosen, consequences, parts }) => ({
       title,
       status: status === DecisionStatus.Accepted ? 'accepted' : 'proposed',
       chosen,
       consequences,
+      parts: parts.map(({ diagramId, type, label }) => ({ view: diagramId, type, label })),
     })),
   }
 }

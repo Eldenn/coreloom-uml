@@ -65,6 +65,7 @@ export type ActionRowLabel =
   | 'replaces'
   | 'linkedRequirements'
   | 'linkedDiagrams'
+  | 'linkedPart'
 
 /**
  * One line of a card; with `from`, the value replaces it. A list is one text, comma-separated;
@@ -207,6 +208,14 @@ function decisionRows(input: Record<string, unknown>): Draft[] {
     { label: 'status', value: input.status ?? 'proposed' },
     { label: 'linkedRequirements', value: idList(input.requirementIds) },
     { label: 'linkedDiagrams', value: idList(input.diagramIds) },
+    // Each part named, on its own line: as many as there are, none cut.
+    ...(Array.isArray(input.parts)
+      ? (input.parts as { diagramId?: unknown; label?: unknown }[])
+      : []
+    ).map((part): Draft => ({
+      label: 'linkedPart',
+      value: `#${String(part.diagramId)}: ${String(part.label)}`,
+    })),
   ]
 }
 

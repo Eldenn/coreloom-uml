@@ -35,6 +35,29 @@ describe('actionRows of a decision', () => {
       { label: 'linkedRequirements', value: '#3, #5' },
     ])
   })
+
+  it('shows every part of a view a new decision names', () => {
+    expect(
+      rows(
+        'add_decision',
+        {
+          projectId: 2,
+          title: 'Storage',
+          options: [{ name: 'S3' }],
+          diagramIds: [7],
+          parts: [
+            { diagramId: 7, type: 'element', label: 'Bucket' },
+            { diagramId: 7, type: 'relation', label: 'API → Bucket: writes' },
+          ],
+        },
+        'Shop',
+      ).filter((row) => row.label.startsWith('linked')),
+    ).toEqual([
+      { label: 'linkedDiagrams', value: '#7' },
+      { label: 'linkedPart', value: '#7: Bucket' },
+      { label: 'linkedPart', value: '#7: API → Bucket: writes' },
+    ])
+  })
 })
 
 describe('actionRows', () => {

@@ -105,6 +105,7 @@ export const en = {
       unserved_requirement: 'No accepted decision serves this requirement, which must hold.',
       decision_without_diagram: 'This accepted decision names no diagram.',
       superseded_still_linked: 'This superseded decision is still named on diagrams.',
+      stale_part: 'This decision names a part a view no longer has.',
     },
     tab: 'Design',
     intro:
@@ -182,6 +183,10 @@ export const en = {
     linkedDiagrams: 'Diagrams it shapes',
     serves: (count: number) => (count === 1 ? '1 requirement' : `${count} requirements`),
     shapes: (count: number) => (count === 1 ? '1 diagram' : `${count} diagrams`),
+    linkedParts: 'Parts of those diagrams',
+    linkedPartsHint: 'The elements, relations, members or steps this decision is about.',
+    partOption: (diagram: string, part: string) => `${diagram} · ${part}`,
+    partGone: (part: string) => `${part} (no longer in the view)`,
   },
   architectures: {
     title: 'Architectures',
@@ -1267,6 +1272,7 @@ export const en = {
       replaces: 'Replaces',
       linkedRequirements: 'Requirements it serves',
       linkedDiagrams: 'Diagrams it shapes',
+      linkedPart: 'Part of a diagram',
     },
     actionWholeRepository: 'The whole repository',
     actionDefaultBranch: 'The default branch',
@@ -1662,6 +1668,7 @@ export const fr: Messages = {
       unserved_requirement: 'Aucune décision acceptée ne sert cette exigence indispensable.',
       decision_without_diagram: 'Cette décision acceptée ne nomme aucun diagramme.',
       superseded_still_linked: 'Cette décision remplacée est encore nommée sur des diagrammes.',
+      stale_part: 'Cette décision nomme un élément qu’une vue n’a plus.',
     },
     tab: 'Conception',
     intro:
@@ -1740,6 +1747,10 @@ export const fr: Messages = {
     linkedDiagrams: 'Diagrammes qu’elle façonne',
     serves: (count: number) => (count <= 1 ? `${count} exigence` : `${count} exigences`),
     shapes: (count: number) => (count <= 1 ? `${count} diagramme` : `${count} diagrammes`),
+    linkedParts: 'Éléments de ces diagrammes',
+    linkedPartsHint: 'Les éléments, relations, membres ou étapes que cette décision concerne.',
+    partOption: (diagram: string, part: string) => `${diagram} · ${part}`,
+    partGone: (part: string) => `${part} (plus dans la vue)`,
   },
   architectures: {
     title: 'Architectures',
@@ -2857,6 +2868,7 @@ export const fr: Messages = {
       replaces: 'Remplace',
       linkedRequirements: 'Exigences servies',
       linkedDiagrams: 'Diagrammes concernés',
+      linkedPart: 'Élément d’un diagramme',
     },
     actionWholeRepository: 'Tout le dépôt',
     actionDefaultBranch: 'La branche par défaut',

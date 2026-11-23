@@ -9,9 +9,15 @@ import {
   TARGET_NOT_FOUND,
   writeAction,
 } from '#app/assistant/actions/action'
-import { ActionFailure, AssistantTargetKind } from '#app/assistant/constants/assistant'
+import {
+  ActionFailure,
+  AssistantTargetKind,
+  POINTED_LABEL_MAX_LENGTH,
+  POINTED_TYPES,
+} from '#app/assistant/constants/assistant'
 import { DECISION_LIMITS, DecisionStatus } from '#app/decisions/constants/decision'
 import Decision from '#app/decisions/models/decision'
+import { serializeParts } from '#app/decisions/serializers/decision-serializer'
 import {
   createDecision,
   creationProblem,
@@ -75,6 +81,19 @@ const decisionFields = {
     .describe('accepted only when the owner said the choice is made; proposed otherwise'),
   requirementIds: ids().optional().describe('Requirements of the project it serves'),
   diagramIds: ids().optional().describe('Views (diagrams) of the project it shapes'),
+  parts: z
+    .array(
+      z.object({
+        diagramId: idInput(),
+        type: z.enum(POINTED_TYPES),
+        label: text(POINTED_LABEL_MAX_LENGTH).min(1),
+      }),
+    )
+    .max(DECISION_LIMITS.parts)
+    .optional()
+    .describe(
+      'Parts of those views it is about, each by its view and the one line that names it there, as pointed parts are named: `Payment`, `Payment.total: number`, `Order → Payment: pays`, `Client -> API: login()`',
+    ),
 }
 const decisionInput = z.object({ projectId: idInput(), ...decisionFields })
 const supersedeInput = z.object({ decisionId: idInput(), ...decisionFields })
@@ -95,7 +114,7 @@ export const DESIGN_ACTIONS: readonly AssistantAction[] = [
   readAction({
     name: 'read_project_design',
     description:
-      "Reads the requirements of one of the owner's projects (id, category, must or should, the sentence, its measure) and its decisions (id, question, status, the options' names, the one chosen, the decision that replaced it, the ids of the requirements and views it names). Read it before proposing a requirement or a decision, so none is proposed twice.",
+      "Reads the requirements of one of the owner's projects (id, category, must or should, the sentence, its measure) and its decisions (id, question, status, the options' names, the one chosen, the decision that replaced it, the ids of the requirements and views it names, the parts of views it names). Read it before proposing a requirement or a decision, so none is proposed twice.",
     input: z.object({ projectId: idInput() }),
     kind: AssistantToolKind.Read,
     available,
@@ -127,6 +146,7 @@ export const DESIGN_ACTIONS: readonly AssistantAction[] = [
           supersededById: decision.supersededById,
           requirementIds: decision.requirements.map((requirement) => requirement.id),
           diagramIds: decision.diagrams.map((diagram) => diagram.id),
+          parts: serializeParts(decision),
         })),
       }
     },
@@ -134,7 +154,7 @@ export const DESIGN_ACTIONS: readonly AssistantAction[] = [
   readAction({
     name: 'read_design_review',
     description:
-      "Reads what the requirements and decisions of one of the owner's projects say against themselves: a requirement that must hold and that no accepted decision serves, an accepted decision that names no view, a superseded decision still named on views. Each finding names the requirement or the decision it is about.",
+      "Reads what the requirements and decisions of one of the owner's projects say against themselves: a requirement that must hold and that no accepted decision serves, an accepted decision that names no view, a superseded decision still named on views, a decision still standing that names a part its view no longer has. Each finding names the requirement or the decision it is about.",
     input: z.object({ projectId: idInput() }),
     kind: AssistantToolKind.Read,
     available,
