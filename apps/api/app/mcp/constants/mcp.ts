@@ -13,6 +13,10 @@ export const McpTool = {
   GetCodeConformance: 'get_code_conformance',
   /** Behind the `code-maps` flag too. */
   ListUndocumentedProcesses: 'list_undocumented_processes',
+  /** Behind the `design-records` flag too. */
+  ListRequirements: 'list_requirements',
+  /** Behind the `design-records` flag too. */
+  ListDecisions: 'list_decisions',
 } as const
 export type McpTool = (typeof McpTool)[keyof typeof McpTool]
 
@@ -21,6 +25,9 @@ export const CODE_MAP_TOOLS: readonly McpTool[] = [
   McpTool.GetCodeConformance,
   McpTool.ListUndocumentedProcesses,
 ]
+
+/** The tools only listed to an account with requirements and decisions turned on. */
+export const DESIGN_TOOLS: readonly McpTool[] = [McpTool.ListRequirements, McpTool.ListDecisions]
 
 /** Projects, architectures or agent conventions listed by one call, newest first. */
 export const MCP_LIST_MAX = 200

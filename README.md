@@ -105,7 +105,10 @@ silently.
   PlantUML or JSON and reads a project's latest generated AGENTS.md. With code maps turned on, it
   also returns how a project's diagrams match the code (`get_code_conformance`: open review
   findings and the deterministic match) and the processes no diagram documents
-  (`list_undocumented_processes`). It only reads, and never calls a model. It is behind
+  (`list_undocumented_processes`). With requirements and decisions turned on, it lists a project's
+  requirements and its decisions still standing (`list_requirements`, `list_decisions`), which a
+  generated AGENTS.md also carries (the requirements and the accepted decisions). It only reads,
+  and never calls a model. It is behind
   the `mcp-server` feature flag, off by default; generated agent conventions say how to register
   it in each tool.
 

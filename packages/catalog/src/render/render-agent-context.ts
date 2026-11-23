@@ -26,6 +26,13 @@ export type AgentContextProject = {
     /** `packages`: what a package diagram draws, from which dependency rules are rendered. */
     diagrams: { kind: string; title: string; packages?: PackageDiagramShape }[]
   }[]
+  /**
+   * What the architecture has to hold, the ones that must hold first. Absent from inputs stored
+   * before it existed, and for a project that records none.
+   */
+  requirements?: { priority: string; statement: string; measure: string | null }[]
+  /** The decisions taken (accepted ones only), oldest first; absent like `requirements`. */
+  decisions?: { title: string; chosen: string | null; consequences: string | null }[]
 }
 
 export type AgentContextInput = {
@@ -85,6 +92,10 @@ export type AgentContextOutput = {
 
 /** Longest name, title or description rendered in the `Project` section. */
 const PROJECT_TEXT_MAX_LENGTH = 300
+/** A requirement or a decision's consequences, as one line of the `Project` section. */
+const DESIGN_TEXT_MAX_LENGTH = 500
+/** Requirements, and decisions, listed: past it the section says how many were left out. */
+export const DESIGN_ITEMS_MAX = 30
 
 /** Longest accepted rule, once folded to one line. */
 const RULE_MAX_LENGTH = 300
@@ -267,8 +278,35 @@ function renderProject(project: AgentContextProject, rules: string[]): string {
     parts.push(`Its architectures, as described in Coreloom UML:\n\n${architectures.join('\n')}`)
   }
 
+  const requirements = (project.requirements ?? []).map(({ priority, statement, measure }) => {
+    const met = measure ? ` Met when: ${inlineMarkdown(measure, DESIGN_TEXT_MAX_LENGTH)}` : ''
+    const level = priority === 'must' ? 'Must' : 'Should'
+    return `- ${level}: ${inlineMarkdown(statement, DESIGN_TEXT_MAX_LENGTH)}${met}`
+  })
+  if (requirements.length > 0)
+    parts.push(`What its architecture has to hold:\n\n${listed(requirements)}`)
+
+  const decisions = (project.decisions ?? []).map(({ title, chosen, consequences }) => {
+    const choice = chosen ? ` ${inlineMarkdown(chosen, PROJECT_TEXT_MAX_LENGTH)}.` : ''
+    const cost = consequences ? ` ${inlineMarkdown(consequences, DESIGN_TEXT_MAX_LENGTH)}` : ''
+    return `- **${inlineMarkdown(title, PROJECT_TEXT_MAX_LENGTH)}**${choice}${cost}`
+  })
+  if (decisions.length > 0)
+    parts.push(
+      `Architecture decisions already taken. Keep to them, and stop and ask before a change that goes against one:\n\n${listed(decisions)}`,
+    )
+
   if (rules.length > 0) parts.push(rules.map((line) => `- ${line}`).join('\n'))
   return parts.join('\n\n')
+}
+
+/** The first `DESIGN_ITEMS_MAX` lines, then how many more Coreloom UML holds. */
+function listed(lines: string[]): string {
+  const more = lines.length - DESIGN_ITEMS_MAX
+  return [
+    ...lines.slice(0, DESIGN_ITEMS_MAX),
+    ...(more > 0 ? [`- (${String(more)} more in Coreloom UML)`] : []),
+  ].join('\n')
 }
 
 function describe(description: string | null): string {

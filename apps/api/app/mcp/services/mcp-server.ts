@@ -7,6 +7,9 @@ import {
   latestGeneration,
 } from '#app/agent-configs/services/owned-agent-config'
 import Architecture from '#app/architectures/models/architecture'
+import { DecisionStatus } from '#app/decisions/constants/decision'
+import Decision from '#app/decisions/models/decision'
+import { withLinks } from '#app/decisions/services/decision-writes'
 import Diagram from '#app/diagrams/models/diagram'
 import { MCP_LIST_MAX, MCP_SERVER_NAME, MCP_SERVER_VERSION, McpTool } from '#app/mcp/constants/mcp'
 import {
@@ -18,11 +21,14 @@ import {
   getAgentConventionsInput,
   getCodeConformanceInput,
   getDiagramInput,
+  listDecisionsInput,
   listDiagramsInput,
+  listRequirementsInput,
   listUndocumentedProcessesInput,
 } from '#app/mcp/validators/mcp-input'
 import Project from '#app/projects/models/project'
 import { findOwnedProject } from '#app/projects/services/owned-project'
+import Requirement from '#app/requirements/models/requirement'
 import { assertOwner } from '#app/shared/authorization/assert-owner'
 import type User from '#app/users/models/user'
 
@@ -37,6 +43,8 @@ const failure = (message: string) => ({ ...text(message), isError: true })
 export type McpServerOptions = {
   /** The `code-maps` flag: lists the conformance tools. */
   codeMaps: boolean
+  /** The `design-records` flag: lists the requirements and decisions tools. */
+  designRecords: boolean
 }
 
 /**
@@ -178,6 +186,7 @@ export function buildMcpServer(user: User, options: McpServerOptions): McpServer
   )
 
   if (options.codeMaps) registerCodeMapTools(server, user)
+  if (options.designRecords) registerDesignTools(server, user)
 
   return server
 }
@@ -220,6 +229,75 @@ function registerCodeMapTools(server: McpServer, user: User) {
       const result = await listUndocumentedProcesses(project, user)
       if (!result) return failure(NO_READY_MAP)
       return json(result)
+    },
+  )
+}
+
+/** Why a project's architecture is what it is, read from its stored records: no model call. */
+function registerDesignTools(server: McpServer, user: User) {
+  server.registerTool(
+    McpTool.ListRequirements,
+    {
+      description:
+        "Lists what a project's architecture has to hold: each requirement with its quality " +
+        '(performance, availability, security, cost, evolvability, constraint), whether it must ' +
+        'or should hold, and the measure that says it is met when there is one. Those that must ' +
+        'hold come first. Read before a change that could break one.',
+      inputSchema: listRequirementsInput,
+      annotations: READ_ONLY,
+    },
+    async ({ projectId }) => {
+      const project = await findOwnedProject(projectId, user)
+      if (!project) return failure('Project not found')
+      // A project holds at most a hundred: the list is whole.
+      const requirements = await Requirement.query()
+        .where('projectId', project.id)
+        .orderBy('priority', 'asc')
+        .orderBy('id', 'asc')
+      return json(
+        requirements.map(({ id, category, priority, statement, measure }) => ({
+          id,
+          category,
+          priority,
+          statement,
+          measure,
+        })),
+      )
+    },
+  )
+
+  server.registerTool(
+    McpTool.ListDecisions,
+    {
+      description:
+        'Lists the architecture decisions of a project: the question, the options weighed with ' +
+        'what speaks for and against each, the one chosen, its consequences, its status ' +
+        '(accepted: taken, keep to it; proposed: still open) and the ids of the requirements ' +
+        '(list_requirements) and diagrams (list_diagrams) it is about. Read before a change to ' +
+        'the architecture, and stop and ask before going against an accepted one.',
+      inputSchema: listDecisionsInput,
+      annotations: READ_ONLY,
+    },
+    async ({ projectId, includeSuperseded }) => {
+      const project = await findOwnedProject(projectId, user)
+      if (!project) return failure('Project not found')
+      const query = withLinks(Decision.query().where('projectId', project.id))
+      if (!includeSuperseded) query.whereNot('status', DecisionStatus.Superseded)
+      const decisions = await query.orderBy('status', 'asc').orderBy('id', 'asc')
+      return json(
+        decisions.map((decision) => ({
+          id: decision.id,
+          title: decision.title,
+          status: decision.status,
+          context: decision.context,
+          options: decision.options,
+          chosen: decision.chosen,
+          consequences: decision.consequences,
+          supersededById: decision.supersededById,
+          requirementIds: decision.requirements.map((requirement) => requirement.id),
+          diagramIds: decision.diagrams.map((diagram) => diagram.id),
+        })),
+      )
     },
   )
 }
