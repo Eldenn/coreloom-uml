@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/toolbar'
 import type { Messages } from '@/lib/i18n'
 import type { UmlDiagramKind, UmlProblem } from '@/lib/uml'
-import type { UmlImageFormat } from '@/lib/uml-image'
+import type { UmlDownloadFormat } from '@/lib/uml-image'
 import { cn } from '@/lib/utils'
 
 type DiagramFormat = 'mermaid' | 'plantuml' | 'json'
@@ -176,7 +176,7 @@ function FileTools({
   onImport: (file: File) => void
   onCopy: () => void
   copied: boolean
-  onDownload: (what: DiagramFormat | UmlImageFormat) => void
+  onDownload: (what: DiagramFormat | UmlDownloadFormat) => void
   /** Images can be made: something is drawn (and the drawing is shown). */
   drawn: boolean
   templates: readonly { kind: UmlDiagramKind; label?: string; text: string }[]
@@ -245,7 +245,7 @@ function FileTools({
             {t.downloadText(EXTENSIONS[format])}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          {(['svg', 'png'] as const).map((image) => (
+          {(['svg', 'png', 'pdf'] as const).map((image) => (
             <DropdownMenuItem
               key={image}
               disabled={!drawn || view === 'text'}
@@ -253,7 +253,7 @@ function FileTools({
                 onDownload(image)
               }}
             >
-              {image === 'svg' ? t.downloadSvg : t.downloadPng}
+              {{ svg: t.downloadSvg, png: t.downloadPng, pdf: t.downloadPdf }[image]}
             </DropdownMenuItem>
           ))}
         </ToolbarMenu>

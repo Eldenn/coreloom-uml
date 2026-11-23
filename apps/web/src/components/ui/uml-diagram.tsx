@@ -62,7 +62,7 @@ import type { SequenceDiagram, UmlLayout, UmlPoint, UmlSpec } from '@/lib/uml'
 import { alignBoxes, type UmlAlignment } from '@/lib/uml-arrange'
 import type { UmlSelection } from '@/lib/uml-edit'
 import { type DiagramGraph, toDiagramGraph } from '@/lib/uml-graph'
-import { elementImage, type UmlImageFormat } from '@/lib/uml-image'
+import { canvasImage, elementImage, type UmlImageFormat } from '@/lib/uml-image'
 import { type LayoutBox, layoutDiagram } from '@/lib/uml-layout'
 import { cn } from '@/lib/utils'
 
@@ -129,13 +129,18 @@ interface UmlDiagramProps {
    * member's place in its list (attributes, then methods).
    */
   onMemberDelete?: (element: string, index: number) => void
-  /** `toImage` draws the diagram as it shows now into an SVG or PNG data URL. */
+  /** `toImage` draws the diagram as it shows now into an SVG or PNG data URL (`{ light: true }`: in the light theme). */
   ref?: React.Ref<UmlDiagramHandle>
   className?: string
 }
 
+interface UmlImageOptions {
+  /** Draws it in the light theme whatever the page's: for paper. */
+  light?: boolean
+}
+
 interface UmlDiagramHandle {
-  toImage: (format: UmlImageFormat) => Promise<string>
+  toImage: (format: UmlImageFormat, options?: UmlImageOptions) => Promise<string>
 }
 
 const NOTHING: UmlSelection = { elements: [], relations: [] }
@@ -172,28 +177,6 @@ function nextFrames(): Promise<void> {
         done()
       })
     })
-  })
-}
-
-/** Space around the boxes in an exported image. */
-const IMAGE_PAD = 24
-
-/** The canvas's boxes and lines as an image, framed to fit them at their real size. */
-function canvasImage(
-  root: HTMLElement | null,
-  b: { x: number; y: number; width: number; height: number },
-  format: UmlImageFormat,
-): Promise<string> {
-  const viewport = root?.querySelector<HTMLElement>('.react-flow__viewport')
-  if (!viewport) return Promise.reject(new Error('Nothing drawn yet'))
-  return elementImage(viewport, format, {
-    width: b.width + 2 * IMAGE_PAD,
-    height: b.height + 2 * IMAGE_PAD,
-    style: {
-      width: `${String(b.width + 2 * IMAGE_PAD)}px`,
-      height: `${String(b.height + 2 * IMAGE_PAD)}px`,
-      transform: `translate(${String(IMAGE_PAD - b.x)}px, ${String(IMAGE_PAD - b.y)}px) scale(1)`,
-    },
   })
 }
 
@@ -250,13 +233,12 @@ function useCanvasImage({
   /** True while an image is made, so the selection isn't in it. */
   setExporting: (on: boolean) => void
 }) {
-  const flow = useReactFlow()
   React.useImperativeHandle(ref, () => ({
-    toImage: async (format) => {
+    toImage: async (format, options) => {
       setExporting(true)
       try {
         await nextFrames()
-        return await canvasImage(canvas.current, flow.getNodesBounds(flow.getNodes()), format)
+        return await canvasImage(canvas.current, { format, ...options })
       } finally {
         setExporting(false)
       }
@@ -590,13 +572,14 @@ function SequencePane({
   const [exporting, setExporting] = React.useState(false)
   const layer = useAnnotationLayer({ annotations, onAnnotationSelect, exporting, preview })
   React.useImperativeHandle(ref, () => ({
-    toImage: async (format) => {
+    toImage: async (format, options) => {
       const el = root.current
       if (!el) throw new Error('Nothing drawn yet')
       setExporting(true)
       try {
         await nextFrames()
         return await elementImage(el, format, {
+          ...options,
           width: el.scrollWidth,
           height: el.scrollHeight,
           style: { maxHeight: 'none', overflow: 'visible', border: 'none', borderRadius: '0' },
