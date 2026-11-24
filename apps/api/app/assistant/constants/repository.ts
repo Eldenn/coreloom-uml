@@ -80,6 +80,20 @@ export const REPOSITORY_TOOL_LIMITS = {
   commandLength: 2000,
 } as const
 
+/**
+ * The owner's terminal (`TERMINAL`): a person waits longer and reads more than the model does
+ * (`shellSeconds`, `outputMaxBytes`). Its answer is streamed, so a long command fits in what a
+ * proxy allows one request as long as bytes keep coming.
+ */
+export const TERMINAL_LIMITS = {
+  /** One command: killed in the sandbox after this many seconds. */
+  seconds: 120,
+  /** Most of one command's output, in bytes (capped in the sandbox, then in the API). */
+  outputMaxBytes: 200_000,
+  /** A silent stream says it is alive this often (Cloudflare closes one silent for 100 seconds). */
+  heartbeatMs: 15_000,
+} as const
+
 /** Commands of the owner's terminal, per user and per minute. */
 export const TERMINAL_COMMANDS_PER_MINUTE = 60
 

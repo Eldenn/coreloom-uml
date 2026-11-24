@@ -51,7 +51,10 @@ export function chatFailure(error: Error): TuyauError {
 }
 
 /** Reads a refusal before the stream (404, 422, 502) the way the Tuyau client does. */
-async function answerOrThrow(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+export async function answerOrThrow(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
   const response = await fetch(input, init)
   if (response.ok) return response
   const body: unknown = await response.json().catch(() => null)

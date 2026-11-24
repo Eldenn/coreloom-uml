@@ -1,4 +1,8 @@
-import { REPOSITORY_SANDBOX, REPOSITORY_TOOL_LIMITS } from '#app/assistant/constants/repository'
+import {
+  REPOSITORY_SANDBOX,
+  REPOSITORY_TOOL_LIMITS,
+  TERMINAL_LIMITS,
+} from '#app/assistant/constants/repository'
 import { GITHUB_IMPORT_LIMITS } from '#app/code-maps/constants/code-map'
 import { GITHUB_SOURCE_LIMITS } from '#app/github/constants/github'
 
@@ -89,11 +93,11 @@ export const terminalCwdFile = (root: string) => `${root}.terminal.cwd`
 /**
  * `SHELL` for the owner's own terminal, with what makes it one: `$SHELL_COMMAND` starts in the
  * folder the command before it ended in (kept in a file beside the clone, the clone's root when
- * it is gone) and leaves its own there, and its process is noted for `STOP_TERMINAL`. Same
- * limits and same rule as `SHELL`: only in a sandbox cut off the network, which never gets a
- * token afterwards.
+ * it is gone) and leaves its own there, and its process is noted for `STOP_TERMINAL`. Its own
+ * limits (`TERMINAL_LIMITS`) and the same rule as `SHELL`: only in a sandbox cut off the
+ * network, which never gets a token afterwards.
  */
-export const TERMINAL = `S="$REPO_ROOT.terminal"; export S; cd -- "$REPO_ROOT" || exit 1; cd -- "$(cat "$S.cwd" 2>/dev/null)" 2>/dev/null; { echo "$BASHPID" > "$S.pid"; exec timeout -k 2 ${String(REPOSITORY_SANDBOX.shellSeconds)} bash -c 'trap "pwd > \\"\\$S.cwd\\"" EXIT; eval "$SHELL_COMMAND"'; } 2>&1 < /dev/null | dd bs=1 count=${String(REPOSITORY_SANDBOX.outputMaxBytes)} status=none; code="\${PIPESTATUS[0]}"; rm -f "$S.pid"; exit "$code"`
+export const TERMINAL = `S="$REPO_ROOT.terminal"; export S; cd -- "$REPO_ROOT" || exit 1; cd -- "$(cat "$S.cwd" 2>/dev/null)" 2>/dev/null; { echo "$BASHPID" > "$S.pid"; exec timeout -k 2 ${String(TERMINAL_LIMITS.seconds)} bash -c 'trap "pwd > \\"\\$S.cwd\\"" EXIT; eval "$SHELL_COMMAND"'; } 2>&1 < /dev/null | dd bs=1 count=${String(TERMINAL_LIMITS.outputMaxBytes)} status=none; code="\${PIPESTATUS[0]}"; rm -f "$S.pid"; exit "$code"`
 
 /** Stops the command `TERMINAL` is running, and what it started (Ctrl+C). */
 export const STOP_TERMINAL = `kill -TERM "$(cat "$REPO_ROOT.terminal.pid" 2>/dev/null)" 2>/dev/null; true`
