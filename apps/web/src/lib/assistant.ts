@@ -251,6 +251,17 @@ export function useAssistantChat(conversationId: number) {
   return { chat, draft: draftOf(messages), status, stop: () => stopChat(chat) }
 }
 
+/**
+ * Runs one command of the owner's in the conversation's repository sandbox: what it printed
+ * and its exit code. Nothing is cached: a terminal reads each answer once.
+ */
+export function useRunSandboxCommand(conversationId: number) {
+  return useMutation({
+    mutationFn: (command: string) =>
+      api.sandbox.commands.run({ params: { conversationId }, body: { command } }),
+  })
+}
+
 export function useAskAssistant(conversationId: number, chat: AssistantChat) {
   const { locale } = useLocale()
   const t = useT().assistant

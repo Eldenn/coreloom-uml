@@ -30,7 +30,7 @@ import type User from '#app/users/models/user'
  */
 
 /** Behind `assistant-repository` and `code-maps`, on a server with E2B. */
-async function available(user: User): Promise<boolean> {
+export async function repositoryAvailable(user: User): Promise<boolean> {
   const sandboxes = await app.container.make(RepositorySandbox)
   if (!sandboxes.configured()) return false
   return (
@@ -61,7 +61,7 @@ export const REPOSITORY_ACTIONS: readonly AssistantAction[] = [
     description: `Lists the files and folders of a project's GitHub repository under "path" (the root when empty), two levels deep, folders ending in "/", at most ${String(REPOSITORY_TOOL_LIMITS.listEntries)}. The repository is the one the project follows, cloned in a sandbox at one commit.`,
     input: z.object({ projectId: idInput(), path: pathInput().default('') }),
     kind: AssistantToolKind.Read,
-    available,
+    available: repositoryAvailable,
     async read({ projectId, path }, _user, { repository, show }) {
       show?.({ detail: path || '/' })
       const opened = await repository.open(projectId)
@@ -91,7 +91,7 @@ export const REPOSITORY_ACTIONS: readonly AssistantAction[] = [
       lines: z.number().int().positive().max(REPOSITORY_TOOL_LIMITS.readLines).optional(),
     }),
     kind: AssistantToolKind.Read,
-    available,
+    available: repositoryAvailable,
     async read({ projectId, path, startLine, lines: count }, _user, { repository, show }) {
       show?.({ detail: `${path}:${String(startLine)}` })
       const opened = await repository.open(projectId)
@@ -126,7 +126,7 @@ export const REPOSITORY_ACTIONS: readonly AssistantAction[] = [
       path: pathInput().default(''),
     }),
     kind: AssistantToolKind.Read,
-    available,
+    available: repositoryAvailable,
     async read({ projectId, query, path }, _user, { repository, show }) {
       show?.({ detail: path ? `${query} (${path})` : query })
       const opened = await repository.open(projectId)
@@ -148,7 +148,7 @@ export const REPOSITORY_ACTIONS: readonly AssistantAction[] = [
     description: `Lists the newest commits of a project's GitHub repository (or of one folder or file of it, "path"), at most ${String(REPOSITORY_TOOL_LIMITS.logCommits)}, merges left out: short id, date, author and subject. Read one with show_repository_commit.`,
     input: z.object({ projectId: idInput(), path: pathInput().default('') }),
     kind: AssistantToolKind.Read,
-    available,
+    available: repositoryAvailable,
     async read({ projectId, path }, _user, { repository, show }) {
       show?.({ detail: path || '/' })
       const opened = await repository.open(projectId)
@@ -170,7 +170,7 @@ export const REPOSITORY_ACTIONS: readonly AssistantAction[] = [
       path: pathInput().default(''),
     }),
     kind: AssistantToolKind.Read,
-    available,
+    available: repositoryAvailable,
     async read({ projectId, commit, path }, _user, { repository, show }) {
       show?.({ detail: path ? `${commit} ${path}` : commit })
       const opened = await repository.open(projectId)
@@ -194,7 +194,7 @@ export const REPOSITORY_ACTIONS: readonly AssistantAction[] = [
       lines: z.number().int().positive().max(REPOSITORY_TOOL_LIMITS.readLines).optional(),
     }),
     kind: AssistantToolKind.Read,
-    available,
+    available: repositoryAvailable,
     async read({ projectId, path, startLine, lines: count }, _user, { repository, show }) {
       show?.({ detail: `${path}:${String(startLine)}` })
       const opened = await repository.open(projectId)
@@ -218,7 +218,7 @@ export const REPOSITORY_ACTIONS: readonly AssistantAction[] = [
       command: z.string().trim().min(1).max(REPOSITORY_TOOL_LIMITS.commandLength),
     }),
     kind: AssistantToolKind.Read,
-    available,
+    available: repositoryAvailable,
     async read({ projectId, command }, _user, { repository, show }) {
       show?.({ detail: command })
       const opened = await repository.open(projectId)

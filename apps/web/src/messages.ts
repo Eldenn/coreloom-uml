@@ -1377,6 +1377,11 @@ export const en = {
     continueReading: 'Go on from where you stopped.',
     reading: 'The assistant is reading your work…',
     activity: 'What the assistant is doing',
+    terminal: 'Sandbox terminal',
+    terminalHint:
+      'Your own commands in the sandbox where the assistant reads this conversation’s repository. It has no network, and nothing typed or printed here is kept.',
+    terminalWelcome:
+      'The repository as the assistant left it. Try: ls, git log --oneline | head, grep -rn <text> .\n',
     activityOutput: 'What the command printed',
     activityHidden: 'What this call read is not shown here: only a command’s output is.',
     activityExit: (code: number) => `Exit code ${String(code)}`,
@@ -2996,6 +3001,11 @@ export const fr: Messages = {
     continueReading: 'Reprenez là où vous vous êtes arrêté.',
     reading: 'L’assistant lit votre travail…',
     activity: 'Ce que fait l’assistant',
+    terminal: 'Terminal de la sandbox',
+    terminalHint:
+      'Vos propres commandes dans la sandbox où l’assistant lit le dépôt de cette conversation. Elle n’a pas de réseau, et rien de ce qui est tapé ou affiché ici n’est conservé.',
+    terminalWelcome:
+      'Le dépôt tel que l’assistant l’a laissé. Essayez : ls, git log --oneline | head, grep -rn <texte> .\n',
     activityOutput: 'Ce que la commande a affiché',
     activityHidden:
       'Ce que cet appel a lu n’est pas affiché ici : seule la sortie d’une commande l’est.',

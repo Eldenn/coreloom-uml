@@ -719,6 +719,12 @@ router
         'store',
       ])
       .as('assistant.files.store')
+    router
+      .post('/:conversationId/sandbox/commands', [
+        () => import('#app/assistant/controllers/assistant-sandbox-controller'),
+        'run',
+      ])
+      .as('assistant.sandbox.commands.run')
       .use(llmThrottle)
     router
       .post('/:conversationId/messages', [assistantMessagesController, 'chat'])

@@ -12,6 +12,7 @@ import {
   POINTED_TYPES,
   PROPOSALS_ADDED_MAX,
 } from '#app/assistant/constants/assistant'
+import { REPOSITORY_TOOL_LIMITS } from '#app/assistant/constants/repository'
 import { llmCallFields } from '#app/llm/validators/llm-input'
 
 const titleInput = () => vine.string().trim().minLength(1).maxLength(ASSISTANT_TITLE_MAX_LENGTH)
@@ -69,6 +70,13 @@ export const attachFileInput = vine.create(
       name: vine.string().trim().minLength(1).maxLength(ASSISTANT_FILE_NAME_MAX_LENGTH),
       content: vine.string().minLength(1).maxLength(FILE_DIGEST_MAX_LENGTH),
     }),
+  }),
+)
+
+/** `POST /assistant/conversations/:conversationId/sandbox/commands` — one bash command. */
+export const sandboxCommandInput = vine.create(
+  vine.object({
+    command: vine.string().trim().minLength(1).maxLength(REPOSITORY_TOOL_LIMITS.commandLength),
   }),
 )
 

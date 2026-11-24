@@ -246,6 +246,11 @@ export interface ApiDefinition {
     files: {
       store: typeof routes['assistant.files.store']
     }
+    sandbox: {
+      commands: {
+        run: typeof routes['assistant.sandbox.commands.run']
+      }
+    }
     messages: {
       store: typeof routes['assistant.messages.store']
       destroy: typeof routes['assistant.messages.destroy']

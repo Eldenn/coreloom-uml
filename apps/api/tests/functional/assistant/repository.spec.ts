@@ -534,6 +534,64 @@ test.group('Assistant repository', (group) => {
     assert.notInclude(await dumpDatabase(), 'LIVE-OUTPUT')
   })
 
+  test('the owner runs commands of their own in the sandbox the assistant left', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('repo-terminal@example.com')
+    const run = (command: string, as = f.user, path = f.path) =>
+      client.post(`${path}/sandbox/commands`).headers(json).loginAs(as).json({ command })
+
+    // No sandbox before the assistant opened the repository: nothing is cloned for a terminal.
+    const early = await run('ls')
+    early.assertStatus(404)
+    assert.equal(early.body().error.code, 'no_sandbox')
+    assert.equal(sandboxes.created, 0)
+
+    useModel(
+      toolCallingModel([
+        { calls: [{ tool: 'list_repository_files', input: { projectId: f.project.id } }] },
+        { text: 'Listed.' },
+      ]),
+    )
+    const asked = await client
+      .post(`${f.path}/messages`)
+      .headers(json)
+      .loginAs(f.user)
+      .json({ provider, apiKey: KEY, message: 'List it.', locale: 'en', auto: true })
+    asked.assertStatus(200)
+    sandboxes.events = []
+    sandboxes.afterClone = []
+
+    const logs = captureLogs()
+    const ran = await run('grep -c placeOrder src/orders.ts; echo TERMINAL-OUT; exit 3')
+    logs.restore()
+    ran.assertStatus(200)
+    assert.equal(ran.body().exitCode, 3)
+    assert.include(ran.body().output, 'TERMINAL-OUT')
+    // Resumed, cut off again, then the command, with nothing of ours in its environment.
+    assert.deepEqual(sandboxes.events, ['isolate', 'shell'])
+    assert.deepEqual(Object.keys(sandboxes.afterClone[0] ?? {}).sort(), [
+      'REPO_ROOT',
+      'SHELL_COMMAND',
+    ])
+    assert.equal(sandboxes.created, 1)
+    assert.equal(sandboxes.paused, 2)
+    // Neither the command nor what it printed is logged or stored.
+    assert.notInclude(logs.lines.join('\n'), 'TERMINAL-OUT')
+    assert.notInclude(await dumpDatabase(), 'TERMINAL-OUT')
+
+    // The lock is freed after each command; another account's conversation is not found.
+    ;(await run('true')).assertStatus(200)
+    const other = await setup('repo-terminal-other@example.com')
+    ;(await run('ls', other.user)).assertStatus(404)
+    ;(await run('')).assertStatus(422)
+
+    // Without the flag there is no terminal.
+    await updateFlag(FeatureFlagKey.AssistantRepository, { ...ON, enabled: false }, f.user)
+    ;(await run('ls')).assertStatus(404)
+  })
+
   test('refuses paths out of the repository and another account’s project', async ({
     client,
     assert,
