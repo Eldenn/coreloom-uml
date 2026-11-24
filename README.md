@@ -217,6 +217,9 @@ pnpm dev
 
 # 6. (optional) Run the job queue worker in a separate terminal
 pnpm --filter @coreloom-uml/api queue:work
+
+# 7. (optional) Scan the skills' copies with SkillSpector (see infra/skill-scanner/README.md)
+docker compose -f infra/docker-compose.yml --profile skills up -d skill-scanner
 ```
 
 By default:
@@ -562,6 +565,13 @@ node ace skills:block <slug> --reason "…"  # never suggest it again (--unblock
 
 `skills:setup` runs on every deploy after the migrations (see `infra/docker-compose.*.yml`), where
 `SKILLS_REFRESH_ENABLED` defaults to `true`.
+
+After each search, the folder of every skill that may be suggested is copied (files in Drive, the
+list in `skill_versions`) and the admin reads each new copy on `/skill-versions` before approving
+it. Each copy is first scanned by NVIDIA's [SkillSpector](https://github.com/NVIDIA/SkillSpector),
+static analysis only, by the `skill-scanner` worker (its own image and service, on the
+`skill-scans` queue: see `infra/skill-scanner/README.md`); a copy without a complete scan, or that
+SkillSpector recommends not installing, can only be rejected.
 
 #### The Skills screen
 

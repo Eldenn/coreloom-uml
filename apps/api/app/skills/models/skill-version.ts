@@ -3,6 +3,7 @@ import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import type { DateTime } from 'luxon'
 import type { SkillVersionStatus } from '#app/skills/constants/skill-version'
 import CatalogSkill from '#app/skills/models/catalog-skill'
+import type { SkillScan } from '#app/skills/services/skill-scans'
 
 export type SkillVersionFile = { path: string; size: number; executable: boolean }
 
@@ -39,6 +40,14 @@ export default class SkillVersion extends BaseModel {
 
   @column({ serializeAs: null })
   declare storageKey: string
+
+  /** SkillSpector's verdict, null until scanned (see `skill-scans.ts`). */
+  @column({ prepare: (value: unknown) => (value === null ? null : JSON.stringify(value)) })
+  declare scan: SkillScan | null
+
+  /** Why the admin approved it although SkillSpector recommends not installing it. */
+  @column()
+  declare overrideReason: string | null
 
   @column()
   declare status: SkillVersionStatus

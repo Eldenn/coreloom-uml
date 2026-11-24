@@ -1083,6 +1083,41 @@ export const en = {
     reviewFailed: 'The decision could not be saved.',
     approved: 'Copy approved.',
     rejected: 'Copy rejected.',
+    scan: {
+      title: 'SkillSpector scan',
+      pending: 'Not scanned yet',
+      failed: 'Scan failed',
+      recommendations: {
+        SAFE: 'Safe',
+        CAUTION: 'Caution',
+        DO_NOT_INSTALL: 'Do not install',
+      } as Record<string, string>,
+      score: (score: number, severity: string) => `Risk ${score}/100 (${severity})`,
+      incomplete: 'Not every file could be read.',
+      none: 'Nothing found.',
+      more: (count: number) => `${count} more not shown.`,
+      at: (file: string, line: number | null) => (line === null ? file : `${file}, line ${line}`),
+      failures: {
+        missing: 'SkillSpector is not installed on the worker that ran it.',
+        timeout: 'SkillSpector took too long.',
+        exit: 'SkillSpector stopped with an error.',
+        unreadable: 'Its report could not be read.',
+      } as Record<string, string>,
+    },
+    approvalProblems: {
+      not_scanned:
+        'It cannot be approved before it is scanned (the skill-scanner worker scans each new copy).',
+      scan_failed:
+        'It cannot be approved: the scan gave no verdict. The next refresh scans it again.',
+      scan_incomplete: 'It cannot be approved: the scan could not read every file.',
+      do_not_install:
+        'SkillSpector recommends not installing it. Read every finding: if they are wrong, approve it despite the scan with your reason, kept with this copy only.',
+    },
+    overrideLabel: 'Why approve it despite the scan',
+    overridePlaceholder:
+      'What you read, and why the findings do not hold (10 characters at least).',
+    approveDespiteScan: 'Approve despite the scan',
+    overriddenBecause: 'Approved despite the scan:',
   },
   skills: {
     title: 'Skills',
@@ -2724,6 +2759,42 @@ export const fr: Messages = {
     reviewFailed: 'La décision n’a pas pu être enregistrée.',
     approved: 'Copie approuvée.',
     rejected: 'Copie refusée.',
+    scan: {
+      title: 'Analyse SkillSpector',
+      pending: 'Pas encore analysée',
+      failed: 'Analyse échouée',
+      recommendations: {
+        SAFE: 'Sûre',
+        CAUTION: 'Prudence',
+        DO_NOT_INSTALL: 'À ne pas installer',
+      },
+      score: (score: number, severity: string) => `Risque ${score}/100 (${severity})`,
+      incomplete: 'Tous les fichiers n’ont pas pu être lus.',
+      none: 'Rien de trouvé.',
+      more: (count: number) => `${count} autres non affichés.`,
+      at: (file: string, line: number | null) => (line === null ? file : `${file}, ligne ${line}`),
+      failures: {
+        missing: 'SkillSpector n’est pas installé sur le worker qui l’a lancée.',
+        timeout: 'SkillSpector a mis trop de temps.',
+        exit: 'SkillSpector s’est arrêté sur une erreur.',
+        unreadable: 'Son rapport n’a pas pu être lu.',
+      },
+    },
+    approvalProblems: {
+      not_scanned:
+        'Elle ne peut pas être approuvée avant d’être analysée (le worker skill-scanner analyse chaque nouvelle copie).',
+      scan_failed:
+        'Elle ne peut pas être approuvée : l’analyse n’a pas donné de verdict. La prochaine recherche la relance.',
+      scan_incomplete:
+        'Elle ne peut pas être approuvée : l’analyse n’a pas pu lire tous les fichiers.',
+      do_not_install:
+        'SkillSpector recommande de ne pas l’installer. Lisez chaque problème : s’ils sont faux, approuvez-la malgré l’analyse avec votre raison, gardée pour cette copie seulement.',
+    },
+    overrideLabel: 'Pourquoi l’approuver malgré l’analyse',
+    overridePlaceholder:
+      'Ce que vous avez lu, et pourquoi les problèmes ne tiennent pas (10 caractères au moins).',
+    approveDespiteScan: 'Approuver malgré l’analyse',
+    overriddenBecause: 'Approuvée malgré l’analyse :',
   },
   skills: {
     title: 'Skills',

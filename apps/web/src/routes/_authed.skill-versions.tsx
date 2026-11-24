@@ -13,10 +13,12 @@ import { Button } from '@/components/ui/button'
 import { DiffViewer } from '@/components/ui/diff-viewer'
 import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
+import { Label } from '@/components/ui/label'
 import { RelativeTime } from '@/components/ui/relative-time'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
+import { Textarea } from '@/components/ui/textarea'
 import { useT } from '@/lib/locale'
 import { pairFiles } from '@/lib/skill-version-files'
 import {
@@ -37,6 +39,9 @@ export const Route = createFileRoute('/_authed/skill-versions')({
 })
 
 const STATUSES: SkillVersionStatus[] = ['pending', 'approved', 'rejected']
+/** The API's bounds on the reason for approving despite the scan (`SKILL_OVERRIDE_REASON`). */
+const OVERRIDE_REASON_MIN = 10
+const OVERRIDE_REASON_MAX = 1000
 
 function SkillVersionsPage() {
   const t = useT().skillVersions
@@ -108,6 +113,7 @@ function VersionRow({
                 {version.contentSha.slice(0, 7)}
               </code>
               {scripts && <Badge variant="warning">{t.hasScripts}</Badge>}
+              <ScanBadge scan={version.scan} />
             </ItemTitle>
             <ItemDescription>
               {version.repository} · {t.files(version.files.length)} ·{' '}
@@ -122,10 +128,79 @@ function VersionRow({
   )
 }
 
+type Scan = SkillVersion['scan']
+
+const RECOMMENDATION_BADGES: Record<string, 'success' | 'warning'> = {
+  SAFE: 'success',
+  CAUTION: 'warning',
+}
+
+function ScanBadge({ scan }: { scan: Scan }) {
+  const t = useT().skillVersions.scan
+  if (!scan) return <Badge variant="secondary">{t.pending}</Badge>
+  if (scan.status === 'failed') return <Badge variant="destructive">{t.failed}</Badge>
+  const variant = RECOMMENDATION_BADGES[scan.recommendation] ?? 'destructive'
+  return (
+    <Badge variant={variant}>{t.recommendations[scan.recommendation] ?? scan.recommendation}</Badge>
+  )
+}
+
+function ScanSummary({ scan }: { scan: Scan }) {
+  const t = useT().skillVersions.scan
+  return (
+    <section className="flex flex-col gap-1.5 rounded-md border p-3">
+      <h3 className="m-0 flex flex-wrap items-center gap-2 text-sm font-medium">
+        {t.title} <ScanBadge scan={scan} />
+      </h3>
+      {scan?.status === 'failed' && (
+        <p className="m-0 text-[13px] text-muted-foreground">
+          {t.failures[scan.reason] ?? scan.reason}
+        </p>
+      )}
+      {scan?.status === 'done' && (
+        <>
+          <p className="m-0 text-[13px] text-muted-foreground">
+            {t.score(scan.score, scan.severity)}
+            {!scan.complete && ` · ${t.incomplete}`}
+          </p>
+          {scan.findings.length === 0 ? (
+            <p className="m-0 text-[13px] text-muted-foreground">{t.none}</p>
+          ) : (
+            <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[13px]">
+              {scan.findings.map((finding, index) => (
+                <li key={`${finding.id}-${String(index)}`} className="flex flex-col">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <Badge variant={finding.severity === 'LOW' ? 'secondary' : 'warning'}>
+                      {finding.severity}
+                    </Badge>
+                    <span className="font-medium">{finding.pattern}</span>
+                    {finding.file && (
+                      <code className="text-muted-foreground">
+                        {t.at(finding.file, finding.line)}
+                      </code>
+                    )}
+                  </span>
+                  {finding.text && (
+                    <code className="text-xs break-all text-muted-foreground">{finding.text}</code>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {scan.moreFindings > 0 && (
+            <p className="m-0 text-[13px] text-muted-foreground">{t.more(scan.moreFindings)}</p>
+          )}
+        </>
+      )}
+    </section>
+  )
+}
+
 function VersionReview({ id, pending }: { id: number; pending: boolean }) {
   const t = useT().skillVersions
   const detail = useSkillVersion(id)
   const review = useReviewSkillVersion()
+  const [reason, setReason] = React.useState('')
   if (detail.isPending) return <Skeleton className="h-40" />
   if (!detail.data) {
     return (
@@ -139,9 +214,10 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
   const changed = pairs.filter((pair) => pair.status !== null)
   const unchanged = pairs.filter((pair) => pair.status === null).map((pair) => pair.path)
 
-  const decide = (status: 'approved' | 'rejected') =>
+  const overridable = version.approvalProblem === 'do_not_install'
+  const decide = (status: 'approved' | 'rejected', overrideReason?: string) =>
     review.mutate(
-      { id, status },
+      { id, status, overrideReason },
       {
         onSuccess: () => toast.success(status === 'approved' ? t.approved : t.rejected),
         onError: () => toast.error(t.reviewFailed),
@@ -160,6 +236,7 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
           </a>
         </Button>
       </div>
+      <ScanSummary scan={version.scan} />
       {changed.map((pair) => (
         <section key={pair.path} className="flex flex-col gap-1.5">
           <h3 className="m-0 flex flex-wrap items-center gap-2 text-sm font-medium">
@@ -180,11 +257,45 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
       {unchanged.length > 0 && (
         <p className="m-0 text-[13px] text-muted-foreground">{t.unchanged(unchanged.join(', '))}</p>
       )}
+      {pending && version.approvalProblem && (
+        <p className="m-0 text-sm text-muted-foreground">
+          {t.approvalProblems[version.approvalProblem]}
+        </p>
+      )}
+      {version.overrideReason && (
+        <p className="m-0 text-sm">
+          {t.overriddenBecause} {version.overrideReason}
+        </p>
+      )}
+      {pending && overridable && (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`override-${id}`}>{t.overrideLabel}</Label>
+          <Textarea
+            id={`override-${id}`}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            maxLength={OVERRIDE_REASON_MAX}
+            placeholder={t.overridePlaceholder}
+          />
+        </div>
+      )}
       {pending && (
-        <div className="flex gap-2">
-          <Button onClick={() => decide('approved')} disabled={review.isPending}>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => decide('approved')}
+            disabled={review.isPending || version.approvalProblem !== null}
+          >
             {t.approve}
           </Button>
+          {overridable && (
+            <Button
+              variant="destructive"
+              onClick={() => decide('approved', reason.trim())}
+              disabled={review.isPending || reason.trim().length < OVERRIDE_REASON_MIN}
+            >
+              {t.approveDespiteScan}
+            </Button>
+          )}
           <Button
             variant="secondary"
             onClick={() => decide('rejected')}

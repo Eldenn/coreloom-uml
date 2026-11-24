@@ -1,6 +1,7 @@
 import { RedisCheck, RedisMemoryUsageCheck } from '@adonisjs/redis'
 import { defineConfig } from '@nemoventures/adonis-jobs'
 import { CODE_MAPS_QUEUE } from '#app/code-maps/constants/code-map'
+import { SKILL_SCANS_QUEUE } from '#app/skills/constants/skill-scan'
 
 const queueConfig = defineConfig({
   /**
@@ -70,6 +71,14 @@ const queueConfig = defineConfig({
      * Each runs in a sandbox of its own, so this may be raised when imports queue up.
      */
     [CODE_MAPS_QUEUE]: { globalConcurrency: 1 },
+
+    /**
+     * Scans of the skills' copies with SkillSpector (`ScanSkillVersionJob`): listened to by the
+     * `skill-scanner` worker only (`queue:work --queues=skill-scans`), the one image holding the
+     * binary. Every other worker names its queues without this one (`queue:work` script, the
+     * `queue-worker` services). One scan at a time.
+     */
+    [SKILL_SCANS_QUEUE]: { globalConcurrency: 1 },
 
     /**
      * Example of a queue with specific connection and options

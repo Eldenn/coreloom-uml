@@ -8,7 +8,7 @@ import { captureSkillVersions, readSkillVersionFiles } from '#app/skills/service
 import type { SkillVersionDetailOutput } from '#app/skills/validators/skill-versions-output'
 import User from '#app/users/models/user'
 import env from '#start/env'
-import { withEmptySkillsCatalog } from '#tests/helpers/skills'
+import { CLEAN_SCAN, withEmptySkillsCatalog } from '#tests/helpers/skills'
 import {
   FOLDER,
   fakeFetch,
@@ -208,6 +208,15 @@ test.group('Skill versions', (group) => {
         .json({ status: 'pending' })
         .loginAs(admin)
     ).assertStatus(422)
+    // Not scanned yet: it cannot be approved (see skill-scans.spec.ts), but once scanned clean…
+    ;(
+      await client
+        .patch(`/admin/skill-versions/${first.id}`)
+        .headers(json)
+        .json({ status: 'approved' })
+        .loginAs(admin)
+    ).assertStatus(409)
+    await first.merge({ scan: CLEAN_SCAN }).save()
     const approved = await client
       .patch(`/admin/skill-versions/${first.id}`)
       .headers(json)

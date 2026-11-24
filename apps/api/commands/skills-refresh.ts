@@ -21,6 +21,8 @@ export default class SkillsRefresh extends BaseCommand {
       })
       await (await this.app.container.make(SkillsEvents)).publish('catalog.refreshed')
       this.logger.success(renderReport(report))
+      const { queueSkillScans } = await import('#app/skills/services/skill-scans')
+      this.logger.info(`${await queueSkillScans()} copies queued for a scan (skill-scanner worker)`)
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : String(error))
       this.exitCode = 1

@@ -82,6 +82,36 @@ services:
       - "127.0.0.1:8082:3000"
 
   # -----------------------------------------------
+  # Skill scanner — the API's worker in its own image (stage `skill-scanner`
+  # of apps/api/Dockerfile: the API plus NVIDIA's SkillSpector, pinned), on the
+  # `skill-scans` queue only. Heavy to build, so behind a profile:
+  #   docker compose -f infra/docker-compose.yml --profile skills up -d skill-scanner
+  # It reads apps/api/.env and reaches the other services by name. Without it,
+  # the copies stay unscanned and cannot be approved. See
+  # infra/skill-scanner/README.md.
+  # -----------------------------------------------
+  skill-scanner:
+    profiles: ["skills"]
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+      target: skill-scanner
+    restart: unless-stopped
+    env_file: ../apps/api/.env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      SMTP_HOST: mailpit
+      S3_ENDPOINT: http://minio:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # -----------------------------------------------
   # Mailpit — local SMTP catch-all (dev only). Password reset and email
   # verification land here instead of a real inbox; nothing leaves the machine.
   # SMTP:    mailpit:1025 (as seen by the api container)
