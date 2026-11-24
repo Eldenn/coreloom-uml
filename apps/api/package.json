@@ -11,7 +11,8 @@
     "lint": "biome check .",
     "check-types": "tsc --noEmit",
     "test": "node ace test",
-    "queue:work": "node ace queue:work",
+    "queue:work": "node ace queue:work --queues=default --queues=code-maps",
+    "queue:scan": "node ace queue:work --queues=skill-scans",
     "migration:run": "node ace migration:run",
     "migration:rollback": "node ace migration:rollback",
     "db:seed": "node ace db:seed"

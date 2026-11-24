@@ -1,6 +1,7 @@
 import app from '@adonisjs/core/services/app'
 import { Job } from '@nemoventures/adonis-jobs'
 import type { BullJobsOptions } from '@nemoventures/adonis-jobs/types'
+import { queueSkillScans } from '#app/skills/services/skill-scans'
 import { refreshCatalog } from '#app/skills/services/skills-catalog'
 import SkillsEvents from '#app/skills/services/skills-events'
 import { renderReport } from '#app/skills/services/skills-search'
@@ -22,6 +23,9 @@ export default class RefreshSkillsJob extends Job<RefreshSkillsJobData, void> {
   async process(): Promise<void> {
     const report = await refreshCatalog({ githubToken: env.get('SKILLS_GITHUB_TOKEN') })
     this.logger.info({ report }, `skills catalog refreshed: ${renderReport(report)}`)
+    // The new copies, and those whose scan failed, are scanned by the skill-scanner worker.
+    const scans = await queueSkillScans()
+    this.logger.info({ scans }, 'skill copies queued for a scan')
     // Open Skills screens reload (see `GET /skills/events`).
     await (await app.container.make(SkillsEvents)).publish('catalog.refreshed')
   }

@@ -2,6 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { paginate } from '#app/shared/pagination/paginate'
 import { SkillVersionStatus } from '#app/skills/constants/skill-version'
 import SkillVersion from '#app/skills/models/skill-version'
+import { approvalProblem } from '#app/skills/services/skill-scans'
 import {
   previousApproved,
   readSkillVersionFiles,
@@ -57,6 +58,12 @@ export default class AdminSkillVersionsController {
     const version = await find(params.id)
     if (!version) return response.notFound(VERSION_NOT_FOUND)
     const { status } = await request.validateUsing(reviewSkillVersionInput)
+    const problem = status === SkillVersionStatus.Approved ? approvalProblem(version) : null
+    if (problem) {
+      return response.conflict({
+        error: { message: 'This copy cannot be approved', reason: problem },
+      })
+    }
     await reviewSkillVersion(version, status, auth.getUserOrFail())
     const output: SkillVersionOutput = serialize(version)
     return response.ok(output)
@@ -81,6 +88,8 @@ function serialize(version: SkillVersion): SkillVersionOutput {
     license: version.license,
     files: version.files,
     bytes: version.bytes,
+    scan: version.scan,
+    approvalProblem: approvalProblem(version),
     status: version.status,
     reviewedAt: version.reviewedAt?.toISO() ?? null,
     createdAt: version.createdAt.toISO() ?? '',

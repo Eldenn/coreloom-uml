@@ -1,5 +1,20 @@
 import testUtils from '@adonisjs/core/services/test_utils'
 import db from '@adonisjs/lucid/services/db'
+import { SkillScanStatus } from '#app/skills/constants/skill-scan'
+import type { SkillScan } from '#app/skills/services/skill-scans'
+
+/** A SkillSpector verdict that lets the admin approve a copy. */
+export const CLEAN_SCAN: SkillScan = {
+  status: SkillScanStatus.Done,
+  score: 0,
+  severity: 'LOW',
+  recommendation: 'SAFE',
+  complete: true,
+  findings: [],
+  moreFindings: 0,
+  version: '2.13.7',
+  scannedAt: '2026-11-24T00:00:00.000Z',
+}
 
 /**
  * A global transaction that starts with an empty skills catalog, whatever the database holds (a

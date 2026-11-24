@@ -76,6 +76,18 @@ jobs:
             ghcr.io/${{ steps.owner.outputs.value }}/coreloom-uml-api:${{ github.ref_name }}
             ghcr.io/${{ steps.owner.outputs.value }}/coreloom-uml-api:production-latest
 
+      # The API's worker plus SkillSpector, for the `skill-scanner` service.
+      - name: Build and push skill scanner image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          target: skill-scanner
+          push: true
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.value }}/coreloom-uml-skill-scanner:${{ github.ref_name }}
+            ghcr.io/${{ steps.owner.outputs.value }}/coreloom-uml-skill-scanner:production-latest
+
       - name: Build and push web image
         uses: docker/build-push-action@v6
         with:
