@@ -9,9 +9,10 @@ import {
 export { UI_MESSAGE_STREAM_HEADERS, type UIMessageChunk } from 'ai'
 
 /**
- * How a caller follows a reply as it is written. Only the chunks of `ALLOWED` ever reach
- * `onChunk`: the text, where each step starts and ends, and which tool is called (its name, never
- * its input or result: those may hold the owner's source code or account data).
+ * How a caller follows a reply as it is written. Of the model's own stream, only these chunks
+ * ever reach `onChunk`: the text, where each step starts and ends, and which tool is called (its
+ * name, never its input or result: those may hold the owner's source code or account data).
+ * What a tool shows of itself is the caller's to write, on purpose, beside them.
  */
 export type AssistantStreamOptions = {
   onChunk?: (chunk: UIMessageChunk) => void

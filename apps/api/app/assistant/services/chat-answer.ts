@@ -8,6 +8,7 @@ import {
   runAssistantTools,
   withFile,
 } from '@coreloom-uml/llm'
+import type { ToolActivity } from '#app/assistant/actions/action'
 import { actionTools } from '#app/assistant/actions/registry'
 import type { AssistantTargetKind, StoredAction } from '#app/assistant/constants/assistant'
 import type AssistantConversation from '#app/assistant/models/assistant-conversation'
@@ -102,6 +103,7 @@ export async function answerChat(
   let unfinished = false
   // Opened by the first repository tool, paused once the message is answered (or failed).
   const repository = new RepositorySession(user, conversation.id)
+  const { onChunk } = stream
   try {
     if (withTools) {
       const tools = [
@@ -109,6 +111,14 @@ export async function answerChat(
           conversationId: conversation.id,
           read,
           repository,
+          // Written by the tools themselves, beside the chunks `completeText` lets through.
+          ...(onChunk
+            ? {
+                activity: (activity: ToolActivity) => {
+                  onChunk({ type: 'data-activity', id: activity.id, data: activity })
+                },
+              }
+            : {}),
         })),
         ...(await handoffTools(user)),
       ]

@@ -1376,6 +1376,10 @@ export const en = {
       'Reading the file: your model summarizes it, part by part. The conversation keeps it for the next messages…',
     continueReading: 'Go on from where you stopped.',
     reading: 'The assistant is reading your work…',
+    activity: 'What the assistant is doing',
+    activityOutput: 'What the command printed',
+    activityHidden: 'What this call read is not shown here: only a command’s output is.',
+    activityExit: (code: number) => `Exit code ${String(code)}`,
     summary: 'Summary of the previous conversation',
     deleteSummary: 'Delete the summary',
     deleteSummaryHint:
@@ -2991,6 +2995,11 @@ export const fr: Messages = {
       'Lecture du fichier : votre modèle le résume, partie par partie. La conversation le garde pour les messages suivants…',
     continueReading: 'Reprenez là où vous vous êtes arrêté.',
     reading: 'L’assistant lit votre travail…',
+    activity: 'Ce que fait l’assistant',
+    activityOutput: 'Ce que la commande a affiché',
+    activityHidden:
+      'Ce que cet appel a lu n’est pas affiché ici : seule la sortie d’une commande l’est.',
+    activityExit: (code) => `Code de sortie ${String(code)}`,
     summary: 'Résumé de la conversation précédente',
     deleteSummary: 'Supprimer le résumé',
     deleteSummaryHint:

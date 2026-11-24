@@ -75,12 +75,13 @@ export const READ_FILE = `bash -c '${inside('READ_PATH')} && cd -- "$R" && test 
 
 /**
  * Runs `$SHELL_COMMAND`, a command of the model, from the clone, its two outputs as one, cut
- * like any other and killed after `shellSeconds`. The command comes in as an environment
+ * like any other (byte by byte, `dd`, where `head` would hold everything back until the end: the
+ * owner follows the output as it is printed) and killed after `shellSeconds`. The command comes in as an environment
  * variable, so the shell that starts it reads nothing the model wrote. Run it only in a sandbox
  * cut off the network (`isolate`), and never hand that sandbox a token afterwards: what the
  * command leaves running could read it.
  */
-export const SHELL = `bash -c 'cd -- "$REPO_ROOT" && timeout -k 2 ${String(REPOSITORY_SANDBOX.shellSeconds)} bash -c "$SHELL_COMMAND" 2>&1 < /dev/null | ${cap}; exit "\${PIPESTATUS[0]}"'`
+export const SHELL = `bash -c 'cd -- "$REPO_ROOT" && timeout -k 2 ${String(REPOSITORY_SANDBOX.shellSeconds)} bash -c "$SHELL_COMMAND" 2>&1 < /dev/null | dd bs=1 count=${String(REPOSITORY_SANDBOX.outputMaxBytes)} status=none; exit "\${PIPESTATUS[0]}"'`
 
 /** What `MAP` exits with when the clone cannot be mapped. */
 export const MAP_EXIT = { extraction: 2, tooLarge: 4, tooManyFiles: 5 } as const

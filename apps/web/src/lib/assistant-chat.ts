@@ -1,6 +1,7 @@
 // The workspace assistant's chat, streamed through the AI SDK's `useChat` (a `Chat` per
 // conversation). The API answers its UI message stream: the reply's text as it is written, the
-// tools the « Auto » loop calls (by name only), then one `data-chat` part holding the stored
+// tools the « Auto » loop calls (`data-activity` parts: a name, and for a repository tool what it
+// asks of the sandbox and what a command prints), then one `data-chat` part holding the stored
 // exchange. The stored messages stay the conversation's: the screen reads them from the query
 // hooks, and the `Chat` only holds the message being written. Pure, so it runs in Node tests.
 import { Chat } from '@ai-sdk/react'
@@ -8,7 +9,22 @@ import { TuyauError } from '@tuyau/core/client'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 
 /** What the API's `data-chat` part holds: `ChatOutput`, as the JSON route answers it. */
-export type AssistantChatMessage<Output = unknown> = UIMessage<never, { chat: Output }>
+export type AssistantChatMessage<Output = unknown> = UIMessage<
+  never,
+  { chat: Output; activity: ToolActivity }
+>
+
+/** One tool call as the API tells it while it runs (the same `id` replaces the one before). */
+export interface ToolActivity {
+  id: string
+  tool: string
+  status: 'running' | 'done'
+  /** What a repository tool asks of the sandbox: a path, a query, a command. */
+  detail?: string
+  /** What a command printed so far. */
+  output?: string
+  exitCode?: number
+}
 
 /** A failed call as Tuyau builds one, so `providerCallFailure` and `getErrorMessage` read it. */
 export function httpError(status: number, body: unknown): TuyauError {
@@ -99,10 +115,14 @@ export async function sendChat<Output>(
   }
 }
 
-/** The reply being written: its text since the last step, and whether a tool is running. */
+/**
+ * The reply being written: its text since the last step, whether a tool is running, and every
+ * tool call of the reply so far.
+ */
 export interface ChatDraft {
   text: string
   reading: boolean
+  activity: ToolActivity[]
 }
 
 export function draftOf(messages: readonly UIMessage[]): ChatDraft | null {
@@ -112,5 +132,8 @@ export function draftOf(messages: readonly UIMessage[]): ChatDraft | null {
   const step = last.parts.slice(start + 1)
   const text = step.flatMap((part) => (part.type === 'text' ? [part.text] : [])).join('')
   const reading = step.at(-1)?.type.startsWith('tool-') === true
-  return { text, reading }
+  const activity = last.parts.flatMap((part) =>
+    part.type === 'data-activity' ? [part.data as ToolActivity] : [],
+  )
+  return { text, reading, activity }
 }
