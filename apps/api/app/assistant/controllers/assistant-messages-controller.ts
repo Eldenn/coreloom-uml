@@ -139,6 +139,7 @@ export default class AssistantMessagesController {
       try {
         answer = await answerFromCode({
           model: built.model,
+          providerKind: provider.kind,
           codeMap: Object.assign(codeMap, { storageKey }),
           architecture,
           conversation,
@@ -319,7 +320,8 @@ export default class AssistantMessagesController {
       await repository.close()
     }
     const nothing =
-      !reply.trim() || (reply.includes(NOTHING_TO_READ) && repository.read.length === 0)
+      !reply.trim() ||
+      (reply.includes(NOTHING_TO_READ) && repository.read.length === 0 && repository.commands === 0)
     logger.info(
       {
         ...log,
@@ -334,7 +336,7 @@ export default class AssistantMessagesController {
     if (nothing) return response.ok({ messages: [], unfinished: false } satisfies ReadingOutput)
     const messages = await storeExchange(conversation, message, {
       architectureId: architecture.id,
-      content: withFilesRead(reply, repository.read, locale),
+      content: withFilesRead(reply, repository, locale),
       fileName: attached?.name,
     })
     return response.ok({

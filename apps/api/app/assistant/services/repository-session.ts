@@ -3,7 +3,7 @@ import redis from '@adonisjs/redis/services/main'
 import { DateTime } from 'luxon'
 import { REPOSITORY_SANDBOX } from '#app/assistant/constants/repository'
 import AssistantSandbox from '#app/assistant/models/assistant-sandbox'
-import { CLONE } from '#app/assistant/services/repository-commands'
+import { CLONE, tokenEnvs } from '#app/assistant/services/repository-commands'
 import RepositorySandbox, {
   type OpenRepositorySandbox,
 } from '#app/assistant/services/repository-sandbox'
@@ -78,6 +78,8 @@ export class RepositorySession {
   #access: { github: GithubApi; token: string } | null = null
   /** The files the model read in this message, in order: shown under the reply. */
   readonly read: string[] = []
+  /** How many commands of its own the model ran in the sandbox in this message. */
+  commands = 0
 
   constructor(
     private user: User,
@@ -123,7 +125,8 @@ export class RepositorySession {
       // A private repository is read again only while the owner keeps a grant on it.
       const allowed = !row.private || (await findGrant(this.user.id, row.repositoryUrl)) !== null
       const resumed = allowed ? await sandboxes.resume(row.sandboxId) : null
-      if (resumed) {
+      // Cut off again: one paused before the model could run commands still had the network.
+      if (resumed && (await resumed.isolate())) {
         this.#opened = {
           sandbox: resumed,
           repositoryUrl: row.repositoryUrl,
@@ -151,18 +154,29 @@ export class RepositorySession {
     if (typeof auth === 'string') return auth
     const sandbox = await sandboxes.create()
     if (!sandbox) return REPOSITORY_SENTENCES.unavailable
-    const cloned = await sandbox.run(
-      CLONE,
-      {
-        REPO_ROOT: REPOSITORY_SANDBOX.root,
-        REPO_URL: `${parsed.url}.git`,
-        REPO_BRANCH: repository.branch ?? '',
-        ...auth,
-      },
-      REPOSITORY_SANDBOX.cloneTimeoutMs,
-    )
+    const clone = (filter: string, timeoutMs: number) =>
+      sandbox.run(
+        CLONE,
+        {
+          REPO_ROOT: REPOSITORY_SANDBOX.root,
+          REPO_URL: `${parsed.url}.git`,
+          REPO_BRANCH: repository.branch ?? '',
+          REPO_FILTER: filter,
+          ...auth,
+        },
+        timeoutMs,
+      )
+    // Nothing is fetched after the clone, so it takes the files of the whole history when
+    // they fit (what show and blame read), else those of the checked-out commit only.
+    // ponytail: a large repository pays the first try before the second; remember per
+    // repository which one fits if that wait shows.
+    let cloned = await clone('', REPOSITORY_SANDBOX.fullCloneTimeoutMs)
+    if (cloned.exitCode === 4 || cloned.exitCode === 124) {
+      cloned = await clone('blob:none', REPOSITORY_SANDBOX.cloneTimeoutMs)
+    }
     const commit = cloned.output.trim()
-    if (cloned.exitCode !== 0 || !isCommitId(commit)) {
+    // The model runs commands in it: no network from here on, and no token ever again.
+    if (cloned.exitCode !== 0 || !isCommitId(commit) || !(await sandbox.isolate())) {
       await sandboxes.kill(sandbox.sandboxId)
       return REPOSITORY_SENTENCES.unreadable
     }
@@ -181,10 +195,10 @@ export class RepositorySession {
   }
 
   /**
-   * What git needs to fetch from this repository, as environment variables of one command: none
-   * for a public one, else an installation token for this one repository, made once a message
-   * (after GitHub confirms the owner still reads it) and revoked by `close`. Never written to a
-   * file, a row or a log.
+   * What git needs to clone this repository, as environment variables of that one command: none
+   * for a public one, else an installation token for this one repository (after GitHub confirms
+   * the owner still reads it), revoked by `close`. Never written to a file, a row or a log, and
+   * never given to a sandbox the model ran a command in: only the clone gets it.
    */
   async #auth(repositoryUrl: string): Promise<Record<string, string> | string> {
     if (!this.#access) {
@@ -204,17 +218,7 @@ export class RepositorySession {
       }
       this.#access = access
     }
-    const basic = Buffer.from(`x-access-token:${this.#access.token}`).toString('base64')
-    return {
-      GIT_CONFIG_COUNT: '1',
-      GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader',
-      GIT_CONFIG_VALUE_0: `Authorization: Basic ${basic}`,
-    }
-  }
-
-  /** `#auth` for a command that may fetch older files of the open repository. */
-  fetchEnvs(opened: OpenRepository): Promise<Record<string, string> | string> {
-    return this.#track(this.#auth(opened.repositoryUrl))
+    return tokenEnvs(this.#access.token)
   }
 
   /** Pauses the sandbox until the next message and frees the conversation. Never throws. */
@@ -245,17 +249,26 @@ function same(row: AssistantSandbox, repository: { url: string; branch: string |
 }
 
 const FILES_READ = { en: 'Files read', fr: 'Fichiers lus' } as const
+const COMMANDS_RUN = {
+  en: 'Commands run in the sandbox',
+  fr: 'Commandes lancées dans la sandbox',
+} as const
 
 /**
  * The reply with the repository files the tools really read listed under it, whatever the model
- * says it read (paths only, never what they hold).
+ * says it read (paths only, never what they hold), and how many commands of its own it ran:
+ * what those read is not listed, so the count says the list may not be all.
  */
 export function withFilesRead(
   reply: string,
-  paths: readonly string[],
+  { read, commands }: Pick<RepositorySession, 'read' | 'commands'>,
   locale: 'en' | 'fr',
 ): string {
-  if (paths.length === 0) return reply
-  const listed = paths.map((path) => `\`${path}\``).join(', ')
-  return `${reply}\n\n_${FILES_READ[locale]}: ${listed}_`
+  const notes = [
+    ...(read.length > 0
+      ? [`${FILES_READ[locale]}: ${read.map((path) => `\`${path}\``).join(', ')}`]
+      : []),
+    ...(commands > 0 ? [`${COMMANDS_RUN[locale]}: ${String(commands)}`] : []),
+  ]
+  return notes.length === 0 ? reply : `${reply}\n\n_${notes.join('. ')}_`
 }

@@ -22,5 +22,21 @@ export default class AssistantSetup extends BaseCommand {
       data: {},
     })
     this.logger.success(`sandbox prune scheduled (${SANDBOX_PRUNE_SCHEDULE.pattern} UTC)`)
+
+    // The template repository sandboxes start from (git and graphify): built once per install.
+    // A failure is logged, never fatal: the API must start while E2B is down, and code maps
+    // from GitHub and the assistant's repository tools answer "unavailable" until it is built.
+    const { REPOSITORY_TEMPLATE_NAME } = await import('#app/assistant/constants/repository')
+    const { default: RepositorySandbox } = await import(
+      '#app/assistant/services/repository-sandbox'
+    )
+    try {
+      const state = await (await this.app.container.make(RepositorySandbox)).ensureTemplate()
+      if (state) this.logger.success(`sandbox template ${REPOSITORY_TEMPLATE_NAME} ${state}`)
+      else this.logger.warning('E2B_API_KEY is not set: no sandbox template, no GitHub import')
+    } catch (error) {
+      this.logger.error(`sandbox template ${REPOSITORY_TEMPLATE_NAME} could not be built`)
+      this.logger.error((error as Error).message)
+    }
   }
 }

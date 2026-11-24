@@ -12,7 +12,7 @@ import { CodeMapStatus } from '#app/code-maps/constants/code-map'
 import CodeMap from '#app/code-maps/models/code-map'
 import { readCodeMapFile } from '#app/code-maps/services/code-map-storage'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
-import { readSource } from '#app/code-maps/services/code-source'
+import { readSource, sourceExplorer } from '#app/code-maps/services/code-source'
 import { diagramLinks, matchStoredDiagram } from '#app/code-maps/services/diagram-code-links'
 import {
   type CodeReviewDiagram,
@@ -45,7 +45,7 @@ const MAP_GONE = {
  * One diagram of a review checked by the user's own model: one call, the findings it returns
  * replace the diagram's earlier ones in this review. The key is used for this call only, never
  * stored or logged. In a review started with `includeSnippets`, a class, sequence or activity diagram is
- * checked with the source of its files, read on GitHub for this call (`readSource`): never stored,
+ * checked with the source of its files, read in a sandbox for this call (`readSource`): never stored,
  * logged or returned, and a read that fails leaves the review on the structure. Session only.
  */
 export default class CodeReviewDiagramsController {
@@ -100,7 +100,16 @@ export default class CodeReviewDiagramsController {
       diagram.kind === 'activity' && source.elements.every((element) => !element.codeKeys.length)
     const reading =
       !unlinked && review.includeSnippets && SOURCE_REVIEW_KINDS.includes(diagram.kind)
-        ? await readSource(codeMap, user, source.nodes)
+        ? await readSource(
+            codeMap,
+            user,
+            source.nodes,
+            sourceExplorer(
+              provider.kind,
+              built.model,
+              `A UML ${diagram.kind} diagram will be checked against this code: what the code does that the diagram does not show, and what the diagram shows that the code does not do.`,
+            ),
+          )
         : null
     let result: ConformanceResult
     try {
@@ -170,7 +179,7 @@ export default class CodeReviewDiagramsController {
         dropped: result.dropped,
         truncated: result.truncated,
         source: reading && {
-          files: reading.excerpts.length,
+          files: reading.excerpts.length - reading.commands,
           omitted: reading.omitted,
           absence: reading.absence,
         },

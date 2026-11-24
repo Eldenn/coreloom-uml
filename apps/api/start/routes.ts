@@ -127,7 +127,7 @@ router
 |
 | A map belongs to one of the owner's projects; the graph is a gzipped file in Drive. Uploading
 | one is a write (an API token needs `write`); `github` has the server clone and map a public
-| GitHub repository in the background (the analyzer service, `ImportGithubCodeMapJob`), and
+| GitHub repository in the background (in a sandbox, `ImportGithubCodeMapJob`), and
 | `github/follow` is the repository the project reads again on each push. `links`
 | read and replace one diagram's links, `?diagramId=` naming a diagram of the map's project.
 | `processes` lists the flows from the entry points that no diagram documents. `conformance`

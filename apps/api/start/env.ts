@@ -172,16 +172,6 @@ export default await Env.create(new URL('../', import.meta.url), {
 
   /*
   |--------------------------------------------------------------------------
-  | Code maps from GitHub
-  |--------------------------------------------------------------------------
-  | The analyzer service (apps/analyzer) clones a public GitHub repository and
-  | maps its code; the queue worker calls it. Unset: importing from GitHub
-  | answers 503 and the CLI or an upload remain. Example: http://analyzer:8080
-  */
-  ANALYZER_URL: Env.schema.string.optional(),
-
-  /*
-  |--------------------------------------------------------------------------
   | GitHub App (private repositories for code maps)
   |--------------------------------------------------------------------------
   | Users install the App on the repositories it may read, then connect it:
@@ -204,10 +194,13 @@ export default await Env.create(new URL('../', import.meta.url), {
 
   /*
   |--------------------------------------------------------------------------
-  | Web research (E2B sandboxes)
+  | E2B sandboxes
   |--------------------------------------------------------------------------
-  | A web research runs its tools in an E2B sandbox. Without E2B_API_KEY the
-  | research routes answer 404. With the key alone the sandboxes are E2B
+  | Everything that touches a repository's code or a web page runs in an E2B
+  | sandbox: code maps from GitHub (cloned and mapped with graphify), the
+  | assistant's repository tools and the web research. A deployment sets
+  | E2B_API_KEY; without it importing from GitHub answers 503 (the CLI or an
+  | upload remain) and the other two 404. With the key alone the sandboxes are E2B
   | Cloud's; E2B_API_URL and E2B_SANDBOX_URL point at a self-hosted install
   | (e2b-dev/runtime, "Embed"), which prints all three when it starts.
   */

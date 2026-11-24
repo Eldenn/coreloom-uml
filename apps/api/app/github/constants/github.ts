@@ -11,10 +11,9 @@
 export const GITHUB_URLS = {
   api: 'https://api.github.com',
   web: 'https://github.com',
-  raw: 'https://raw.githubusercontent.com',
 } as const
 
-/** One file read from a repository (`GithubApi.readFile`). */
+/** One source file read in a repository sandbox (`READ_FILE`, `code-source.ts`). */
 export const GITHUB_SOURCE_LIMITS = {
   /** Past it, the read stops and the file is left out. */
   fileBytes: 512_000,

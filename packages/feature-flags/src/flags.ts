@@ -97,7 +97,7 @@ export const FEATURE_FLAGS: readonly FeatureFlagDeclaration[] = [
     key: FeatureFlagKey.AssistantRepository,
     name: 'Assistant repository sandbox',
     description:
-      "Lets the workspace assistant read a project's GitHub repository, cloned in a sandbox kept (paused) with the conversation. Needs code maps, E2B_API_KEY and ANALYZER_URL on the server.",
+      "Lets the workspace assistant read a project's GitHub repository, cloned in a sandbox kept (paused) with the conversation, and run commands of its own there once the sandbox is cut off the network. Needs code maps and E2B_API_KEY on the server.",
     tags: ['code', 'llm'],
     defaultState: OFF,
   },

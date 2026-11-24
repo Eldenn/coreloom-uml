@@ -7,7 +7,7 @@ name: Release
 # chain. Re-runs the full CI suite against the tagged commit (`ci.yml` as a
 # reusable workflow), publishes a GitHub Release whose notes are the
 # matching apps/api/CHANGELOG.md + apps/web/CHANGELOG.md sections, and
-# builds + pushes the apps/api, apps/analyzer and apps/web images to GHCR — the images
+# builds + pushes the apps/api and apps/web images to GHCR — the images
 # infra/docker-compose.production.yml pulls (never built on the Coolify
 # host). deploy-production.yml then fires once this whole workflow succeeds.
 #
@@ -75,16 +75,6 @@ jobs:
           tags: |
             ghcr.io/${{ steps.owner.outputs.value }}/coreloom-uml-api:${{ github.ref_name }}
             ghcr.io/${{ steps.owner.outputs.value }}/coreloom-uml-api:production-latest
-
-      - name: Build and push analyzer image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/analyzer/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ steps.owner.outputs.value }}/coreloom-uml-analyzer:${{ github.ref_name }}
-            ghcr.io/${{ steps.owner.outputs.value }}/coreloom-uml-analyzer:production-latest
 
       - name: Build and push web image
         uses: docker/build-push-action@v6

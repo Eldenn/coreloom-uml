@@ -1,7 +1,6 @@
 /**
- * The public GitHub repositories the server maps itself. Only `github.com` is accepted; the
- * analyzer checks the same rules again (`apps/analyzer/analyzer.py`) and builds the clone URL
- * itself, so nothing typed here reaches git as is.
+ * The GitHub repositories the server maps itself. Only `github.com` is accepted, and the clone
+ * URL is built from the parts read here, so nothing typed reaches git as is.
  */
 
 const OWNER = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/

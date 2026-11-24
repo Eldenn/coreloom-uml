@@ -159,7 +159,7 @@ export default class GithubApi {
 
   /**
    * A token that reads one repository's contents through an installation, valid one hour. The
-   * caller hands it to the analyzer for one clone and revokes it right after.
+   * caller hands it to a sandbox for one clone and revokes it right after.
    */
   async installationToken(
     config: GithubAppConfig,
@@ -193,62 +193,6 @@ export default class GithubApi {
       method: 'DELETE',
       headers: { authorization: `Bearer ${token}` },
     })
-  }
-
-  /**
-   * The text of one file at one commit. `null` when there is nothing to send: the file or the
-   * commit is not there (404), the path or commit is refused, the file is larger than
-   * `GITHUB_SOURCE_LIMITS.fileBytes`, or it is not UTF-8 text. `token` is an installation token
-   * for a private repository; without one the read is anonymous, from the raw file host.
-   */
-  async readFile(
-    repository: { owner: string; name: string },
-    commit: string,
-    path: string,
-    token?: string,
-  ): Promise<GithubResult<string | null>> {
-    const { owner, name } = repository
-    if (!isRepository(repository) || !isCommitId(commit) || !isRepositoryPath(path))
-      return { ok: true, value: null }
-    const encoded = path.split('/').map(encodeURIComponent).join('/')
-    const response = await this.#send(
-      token
-        ? `${GITHUB_URLS.api}/repos/${owner}/${name}/contents/${encoded}?ref=${commit}`
-        : `${GITHUB_URLS.raw}/${owner}/${name}/${commit}/${encoded}`,
-      token
-        ? {
-            headers: {
-              accept: 'application/vnd.github.raw+json',
-              'x-github-api-version': GITHUB_API_VERSION,
-              authorization: `Bearer ${token}`,
-            },
-          }
-        : {},
-    )
-    if (!response) return { ok: false, failure: GithubFailure.Unreachable }
-    if (!response.ok) {
-      await response.body?.cancel()
-      if (response.status === 404) return { ok: true, value: null }
-      return { ok: false, failure: failureOf(response.status) }
-    }
-    // The contents API answers a folder with its listing: not a file.
-    if (response.headers.get('content-type')?.startsWith('application/json')) {
-      await response.body?.cancel()
-      return { ok: true, value: null }
-    }
-    let bytes: Uint8Array | null
-    try {
-      bytes = await readCapped(response, GITHUB_SOURCE_LIMITS.fileBytes)
-    } catch {
-      return { ok: false, failure: GithubFailure.Unreachable }
-    }
-    if (!bytes) return { ok: true, value: null }
-    try {
-      const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
-      return { ok: true, value: text.includes('\u0000') ? null : text }
-    } catch {
-      return { ok: true, value: null }
-    }
   }
 
   /**

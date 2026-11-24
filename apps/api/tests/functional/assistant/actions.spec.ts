@@ -1847,9 +1847,9 @@ test.group('Assistant actions - code maps', (group) => {
     return () => drive.restore()
   })
   group.each.setup(() => {
-    const previous = env.get('ANALYZER_URL')
-    env.set('ANALYZER_URL', 'http://analyzer.test:8080')
-    return () => env.set('ANALYZER_URL', previous ?? '')
+    const previous = env.get('E2B_API_KEY')
+    env.set('E2B_API_KEY', 'e2b_key_for_tests')
+    return () => env.set('E2B_API_KEY', previous ?? '')
   })
   /** The import job is never queued for real: the calls are recorded instead. */
   let dispatched: unknown[] = []
@@ -2287,7 +2287,7 @@ test.group('Assistant actions - code maps', (group) => {
     assert.lengthOf(dispatched, 0)
   })
 
-  test('an import is refused at proposal without an analyzer, or to follow without the App', async ({
+  test('an import is refused at proposal without sandboxes, or to follow without the App', async ({
     client,
     assert,
   }) => {
@@ -2301,7 +2301,7 @@ test.group('Assistant actions - code maps', (group) => {
     assert.isNull(follow.actions)
     assert.include(follow.told, 'GitHub App')
 
-    env.set('ANALYZER_URL', '')
+    env.set('E2B_API_KEY', '')
     const off = await refused(client, f, [
       {
         tool: 'import_code_map_from_github',

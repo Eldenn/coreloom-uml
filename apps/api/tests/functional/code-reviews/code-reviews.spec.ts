@@ -8,6 +8,7 @@ import type { UmlSpec } from '@coreloom-uml/uml'
 import { test } from '@japa/runner'
 import type { TestContext } from '@japa/runner/core'
 import Architecture from '#app/architectures/models/architecture'
+import RepositorySandbox from '#app/assistant/services/repository-sandbox'
 import CodeMap from '#app/code-maps/models/code-map'
 import DiagramCodeLink from '#app/code-maps/models/diagram-code-link'
 import type { CodeMapOutput } from '#app/code-maps/validators/code-maps-output'
@@ -24,6 +25,7 @@ import GithubApi, { type GithubResult } from '#app/github/services/github-api'
 import LanguageModels from '#app/llm/services/language-models'
 import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
+import { useFakeSourceSandbox } from '#tests/helpers/fake-source-sandbox'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
 
@@ -51,23 +53,25 @@ const answer = (findings: unknown[]) => JSON.stringify({ findings })
 /** A line of the fake source: it reaches the model and nothing else. */
 const SOURCE_MARKER = 'SOURCE-MARKER-5d2e'
 
-/** GitHub is never called: every file read answers the same source, or `answer`. */
+/**
+ * E2B and GitHub are never called: the sandbox the source is read in answers every file with
+ * the same source, or with `answer`.
+ */
 class FakeGithubApi extends GithubApi {
   reads: { commit: string; path: string }[] = []
   answer: GithubResult<string | null> = {
     ok: true,
     value: `export default class X {\n  // ${SOURCE_MARKER}\n}\n`,
   }
-
-  override async readFile(_repository: unknown, commit: string, path: string) {
-    this.reads.push({ commit, path })
-    return this.answer
-  }
 }
 
 function useGithub() {
   const fake = new FakeGithubApi()
   app.container.swap(GithubApi, () => fake)
+  useFakeSourceSandbox(({ commit, path }) => {
+    fake.reads.push({ commit, path })
+    return fake.answer.ok ? fake.answer.value : 'gone'
+  })
   return fake
 }
 
@@ -446,6 +450,7 @@ test.group('Code reviews', (group) => {
     const github = useGithub()
     cleanup(() => {
       app.container.restore(GithubApi)
+      app.container.restore(RepositorySandbox)
     })
     const model = answeringModel(answer([]))
     useModel(model)
@@ -544,6 +549,7 @@ test.group('Code reviews', (group) => {
     const github = useGithub()
     cleanup(() => {
       app.container.restore(GithubApi)
+      app.container.restore(RepositorySandbox)
     })
     const model = answeringModel(
       answer([
@@ -565,7 +571,8 @@ test.group('Code reviews', (group) => {
     const response = await reviewDiagram(client, user, review.id, activity.id)
     response.assertStatus(200)
     const body = response.body() as CodeReviewDetailOutput
-    const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt)
+    // The last call is the review; the one before it is the model looking at the repository.
+    const prompt = JSON.stringify(model.doGenerateCalls.at(-1)?.prompt)
     // The linked action and the one found by name, each with its code; the prose one with none.
     assert.match(prompt, /load \| Load the architecture \| confirmed \| n\d+/)
     assert.match(prompt, /serialize \| Serialize architecture \| suggested \| n\d+/)

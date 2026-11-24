@@ -6,7 +6,7 @@ import type AssistantConversation from '#app/assistant/models/assistant-conversa
 import { conversationHistory } from '#app/assistant/services/assistant-context'
 import type CodeMap from '#app/code-maps/models/code-map'
 import { readDetectedCodeMap } from '#app/code-maps/services/code-map-storage'
-import { readSource, withSourceSentence } from '#app/code-maps/services/code-source'
+import { readSource, sourceExplorer, withSourceSentence } from '#app/code-maps/services/code-source'
 import { drawingSource, projectViews } from '#app/code-maps/services/drawing-source'
 import { proposedChange } from '#app/code-maps/services/proposal-conversation'
 import type User from '#app/users/models/user'
@@ -39,11 +39,13 @@ export type CodeAnswer = {
  * Answers a message of the assistant from the project's code map: the owner's model first names
  * the code the request is about, from an outline of the map and the conversation so far, then
  * draws that part of the map as a new view, with the source of its files when the repository can
- * be read on GitHub (`readSource`). Nothing is stored here.
+ * be read in a sandbox (`readSource`). Nothing is stored here.
  * Throws `LlmCallError` when a call fails.
  */
 export async function answerFromCode(input: {
   model: LanguageModel
+  /** The kind of the provider behind `model`. */
+  providerKind: string
   /** A ready map of the architecture's project. */
   codeMap: CodeMap & { storageKey: string }
   /** With its diagrams preloaded. */
@@ -80,7 +82,16 @@ export async function answerFromCode(input: {
   const source = drawingSource(map, resolved.target, architecture, locale)
   if (!source) return nothing()
 
-  const reading = await readSource(codeMap, input.user, source.sourceNodes)
+  const reading = await readSource(
+    codeMap,
+    input.user,
+    source.sourceNodes,
+    sourceExplorer(
+      input.providerKind,
+      model,
+      `A UML ${resolved.target.kind} diagram of this code will be drawn.`,
+    ),
+  )
   const result = await source.draw(model, reading?.excerpts)
   return {
     content: withSourceSentence(result.summary || words.noSummary, reading, locale),
