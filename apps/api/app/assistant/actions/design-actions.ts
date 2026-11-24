@@ -9,9 +9,16 @@ import {
   TARGET_NOT_FOUND,
   writeAction,
 } from '#app/assistant/actions/action'
-import { ActionFailure, AssistantTargetKind } from '#app/assistant/constants/assistant'
+import {
+  ActionFailure,
+  AssistantTargetKind,
+  POINTED_LABEL_MAX_LENGTH,
+  POINTED_TYPES,
+} from '#app/assistant/constants/assistant'
 import { DECISION_LIMITS, DecisionStatus } from '#app/decisions/constants/decision'
 import Decision from '#app/decisions/models/decision'
+import { serializeParts } from '#app/decisions/serializers/decision-serializer'
+import { awaitsReview, reviewed } from '#app/decisions/services/agent-proposals'
 import {
   createDecision,
   creationProblem,
@@ -75,9 +82,28 @@ const decisionFields = {
     .describe('accepted only when the owner said the choice is made; proposed otherwise'),
   requirementIds: ids().optional().describe('Requirements of the project it serves'),
   diagramIds: ids().optional().describe('Views (diagrams) of the project it shapes'),
+  parts: z
+    .array(
+      z.object({
+        diagramId: idInput(),
+        type: z.enum(POINTED_TYPES),
+        label: text(POINTED_LABEL_MAX_LENGTH).min(1),
+      }),
+    )
+    .max(DECISION_LIMITS.parts)
+    .optional()
+    .describe(
+      'Parts of those views it is about, each by its view and the one line that names it there, as pointed parts are named: `Payment`, `Payment.total: number`, `Order → Payment: pays`, `Client -> API: login()`',
+    ),
 }
 const decisionInput = z.object({ projectId: idInput(), ...decisionFields })
 const supersedeInput = z.object({ decisionId: idInput(), ...decisionFields })
+
+/** An owned decision the model may read or replace: never a coding agent's still waiting. */
+async function findReviewedDecision(id: number, user: User): Promise<Decision | null> {
+  const decision = await findOwnedDecision(id, user)
+  return decision && !awaitsReview(decision) ? decision : null
+}
 
 const sentence = (problem: Awaited<ReturnType<typeof creationProblem>>): string | null =>
   problem === 'full' ? DECISIONS_FULL.error.message : (problem?.error.message ?? null)
@@ -95,7 +121,7 @@ export const DESIGN_ACTIONS: readonly AssistantAction[] = [
   readAction({
     name: 'read_project_design',
     description:
-      "Reads the requirements of one of the owner's projects (id, category, must or should, the sentence, its measure) and its decisions (id, question, status, the options' names, the one chosen, the decision that replaced it, the ids of the requirements and views it names). Read it before proposing a requirement or a decision, so none is proposed twice.",
+      "Reads the requirements of one of the owner's projects (id, category, must or should, the sentence, its measure) and its decisions (id, question, status, the options' names, the one chosen, the decision that replaced it, the ids of the requirements and views it names, the parts of views it names). Read it before proposing a requirement or a decision, so none is proposed twice.",
     input: z.object({ projectId: idInput() }),
     kind: AssistantToolKind.Read,
     available,
@@ -108,7 +134,7 @@ export const DESIGN_ACTIONS: readonly AssistantAction[] = [
           .where('projectId', project.id)
           .orderBy('priority', 'asc')
           .orderBy('id', 'asc'),
-        withLinks(Decision.query().where('projectId', project.id)).orderBy('id', 'asc'),
+        withLinks(reviewed(Decision.query().where('projectId', project.id))).orderBy('id', 'asc'),
       ])
       return {
         requirements: requirements.map(({ id, category, priority, statement, measure }) => ({
@@ -127,6 +153,7 @@ export const DESIGN_ACTIONS: readonly AssistantAction[] = [
           supersededById: decision.supersededById,
           requirementIds: decision.requirements.map((requirement) => requirement.id),
           diagramIds: decision.diagrams.map((diagram) => diagram.id),
+          parts: serializeParts(decision),
         })),
       }
     },
@@ -134,7 +161,7 @@ export const DESIGN_ACTIONS: readonly AssistantAction[] = [
   readAction({
     name: 'read_design_review',
     description:
-      "Reads what the requirements and decisions of one of the owner's projects say against themselves: a requirement that must hold and that no accepted decision serves, an accepted decision that names no view, a superseded decision still named on views. Each finding names the requirement or the decision it is about.",
+      "Reads what the requirements and decisions of one of the owner's projects say against themselves: a requirement that must hold and that no accepted decision serves, an accepted decision that names no view, a superseded decision still named on views, a decision still standing that names a part its view no longer has. Each finding names the requirement or the decision it is about.",
     input: z.object({ projectId: idInput() }),
     kind: AssistantToolKind.Read,
     available,
@@ -152,7 +179,7 @@ export const DESIGN_ACTIONS: readonly AssistantAction[] = [
     kind: AssistantToolKind.Read,
     available,
     async read({ decisionId }, user) {
-      const decision = await findOwnedDecision(decisionId, user)
+      const decision = await findReviewedDecision(decisionId, user)
       if (!decision) return { error: NOT_FOUND_SENTENCE }
       const { id, projectId, title, context, options, chosen, consequences, status } = decision
       return { id, projectId, title, context, options, chosen, consequences, status }
@@ -217,10 +244,10 @@ export const DESIGN_ACTIONS: readonly AssistantAction[] = [
     kind: AssistantToolKind.Write,
     available,
     async subject({ decisionId }, user) {
-      return (await findOwnedDecision(decisionId, user))?.title ?? TARGET_NOT_FOUND
+      return (await findReviewedDecision(decisionId, user))?.title ?? TARGET_NOT_FOUND
     },
     async currentProblem({ decisionId, ...fields }, user) {
-      const replaced = await findOwnedDecision(decisionId, user)
+      const replaced = await findReviewedDecision(decisionId, user)
       const project = replaced && (await findOwnedProject(replaced.projectId, user))
       if (!project) return null
       if (replaced.status === DecisionStatus.Superseded)
@@ -229,10 +256,10 @@ export const DESIGN_ACTIONS: readonly AssistantAction[] = [
     },
     // The card goes stale when the decision is accepted, reopened or replaced meanwhile.
     async before({ decisionId }, user) {
-      return (await findOwnedDecision(decisionId, user))?.status ?? null
+      return (await findReviewedDecision(decisionId, user))?.status ?? null
     },
     async apply({ decisionId, ...fields }, user, client) {
-      const replaced = await findOwnedDecision(decisionId, user)
+      const replaced = await findReviewedDecision(decisionId, user)
       const project = replaced && (await findOwnedProject(replaced.projectId, user))
       if (!project) return { failure: ActionFailure.NotFound }
       const decision = created(await createDecision(project, fields, client))

@@ -426,6 +426,21 @@ export class DecisionDiagramSchema extends BaseModel {
   declare diagramId: number
 }
 
+export class DecisionPartSchema extends BaseModel {
+  static $columns = ['decisionId', 'diagramId', 'id', 'label', 'type'] as const
+  $columns = DecisionPartSchema.$columns
+  @column()
+  declare decisionId: number
+  @column()
+  declare diagramId: number
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare label: string
+  @column()
+  declare type: string
+}
+
 export class DecisionRequirementSchema extends BaseModel {
   static $columns = ['decisionId', 'requirementId'] as const
   $columns = DecisionRequirementSchema.$columns
@@ -436,7 +451,7 @@ export class DecisionRequirementSchema extends BaseModel {
 }
 
 export class DecisionSchema extends BaseModel {
-  static $columns = ['chosen', 'consequences', 'context', 'createdAt', 'id', 'options', 'projectId', 'status', 'supersededById', 'title', 'updatedAt', 'userId'] as const
+  static $columns = ['chosen', 'consequences', 'context', 'createdAt', 'id', 'options', 'origin', 'projectId', 'status', 'supersededById', 'supersedesId', 'title', 'updatedAt', 'userId'] as const
   $columns = DecisionSchema.$columns
   @column()
   declare chosen: string | null
@@ -451,11 +466,15 @@ export class DecisionSchema extends BaseModel {
   @column()
   declare options: any
   @column()
+  declare origin: string
+  @column()
   declare projectId: number
   @column()
   declare status: string
   @column()
   declare supersededById: number | null
+  @column()
+  declare supersedesId: number | null
   @column()
   declare title: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })

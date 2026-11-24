@@ -43,6 +43,8 @@ export const DESIGN_LIMITS = {
   optionName: 120,
   optionText: 1000,
   options: 5,
+  /** Parts of views one decision names. */
+  parts: 50,
 } as const
 
 const keys = {
@@ -192,6 +194,20 @@ export function useSaveDecision(projectId: number) {
       id === undefined
         ? client.api.projects.decisions.store({ params: { id: projectId }, body })
         : client.api.decisions.update({ params: { id }, body }),
+    onSuccess,
+  })
+}
+
+/** Whether a decision is a coding agent's proposal still waiting for the owner's review. */
+export const awaitsReview = (decision: Decision) =>
+  decision.origin === 'agent' && decision.status === 'proposed'
+
+/** Keeps a coding agent's proposal: it becomes the owner's and counts from then on. */
+export function useKeepDecision(projectId: number) {
+  const onSuccess = useRefresh(projectId)
+  return useMutation({
+    mutationFn: (id: number) =>
+      client.api.decisions.update({ params: { id }, body: { origin: 'owner' } }),
     onSuccess,
   })
 }

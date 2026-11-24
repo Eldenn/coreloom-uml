@@ -1,6 +1,9 @@
-import { DecisionStatus } from '#app/decisions/constants/decision'
+import { hasUmlPart, type UmlSpec } from '@coreloom-uml/uml'
+import { type DecisionPartRef, DecisionStatus } from '#app/decisions/constants/decision'
 import Decision from '#app/decisions/models/decision'
+import { reviewed } from '#app/decisions/services/agent-proposals'
 import { withLinks } from '#app/decisions/services/decision-writes'
+import Diagram from '#app/diagrams/models/diagram'
 import { RequirementPriority } from '#app/requirements/constants/requirement'
 import Requirement from '#app/requirements/models/requirement'
 
@@ -12,6 +15,8 @@ export const DesignFindingKind = {
   DecisionWithoutDiagram: 'decision_without_diagram',
   /** A superseded decision still named on views: they show a choice that no longer holds. */
   SupersededStillLinked: 'superseded_still_linked',
+  /** A decision still standing names a part its view no longer has: renamed or removed since. */
+  StalePart: 'stale_part',
 } as const
 export type DesignFindingKind = (typeof DesignFindingKind)[keyof typeof DesignFindingKind]
 
@@ -30,12 +35,17 @@ type ReviewedDecision = {
   status: DecisionStatus
   requirementIds: number[]
   diagramIds: number[]
+  parts?: readonly DecisionPartRef[]
 }
 
-/** The findings of a project's records, requirements first: same input, same output. */
+/**
+ * The findings of a project's records, requirements first: same input, same output. `views` are
+ * the contents of the views decisions name parts of; a view without content has no part.
+ */
 export function reviewDesign(
   requirements: ReviewedRequirement[],
   decisions: ReviewedDecision[],
+  views: ReadonlyMap<number, UmlSpec | null> = new Map(),
 ): DesignFinding[] {
   const accepted = decisions.filter((decision) => decision.status === DecisionStatus.Accepted)
   const served = new Set(accepted.flatMap((decision) => decision.requirementIds))
@@ -60,6 +70,15 @@ export function reviewDesign(
     ...decisions
       .filter(({ status, diagramIds }) => status === DecisionStatus.Superseded && diagramIds.length)
       .map((decision) => about(DesignFindingKind.SupersededStillLinked, decision)),
+    ...decisions
+      .filter(({ status, parts = [] }) => {
+        if (status === DecisionStatus.Superseded) return false
+        return parts.some((part) => {
+          const view = views.get(part.diagramId)
+          return !view || !hasUmlPart(view, part)
+        })
+      })
+      .map((decision) => about(DesignFindingKind.StalePart, decision)),
   ]
 }
 
@@ -67,8 +86,12 @@ export function reviewDesign(
 export async function projectDesignFindings(projectId: number): Promise<DesignFinding[]> {
   const [requirements, decisions] = await Promise.all([
     Requirement.query().where('projectId', projectId).orderBy('id', 'asc'),
-    withLinks(Decision.query().where('projectId', projectId)).orderBy('id', 'asc'),
+    withLinks(reviewed(Decision.query().where('projectId', projectId))).orderBy('id', 'asc'),
   ])
+  const viewIds = [...new Set(decisions.flatMap((d) => d.parts.map((part) => part.diagramId)))]
+  const views = viewIds.length
+    ? await Diagram.query().whereIn('id', viewIds).select('id', 'content')
+    : []
   return reviewDesign(
     requirements,
     decisions.map((decision) => ({
@@ -77,6 +100,8 @@ export async function projectDesignFindings(projectId: number): Promise<DesignFi
       status: decision.status,
       requirementIds: decision.requirements.map((requirement) => requirement.id),
       diagramIds: decision.diagrams.map((diagram) => diagram.id),
+      parts: decision.parts,
     })),
+    new Map(views.map((view) => [view.id, view.content])),
   )
 }

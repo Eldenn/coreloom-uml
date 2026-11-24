@@ -22,7 +22,7 @@ export default class McpController {
       return response.notFound(MCP_NOT_FOUND)
     }
     // Every MCP call is a POST, so `tokenAbility` (which reads the method) cannot tell: every
-    // tool reads, `read` is what the token needs.
+    // token needs `read`, and `write` decides below whether the tools that write are listed.
     if (!user.currentAccessToken.allows(ApiTokenAbility.Read)) {
       return response.forbidden(READ_NEEDED)
     }
@@ -38,6 +38,9 @@ export default class McpController {
     const server = buildMcpServer(user, {
       codeMaps: await isFeatureEnabled(FeatureFlagKey.CodeMaps, user),
       designRecords: await isFeatureEnabled(FeatureFlagKey.DesignRecords, user),
+      // The tools that write are only listed to a token that may write: for any other, a call to
+      // one is the SDK's own tool error ("not found"), like a tool behind an off flag.
+      write: user.currentAccessToken.allows(ApiTokenAbility.Write),
     })
     const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true })
     await server.connect(transport)

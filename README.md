@@ -80,13 +80,23 @@ silently.
   over to an architecture's diagram assistant or to a web research; nothing is stored then and the
   panel sends it again down that path. It is behind the `diagram-assistant` feature flag, off by
   default; session only.
+  With `design-records` too, « Design from a brief » on a project's Design tab opens a new
+  conversation whose messages carry `brief: { projectId }` (404 without the flags or for a project
+  that is not the caller's): the model reads what the project records, then takes only the next
+  step not done yet (asks at most three questions, proposes requirements, one decision with its
+  options weighed, an architecture, then hands over to the diagram assistant). Each step waits for
+  the owner to accept its card; the browser tab keeps which conversation is a brief, nothing more
+  is stored.
 - **Requirements and decisions.** A project keeps why its architecture is what it is:
   **requirements** (`GET`/`POST /projects/:id/requirements`, `PATCH`/`DELETE /requirements/:id`:
   one checkable sentence, the quality it is about, `must` or `should`, an optional measure) and
   **decisions** (`GET`/`POST /projects/:id/decisions`, `PATCH`/`DELETE /decisions/:id`: the
   question, one to five options with what speaks for and against each, the one chosen, the
   consequences, a status `proposed`, `accepted` or `superseded`, and the requirements and diagrams
-  of the project it names). A decision that does not hold together is refused (422): an accepted
+  of the project it names). A decision can also name parts of those diagrams (an element, a
+  relation, a member, a step), each by its diagram and the one line that names it there, as the
+  assistant's pointed parts are: the Design tab marks a part its view no longer has, and so does
+  the design review. A decision that does not hold together is refused (422): an accepted
   one names its option, a superseded one may name the decision of the project that replaced it. The
   diagram assistant reads the requirements and the decisions still standing before it draws a view
   of the project. At most a hundred of each per project. These routes call no model. Behind the
@@ -107,8 +117,12 @@ silently.
   findings and the deterministic match) and the processes no diagram documents
   (`list_undocumented_processes`). With requirements and decisions turned on, it lists a project's
   requirements and its decisions still standing (`list_requirements`, `list_decisions`), which a
-  generated AGENTS.md also carries (the requirements and the accepted decisions). It only reads,
-  and never calls a model. It is behind
+  generated AGENTS.md also carries (the requirements and the accepted decisions). It never calls
+  a model and only reads, but for one tool: with a key that has the `write` ability, an agent that
+  had to go against the recorded design (or took a structuring decision nothing records) tells the
+  owner with `propose_decision`. The decision is stored as a proposal on the project's Design tab,
+  where the owner keeps or dismisses it; until kept, it counts for nothing, for the assistant or
+  for coding agents (at most ten wait per project). It is behind
   the `mcp-server` feature flag, off by default; generated agent conventions say how to register
   it in each tool.
 

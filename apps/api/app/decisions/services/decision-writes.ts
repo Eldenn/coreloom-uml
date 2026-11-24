@@ -4,9 +4,13 @@ import type { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
 import {
   DECISION_LIMITS,
   type DecisionOption,
+  type DecisionOrigin,
+  type DecisionPartRef,
   DecisionStatus,
 } from '#app/decisions/constants/decision'
 import Decision from '#app/decisions/models/decision'
+import DecisionPart from '#app/decisions/models/decision-part'
+import { reviewed } from '#app/decisions/services/agent-proposals'
 import Diagram from '#app/diagrams/models/diagram'
 import type Project from '#app/projects/models/project'
 import Requirement from '#app/requirements/models/requirement'
@@ -30,6 +34,12 @@ export type DecisionFields = {
   supersededById?: number | null
   requirementIds?: number[]
   diagramIds?: number[]
+  /** Parts of views of the project it names; replaces the whole set when given. */
+  parts?: DecisionPartRef[]
+  /** Set to `agent` by the MCP tool only; the owner's review sets it back to `owner`. */
+  origin?: DecisionOrigin
+  /** A coding agent's proposal: the standing decision of the project it says no longer holds. */
+  supersedesId?: number | null
 }
 
 /** The body of a 422: the field that cannot be stored and why. */
@@ -50,6 +60,7 @@ export function withLinks(query: ModelQueryBuilderContract<typeof Decision>) {
   return query
     .preload('requirements', (requirements) => requirements.select('id'))
     .preload('diagrams', (diagrams) => diagrams.select('id'))
+    .preload('parts', (parts) => parts.orderBy('id', 'asc'))
 }
 
 /**
@@ -81,6 +92,16 @@ async function problem(
     if (!other) return refuse('supersededById', 'This is not another decision of the project.')
   }
 
+  if (fields.supersedesId != null) {
+    const replaced = await reviewed(
+      Decision.query({ client }).where({ id: fields.supersedesId, projectId }),
+    )
+      .whereNot('status', DecisionStatus.Superseded)
+      .first()
+    if (!replaced || replaced.id === selfId)
+      return refuse('supersedesId', 'This is not a standing decision of the project.')
+  }
+
   if (fields.requirementIds?.length) {
     const found = await Requirement.query({ client })
       .where('projectId', projectId)
@@ -99,7 +120,49 @@ async function problem(
     if (Number(found[0].$extras.total) !== fields.diagramIds.length)
       return refuse('diagramIds', 'These are not all diagrams of the project.')
   }
+  if (fields.parts?.length && !(await partsInProject(projectId, fields.parts, client)))
+    return refuse('parts', 'These are not all parts of diagrams of the project.')
   return null
+}
+
+/**
+ * Whether every part names a diagram of the project. Whether its label is still in that view is
+ * not asked: a view changes between the click and the save, and the design review says it.
+ */
+async function partsInProject(
+  projectId: number,
+  parts: readonly DecisionPartRef[],
+  client?: TransactionClientContract,
+): Promise<boolean> {
+  const diagramIds = [...new Set(parts.map((part) => part.diagramId))]
+  const found = await Diagram.query({ client })
+    .whereIn('id', diagramIds)
+    .whereIn('architectureId', (architectures) =>
+      architectures.from('architectures').select('id').where('project_id', projectId),
+    )
+    .count('* as total')
+  return Number(found[0].$extras.total) === diagramIds.length
+}
+
+/** Replaces the parts a decision names, each once. */
+async function replaceParts(
+  decision: Decision,
+  parts: readonly DecisionPartRef[],
+  trx: TransactionClientContract,
+) {
+  await DecisionPart.query({ client: trx }).where('decisionId', decision.id).delete()
+  const unique = new Map(
+    parts.map((part) => [JSON.stringify([part.diagramId, part.type, part.label]), part]),
+  )
+  await DecisionPart.createMany(
+    [...unique.values()].map(({ diagramId, type, label }) => ({
+      decisionId: decision.id,
+      diagramId,
+      type,
+      label,
+    })),
+    { client: trx },
+  )
 }
 
 const cleanOptions = (options: OptionInput[]): DecisionOption[] =>
@@ -118,6 +181,8 @@ function assign(decision: Decision, fields: Partial<DecisionFields>) {
   if (fields.consequences !== undefined) decision.consequences = fields.consequences || null
   if (fields.status !== undefined) decision.status = fields.status
   if (fields.supersededById !== undefined) decision.supersededById = fields.supersededById
+  if (fields.origin !== undefined) decision.origin = fields.origin
+  if (fields.supersedesId !== undefined) decision.supersedesId = fields.supersedesId
 }
 
 /** Saves `decision` and, when given, replaces the sets it is linked to; answers it with its links. */
@@ -132,6 +197,7 @@ async function save(
     if (fields.requirementIds)
       await decision.related('requirements').sync(fields.requirementIds, true, trx)
     if (fields.diagramIds) await decision.related('diagrams').sync(fields.diagramIds, true, trx)
+    if (fields.parts) await replaceParts(decision, fields.parts, trx)
   }
   await (client ? write(client) : db.transaction(write))
   return withLinks(Decision.query({ client }).where('id', decision.id)).firstOrFail()
@@ -161,6 +227,7 @@ function draft(project: Project, fields: DecisionFields): Decision {
     consequences: null,
     status: DecisionStatus.Proposed,
     supersededById: null,
+    supersedesId: null,
   })
   assign(decision, fields)
   return decision

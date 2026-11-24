@@ -147,6 +147,11 @@ export const chatInput = vine.create(
       .maxLength(ASSISTANT_CONTEXT_MAX)
       .optional(),
     pointed: pointedInput(),
+    /**
+     * The conversation is a design brief for this project of the caller's: in "Auto", the model
+     * leads it to requirements, one decision, then views. Sent with every message of it.
+     */
+    brief: vine.object({ projectId: vine.number().withoutDecimals().positive() }).optional(),
   }),
 )
 

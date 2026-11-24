@@ -73,6 +73,8 @@ import {
   ProviderKind,
   SUBSCRIPTION_NOT_FOUND,
 } from '#app/llm-connections/constants/llm-connections'
+import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
+import { designRecordsEnabled } from '#app/requirements/services/design-records-flag'
 import { HttpStatus } from '#app/shared/http/http-status'
 
 const MESSAGE_NOT_FOUND = { error: { message: 'Message not found' } } as const
@@ -378,8 +380,14 @@ export default class AssistantMessagesController {
     const conversation = await findOwnedConversation(params.conversationId, user)
     if (!conversation) return response.notFound(CONVERSATION_NOT_FOUND)
 
-    const { provider, apiKey, message, locale, page, context, pointed, auto, fileId } =
+    const { provider, apiKey, message, locale, page, context, pointed, auto, fileId, brief } =
       await request.validateUsing(chatInput)
+    if (brief) {
+      if (!(await assistantActionsEnabled(user)) || !(await designRecordsEnabled(user)))
+        return response.notFound(ASSISTANT_NOT_FOUND)
+      if (!(await findOwnedProject(brief.projectId, user)))
+        return response.notFound(PROJECT_NOT_FOUND)
+    }
     const attached =
       fileId === undefined ? null : await findConversationFile(conversation.id, fileId)
     if (fileId !== undefined && !attached) return response.notFound(FILE_NOT_FOUND)
@@ -400,7 +408,9 @@ export default class AssistantMessagesController {
       providerKind: provider.kind,
       message,
       locale,
-      page,
+      // A brief is about its project: the page the model works from.
+      page: brief ? { kind: AssistantTargetKind.Project, id: brief.projectId } : page,
+      brief: brief !== undefined,
       context,
       pointed,
       auto,

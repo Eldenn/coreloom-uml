@@ -27,10 +27,14 @@ import {
 import { Popconfirm } from '@/components/ui/popconfirm'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
+import { AgentProposals } from '@/design/agent-proposals'
+import { DecisionParts } from '@/design/decision-parts'
+import { DesignBrief } from '@/design/design-brief'
 import { DecisionForm, RequirementForm } from '@/design/design-forms'
 import { DesignReview } from '@/design/design-review'
 import { getErrorMessage } from '@/lib/client'
 import {
+  awaitsReview,
   type Decision,
   type Requirement,
   useDecisions,
@@ -39,7 +43,7 @@ import {
   useRequirements,
 } from '@/lib/design-records'
 import { useT } from '@/lib/locale'
-import { useProjectDiagrams } from '@/lib/project-diagrams'
+import { type ProjectDiagram, useProjectDiagrams } from '@/lib/project-diagrams'
 
 /** The dialog's subject: a new one, or the one being changed; null while closed. */
 type Draft<T> = { item?: T } | null
@@ -83,6 +87,7 @@ export function DesignTab({ projectId }: { projectId: number }) {
   return (
     <div className="flex flex-col gap-4">
       <p className="m-0 max-w-prose text-sm text-muted-foreground">{t.design.intro}</p>
+      <DesignBrief projectId={projectId} />
       <DesignReview projectId={projectId} />
       <Section
         id="design-requirements-title"
@@ -107,6 +112,12 @@ export function DesignTab({ projectId }: { projectId: number }) {
           />
         ))}
       </Section>
+      <AgentProposals
+        projectId={projectId}
+        proposals={decisions.data.filter(awaitsReview)}
+        decisions={decisions.data}
+        onReviewed={() => addDecisionRef.current?.focus()}
+      />
       <Section
         id="design-decisions-title"
         title={t.design.decisions}
@@ -118,17 +129,20 @@ export function DesignTab({ projectId }: { projectId: number }) {
           setDecision({})
         }}
       >
-        {decisions.data.map((item) => (
-          <DecisionItem
-            key={item.id}
-            projectId={projectId}
-            decision={item}
-            onEdit={() => {
-              setDecision({ item })
-            }}
-            onDeleted={() => addDecisionRef.current?.focus()}
-          />
-        ))}
+        {decisions.data
+          .filter((item) => !awaitsReview(item))
+          .map((item) => (
+            <DecisionItem
+              key={item.id}
+              projectId={projectId}
+              decision={item}
+              diagrams={diagrams}
+              onEdit={() => {
+                setDecision({ item })
+              }}
+              onDeleted={() => addDecisionRef.current?.focus()}
+            />
+          ))}
       </Section>
 
       <Dialog
@@ -281,7 +295,8 @@ function DecisionItem({
   decision,
   onEdit,
   onDeleted,
-}: ItemProps & { decision: Decision }) {
+  diagrams,
+}: ItemProps & { decision: Decision; diagrams: readonly ProjectDiagram[] }) {
   const t = useT()
   const remove = useDeleteDecision(projectId)
   const links = [
@@ -310,6 +325,7 @@ function DecisionItem({
         {links.length > 0 && (
           <p className="m-0 text-[13px] text-muted-foreground">{links.join(' · ')}</p>
         )}
+        <DecisionParts parts={decision.parts} diagrams={diagrams} />
       </ItemContent>
       <RowActions
         name={decision.title}

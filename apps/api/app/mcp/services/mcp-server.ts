@@ -7,9 +7,15 @@ import {
   latestGeneration,
 } from '#app/agent-configs/services/owned-agent-config'
 import Architecture from '#app/architectures/models/architecture'
-import { DecisionStatus } from '#app/decisions/constants/decision'
+import {
+  AGENT_PROPOSALS_WAITING_MAX,
+  DecisionOrigin,
+  DecisionStatus,
+} from '#app/decisions/constants/decision'
 import Decision from '#app/decisions/models/decision'
-import { withLinks } from '#app/decisions/services/decision-writes'
+import { serializeParts } from '#app/decisions/serializers/decision-serializer'
+import { reviewed, waitingProposals } from '#app/decisions/services/agent-proposals'
+import { createDecision, DECISIONS_FULL, withLinks } from '#app/decisions/services/decision-writes'
 import Diagram from '#app/diagrams/models/diagram'
 import { MCP_LIST_MAX, MCP_SERVER_NAME, MCP_SERVER_VERSION, McpTool } from '#app/mcp/constants/mcp'
 import {
@@ -25,6 +31,7 @@ import {
   listDiagramsInput,
   listRequirementsInput,
   listUndocumentedProcessesInput,
+  proposeDecisionInput,
 } from '#app/mcp/validators/mcp-input'
 import Project from '#app/projects/models/project'
 import { findOwnedProject } from '#app/projects/services/owned-project'
@@ -33,6 +40,15 @@ import { assertOwner } from '#app/shared/authorization/assert-owner'
 import type User from '#app/users/models/user'
 
 const READ_ONLY = { readOnlyHint: true, openWorldHint: false } as const
+/** A tool that adds a record for the owner to review: it changes nothing already stored. */
+const PROPOSES = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: false,
+} as const
+
+const PROPOSALS_WAITING = `${AGENT_PROPOSALS_WAITING_MAX} proposals already wait for the owner's review in this project: the owner must review them before another one can be sent.`
 
 const text = (value: string) => ({ content: [{ type: 'text' as const, text: value }] })
 const json = (value: unknown) => text(JSON.stringify(value, null, 2))
@@ -45,11 +61,14 @@ export type McpServerOptions = {
   codeMaps: boolean
   /** The `design-records` flag: lists the requirements and decisions tools. */
   designRecords: boolean
+  /** The token's `write` ability: lists the tools that store a proposal for the owner. */
+  write: boolean
 }
 
 /**
  * The MCP server of one request, with the tools bound to the account the API token belongs to.
- * Every tool reads, and only what `user` owns.
+ * Every tool reads only what `user` owns; the one that writes (`propose_decision`, with `write`)
+ * stores a proposal the owner reviews, never applies it.
  */
 export function buildMcpServer(user: User, options: McpServerOptions): McpServer {
   const server = new McpServer({ name: MCP_SERVER_NAME, version: MCP_SERVER_VERSION })
@@ -187,6 +206,7 @@ export function buildMcpServer(user: User, options: McpServerOptions): McpServer
 
   if (options.codeMaps) registerCodeMapTools(server, user)
   if (options.designRecords) registerDesignTools(server, user)
+  if (options.designRecords && options.write) registerDesignProposalTool(server, user)
 
   return server
 }
@@ -273,15 +293,18 @@ function registerDesignTools(server: McpServer, user: User) {
         'Lists the architecture decisions of a project: the question, the options weighed with ' +
         'what speaks for and against each, the one chosen, its consequences, its status ' +
         '(accepted: taken, keep to it; proposed: still open) and the ids of the requirements ' +
-        '(list_requirements) and diagrams (list_diagrams) it is about. Read before a change to ' +
-        'the architecture, and stop and ask before going against an accepted one.',
+        '(list_requirements) and diagrams (list_diagrams) it is about, and the parts of those ' +
+        'diagrams it names (an element, a relation, a member or a step, by the diagram id and ' +
+        'the one line that names it there). Read before a change to ' +
+        'the architecture, and stop and ask before going against an accepted one. Decisions ' +
+        'sent with propose_decision are left out until the owner keeps them.',
       inputSchema: listDecisionsInput,
       annotations: READ_ONLY,
     },
     async ({ projectId, includeSuperseded }) => {
       const project = await findOwnedProject(projectId, user)
       if (!project) return failure('Project not found')
-      const query = withLinks(Decision.query().where('projectId', project.id))
+      const query = withLinks(reviewed(Decision.query().where('projectId', project.id)))
       if (!includeSuperseded) query.whereNot('status', DecisionStatus.Superseded)
       const decisions = await query.orderBy('status', 'asc').orderBy('id', 'asc')
       return json(
@@ -296,8 +319,52 @@ function registerDesignTools(server: McpServer, user: User) {
           supersededById: decision.supersededById,
           requirementIds: decision.requirements.map((requirement) => requirement.id),
           diagramIds: decision.diagrams.map((diagram) => diagram.id),
+          parts: serializeParts(decision),
         })),
       )
+    },
+  )
+}
+
+/**
+ * What a coding agent tells the owner when the recorded design does not hold: a decision stored
+ * `proposed` with `origin: agent`, whatever the agent sends, that counts for nothing until the
+ * owner keeps it on the project's Design tab. It never marks another decision superseded.
+ */
+function registerDesignProposalTool(server: McpServer, user: User) {
+  server.registerTool(
+    McpTool.ProposeDecision,
+    {
+      description:
+        'Tells the owner of a project that you had to deviate from its recorded design: use it ' +
+        'when a decision (list_decisions) or a diagram (list_diagrams) did not fit the code and ' +
+        'you went another way, or when you took a structuring decision nothing records. Give the ' +
+        'question, the options you weighed, the one you went with and what it costs; name in ' +
+        'supersedesId the decision that no longer holds, if any. It is stored as a proposal the ' +
+        'owner reviews: until the owner keeps it, it counts for nothing and no tool lists it.',
+      inputSchema: proposeDecisionInput,
+      annotations: PROPOSES,
+    },
+    async ({ projectId, ...fields }) => {
+      const project = await findOwnedProject(projectId, user)
+      if (!project) return failure('Project not found')
+      // Counted before the insert: two calls at once may pass the cap by one, which is harmless.
+      if ((await waitingProposals(project.id)) >= AGENT_PROPOSALS_WAITING_MAX)
+        return failure(PROPOSALS_WAITING)
+      const decision = await createDecision(project, {
+        ...fields,
+        status: DecisionStatus.Proposed,
+        origin: DecisionOrigin.Agent,
+      })
+      if (decision === 'full') return failure(DECISIONS_FULL.error.message)
+      if ('refused' in decision) return failure(decision.refused.error.message)
+      return json({
+        id: decision.id,
+        status: decision.status,
+        review:
+          "Waiting for the owner's review: it counts for nothing, and list_decisions leaves it " +
+          'out, until the owner keeps it.',
+      })
     },
   )
 }

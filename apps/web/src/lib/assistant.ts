@@ -265,6 +265,7 @@ export function useAskAssistant(conversationId: number, chat: AssistantChat) {
       page,
       context,
       pointed,
+      brief,
       file: attached,
       onReading,
       onHandoff,
@@ -284,6 +285,8 @@ export function useAskAssistant(conversationId: number, chat: AssistantChat) {
       context?: ReturnType<typeof sentContext>['context']
       /** The parts of views the message is about, whatever route it takes. */
       pointed?: PointedPart[]
+      /** With `auto`: the conversation is a design brief for this project. */
+      brief?: { projectId: number }
       /**
        * A file attached with this message; it follows a handed-over message. It is attached to
        * the conversation first, and `onReading` hears when that reading starts and ends.
@@ -356,6 +359,7 @@ export function useAskAssistant(conversationId: number, chat: AssistantChat) {
           ...(fileId === null || !withFile ? {} : { fileId }),
           ...(auto ? { auto: true, ...(page ? { page } : {}), context: context ?? [] } : {}),
           ...(auto && pointed?.length ? { pointed } : {}),
+          ...(auto && brief ? { brief } : {}),
         })
       const plain = await send(message, true)
       if (plain === null) return { messages: [], handoff: null, stopped: true }

@@ -83,6 +83,8 @@ export type DesignContext = {
     status: 'proposed' | 'accepted'
     chosen: string | null
     consequences: string | null
+    /** The parts of views it names, as the owner's `pointed` parts are named. */
+    parts?: readonly PointedPart[]
   }[]
 }
 
@@ -459,7 +461,11 @@ export function designBlock(design?: DesignContext | null): string {
       const chosen =
         item.chosen === null ? 'nothing chosen yet' : `chosen: ${breakTags(item.chosen)}`
       const consequences = item.consequences ? ` Consequences: ${breakTags(item.consequences)}` : ''
-      return `- [${item.status}] ${breakTags(item.title)} (${chosen}).${consequences}\n`
+      const parts = (item.parts ?? []).map(
+        (part) =>
+          `  <part view="${String(part.view)}" type="${part.type}">${breakTags(part.label)}</part>\n`,
+      )
+      return `- [${item.status}] ${breakTags(item.title)} (${chosen}).${consequences}\n${parts.join('')}`
     }),
     DESIGN_BLOCK_MAX_LENGTH - requirements.length,
   )
