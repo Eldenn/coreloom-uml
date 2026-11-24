@@ -20,7 +20,10 @@ export function fakeFetch(routes: Record<string, Route>) {
         ([key]) => key.endsWith('*') && url.startsWith(key.slice(0, -1)),
       )?.[1]
     if (!route) return new Response('not found', { status: 404 })
-    const body = typeof route.body === 'string' ? route.body : JSON.stringify(route.body)
+    const body =
+      typeof route.body === 'string' || route.body instanceof Uint8Array
+        ? route.body
+        : JSON.stringify(route.body)
     return new Response(body, { status: route.status ?? 200 })
   }) as typeof fetch
   return { fn, calls }

@@ -96,6 +96,8 @@ export type SearchReport = {
   added: string[]
   checked: number
   eligible: number
+  /** The skills whose files were copied for review this run (`skill-versions.ts`). */
+  copied: string[]
   warnings: string[]
 }
 
@@ -115,10 +117,18 @@ type Candidate = {
   known?: KnownSkill
 }
 
-class SkipError extends Error {}
+/** A skill that cannot be used as it is: recorded with a reason, the run goes on. */
+export class SkipError extends Error {}
 
 export async function searchSkills(options: SearchOptions): Promise<SearchResult> {
-  const report: SearchReport = { found: 0, added: [], checked: 0, eligible: 0, warnings: [] }
+  const report: SearchReport = {
+    found: 0,
+    added: [],
+    checked: 0,
+    eligible: 0,
+    copied: [],
+    warnings: [],
+  }
   const http = new Http(options.fetch, options.githubToken)
   const github = new GithubReader(http)
 
@@ -534,7 +544,7 @@ function uniqueSlug(slug: string, source: string, used: Set<string>): string {
 /** A request that takes longer fails instead of blocking the whole run. */
 const REQUEST_TIMEOUT_MS = 30_000
 
-class Http {
+export class Http {
   private readonly fetchFn: typeof fetch
   private readonly githubToken: string | undefined
 
@@ -572,6 +582,20 @@ class Http {
     return response.json()
   }
 
+  /** A file's bytes, refused past `maxBytes` (read whole: a raw GitHub file sends its length). */
+  async bytes(url: string, maxBytes: number): Promise<Uint8Array> {
+    const response = await this.fetchFn(url, {
+      headers: this.headers(url),
+      redirect: 'manual',
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    })
+    if (!response.ok)
+      throw new SkipError(`cannot read ${new URL(url).pathname} (${response.status})`)
+    const bytes = new Uint8Array(await response.arrayBuffer())
+    if (bytes.length > maxBytes) throw new SkipError(`${new URL(url).pathname} is too large`)
+    return bytes
+  }
+
   async text(url: string): Promise<string> {
     const response = await this.fetchFn(url, {
       headers: this.headers(url),
@@ -591,6 +615,7 @@ export function renderReport(report: SearchReport): string {
     `${report.added.length} new`,
     `${report.checked} checked on GitHub`,
     `${report.eligible} eligible`,
+    `${report.copied.length} copied for review`,
     ...report.warnings,
   ].join('; ')
 }

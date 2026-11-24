@@ -577,6 +577,24 @@ router
   .use([middleware.auth({ guards: ['web', 'api'] }), middleware.tokenAbility(), apiTokenThrottle])
 
 /*
+| The copies of skills' files the weekly search made: the admin reads each one (with its diff
+| against the previous approved copy) and approves or rejects it. Only an approved copy is ever
+| installed. Other accounts get a 404.
+*/
+const adminSkillVersionsController = () =>
+  import('#app/skills/controllers/admin-skill-versions-controller')
+router
+  .group(() => {
+    router.get('/', [adminSkillVersionsController, 'index']).as('index')
+    router.get('/:id', [adminSkillVersionsController, 'show']).as('show')
+    router.patch('/:id', [adminSkillVersionsController, 'update']).as('update')
+  })
+  .prefix('/admin/skill-versions')
+  .as('admin.skill_versions')
+  .where('id', /^[0-9]+$/)
+  .use([middleware.auth(), middleware.admin()])
+
+/*
 |--------------------------------------------------------------------------
 | Architectures and their diagrams (reference user-owned resource — copy this for new domains)
 |--------------------------------------------------------------------------
