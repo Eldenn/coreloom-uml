@@ -176,7 +176,7 @@ class FakeSandboxes extends RepositorySandbox {
     const root = join(this.folders.get(id) ?? '', 'repo')
     return {
       sandboxId: id,
-      run: (command, envs) => {
+      run: (command, envs, _timeoutMs, onOutput) => {
         if (command === CLONE) this.clones.push(envs)
         this.events.push(EVENTS.get(command) ?? 'tool')
         if (command !== CLONE) this.afterClone.push(envs)
@@ -195,11 +195,14 @@ class FakeSandboxes extends RepositorySandbox {
             '/bin/bash',
             ['-c', command],
             { env: { PATH: process.env.PATH ?? '', ...local, REPO_ROOT: root } },
-            (error, stdout) =>
+            (error, stdout) => {
+              // As the sandbox would while the command prints.
+              onOutput?.(stdout)
               resolve({
                 exitCode: error ? (typeof error.code === 'number' ? error.code : 1) : 0,
                 output: stdout,
-              }),
+              })
+            },
           )
         })
       },
@@ -601,6 +604,30 @@ test.group('Assistant repository', (group) => {
     assert.match(next.body().cwd, /repo\/src$/)
     assert.match((await run('mkdir gone && cd gone && rmdir ../gone')).body().cwd, /gone$/)
     assert.include((await run('ls')).body().output, 'src')
+    // Asked as a stream (the web), it answers what the command prints as it comes, then its
+    // exit code and folder.
+    const live = await run('echo TERMINAL-LIVE; cd src; exit 3').header(
+      'accept',
+      'text/event-stream',
+    )
+    live.assertStatus(200)
+    assert.include(live.header('content-type'), 'text/event-stream')
+    const frames = live
+      .text()
+      .split('\n\n')
+      .filter((frame) => frame.startsWith('data: '))
+      .map((frame) => JSON.parse(frame.slice(6)) as Record<string, unknown>)
+    assert.equal(
+      frames
+        .slice(0, -1)
+        .map((frame) => frame.output)
+        .join(''),
+      'TERMINAL-LIVE\n',
+    )
+    assert.equal(frames.at(-1)?.exitCode, 3)
+    assert.match(String(frames.at(-1)?.cwd), /repo\/src$/)
+    // The lock was freed when the stream ended.
+    ;(await run('true')).assertStatus(200)
     const other = await setup('repo-terminal-other@example.com')
     ;(await run('ls', other.user)).assertStatus(404)
     ;(await run('')).assertStatus(422)

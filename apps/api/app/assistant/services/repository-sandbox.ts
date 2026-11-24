@@ -99,14 +99,20 @@ export default class RepositorySandbox {
     }
   }
 
-  /** The paused (or running) sandbox again, or null when it is gone. */
-  async resume(sandboxId: string): Promise<OpenRepositorySandbox | null> {
+  /**
+   * The paused (or running) sandbox again, or null when it is gone. Awake `timeoutMs` at least:
+   * as long as what it is resumed for may take.
+   */
+  async resume(
+    sandboxId: string,
+    timeoutMs: number = REPOSITORY_SANDBOX.timeoutMs,
+  ): Promise<OpenRepositorySandbox | null> {
     const config = researchConfig()
     if (!config) return null
     try {
       const sandbox = await Sandbox.connect(sandboxId, {
         ...connection(config),
-        timeoutMs: REPOSITORY_SANDBOX.timeoutMs,
+        timeoutMs,
         requestTimeoutMs: REPOSITORY_SANDBOX.startTimeoutMs,
       })
       return handle(sandbox)
