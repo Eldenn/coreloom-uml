@@ -148,13 +148,26 @@ describe('draftOf', () => {
           { type: 'text', text: 'Done' },
         ]),
       ),
-    ).toEqual({ text: 'Done', reading: false })
+    ).toEqual({ text: 'Done', reading: false, activity: [] })
   })
 
   it('says a tool is running', () => {
     expect(
       draftOf(reply([{ type: 'step-start' }, { type: 'text', text: 'Let me look' }, tool])),
-    ).toEqual({ text: 'Let me look', reading: true })
+    ).toEqual({ text: 'Let me look', reading: true, activity: [] })
+  })
+
+  it('lists the tool calls of the whole reply, as the API tells them', () => {
+    const ran = { id: 'tool-1', tool: 'run_repository_command', status: 'done', detail: 'ls' }
+    const draft = draftOf(
+      reply([
+        { type: 'step-start' },
+        { type: 'data-activity', id: 'tool-1', data: ran },
+        { type: 'step-start' },
+        { type: 'text', text: 'Done' },
+      ]),
+    )
+    expect(draft?.activity).toEqual([ran])
   })
 
   it('has no draft before the reply starts', () => {

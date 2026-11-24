@@ -4,6 +4,7 @@ import {
   type AssistantAction,
   NOT_FOUND_SENTENCE,
   TARGET_NOT_FOUND,
+  type ToolActivity,
 } from '#app/assistant/actions/action'
 import { AGENT_CONFIG_ACTIONS } from '#app/assistant/actions/agent-config-actions'
 import { ARCHITECTURE_ACTIONS } from '#app/assistant/actions/architecture-actions'
@@ -82,7 +83,7 @@ export async function actionTools(
         description,
         inputSchema,
         kind: action.kind,
-        run: (input) => action.read(input, user, context),
+        run: (input) => followed(name, context, (shown) => action.read(input, user, shown)),
       }
     }
     return {
@@ -90,24 +91,55 @@ export async function actionTools(
       description,
       inputSchema,
       kind: action.kind,
-      run: async (input) => {
-        const problem = action.problem?.(input)
-        if (problem) return problem
-        const subject = await action.subject(input, user)
-        if (subject === TARGET_NOT_FOUND) return NOT_FOUND_SENTENCE
-        const current = await action.currentProblem(input, user)
-        if (current) return current
-        proposals.push({
-          name,
-          input: action.input.parse(input) as Record<string, unknown>,
-          subject,
-          status: ActionStatus.Pending,
-          result: null,
-          failure: null,
-          ...(await currentState(action, input, user)),
-        })
-        return null
-      },
+      run: (input) =>
+        followed(name, context, async () => {
+          const problem = action.problem?.(input)
+          if (problem) return problem
+          const subject = await action.subject(input, user)
+          if (subject === TARGET_NOT_FOUND) return NOT_FOUND_SENTENCE
+          const current = await action.currentProblem(input, user)
+          if (current) return current
+          proposals.push({
+            name,
+            input: action.input.parse(input) as Record<string, unknown>,
+            subject,
+            status: ActionStatus.Pending,
+            result: null,
+            failure: null,
+            ...(await currentState(action, input, user)),
+          })
+          return null
+        }),
     }
   })
+}
+
+let calls = 0
+
+/**
+ * Runs one tool call and tells the owner's screen it started and ended (its name only; a
+ * repository tool adds what it asks of the sandbox through `show`). Nothing when no reply is
+ * streamed.
+ */
+async function followed<T>(
+  tool: string,
+  context: ActionContext,
+  run: (context: ActionContext) => Promise<T>,
+): Promise<T> {
+  const { activity } = context
+  if (!activity) return run(context)
+  calls += 1
+  let current: ToolActivity = { id: `tool-${String(calls)}`, tool, status: 'running' }
+  activity(current)
+  try {
+    return await run({
+      ...context,
+      show: (more) => {
+        current = { ...current, ...more }
+        activity(current)
+      },
+    })
+  } finally {
+    activity({ ...current, status: 'done' })
+  }
 }

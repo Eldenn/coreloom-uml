@@ -62,7 +62,8 @@ export const REPOSITORY_ACTIONS: readonly AssistantAction[] = [
     input: z.object({ projectId: idInput(), path: pathInput().default('') }),
     kind: AssistantToolKind.Read,
     available,
-    async read({ projectId, path }, _user, { repository }) {
+    async read({ projectId, path }, _user, { repository, show }) {
+      show?.({ detail: path || '/' })
       const opened = await repository.open(projectId)
       if (typeof opened === 'string') return opened
       const listed = await opened.sandbox.run(LIST, {
@@ -91,7 +92,8 @@ export const REPOSITORY_ACTIONS: readonly AssistantAction[] = [
     }),
     kind: AssistantToolKind.Read,
     available,
-    async read({ projectId, path, startLine, lines: count }, _user, { repository }) {
+    async read({ projectId, path, startLine, lines: count }, _user, { repository, show }) {
+      show?.({ detail: `${path}:${String(startLine)}` })
       const opened = await repository.open(projectId)
       if (typeof opened === 'string') return opened
       const endLine = startLine + (count ?? REPOSITORY_TOOL_LIMITS.readLines) - 1
@@ -125,7 +127,8 @@ export const REPOSITORY_ACTIONS: readonly AssistantAction[] = [
     }),
     kind: AssistantToolKind.Read,
     available,
-    async read({ projectId, query, path }, _user, { repository }) {
+    async read({ projectId, query, path }, _user, { repository, show }) {
+      show?.({ detail: path ? `${query} (${path})` : query })
       const opened = await repository.open(projectId)
       if (typeof opened === 'string') return opened
       const found = await opened.sandbox.run(SEARCH, {
@@ -146,7 +149,8 @@ export const REPOSITORY_ACTIONS: readonly AssistantAction[] = [
     input: z.object({ projectId: idInput(), path: pathInput().default('') }),
     kind: AssistantToolKind.Read,
     available,
-    async read({ projectId, path }, _user, { repository }) {
+    async read({ projectId, path }, _user, { repository, show }) {
+      show?.({ detail: path || '/' })
       const opened = await repository.open(projectId)
       if (typeof opened === 'string') return opened
       const logged = await opened.sandbox.run(GIT_LOG, {
@@ -167,7 +171,8 @@ export const REPOSITORY_ACTIONS: readonly AssistantAction[] = [
     }),
     kind: AssistantToolKind.Read,
     available,
-    async read({ projectId, commit, path }, _user, { repository }) {
+    async read({ projectId, commit, path }, _user, { repository, show }) {
+      show?.({ detail: path ? `${commit} ${path}` : commit })
       const opened = await repository.open(projectId)
       if (typeof opened === 'string') return opened
       const shown = await opened.sandbox.run(GIT_SHOW, {
@@ -190,7 +195,8 @@ export const REPOSITORY_ACTIONS: readonly AssistantAction[] = [
     }),
     kind: AssistantToolKind.Read,
     available,
-    async read({ projectId, path, startLine, lines: count }, _user, { repository }) {
+    async read({ projectId, path, startLine, lines: count }, _user, { repository, show }) {
+      show?.({ detail: `${path}:${String(startLine)}` })
       const opened = await repository.open(projectId)
       if (typeof opened === 'string') return opened
       const blamed = await opened.sandbox.run(GIT_BLAME, {
@@ -213,22 +219,32 @@ export const REPOSITORY_ACTIONS: readonly AssistantAction[] = [
     }),
     kind: AssistantToolKind.Read,
     available,
-    async read({ projectId, command }, _user, { repository }) {
+    async read({ projectId, command }, _user, { repository, show }) {
+      show?.({ detail: command })
       const opened = await repository.open(projectId)
       if (typeof opened === 'string') return opened
+      // What the command prints goes to the owner's screen as it comes, a few times a second.
+      let printed = ''
+      let shownAt = 0
       const ran = await opened.sandbox.run(
         SHELL,
         { REPO_ROOT: REPOSITORY_SANDBOX.root, SHELL_COMMAND: command },
         (REPOSITORY_SANDBOX.shellSeconds + 5) * 1000,
+        show &&
+          ((text) => {
+            printed = (printed + text).slice(0, REPOSITORY_SANDBOX.outputMaxBytes)
+            if (Date.now() - shownAt < REPOSITORY_SANDBOX.liveOutputMs) return
+            shownAt = Date.now()
+            show({ output: printed })
+          }),
       )
       if (ran.exitCode === REPOSITORY_SANDBOX.goneExitCode) {
         return REPOSITORY_SENTENCES.unavailable
       }
       repository.commands += 1
-      return {
-        exitCode: ran.exitCode,
-        output: ran.output.slice(0, REPOSITORY_SANDBOX.outputMaxBytes),
-      }
+      const output = ran.output.slice(0, REPOSITORY_SANDBOX.outputMaxBytes)
+      show?.({ output, exitCode: ran.exitCode })
+      return { exitCode: ran.exitCode, output }
     },
   }),
 ]

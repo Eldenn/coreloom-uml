@@ -50,6 +50,8 @@ export const REPOSITORY_SANDBOX = {
   fullCloneTimeoutMs: 25_000,
   /** One command of the model (`SHELL`): killed in the sandbox after this many seconds. */
   shellSeconds: 30,
+  /** The least time between two pieces of a running command's output sent to the screen. */
+  liveOutputMs: 250,
   /** A paused sandbox unused this long is killed by `PruneAssistantSandboxesJob`. */
   maxIdleDays: 7,
   /** Most of one command's output read back, in bytes (capped in the sandbox, then here). */

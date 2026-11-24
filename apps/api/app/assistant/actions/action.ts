@@ -39,8 +39,27 @@ export type ActionApplied =
  * Where a read runs: the conversation of the message, the reader of its files' texts (each read
  * from Drive once per message) and its repository sandbox.
  */
+/**
+ * One tool call as the owner follows it while the reply is written (a `data-activity` part of
+ * the stream, the same `id` replacing the one before): which tool, whether it still runs and,
+ * for a repository tool only, what it asked of the sandbox (`detail`: a path, a query, a
+ * command) and what a command printed. Shown live, never stored or logged.
+ */
+export type ToolActivity = {
+  id: string
+  tool: string
+  status: 'running' | 'done'
+  detail?: string
+  output?: string
+  exitCode?: number
+}
+
 export type ActionContext = {
   conversationId: number
+  /** Sends a tool call's activity to the owner's screen; absent when nothing is streamed. */
+  activity?: (activity: ToolActivity) => void
+  /** Adds to the activity of the call that runs (set by `actionTools` for each call). */
+  show?: (more: Pick<ToolActivity, 'detail' | 'output' | 'exitCode'>) => void
   read(file: AssistantFile): Promise<string>
   /** The conversation's repository sandbox, opened by the first repository tool called. */
   repository: RepositorySession

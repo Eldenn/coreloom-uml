@@ -12,6 +12,8 @@ export type RepositoryRun = (
   command: string,
   envs: Record<string, string>,
   timeoutMs?: number,
+  /** Called with each piece of the output as the command prints it. */
+  onOutput?: (text: string) => void,
 ) => Promise<{ exitCode: number; output: string }>
 
 export type OpenRepositorySandbox = {
@@ -129,16 +131,20 @@ function connection(config: ResearchConfig) {
 function handle(sandbox: Sandbox): OpenRepositorySandbox {
   return {
     sandboxId: sandbox.sandboxId,
-    async run(command, envs, timeoutMs = REPOSITORY_SANDBOX.commandTimeoutMs) {
+    async run(command, envs, timeoutMs = REPOSITORY_SANDBOX.commandTimeoutMs, onOutput) {
       try {
         const result = await sandbox.commands.run(command, {
           envs,
           timeoutMs,
           requestTimeoutMs: timeoutMs,
+          ...(onOutput ? { onStdout: onOutput } : {}),
         })
         return { exitCode: result.exitCode, output: result.stdout }
       } catch (error) {
-        if (error instanceof CommandExitError) return { exitCode: error.exitCode, output: '' }
+        // What a failing command printed is still its output (a command of the model, mostly).
+        if (error instanceof CommandExitError) {
+          return { exitCode: error.exitCode, output: error.stdout }
+        }
         if (error instanceof TimeoutError) return { exitCode: 124, output: '' }
         return { exitCode: REPOSITORY_SANDBOX.goneExitCode, output: '' }
       }

@@ -9,10 +9,11 @@ import redis from '@adonisjs/redis/services/main'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import type { LanguageModel } from '@coreloom-uml/llm'
 import { NOTHING_TO_READ } from '@coreloom-uml/llm'
-import { answeringModel, toolCallingModel } from '@coreloom-uml/llm/testing'
+import { answeringModel, streaming, toolCallingModel } from '@coreloom-uml/llm/testing'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import Architecture from '#app/architectures/models/architecture'
+import type { ToolActivity } from '#app/assistant/actions/action'
 import AssistantConversation from '#app/assistant/models/assistant-conversation'
 import AssistantMessage from '#app/assistant/models/assistant-message'
 import AssistantSandbox from '#app/assistant/models/assistant-sandbox'
@@ -466,6 +467,71 @@ test.group('Assistant repository', (group) => {
     refused.assertStatus(200)
     assert.deepEqual(sandboxes.events, ['clone', 'isolate'])
     assert.isNull(await AssistantSandbox.findBy('conversationId', other.conversation.id))
+  })
+
+  test('a streamed reply shows what each tool asks of the sandbox, and what a command printed', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('repo-live@example.com')
+    useModel(
+      streaming(
+        toolCallingModel([
+          {
+            calls: [
+              {
+                tool: 'read_repository_file',
+                input: { projectId: f.project.id, path: 'src/orders.ts' },
+              },
+            ],
+          },
+          {
+            calls: [
+              {
+                tool: 'run_repository_command',
+                input: { projectId: f.project.id, command: 'echo LIVE-OUTPUT; exit 3' },
+              },
+            ],
+          },
+          { text: 'Done.' },
+        ]),
+      ),
+    )
+    const response = await client
+      .post(`${f.path}/messages`)
+      .headers({ ...json, accept: 'text/event-stream' })
+      .loginAs(f.user)
+      .json({ provider, apiKey: KEY, message: 'Look.', locale: 'en', auto: true })
+    response.assertStatus(200)
+    const activity = response
+      .text()
+      .split('\n\n')
+      .map((frame) => frame.replace(/^data: /, ''))
+      .filter((data) => data.startsWith('{'))
+      .map((data) => JSON.parse(data) as { type: string; id?: string; data?: ToolActivity })
+      .filter((chunk) => chunk.type === 'data-activity')
+      .map((chunk) => chunk.data as ToolActivity)
+    // Each call starts, says what it asks, and ends under the same id.
+    const [read, command] = [...new Set(activity.map((step) => step.id))].map((id) =>
+      activity.filter((step) => step.id === id),
+    )
+    assert.deepEqual(read?.at(0), {
+      id: read?.at(0)?.id ?? '',
+      tool: 'read_repository_file',
+      status: 'running',
+    })
+    assert.deepInclude(read?.at(-1), { status: 'done', detail: 'src/orders.ts:1' })
+    // A file's text is never shown: only a command's output is.
+    assert.isTrue(read?.every((step) => step.output === undefined))
+    assert.deepInclude(command?.at(-1), {
+      tool: 'run_repository_command',
+      status: 'done',
+      detail: 'echo LIVE-OUTPUT; exit 3',
+      output: 'LIVE-OUTPUT\n',
+      exitCode: 3,
+    })
+    // Shown live only: nothing of it is stored.
+    assert.notInclude(await dumpDatabase(), 'LIVE-OUTPUT')
   })
 
   test('refuses paths out of the repository and another account’s project', async ({

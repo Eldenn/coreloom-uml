@@ -4,6 +4,7 @@ import { FileIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 
 import { AssistantActionCard } from '@/assistant/assistant-action-card'
+import { AssistantActivity } from '@/assistant/assistant-activity'
 import { AssistantChangeCard } from '@/assistant/assistant-change-card'
 import { MessageProposals } from '@/assistant/assistant-proposals'
 import { Button } from '@/components/ui/button'
@@ -57,7 +58,7 @@ export function MessageList({
   const end = React.useRef<HTMLDivElement>(null)
   React.useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' })
-  }, [messages.length, waiting, asking, draft?.text, draft?.reading])
+  }, [messages.length, waiting, asking, draft?.text, draft?.reading, draft?.activity])
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
       {loaded && messages.length === 0 && asking === null && (
@@ -79,11 +80,7 @@ export function MessageList({
       ))}
       {asking !== null && <UserBubble text={asking} fileName={askingFile ?? null} />}
       {progress}
-      {draft !== null && draft.text !== '' && (
-        <div className="mr-6 flex flex-col gap-2">
-          <Markdown>{draft.text}</Markdown>
-        </div>
-      )}
+      {draft !== null && <Draft draft={draft} />}
       {draft?.reading ? (
         <TypingIndicator name={t.title} label={t.reading} />
       ) : (
@@ -91,6 +88,20 @@ export function MessageList({
       )}
       <div ref={end} />
     </div>
+  )
+}
+
+/** The reply being written: what the assistant is doing, then its text so far. */
+function Draft({ draft }: { draft: ChatDraft }) {
+  return (
+    <>
+      <AssistantActivity activity={draft.activity} />
+      {draft.text !== '' && (
+        <div className="mr-6 flex flex-col gap-2">
+          <Markdown>{draft.text}</Markdown>
+        </div>
+      )}
+    </>
   )
 }
 
