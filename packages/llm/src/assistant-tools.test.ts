@@ -245,6 +245,16 @@ describe('runAssistantTools', () => {
     ])
   })
 
+  it('a step that starts late may only answer, and the loop is unfinished', async () => {
+    const { tools } = fakeTools()
+    const model = toolCallingModel([call('list_projects', {}), { text: 'So far: one project.' }])
+
+    const result = await runAssistantTools(model, { ...base, tools }, { answerAfterMs: 0 })
+
+    expect(model.doGenerateCalls.map((item) => item.toolChoice?.type)).toEqual(['auto', 'none'])
+    expect(result).toMatchObject({ reply: 'So far: one project.', unfinished: true })
+  })
+
   it('says the loop is unfinished when it used every step, finished otherwise', async () => {
     const { tools } = fakeTools()
     const reading = toolCallingModel([
