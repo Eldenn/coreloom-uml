@@ -25,8 +25,14 @@ import { cut, unlessAborted } from './research.ts'
 
 /** Calls to the model in one message. */
 export const ASSISTANT_TOOLS_MAX_STEPS = 12
-/** The whole loop: well under what the API's proxy allows a request. */
-export const ASSISTANT_TOOLS_TIMEOUT_MS = 60_000
+/** The whole loop: under what the API's proxy allows a request (100 seconds). */
+export const ASSISTANT_TOOLS_TIMEOUT_MS = 80_000
+/**
+ * Share of the time after which a step may only answer. A model that takes seconds a step (one
+ * launch of a binary each) then ends on what it read, unfinished, instead of a timeout that
+ * loses it all.
+ */
+const ANSWER_AFTER_SHARE = 0.5
 /** Write calls one message can propose; past this, the model is told to stop. */
 export const ASSISTANT_PROPOSALS_MAX = 10
 /** Longest read result the model is shown. */
@@ -181,6 +187,8 @@ export async function runAssistantTools(
   input: AssistantToolsInput,
   options: {
     timeoutMs?: number
+    /** Time after which a step may only answer; half of `timeoutMs` by default. */
+    answerAfterMs?: number
     maxSteps?: number
     maxInputTokens?: number
   } & AssistantStreamOptions = {},
@@ -245,6 +253,9 @@ export async function runAssistantTools(
   )
 
   const maxSteps = options.maxSteps ?? ASSISTANT_TOOLS_MAX_STEPS
+  const timeoutMs = options.timeoutMs ?? ASSISTANT_TOOLS_TIMEOUT_MS
+  const answerAt = performance.now() + (options.answerAfterMs ?? timeoutMs * ANSWER_AFTER_SHARE)
+  let late = false
   let reply = ''
   let unfinished = false
   try {
@@ -256,18 +267,21 @@ export async function runAssistantTools(
         tools,
         stopWhen: [stepCountIs(maxSteps), () => route !== null],
         // The last step may only answer: a model that keeps reading still ends on a reply.
-        prepareStep: ({ stepNumber }) =>
-          stepNumber >= maxSteps - 1 ? { toolChoice: 'none' } : undefined,
+        // So does a step that starts late: the next request goes on from what was read.
+        prepareStep: ({ stepNumber }) => {
+          if (stepNumber > 0 && performance.now() >= answerAt) late = true
+          return late || stepNumber >= maxSteps - 1 ? { toolChoice: 'none' } : undefined
+        },
         temperature: ASSISTANT_TOOLS_TEMPERATURE,
         maxOutputTokens: ASSISTANT_MAX_OUTPUT_TOKENS,
-        timeout: options.timeoutMs ?? ASSISTANT_TOOLS_TIMEOUT_MS,
+        timeout: timeoutMs,
         maxRetries: 0,
         telemetry: { isEnabled: false },
       },
       options,
     )
     reply = result.text.trim()
-    unfinished = result.stepCount >= maxSteps
+    unfinished = late || result.stepCount >= maxSteps
   } catch (error) {
     const reason = failureReason(error)
     // Out of time with proposals in hand: they are worth more than a failure.
