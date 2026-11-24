@@ -103,6 +103,37 @@ export class RepositorySession {
     return this.#track(this.#open(projectId))
   }
 
+  /**
+   * The conversation's sandbox as the assistant left it, for the owner's own terminal: never a
+   * new clone, so no token is made. 'none' when the conversation has none, 'busy' while a
+   * message or another command uses it, 'gone' when it cannot be resumed and cut off.
+   */
+  async resume(): Promise<OpenRepository | 'none' | 'busy' | 'gone'> {
+    const row = await AssistantSandbox.findBy('conversationId', this.conversationId)
+    if (!row) return 'none'
+    const taken = await redis.set(
+      lockKey(this.conversationId),
+      '1',
+      'EX',
+      REPOSITORY_SANDBOX.lockSeconds,
+      'NX',
+    )
+    if (taken !== 'OK') return 'busy'
+    this.#locked = true
+    // A private repository is read again only while the owner keeps a grant on it.
+    if (row.private && (await findGrant(this.user.id, row.repositoryUrl)) === null) return 'gone'
+    const sandboxes = await app.container.make(RepositorySandbox)
+    const resumed = await sandboxes.resume(row.sandboxId)
+    if (!resumed || !(await resumed.isolate())) return 'gone'
+    this.#opened = {
+      sandbox: resumed,
+      repositoryUrl: row.repositoryUrl,
+      commit: row.commitSha,
+      row,
+    }
+    return this.#opened
+  }
+
   async #open(projectId: number): Promise<OpenRepository | string> {
     const repository = await projectRepository(projectId, this.user)
     if (!repository) return REPOSITORY_SENTENCES.noRepository

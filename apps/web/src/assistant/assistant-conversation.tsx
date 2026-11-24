@@ -12,6 +12,7 @@ import { ResearchSteps } from '@/agent-configs/import-review'
 import { CodeSwitch } from '@/assistant/assistant-code'
 import { ContextChips } from '@/assistant/assistant-context-chips'
 import { MessageList } from '@/assistant/assistant-messages'
+import { AssistantTerminal } from '@/assistant/assistant-terminal'
 import { useChangeActions } from '@/assistant/use-change-actions'
 import type { Subject } from '@/assistant/use-subject'
 import { useWebRequest } from '@/assistant/use-web-request'
@@ -219,6 +220,7 @@ export function Conversation({
           })
         }}
       />
+      <AssistantTerminal conversationId={conversationId} />
       <Composer
         provider={provider}
         subject={subject}

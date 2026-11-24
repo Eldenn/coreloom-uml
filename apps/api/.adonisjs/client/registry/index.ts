@@ -744,6 +744,12 @@ const routes = {
     tokens: [{"old":"/assistant/conversations/:conversationId/files","type":0,"val":"assistant","end":""},{"old":"/assistant/conversations/:conversationId/files","type":0,"val":"conversations","end":""},{"old":"/assistant/conversations/:conversationId/files","type":1,"val":"conversationId","end":""},{"old":"/assistant/conversations/:conversationId/files","type":0,"val":"files","end":""}],
     types: placeholder as Registry['assistant.files.store']['types'],
   },
+  'assistant.sandbox.commands.run': {
+    methods: ["POST"],
+    pattern: '/assistant/conversations/:conversationId/sandbox/commands',
+    tokens: [{"old":"/assistant/conversations/:conversationId/sandbox/commands","type":0,"val":"assistant","end":""},{"old":"/assistant/conversations/:conversationId/sandbox/commands","type":0,"val":"conversations","end":""},{"old":"/assistant/conversations/:conversationId/sandbox/commands","type":1,"val":"conversationId","end":""},{"old":"/assistant/conversations/:conversationId/sandbox/commands","type":0,"val":"sandbox","end":""},{"old":"/assistant/conversations/:conversationId/sandbox/commands","type":0,"val":"commands","end":""}],
+    types: placeholder as Registry['assistant.sandbox.commands.run']['types'],
+  },
   'assistant.messages.store': {
     methods: ["POST"],
     pattern: '/assistant/conversations/:conversationId/messages',
