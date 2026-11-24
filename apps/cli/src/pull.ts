@@ -123,7 +123,7 @@ function printOutcome(io: Io, generation: Generation) {
       for (const line of item.body.split('\n')) io.log(`    ${line}`)
     }
   }
-  // Links only, and only https ones: a skill is never installed nor run from here.
+  // Links only, and only https ones: `pull` never installs a skill, `skills add` does.
   const skills = generation.skills.compatible.filter(
     (skill) =>
       typeof skill.name === 'string' &&
@@ -131,8 +131,14 @@ function printOutcome(io: Io, generation: Generation) {
       skill.url.startsWith('https://'),
   )
   if (skills.length > 0) {
-    io.log('\nCompatible skills (third-party resources, not checked by Coreloom UML):')
-    for (const skill of skills) io.log(`- ${skill.name}: ${skill.url}`)
+    io.log('\nCompatible skills (third-party resources):')
+    for (const skill of skills) {
+      const id = typeof skill.id === 'string' && skill.id !== skill.name ? ` (${skill.id})` : ''
+      io.log(`- ${skill.name}${id}: ${skill.url}`)
+    }
+    io.log(
+      'Install one the admin read and approved with "coreloom-uml skills add <id> --target <tools>".',
+    )
   }
 }
 

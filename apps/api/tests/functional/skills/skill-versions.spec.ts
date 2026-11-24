@@ -4,8 +4,13 @@ import { test } from '@japa/runner'
 import { SkillStatus } from '#app/skills/constants/skill'
 import CatalogSkill from '#app/skills/models/catalog-skill'
 import SkillVersion from '#app/skills/models/skill-version'
-import { captureSkillVersions, readSkillVersionFiles } from '#app/skills/services/skill-versions'
+import {
+  captureSkillVersions,
+  installName,
+  readSkillVersionFiles,
+} from '#app/skills/services/skill-versions'
 import type { SkillVersionDetailOutput } from '#app/skills/validators/skill-versions-output'
+import type { SkillCopyOutput } from '#app/skills/validators/skills-output'
 import User from '#app/users/models/user'
 import env from '#start/env'
 import { CLEAN_SCAN, withEmptySkillsCatalog } from '#tests/helpers/skills'
@@ -249,5 +254,60 @@ test.group('Skill versions', (group) => {
       diff.files.find((f) => f.path === 'scripts/run.sh')?.content ?? '',
       'echo changed',
     )
+  })
+
+  test('serves any account the newest approved copy only, to install', async ({
+    client,
+    assert,
+  }) => {
+    const skill = await foundSkill()
+    const user = await User.create({
+      email: 'installs@example.com',
+      password: 'a-very-strong-passphrase',
+    })
+    const url = '/skills/browser-tests/copy'
+    ;(await client.get(url).headers(json)).assertStatus(401)
+    ;(await client.get('/skills/unknown/copy').headers(json).loginAs(user)).assertStatus(404)
+
+    await captureSkillVersions({ fetch: fakeFetch(repository()).fn })
+    const first = await SkillVersion.query().firstOrFail()
+    // Pending: nothing to install yet.
+    ;(await client.get(url).headers(json).loginAs(user)).assertStatus(404)
+
+    await first.merge({ status: 'approved' }).save()
+    await skill
+      .merge({ url: `https://github.com/acme/skills/tree/${NEW_SHA}/skills/browser-tests` })
+      .save()
+    await captureSkillVersions({ fetch: fakeFetch(repository(NEW_SHA, NEW_FOLDER)).fn })
+
+    const response = await client.get(url).headers(json).loginAs(user)
+    response.assertStatus(200)
+    const { copy } = response.body() as { copy: SkillCopyOutput }
+    // The newer copy is still pending: the approved one is served.
+    assert.equal(copy.commit, SHA)
+    assert.equal(copy.name, 'browser-tests')
+    assert.equal(copy.license, 'MIT')
+    assert.deepEqual(
+      copy.files.map((file) => [file.path, file.executable]),
+      [
+        ['SKILL.md', false],
+        ['scripts/run.sh', true],
+        ['LICENSE', false],
+      ],
+    )
+
+    // A blocked skill is not served any more.
+    await skill.merge({ status: SkillStatus.Blocked }).save()
+    ;(await client.get(url).headers(json).loginAs(user)).assertStatus(404)
+  })
+
+  test('installs a copy under the name SKILL.md declares, else the slug', ({ assert }) => {
+    const md = (front: string) => [{ path: 'SKILL.md', executable: false, content: front }]
+    assert.equal(installName(md('---\nname: tidy-tests\n---\n'), 'slug'), 'tidy-tests')
+    assert.equal(installName(md('---\nname: "tidy-tests"\n---\n'), 'slug'), 'tidy-tests')
+    assert.equal(installName(md('---\nname: ../etc\n---\n'), 'slug'), 'slug')
+    assert.equal(installName(md('---\nname: Tidy Tests\n---\n'), 'slug'), 'slug')
+    assert.equal(installName(md('no front matter\nname: other\n'), 'slug'), 'slug')
+    assert.equal(installName([], 'slug'), 'slug')
   })
 })

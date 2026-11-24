@@ -1,7 +1,7 @@
 import { promisify } from 'node:util'
 import { gunzip, gzip } from 'node:zlib'
 import drive from '@adonisjs/drive/services/main'
-import { SkillOrigin } from '@coreloom-uml/catalog'
+import { SKILL_NAME, SkillOrigin } from '@coreloom-uml/catalog'
 import { DateTime } from 'luxon'
 import { SkillStatus } from '#app/skills/constants/skill'
 import {
@@ -222,6 +222,27 @@ export function previousApproved(version: SkillVersion): Promise<SkillVersion | 
     .where('id', '<', version.id)
     .orderBy('id', 'desc')
     .first()
+}
+
+/** The newest approved copy of a skill: the only one ever installed. */
+export function newestApproved(skillId: number): Promise<SkillVersion | null> {
+  return SkillVersion.query()
+    .where('skillId', skillId)
+    .where('status', SkillVersionStatus.Approved)
+    .orderBy('id', 'desc')
+    .first()
+}
+
+/**
+ * The name its folder takes once installed: the `name` SKILL.md declares, which the tools want
+ * equal to the folder's, else the skill's slug when that `name` is missing or not a valid one.
+ */
+export function installName(files: SkillBundleFile[], slug: string): string {
+  const skillMd = files.find((file) => file.path === 'SKILL.md')?.content ?? ''
+  const name = /^---\n[\s\S]*?^name:[ \t]*["']?([^"'\n]*?)["']?[ \t]*$[\s\S]*?^---$/m.exec(
+    skillMd,
+  )?.[1]
+  return name && SKILL_NAME.test(name) ? name : slug
 }
 
 /** The admin's decision on a copy. */

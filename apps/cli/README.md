@@ -128,8 +128,8 @@ Every path the server sends must be relative, normalized and inside the current 
 symbolic link on the way; anything else is refused before any write.
 
 The recommendations of the generation (settings to change by hand, for instance) and the
-compatible skills are printed at the end. Skills are third-party resources, not checked by
-Coreloom UML: links only, never a command to run.
+compatible skills are printed at the end, links only: `pull` never installs a skill (see
+`skills add`).
 
 ### `status [--api-url <url>]`
 
@@ -284,6 +284,25 @@ jobs:
           CORELOOM_UML_API_KEY: ${{ secrets.CORELOOM_UML_API_KEY }}
 ```
 
+### `skills add <id>... [--api-url <url>] [--target <tools>] [--dry-run] [--yes]`
+
+Writes the approved copy of each skill (its id is on the Skills page, and `pull` prints it) into
+the skills folder of each tool given (comma-separated, `generic` by default), as
+`<folder>/<name>/`:
+
+| Tool                                      | Folder           |
+| ----------------------------------------- | ---------------- |
+| `codex`, `cursor`, `gemini-cli`, `generic` | `.agents/skills` |
+| `claude-code`                             | `.claude/skills` |
+| `github-copilot`                          | `.github/skills` |
+
+Only a copy the instance's admin read and approved is served: never a newer copy still waiting,
+never the skill's repository. An agent follows a skill as instructions and may run its scripts,
+which keep their execute bits. The folder is the skill's own: files the copy no longer holds are
+deleted, and replacing or deleting a file there is asked first (`--yes` does without asking;
+without a terminal it stops). Every path is checked like `pull`'s, and a symbolic link in the
+folder is refused.
+
 ### `config set-key`
 
 Reads an API key (hidden in a terminal, or from standard input) and stores it in
@@ -309,7 +328,7 @@ each block written and the entries merged into each JSON settings file. It holds
 | ---- | ----------------------------------------------------------------------------- |
 | 0    | Success                                                                       |
 | 1    | Error: network, refused key or map, unknown id, refused path, broken markers  |
-| 2    | A block edited by hand was left as it was (`pull`) or found (`check`)         |
+| 2    | A block edited by hand was left as it was (`pull`) or found (`check`); a skill's folder left as it was (`skills add`) |
 | 3    | `check`: a newer generation exists                                            |
 | 4    | `check`: a managed block, or its file, is missing                             |
 | 5    | `check --conformance`: a finding reaches the `--fail-on` level                |

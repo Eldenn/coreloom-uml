@@ -331,7 +331,12 @@ function SkillList({ title, skills }: { title: string; skills: AgentSkill[] }) {
         {skills.map((skill) => (
           <Item key={skill.id} variant="outline" size="sm">
             <ItemContent>
-              <ItemTitle>{skill.name}</ItemTitle>
+              <ItemTitle>
+                {skill.name}
+                {skill.id !== skill.name && (
+                  <code className="text-[12px] font-normal text-muted-foreground">{skill.id}</code>
+                )}
+              </ItemTitle>
               <ItemDescription>{localized(skill.description)}</ItemDescription>
               {skill.audits.length > 0 && (
                 <p className="m-0 text-[13px] text-muted-foreground">

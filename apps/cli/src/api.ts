@@ -5,7 +5,7 @@ import { CliError } from './errors.ts'
  * A skill as the API lists it (`SkillSuggestion` in the catalog), reduced to what the CLI prints.
  * Generations made before the skills catalog hold empty lists.
  */
-export type GenerationSkill = { name?: unknown; url?: unknown }
+export type GenerationSkill = { id?: unknown; name?: unknown; url?: unknown }
 
 /**
  * Which configuration to pull: by its own id, or by the project it sits in (what manifests

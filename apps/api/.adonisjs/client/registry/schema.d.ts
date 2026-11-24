@@ -1147,6 +1147,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/skills-controller').default['show']>>>
     }
   }
+  'skills.copy': {
+    methods: ["GET","HEAD"]
+    pattern: '/skills/:slug/copy'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { slug: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/skills-controller').default['copy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/skills-controller').default['copy']>>>
+    }
+  }
   'admin.skill_versions.index': {
     methods: ["GET","HEAD"]
     pattern: '/admin/skill-versions'

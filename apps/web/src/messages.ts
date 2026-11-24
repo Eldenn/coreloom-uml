@@ -442,7 +442,7 @@ export const en = {
     recommendationsTitle: 'Recommendations',
     skillsTitle: 'Skills',
     skillsThirdParty:
-      'Third-party resources, not checked by Coreloom. Read a skill before adding it to your tools.',
+      'Third-party resources. Install one the admin approved with “coreloom-uml skills add <id>”.',
     skillsCompatible: 'Fit your rules',
     skillsConflicting: 'Go against your rules',
     skillReason: (group: string, held: string, expects: string) =>
@@ -2102,7 +2102,7 @@ export const fr: Messages = {
     recommendationsTitle: 'Recommandations',
     skillsTitle: 'Skills',
     skillsThirdParty:
-      'Ressources tierces, non vérifiées par Coreloom. Lisez un skill avant de l’ajouter à vos outils.',
+      'Ressources tierces. Installez-en une copie approuvée par l’admin avec « coreloom-uml skills add <id> ».',
     skillsCompatible: 'Compatibles avec vos règles',
     skillsConflicting: 'En contradiction avec vos règles',
     skillReason: (group: string, held: string, expects: string) =>

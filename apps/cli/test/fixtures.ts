@@ -62,6 +62,8 @@ export function generation(id: number, files: Generation['files']): Generation {
  */
 export class FixtureApi {
   current: Generation | null = null
+  /** The approved copies `GET /skills/:slug/copy` serves, by slug. */
+  copies: Record<string, unknown> = {}
   /** Answer every request with this status instead (401, 403, 302…). */
   status: number | null = null
   readonly requests: { url: string; authorization: string | undefined }[] = []
@@ -84,6 +86,13 @@ export class FixtureApi {
       }
       if (request.headers.authorization !== `Bearer ${API_KEY}`) {
         return json(401, { error: { message: 'Unauthorized' } })
+      }
+      const copy = /^\/skills\/([a-z0-9-]+)\/copy$/.exec(request.url ?? '')
+      if (copy) {
+        const found = this.copies[copy[1] ?? '']
+        return found
+          ? json(200, { copy: found })
+          : json(404, { error: { message: 'No approved copy of this skill' } })
       }
       const known = [
         '/agent-configs/3/generations/latest',

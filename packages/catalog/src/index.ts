@@ -131,7 +131,15 @@ export {
   sectionOrder,
 } from './sections.ts'
 export { SKILL_SEARCH_PLAN, type SkillSearchQuery } from './skill-search-plan.ts'
-export { SKILL_TARGET_SOURCES, SKILLS, SKILLS_MAX, SKILLS_VERIFIED_ON } from './skills.ts'
+export {
+  SKILL_FOLDERS,
+  SKILL_FOLDERS_VERIFIED_ON,
+  SKILL_NAME,
+  SKILL_TARGET_SOURCES,
+  SKILLS,
+  SKILLS_MAX,
+  SKILLS_VERIFIED_ON,
+} from './skills.ts'
 export { isSlot, SLOTS, type Slot } from './slots.ts'
 export { TARGET_TEMPLATES } from './targets/index.ts'
 export {
