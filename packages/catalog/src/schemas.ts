@@ -3,6 +3,7 @@ import { DIAGRAM_KINDS } from './diagram-kinds.ts'
 import { RESERVED_SECTIONS, SHARED_SECTIONS } from './sections.ts'
 import { isSlot } from './slots.ts'
 import { Target } from './targets.ts'
+import { TOPICS } from './topics.ts'
 
 /** Languages the catalog is written in. Rendered files are always English. */
 export const LOCALES = ['en', 'fr'] as const
@@ -244,12 +245,21 @@ export const skillSchema = z
     url: z.url({ protocol: /^https$/ }),
     /** The tools that load it. */
     targets: z.array(z.enum(Target)).min(1),
-    affinities: z.array(skillAffinitySchema).min(1),
+    /** The rules and diagrams it fits; at least one of them or a tag. */
+    affinities: z.array(skillAffinitySchema),
+    /** What it is about: a weak signal, which may make it compatible, never conflicting. */
+    topics: z.array(z.enum(TOPICS)).optional(),
     origin: z.enum(SkillOrigin),
     provenance: skillProvenanceSchema.optional(),
   })
   .strict()
   .superRefine((skill, ctx) => {
+    if (skill.affinities.length === 0 && !skill.topics?.length) {
+      ctx.addIssue({ code: 'custom', path: ['affinities'], message: 'No affinity and no tag' })
+    }
+    if (new Set(skill.topics).size !== (skill.topics?.length ?? 0)) {
+      ctx.addIssue({ code: 'custom', path: ['topics'], message: 'A tag is listed twice' })
+    }
     const slots = skill.affinities.filter(isSlotAffinity).map((affinity) => affinity.slot)
     if (new Set(slots).size !== slots.length) {
       ctx.addIssue({ code: 'custom', path: ['affinities'], message: 'A slot is listed twice' })

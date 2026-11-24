@@ -185,6 +185,7 @@ export interface ApiDefinition {
       destroy: typeof routes['agent_configs.rules.destroy']
     }
     roles: {
+      suggestions: typeof routes['agent_configs.roles.suggestions']
       store: typeof routes['agent_configs.roles.store']
       update: typeof routes['agent_configs.roles.update']
       destroy: typeof routes['agent_configs.roles.destroy']

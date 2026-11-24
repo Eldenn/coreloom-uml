@@ -3,6 +3,7 @@ import {
   acceptedProblem,
   findRuleGroup,
   MARKER_PREFIX,
+  PRESET_TOPICS,
   RIGHTS,
   Right,
   ROLE_DESCRIPTION_MAX_LENGTH,
@@ -18,6 +19,7 @@ import {
   RulePick,
   ruleSections,
   TARGETS,
+  TOPICS,
 } from '@coreloom-uml/catalog'
 import { AssistantToolKind } from '@coreloom-uml/llm'
 import { z } from 'zod'
@@ -220,13 +222,21 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
   readAction({
     name: 'find_role_presets',
     description:
-      'Searches the catalog of ready-made roles by words (a job, a practice). A role describes a mission for a coding agent, the folders it works in and its rights. Use it before add_role_from_preset.',
-    input: z.object({ query: z.string().trim().min(1).max(ROLE_PRESET_QUERY_MAX_LENGTH) }),
+      'Searches the catalog of ready-made roles by words (a job, a practice), by tag, or both. A role describes a mission for a coding agent, the folders it works in and its rights. Use it before add_role_from_preset.',
+    input: z
+      .object({
+        query: z.string().trim().min(1).max(ROLE_PRESET_QUERY_MAX_LENGTH).optional(),
+        topic: z.enum(TOPICS).optional(),
+      })
+      .refine((input) => input.query !== undefined || input.topic !== undefined, {
+        message: 'Give words, a tag, or both',
+      }),
     kind: AssistantToolKind.Read,
     ...roles,
-    async read({ query }) {
-      const words = query.toLowerCase().split(/\s+/)
+    async read({ query, topic }) {
+      const words = query?.toLowerCase().split(/\s+/) ?? []
       return ROLE_PRESETS.filter((preset) => {
+        if (topic && !PRESET_TOPICS[preset.slug]?.includes(topic)) return false
         const text = [preset.slug, preset.name, preset.description].join(' ').toLowerCase()
         return words.every((word) => text.includes(word))
       })
@@ -234,6 +244,7 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
         .map((preset) => ({
           preset: preset.slug,
           name: preset.name,
+          topics: PRESET_TOPICS[preset.slug] ?? [],
           mission: cut(preset.mission, MISSION_PREVIEW_LENGTH),
         }))
     },

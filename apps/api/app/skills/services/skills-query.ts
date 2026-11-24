@@ -1,5 +1,5 @@
 import db from '@adonisjs/lucid/services/db'
-import { AuditRisk, type DiagramKind, SkillOrigin, type SkillTopic } from '@coreloom-uml/catalog'
+import { AuditRisk, type DiagramKind, SkillOrigin, type Topic } from '@coreloom-uml/catalog'
 import { likePattern } from '#app/shared/database/like-pattern'
 import {
   SKILL_RISK_LEVELS,
@@ -23,7 +23,8 @@ export const STATE_SQL = `case
   when skills.eligible
     and skills.content_sha is not null
     and skills.checked_at is not null
-    and jsonb_array_length(skills.affinities) > 0 then 'suggested'
+    and (jsonb_array_length(skills.affinities) > 0 or jsonb_array_length(skills.topics) > 0)
+    then 'suggested'
   else 'catalogued'
 end`
 
@@ -54,7 +55,7 @@ export const DELTA_SQL = `case when skills.last_seen_at = ${LAST_RUN_SQL}
 
 export type SkillFilters = {
   search?: string
-  topic?: SkillTopic[]
+  topic?: Topic[]
   diagramKind?: DiagramKind[]
   state?: SkillState[]
   risk?: SkillRiskLevel[]

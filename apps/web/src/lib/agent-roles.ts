@@ -25,6 +25,21 @@ export function roleErrorMessage(error: unknown, fallback: string): string {
     : message
 }
 
+export type RoleSuggestion = Awaited<
+  ReturnType<typeof client.api.agentConfigs.roles.suggestions>
+>['suggestions'][number]
+
+/** The ready-made roles sharing tags with the rules the configuration holds. */
+export function useRoleSuggestions(configId: number, enabled: boolean) {
+  return useQuery({
+    queryKey: ['agent-configs', configId, 'role-suggestions'],
+    queryFn: async () =>
+      (await client.api.agentConfigs.roles.suggestions({ params: { id: String(configId) } }))
+        .suggestions,
+    enabled,
+  })
+}
+
 export function useRolePresets(enabled: boolean) {
   return useQuery({
     queryKey: ['role-presets'],

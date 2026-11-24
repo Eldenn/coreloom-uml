@@ -1,3 +1,4 @@
+import { TOPICS } from '@coreloom-uml/catalog'
 import { AssistantToolKind } from '@coreloom-uml/llm'
 import { z } from 'zod'
 import { type AssistantAction, readAction } from '#app/assistant/actions/action'
@@ -15,13 +16,21 @@ export const SKILL_ACTIONS: readonly AssistantAction[] = [
   readAction({
     name: 'find_skills',
     description:
-      'Searches the catalog of third-party agent skills by words (a language, a framework, a practice): each skill found has a name, what it does, its link and the coding tools that load it. A skill is a link the owner follows, never something to create: name the ones that fit in the reply, with their links.',
-    input: z.object({ query: z.string().trim().min(1).max(SKILL_QUERY_MAX_LENGTH) }),
+      'Searches the catalog of third-party agent skills by words (a language, a framework, a practice), by tag, or both: each skill found has a name, what it does, its link, its tags and the coding tools that load it. A skill is a link the owner follows, never something to create: name the ones that fit in the reply, with their links.',
+    input: z
+      .object({
+        query: z.string().trim().min(1).max(SKILL_QUERY_MAX_LENGTH).optional(),
+        topic: z.enum(TOPICS).optional(),
+      })
+      .refine((input) => input.query !== undefined || input.topic !== undefined, {
+        message: 'Give words, a tag, or both',
+      }),
     kind: AssistantToolKind.Read,
-    async read({ query }) {
-      const words = query.toLowerCase().split(/\s+/)
+    async read({ query, topic }) {
+      const words = query?.toLowerCase().split(/\s+/) ?? []
       return (await suggestableSkills())
         .filter((skill) => {
+          if (topic && !skill.topics?.includes(topic)) return false
           const text = [skill.id, skill.name, skill.description.en].join(' ').toLowerCase()
           return words.every((word) => text.includes(word))
         })
@@ -30,6 +39,7 @@ export const SKILL_ACTIONS: readonly AssistantAction[] = [
           name: skill.name,
           description: skill.description.en,
           url: skill.url,
+          topics: skill.topics ?? [],
           targets: skill.targets,
         }))
     },

@@ -1,4 +1,4 @@
-import type { DiagramKind, SkillAffinity, SkillOrigin, SkillTopic } from '@coreloom-uml/catalog'
+import type { DiagramKind, SkillAffinity, SkillOrigin, Topic } from '@coreloom-uml/catalog'
 import type { Paginated } from '#app/shared/pagination/paginate'
 import type { SkillRiskLevel, SkillState } from '#app/skills/constants/skill'
 import type { SkillAudit } from '#app/skills/models/catalog-skill'
@@ -46,7 +46,7 @@ export type SkillDetailOutput = SkillSummaryOutput & {
 
 /** How many skills match each value of a filter, given the other filters. */
 export type SkillFacetsOutput = {
-  topic: Partial<Record<SkillTopic, number>>
+  topic: Partial<Record<Topic, number>>
   diagramKind: Partial<Record<DiagramKind, number>>
   state: Partial<Record<SkillState, number>>
   risk: Partial<Record<SkillRiskLevel, number>>

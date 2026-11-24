@@ -382,6 +382,9 @@ router
       .delete('/:id/rules/:ruleId', [agentRulesController, 'destroy'])
       .as('agent_configs.rules.destroy')
     // Behind the `agent-roles` flag: 404 while it is off for the caller.
+    router
+      .get('/:id/roles/suggestions', [agentRolesController, 'suggestions'])
+      .as('agent_configs.roles.suggestions')
     router.post('/:id/roles', [agentRolesController, 'store']).as('agent_configs.roles.store')
     router
       .patch('/:id/roles/:roleId', [agentRolesController, 'update'])

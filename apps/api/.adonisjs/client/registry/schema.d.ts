@@ -835,6 +835,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-rules-controller').default['destroy']>>>
     }
   }
+  'agent_configs.roles.suggestions': {
+    methods: ["GET","HEAD"]
+    pattern: '/agent-configs/:id/roles/suggestions'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-roles-controller').default['suggestions']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-roles-controller').default['suggestions']>>>
+    }
+  }
   'agent_configs.roles.store': {
     methods: ["POST"]
     pattern: '/agent-configs/:id/roles'

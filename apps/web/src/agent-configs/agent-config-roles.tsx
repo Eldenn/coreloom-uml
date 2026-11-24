@@ -50,8 +50,10 @@ import {
   useCreateRole,
   useDeleteRole,
   useRolePresets,
+  useRoleSuggestions,
 } from '@/lib/agent-roles'
 import { useT } from '@/lib/locale'
+import { topicLabel } from '@/skills/skill-values'
 
 /** What the role dialog edits: a stored role, or a new one. */
 type RoleDraft = { role: AgentRole } | 'new'
@@ -230,6 +232,7 @@ function PresetPicker({
 }) {
   const t = useT()
   const presets = useRolePresets(open)
+  const suggestions = useRoleSuggestions(configId, open)
   const create = useCreateRole(configId)
   const taken = new Set(roles.flatMap((role) => [role.slug, role.source?.preset ?? '']))
   const [search, setSearch] = React.useState('')
@@ -243,6 +246,12 @@ function PresetPicker({
     .filter(({ rank }) => rank > 0)
     .sort((a, b) => b.rank - a.rank)
     .map(({ preset }) => preset)
+  const suggested = new Map((suggestions.data ?? []).map((item, index) => [item.preset, index]))
+  // Before a search, the suggested roles come first, in their order.
+  if (search.trim() === '') {
+    shown.sort((a, b) => (suggested.get(a.slug) ?? Infinity) - (suggested.get(b.slug) ?? Infinity))
+  }
+  const suggestionOf = (slug: string) => suggestions.data?.find((item) => item.preset === slug)
 
   const add = (preset: RolePreset) => {
     create.mutate(
@@ -287,6 +296,7 @@ function PresetPicker({
         {presets.isSuccess && <CommandEmpty>{t.roles.presetsEmpty}</CommandEmpty>}
         {shown.map((preset) => {
           const added = taken.has(preset.slug)
+          const suggestion = suggestionOf(preset.slug)
           return (
             <CommandItem
               key={preset.slug}
@@ -300,6 +310,13 @@ function PresetPicker({
               <span className="flex w-full flex-wrap items-center gap-2">
                 <span className="font-medium text-foreground">{preset.name}</span>
                 {preset.readOnly && <Badge variant="outline">{t.roles.readOnly}</Badge>}
+                {suggestion && (
+                  <Badge variant="success">
+                    {t.roles.suggested(
+                      suggestion.topics.map((topic) => topicLabel(t.skills, topic)).join(', '),
+                    )}
+                  </Badge>
+                )}
                 {added && (
                   <Badge variant="secondary" className="ml-auto">
                     {t.roles.presetAdded}
@@ -309,6 +326,11 @@ function PresetPicker({
               <span className="line-clamp-2 text-[12.5px] text-muted-foreground">
                 {preset.description}
               </span>
+              {suggestion && suggestion.skills.length > 0 && (
+                <span className="text-[12px] text-muted-foreground">
+                  {t.roles.suggestedSkills(suggestion.skills.map((skill) => skill.name).join(', '))}
+                </span>
+              )}
             </CommandItem>
           )
         })}
