@@ -10,6 +10,7 @@ import {
 } from './schemas.ts'
 import type { Slot } from './slots.ts'
 import type { Target } from './targets.ts'
+import { type Topic, topicsOfSlots } from './topics.ts'
 
 /** At most this many skills are suggested as compatible, and this many as conflicting. */
 export const COMPATIBLE_SKILLS_MAX = 5
@@ -58,13 +59,17 @@ export type SkillMatchInput = {
  * Suggests skills from the ready-made rules held, deterministically. For each affinity whose
  * slot holds a rule: −1 when one of them is among the rules the skill goes against, +1 when one
  * is among the rules it fits, 0 otherwise. A diagram affinity counts +1 when the project holds a
- * diagram of one of its kinds, 0 otherwise. A skill is compatible with a score of 1 or more and
- * no −1, and conflicting as soon as it has a −1. Only skills that load in one of the
- * configuration's targets are suggested. Compatible skills come by score, conflicting ones by
- * number of reasons, then both in catalog order.
+ * diagram of one of its kinds, 0 otherwise. Tags are a weak signal: a skill sharing a tag with
+ * the slots held (`topicsOfSlots`) is compatible even at 0, never conflicting. A skill is
+ * compatible with a score of 1 or more, or a shared tag, and no −1, and conflicting as soon as
+ * it has a −1. Only skills that load in one of the configuration's targets are suggested.
+ * Compatible skills come by score, then by tags shared, conflicting ones by number of reasons,
+ * then both in catalog order.
  */
 export function matchSkills(input: SkillMatchInput, skills: readonly Skill[]): SkillSuggestions {
   const bySlot = heldSlots(input)
+  const topics = new Set(topicsOfSlots(bySlot.keys()))
+  const shared = new Map<SkillSuggestion, number>()
   const compatible: SkillSuggestion[] = []
   const conflicting: SkillSuggestion[] = []
 
@@ -103,23 +108,34 @@ export function matchSkills(input: SkillMatchInput, skills: readonly Skill[]): S
       reasons,
       audits: skill.provenance?.audits.map((audit) => ({ ...audit })) ?? [],
     }
+    const tags = skill.topics?.filter((topic) => topics.has(topic)).length ?? 0
     if (reasons.length > 0) conflicting.push(suggestion)
-    else if (score >= 1) compatible.push(suggestion)
+    else if (score >= 1 || tags > 0) {
+      compatible.push(suggestion)
+      shared.set(suggestion, tags)
+    }
   }
 
   // Array.prototype.sort is stable, so ties keep the catalog order.
   return {
-    compatible: compatible.sort((a, b) => b.score - a.score).slice(0, COMPATIBLE_SKILLS_MAX),
+    compatible: compatible
+      .sort((a, b) => b.score - a.score || (shared.get(b) ?? 0) - (shared.get(a) ?? 0))
+      .slice(0, COMPATIBLE_SKILLS_MAX),
     conflicting: conflicting
       .sort((a, b) => b.reasons.length - a.reasons.length)
       .slice(0, CONFLICTING_SKILLS_MAX),
   }
 }
 
+/** The tags of the slots whose rules the configuration holds (see `heldSlots`). */
+export function heldTopics(input: Pick<SkillMatchInput, 'packs' | 'ready'>): Topic[] {
+  return topicsOfSlots(heldSlots(input).keys())
+}
+
 type HeldSlot = { group: RuleGroup; held: string[] }
 
 /** Each slot's group and the ids of its rules held; rules that cannot be held together are left out. */
-function heldSlots(input: SkillMatchInput): Map<string, HeldSlot> {
+function heldSlots(input: Pick<SkillMatchInput, 'packs' | 'ready'>): Map<string, HeldSlot> {
   const slots = new Map<string, HeldSlot>()
   for (const pack of input.packs) {
     for (const group of pack.groups) {

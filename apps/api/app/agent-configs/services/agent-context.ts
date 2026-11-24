@@ -4,11 +4,13 @@ import {
   type AgentContextOutput,
   type AgentContextProject,
   CATALOG_VERSION,
+  heldTopics,
   MANAGED_BLOCK_BEGIN,
   MANAGED_BLOCK_END,
   matchSkills,
   type PackageDiagramShape,
   type Role,
+  type RoleSuggestion,
   RULE_PACKS,
   renderAgentContext,
   repositoryChecks,
@@ -16,6 +18,7 @@ import {
   type Skill,
   type SkillSuggestions,
   sectionOrder,
+  suggestRoles,
 } from '@coreloom-uml/catalog'
 import type { PackageDiagram } from '@coreloom-uml/uml'
 import type { Target } from '#app/agent-configs/constants/agent-config'
@@ -247,4 +250,14 @@ function splitSections(content: string, sections: string[]): Map<string, string>
     if (current !== null) parts.set(current, `${parts.get(current)}${line}\n`)
   }
   return parts
+}
+
+/** The ready-made roles that share tags with the rules a configuration holds, with their skills. */
+export async function suggestConfigRoles(
+  config: AgentConfig,
+  skills: readonly Skill[],
+): Promise<RoleSuggestion[]> {
+  await config.load('readyRules')
+  const ready = heldReadyRules(config.readyRules)
+  return suggestRoles(heldTopics({ packs: RULE_PACKS, ready }), skills, config.targets)
 }

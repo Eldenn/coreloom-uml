@@ -420,6 +420,12 @@ const routes = {
     tokens: [{"old":"/agent-configs/:id/rules/:ruleId","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/rules/:ruleId","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/rules/:ruleId","type":0,"val":"rules","end":""},{"old":"/agent-configs/:id/rules/:ruleId","type":1,"val":"ruleId","end":""}],
     types: placeholder as Registry['agent_configs.rules.destroy']['types'],
   },
+  'agent_configs.roles.suggestions': {
+    methods: ["GET","HEAD"],
+    pattern: '/agent-configs/:id/roles/suggestions',
+    tokens: [{"old":"/agent-configs/:id/roles/suggestions","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/roles/suggestions","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/roles/suggestions","type":0,"val":"roles","end":""},{"old":"/agent-configs/:id/roles/suggestions","type":0,"val":"suggestions","end":""}],
+    types: placeholder as Registry['agent_configs.roles.suggestions']['types'],
+  },
   'agent_configs.roles.store': {
     methods: ["POST"],
     pattern: '/agent-configs/:id/roles',

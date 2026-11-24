@@ -188,7 +188,10 @@ export async function suggestableSkills(): Promise<Skill[]> {
     .orderBy('id')
   return [
     ...SKILLS.filter((skill) => !blocked.has(skill.id)),
-    ...found.map((row) => row.toSkill()).filter((skill) => skill.affinities.length > 0),
+    // A tag alone is enough: it may make a skill compatible (`matchSkills`).
+    ...found
+      .map((row) => row.toSkill())
+      .filter((skill) => skill.affinities.length > 0 || skill.topics?.length),
   ]
 }
 

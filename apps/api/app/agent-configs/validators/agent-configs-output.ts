@@ -4,6 +4,7 @@ import type {
   Localized,
   Recommendation,
   Role,
+  RoleSuggestion,
   RulePick,
 } from '@coreloom-uml/catalog'
 import type { AgentRuleSource, Target } from '#app/agent-configs/constants/agent-config'
@@ -69,6 +70,9 @@ export type AgentRuleOutput = {
 export type AgentRoleOutput = Role & { id: number; createdAt: string; updatedAt: string }
 
 /** A ready-made role, without its mission. */
+/** `GET /agent-configs/:id/roles/suggestions` (`suggestRoles`). */
+export type RoleSuggestionsOutput = { suggestions: RoleSuggestion[] }
+
 export type RolePresetOutput = {
   slug: string
   name: string

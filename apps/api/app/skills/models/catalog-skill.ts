@@ -1,10 +1,12 @@
 import { BaseModel, column } from '@adonisjs/lucid/orm'
-import type {
-  Skill,
-  SkillAffinity,
-  SkillOrigin,
-  SkillProvenance,
-  Target,
+import {
+  type Skill,
+  type SkillAffinity,
+  type SkillOrigin,
+  type SkillProvenance,
+  type Target,
+  TOPICS,
+  type Topic,
 } from '@coreloom-uml/catalog'
 import type { DateTime } from 'luxon'
 import type { SkillStatus } from '#app/skills/constants/skill'
@@ -109,8 +111,13 @@ export default class CatalogSkill extends BaseModel {
       url: this.url,
       targets: this.targets,
       affinities: this.affinities,
+      topics: this.topics.filter(isTopic),
       origin: this.origin,
       ...(provenance ? { provenance } : {}),
     }
   }
+}
+
+function isTopic(topic: string): topic is Topic {
+  return (TOPICS as readonly string[]).includes(topic)
 }

@@ -1,9 +1,12 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { serializeAgentRole } from '#app/agent-configs/serializers/agent-config-serializer'
+import { suggestConfigRoles } from '#app/agent-configs/services/agent-context'
 import { createRole, removeRole, updateRole } from '#app/agent-configs/services/agent-roles'
 import {
+  AGENT_CONFIG_NOT_FOUND,
   AGENT_ROLE_SLUG_TAKEN,
   agentConfigImpact,
+  findOwnedAgentConfig,
 } from '#app/agent-configs/services/owned-agent-config'
 import { AGENT_ROLES_NOT_FOUND, agentRolesEnabled } from '#app/agent-configs/services/roles-flag'
 import {
@@ -11,9 +14,23 @@ import {
   createAgentRoleInput,
   updateAgentRoleInput,
 } from '#app/agent-configs/validators/agent-configs-input'
+import type { RoleSuggestionsOutput } from '#app/agent-configs/validators/agent-configs-output'
+import { suggestableSkills } from '#app/skills/services/skills-catalog'
 
 /** Roles of a configuration: written by the owner or copied from a catalog preset. */
 export default class AgentConfigRolesController {
+  /** The ready-made roles sharing tags with the rules held, each with skills sharing its own. */
+  async suggestions({ params, auth, response }: HttpContext) {
+    const user = auth.getUserOrFail()
+    if (!(await agentRolesEnabled(user))) return response.notFound(AGENT_ROLES_NOT_FOUND)
+    const config = await findOwnedAgentConfig(params.id, user)
+    if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
+    const output: RoleSuggestionsOutput = {
+      suggestions: await suggestConfigRoles(config, await suggestableSkills()),
+    }
+    return response.ok(output)
+  }
+
   async store({ params, request, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
     if (!(await agentRolesEnabled(user))) return response.notFound(AGENT_ROLES_NOT_FOUND)

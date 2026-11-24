@@ -183,6 +183,23 @@ describe('matchSkills', () => {
     expect(matchSkills(input, [strictTyping])).toEqual(none)
   })
 
+  it('makes a skill sharing a tag with the slots held compatible, never conflicting', () => {
+    const tagged = skill('tagged', { affinities: [], topics: ['typescript', 'security'] })
+    const elsewhere = skill('elsewhere', { affinities: [], topics: ['mobile'] })
+    const opposed = skill('opposed', { topics: ['typescript'] })
+    const result = match({ 'typescript.any': 'disagree' }, [tagged, elsewhere, opposed])
+    expect(result.compatible.map((item) => [item.id, item.score])).toEqual([['tagged', 0]])
+    expect(result.conflicting.map((item) => item.id)).toEqual(['opposed'])
+  })
+
+  it('puts an affinity before a tag, then the skills sharing more tags first', () => {
+    const one = skill('one', { affinities: [], topics: ['typescript'] })
+    const two = skill('two', { affinities: [], topics: ['typescript', 'workflow'] })
+    const held = { 'typescript.any': 'agree', 'workflow.changes': 'agree' }
+    const ids = match(held, [one, two, strictTyping]).compatible.map((item) => item.id)
+    expect(ids).toEqual(['strict-typing', 'two', 'one'])
+  })
+
   it('orders by score then catalog order, and keeps 5 compatible and 3 conflicting at most', () => {
     const twoPoints = skill('two-points', {
       affinities: [

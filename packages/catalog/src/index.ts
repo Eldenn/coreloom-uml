@@ -1,7 +1,14 @@
 export { DIAGRAM_KINDS, type DiagramKind } from './diagram-kinds.ts'
 export {
+  ROLE_SKILLS_MAX,
+  ROLE_SUGGESTIONS_MAX,
+  type RoleSuggestion,
+  suggestRoles,
+} from './match-roles.ts'
+export {
   COMPATIBLE_SKILLS_MAX,
   CONFLICTING_SKILLS_MAX,
+  heldTopics,
   matchSkills,
   type SkillMatchInput,
   type SkillReason,
@@ -70,6 +77,7 @@ export {
   ROLE_PRESETS,
   type RolePreset,
 } from './roles/presets/index.ts'
+export { PRESET_TOPICS } from './roles/presets/topics.ts'
 export {
   RIGHTS,
   Right,
@@ -122,12 +130,7 @@ export {
   SHARED_SECTIONS,
   sectionOrder,
 } from './sections.ts'
-export {
-  SKILL_SEARCH_PLAN,
-  SKILL_TOPICS,
-  type SkillSearchQuery,
-  SkillTopic,
-} from './skill-search-plan.ts'
+export { SKILL_SEARCH_PLAN, type SkillSearchQuery } from './skill-search-plan.ts'
 export { SKILL_TARGET_SOURCES, SKILLS, SKILLS_MAX, SKILLS_VERIFIED_ON } from './skills.ts'
 export { isSlot, SLOTS, type Slot } from './slots.ts'
 export { TARGET_TEMPLATES } from './targets/index.ts'
@@ -141,4 +144,12 @@ export {
   TEXT_POINTER,
 } from './targets/types.ts'
 export { AGENT_FILE_KINDS, AGENTS_FILE, AgentFileKind, TARGETS, Target } from './targets.ts'
+export {
+  SLOT_PREFIX_TOPICS,
+  SLOT_TOPICS,
+  slotTopics,
+  TOPICS,
+  Topic,
+  topicsOfSlots,
+} from './topics.ts'
 export { CATALOG_VERSION } from './version.ts'
