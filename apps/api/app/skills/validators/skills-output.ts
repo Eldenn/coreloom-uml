@@ -90,3 +90,14 @@ export type SkillsCatalogEvent = {
   type: 'catalog.refreshed' | 'catalog.updated'
   at: string
 }
+
+/** `GET /skills/:slug/copy`: the newest approved copy of a skill, what the CLI installs. */
+export type SkillCopyOutput = {
+  slug: string
+  /** The folder it goes in, under each tool's skills folder (`SKILL_FOLDERS`). */
+  name: string
+  repository: string
+  commit: string
+  license: string
+  files: { path: string; executable: boolean; content: string }[]
+}

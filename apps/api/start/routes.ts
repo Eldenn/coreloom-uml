@@ -574,6 +574,7 @@ router
       .get('/events', [() => import('#app/skills/controllers/skills-events-controller'), 'handle'])
       .as('skills.events')
     router.get('/:slug', [skillsController, 'show']).as('skills.show')
+    router.get('/:slug/copy', [skillsController, 'copy']).as('skills.copy')
   })
   .prefix('/skills')
   .where('slug', /^[a-z0-9]+(?:-[a-z0-9]+)*$/)

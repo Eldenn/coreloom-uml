@@ -238,6 +238,7 @@ export interface ApiDefinition {
     stats: typeof routes['skills.stats']
     events: typeof routes['skills.events']
     show: typeof routes['skills.show']
+    copy: typeof routes['skills.copy']
   }
   mcp: typeof routes['mcp']
   assistant: {

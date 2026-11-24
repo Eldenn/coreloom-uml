@@ -1,3 +1,4 @@
+import { SKILL_FOLDERS } from '@coreloom-uml/catalog'
 import { defineCommand, runMain } from 'citty'
 import { checkConformance } from './check-conformance.ts'
 import { CliError, type ExitCode } from './errors.ts'
@@ -6,6 +7,7 @@ import { mapPush } from './map-push.ts'
 import { pull } from './pull.ts'
 import { setKey } from './set-key.ts'
 import { API_KEY_ENV, API_URL_ENV } from './settings.ts'
+import { skillsAdd } from './skills-add.ts'
 import { status } from './status.ts'
 
 /** Replaced by the package's version when bundled (see tsup.config.ts). */
@@ -209,6 +211,46 @@ const mapCommand = defineCommand({
   },
 })
 
+const skillsCommand = defineCommand({
+  meta: { name: 'skills', description: 'Install Agent Skills the admin approved' },
+  subCommands: {
+    add: defineCommand({
+      meta: {
+        name: 'add',
+        description:
+          "Write the approved copy of each skill into each tool's skills folder (.agents/skills by default)",
+      },
+      args: {
+        slugs: {
+          type: 'positional',
+          description: 'Skill slugs, as the Skills page shows them',
+          required: true,
+        },
+        'api-url': apiUrlArg,
+        target: {
+          type: 'string',
+          description: `Comma-separated tools: ${Object.keys(SKILL_FOLDERS).join(', ')} (default: generic)`,
+          valueHint: 'targets',
+        },
+        'dry-run': { type: 'boolean', description: 'Show what would be written, write nothing' },
+        yes: { type: 'boolean', description: "Replace what a skill's folder already holds" },
+      },
+      run: ({ args }) =>
+        run(() =>
+          skillsAdd({
+            cwd: process.cwd(),
+            io: terminalIo(),
+            slugs: [...new Set([args.slugs, ...args._])],
+            ...(args['api-url'] ? { apiUrl: args['api-url'] } : {}),
+            ...(args.target ? { targets: args.target.split(',').map((t) => t.trim()) } : {}),
+            dryRun: args['dry-run'] === true,
+            yes: args.yes === true,
+          }),
+        ),
+    }),
+  },
+})
+
 const main = defineCommand({
   meta: {
     name: 'coreloom-uml',
@@ -221,6 +263,7 @@ const main = defineCommand({
     check: checkCommand,
     config: configCommand,
     map: mapCommand,
+    skills: skillsCommand,
   },
 })
 

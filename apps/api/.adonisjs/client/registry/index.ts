@@ -576,6 +576,12 @@ const routes = {
     tokens: [{"old":"/skills/:slug","type":0,"val":"skills","end":""},{"old":"/skills/:slug","type":1,"val":"slug","end":""}],
     types: placeholder as Registry['skills.show']['types'],
   },
+  'skills.copy': {
+    methods: ["GET","HEAD"],
+    pattern: '/skills/:slug/copy',
+    tokens: [{"old":"/skills/:slug/copy","type":0,"val":"skills","end":""},{"old":"/skills/:slug/copy","type":1,"val":"slug","end":""},{"old":"/skills/:slug/copy","type":0,"val":"copy","end":""}],
+    types: placeholder as Registry['skills.copy']['types'],
+  },
   'admin.skill_versions.index': {
     methods: ["GET","HEAD"],
     pattern: '/admin/skill-versions',
