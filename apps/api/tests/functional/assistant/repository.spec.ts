@@ -14,10 +14,11 @@ import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import Architecture from '#app/architectures/models/architecture'
 import type { ToolActivity } from '#app/assistant/actions/action'
+import { REPOSITORY_SANDBOX } from '#app/assistant/constants/repository'
 import AssistantConversation from '#app/assistant/models/assistant-conversation'
 import AssistantMessage from '#app/assistant/models/assistant-message'
 import AssistantSandbox from '#app/assistant/models/assistant-sandbox'
-import { CLONE, SHELL } from '#app/assistant/services/repository-commands'
+import { CLONE, SHELL, STOP_TERMINAL, TERMINAL } from '#app/assistant/services/repository-commands'
 import RepositorySandbox, {
   type OpenRepositorySandbox,
 } from '#app/assistant/services/repository-sandbox'
@@ -120,10 +121,17 @@ async function fixtureRepository(folder: string): Promise<string> {
   return first
 }
 
+const EVENTS = new Map([
+  [CLONE, 'clone'],
+  [SHELL, 'shell'],
+  [TERMINAL, 'terminal'],
+  [STOP_TERMINAL, 'stop'],
+])
+
 class FakeSandboxes extends RepositorySandbox {
   created = 0
   resumed = 0
-  paused = 0
+  rested = 0
   killed: string[] = []
   folders = new Map<string, string>()
   /** The environment of every clone, as the sandbox would get it. */
@@ -170,7 +178,7 @@ class FakeSandboxes extends RepositorySandbox {
       sandboxId: id,
       run: (command, envs) => {
         if (command === CLONE) this.clones.push(envs)
-        this.events.push(command === CLONE ? 'clone' : command === SHELL ? 'shell' : 'tool')
+        this.events.push(EVENTS.get(command) ?? 'tool')
         if (command !== CLONE) this.afterClone.push(envs)
         // GitHub's URL is cloned from the fixture, which the sandbox's git (https only) refuses
         // unless allowed, the same way a token is passed.
@@ -195,13 +203,13 @@ class FakeSandboxes extends RepositorySandbox {
           )
         })
       },
-      readFile: async () => null,
+      readFile: (path) => readFile(path.replace(REPOSITORY_SANDBOX.root, root)).catch(() => null),
       isolate: async () => {
         this.events.push('isolate')
         return this.isolates
       },
-      pause: async () => {
-        this.paused += 1
+      rest: async () => {
+        this.rested += 1
       },
     }
   }
@@ -305,7 +313,7 @@ test.group('Assistant repository', (group) => {
     assert.lengthOf(sandboxes.clones, 1)
     assert.notProperty(sandboxes.clones[0], 'GIT_CONFIG_COUNT')
     assert.equal(sandboxes.created, 1)
-    assert.equal(sandboxes.paused, 1)
+    assert.equal(sandboxes.rested, 1)
     const row = await AssistantSandbox.findByOrFail('conversationId', f.conversation.id)
     assert.match(row.commitSha, /^[0-9a-f]{40}$/)
     assert.isFalse(row.private)
@@ -545,6 +553,8 @@ test.group('Assistant repository', (group) => {
     // No sandbox before the assistant opened the repository: nothing is cloned for a terminal.
     const early = await run('ls')
     early.assertStatus(404)
+    const shown = () => client.get(f.path).headers(json).loginAs(f.user)
+    assert.isFalse((await shown()).body().sandbox)
     assert.equal(early.body().error.code, 'no_sandbox')
     assert.equal(sandboxes.created, 0)
 
@@ -570,19 +580,27 @@ test.group('Assistant repository', (group) => {
     assert.equal(ran.body().exitCode, 3)
     assert.include(ran.body().output, 'TERMINAL-OUT')
     // Resumed, cut off again, then the command, with nothing of ours in its environment.
-    assert.deepEqual(sandboxes.events, ['isolate', 'shell'])
+    assert.deepEqual(sandboxes.events, ['isolate', 'terminal'])
+    assert.isTrue((await shown()).body().sandbox)
+    assert.match(ran.body().cwd, /repo$/)
     assert.deepEqual(Object.keys(sandboxes.afterClone[0] ?? {}).sort(), [
       'REPO_ROOT',
       'SHELL_COMMAND',
     ])
     assert.equal(sandboxes.created, 1)
-    assert.equal(sandboxes.paused, 2)
+    assert.equal(sandboxes.rested, 2)
     // Neither the command nor what it printed is logged or stored.
     assert.notInclude(logs.lines.join('\n'), 'TERMINAL-OUT')
     assert.notInclude(await dumpDatabase(), 'TERMINAL-OUT')
 
-    // The lock is freed after each command; another account's conversation is not found.
-    ;(await run('true')).assertStatus(200)
+    // The lock is freed after each command, and the next one starts where this one ended,
+    // even when it failed; a folder that is gone since is the clone's root again.
+    assert.match((await run('cd src; false')).body().cwd, /repo\/src$/)
+    const next = await run('ls; cd /nowhere')
+    assert.include(next.body().output, 'orders.ts\n')
+    assert.match(next.body().cwd, /repo\/src$/)
+    assert.match((await run('mkdir gone && cd gone && rmdir ../gone')).body().cwd, /gone$/)
+    assert.include((await run('ls')).body().output, 'src')
     const other = await setup('repo-terminal-other@example.com')
     ;(await run('ls', other.user)).assertStatus(404)
     ;(await run('')).assertStatus(422)
@@ -810,7 +828,7 @@ test.group('Assistant repository', (group) => {
     const opened = await opening
     assert.notTypeOf(opened, 'string')
     assert.equal(sandboxes.created, 1)
-    assert.equal(sandboxes.paused, 1)
+    assert.equal(sandboxes.rested, 1)
     // The conversation is free again: another message can take it.
     assert.isNull(await redis.get(`assistant:repository:${String(f.conversation.id)}`))
   })

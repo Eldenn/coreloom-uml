@@ -1381,7 +1381,7 @@ export const en = {
     terminalHint:
       'Your own commands in the sandbox where the assistant reads this conversation’s repository. It has no network, and nothing typed or printed here is kept.',
     terminalWelcome:
-      'The repository as the assistant left it. Try: ls, git log --oneline | head, grep -rn <text> .\n',
+      'The repository as the assistant left it. Try: ls, git log --oneline | head, grep -rn <text> .\nThe folder you cd into is kept from one command to the next; a variable is not. Ctrl+C stops a command.\n',
     activityOutput: 'What the command printed',
     activityHidden: 'What this call read is not shown here: only a command’s output is.',
     activityExit: (code: number) => `Exit code ${String(code)}`,
@@ -3005,7 +3005,7 @@ export const fr: Messages = {
     terminalHint:
       'Vos propres commandes dans la sandbox où l’assistant lit le dépôt de cette conversation. Elle n’a pas de réseau, et rien de ce qui est tapé ou affiché ici n’est conservé.',
     terminalWelcome:
-      'Le dépôt tel que l’assistant l’a laissé. Essayez : ls, git log --oneline | head, grep -rn <texte> .\n',
+      'Le dépôt tel que l’assistant l’a laissé. Essayez : ls, git log --oneline | head, grep -rn <texte> .\nLe dossier où vous allez avec cd est gardé d’une commande à l’autre ; une variable ne l’est pas. Ctrl+C arrête une commande.\n',
     activityOutput: 'Ce que la commande a affiché',
     activityHidden:
       'Ce que cet appel a lu n’est pas affiché ici : seule la sortie d’une commande l’est.',

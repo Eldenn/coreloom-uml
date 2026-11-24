@@ -185,5 +185,7 @@ async function conversationWithMessages(conversation: AssistantConversation) {
   return {
     conversation: serializeConversation(conversation),
     messages: messages.map(serializeMessage),
+    /** Whether the assistant opened a repository in it: the owner's terminal has a sandbox. */
+    sandbox: (await AssistantSandbox.findBy('conversationId', conversation.id)) !== null,
   }
 }

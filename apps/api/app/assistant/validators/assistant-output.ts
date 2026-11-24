@@ -65,7 +65,12 @@ export type AttachFileOutput = {
 }
 
 /** `POST /assistant/conversations/:conversationId/sandbox/commands`: what the command printed. */
-export type SandboxCommandOutput = { exitCode: number; output: string }
+export type SandboxCommandOutput = {
+  exitCode: number
+  output: string
+  /** The folder the next command starts in; null when the sandbox does not say. */
+  cwd: string | null
+}
 
 /** `POST /assistant/conversations/:conversationId/messages` */
 export type ChatOutput = {

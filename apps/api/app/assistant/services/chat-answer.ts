@@ -101,7 +101,7 @@ export async function answerChat(
   let reply: string
   let handoff: HandoffOutput | null = null
   let unfinished = false
-  // Opened by the first repository tool, paused once the message is answered (or failed).
+  // Opened by the first repository tool, left to rest once the message is answered (or failed).
   const repository = new RepositorySession(user, conversation.id)
   const { onChunk } = stream
   try {

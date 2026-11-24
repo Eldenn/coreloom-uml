@@ -253,12 +253,13 @@ export function useAssistantChat(conversationId: number) {
 
 /**
  * Runs one command of the owner's in the conversation's repository sandbox: what it printed
- * and its exit code. Nothing is cached: a terminal reads each answer once.
+ * its exit code and the folder it ended in. Nothing is cached: a terminal reads each answer
+ * once. Aborting `signal` (Ctrl+C) makes the API stop the command in the sandbox.
  */
 export function useRunSandboxCommand(conversationId: number) {
   return useMutation({
-    mutationFn: (command: string) =>
-      api.sandbox.commands.run({ params: { conversationId }, body: { command } }),
+    mutationFn: ({ command, signal }: { command: string; signal: AbortSignal }) =>
+      api.sandbox.commands.run({ params: { conversationId }, body: { command }, signal }),
   })
 }
 
