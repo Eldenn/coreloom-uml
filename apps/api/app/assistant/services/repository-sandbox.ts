@@ -26,8 +26,11 @@ export type OpenRepositorySandbox = {
   isolate(): Promise<boolean>
   /** The bytes of a file a command line left in the sandbox; null when it cannot be read. */
   readFile(path: string): Promise<Uint8Array | null>
-  /** Pauses it until the next message (`resume`); the clone stays in it. */
-  pause(): Promise<void>
+  /**
+   * Leaves it awake for `idleMs`, after which E2B pauses it by itself (`resume` wakes it);
+   * the clone stays in it. Paused at once when E2B refuses the delay.
+   */
+  rest(): Promise<void>
 }
 
 /**
@@ -39,8 +42,8 @@ export type OpenRepositorySandbox = {
  * environment variable of one git command (never a file), revoked when the message or the import
  * ends. It runs only the fixed command lines of `repository-commands.ts`, one of which (`SHELL`)
  * runs a command of the model: only in a sandbox cut off every network (`isolate`), which never
- * gets a token again. Until then it may not reach a private address range. It is paused between
- * messages and killed with its conversation, its account, after `maxIdleDays` unused, or as
+ * gets a token again. Until then it may not reach a private address range. A conversation's
+ * stays awake `idleMs` after its last use, then is paused by E2B, and is killed with its conversation, its account, after `maxIdleDays` unused, or as
  * soon as an import or a reading is over.
  */
 export default class RepositorySandbox {
@@ -71,10 +74,12 @@ export default class RepositorySandbox {
 
   /**
    * A new, empty sandbox (the caller clones into it); null when E2B fails. It ends by itself
-   * after `timeoutMs` should the API die first.
+   * after `timeoutMs` should the API die first: killed, or paused for one that is kept
+   * (a conversation's, which `rest` leaves to that timeout).
    */
   async create(
     timeoutMs: number = REPOSITORY_SANDBOX.timeoutMs,
+    onTimeout: 'kill' | 'pause' = 'kill',
   ): Promise<OpenRepositorySandbox | null> {
     const config = researchConfig()
     if (!config) return null
@@ -85,6 +90,8 @@ export default class RepositorySandbox {
         requestTimeoutMs: REPOSITORY_SANDBOX.startTimeoutMs,
         // It reaches GitHub; a private network is never reachable.
         network: { denyOut: [...RESEARCH_DENIED_RANGES] },
+        // Never woken by traffic: only `resume` does it, which cuts the network again.
+        lifecycle: { onTimeout, ...(onTimeout === 'pause' ? { autoResume: false } : {}) },
       })
       return handle(sandbox)
     } catch {
@@ -170,10 +177,13 @@ function handle(sandbox: Sandbox): OpenRepositorySandbox {
         return null
       }
     },
-    async pause() {
-      await sandbox
-        .pause({ requestTimeoutMs: REPOSITORY_SANDBOX.closeTimeoutMs })
-        .catch(() => false)
+    async rest() {
+      const requestTimeoutMs = REPOSITORY_SANDBOX.closeTimeoutMs
+      try {
+        await sandbox.setTimeout(REPOSITORY_SANDBOX.idleMs, { requestTimeoutMs })
+      } catch {
+        await sandbox.pause({ requestTimeoutMs }).catch(() => false)
+      }
     },
   }
 }

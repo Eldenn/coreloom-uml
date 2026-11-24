@@ -1,5 +1,6 @@
 import limiter from '@adonisjs/limiter/services/main'
 import { API_TOKEN_REQUESTS_PER_MINUTE } from '#app/api-tokens/constants/api-token'
+import { TERMINAL_COMMANDS_PER_MINUTE } from '#app/assistant/constants/repository'
 import { LLM_REQUESTS_PER_MINUTE } from '#app/llm/constants/llm'
 
 /**
@@ -32,4 +33,12 @@ export const llmThrottle = limiter.define('llm', ({ auth }) => {
     .allowRequests(LLM_REQUESTS_PER_MINUTE)
     .every('1 minute')
     .usingKey(`user_${auth.getUserOrFail().id}`)
+})
+
+/** Per-user throttle on the commands of the owner's terminal in a repository sandbox. */
+export const terminalThrottle = limiter.define('terminal', ({ auth }) => {
+  return limiter
+    .allowRequests(TERMINAL_COMMANDS_PER_MINUTE)
+    .every('1 minute')
+    .usingKey(`terminal_${auth.getUserOrFail().id}`)
 })

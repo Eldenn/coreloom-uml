@@ -52,7 +52,7 @@ export class FakeMapSandboxes extends RepositorySandbox {
       },
       readFile: async () => this.graph,
       isolate: async () => true,
-      pause: async () => {},
+      rest: async () => {},
     }
   }
 

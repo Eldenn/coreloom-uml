@@ -78,7 +78,7 @@ export class FakeSourceSandboxes extends RepositorySandbox {
         this.events.push('isolate')
         return true
       },
-      pause: async () => {},
+      rest: async () => {},
     }
   }
 

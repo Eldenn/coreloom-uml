@@ -1,6 +1,6 @@
 import router from '@adonisjs/core/services/router'
 import { middleware } from '#start/kernel'
-import { apiTokenThrottle, authThrottle, llmThrottle } from '#start/limiter'
+import { apiTokenThrottle, authThrottle, llmThrottle, terminalThrottle } from '#start/limiter'
 
 /*
 |--------------------------------------------------------------------------
@@ -719,13 +719,14 @@ router
         'store',
       ])
       .as('assistant.files.store')
+      .use(llmThrottle)
     router
       .post('/:conversationId/sandbox/commands', [
         () => import('#app/assistant/controllers/assistant-sandbox-controller'),
         'run',
       ])
       .as('assistant.sandbox.commands.run')
-      .use(llmThrottle)
+      .use(terminalThrottle)
     router
       .post('/:conversationId/messages', [assistantMessagesController, 'chat'])
       .as('assistant.messages.store')
@@ -757,8 +758,6 @@ router
   .where('messageId', router.matchers.number())
   .where('index', router.matchers.number())
   .use(middleware.auth())
-
-  .use(llmThrottle)
 
 router
   .group(() => {

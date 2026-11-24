@@ -22,7 +22,7 @@ import type User from '#app/users/models/user'
 /*
  * The repository sandbox of a conversation, for one message: opened on the first repository tool
  * the model calls (resumed when the conversation has one for that repository, else cloned in a
- * new one), paused when the message ends (`close`). One message at a time per conversation
+ * new one), left to rest when the message ends (`close`: awake for `idleMs`, then paused by E2B). One message at a time per conversation
  * (a Redis key that ends by itself). The code lives in the sandbox only: nothing here keeps,
  * logs or traces a file or an output.
  */
@@ -183,7 +183,7 @@ export class RepositorySession {
     if (!parsed) return REPOSITORY_SENTENCES.unreadable
     const auth = await this.#auth(repository.url)
     if (typeof auth === 'string') return auth
-    const sandbox = await sandboxes.create()
+    const sandbox = await sandboxes.create(REPOSITORY_SANDBOX.timeoutMs, 'pause')
     if (!sandbox) return REPOSITORY_SENTENCES.unavailable
     const clone = (filter: string, timeoutMs: number) =>
       sandbox.run(
@@ -252,19 +252,19 @@ export class RepositorySession {
     return tokenEnvs(this.#access.token)
   }
 
-  /** Pauses the sandbox until the next message and frees the conversation. Never throws. */
+  /** Leaves the sandbox to rest until its next use and frees the conversation. Never throws. */
   async close(): Promise<void> {
     await Promise.allSettled(this.#running)
     const opened = this.#opened
     this.#opened = null
     try {
       if (opened) {
-        await opened.sandbox.pause()
+        await opened.sandbox.rest()
         opened.row.lastUsedAt = DateTime.now()
         await opened.row.save()
       }
     } catch {
-      // A sandbox that could not be paused ends by itself (`REPOSITORY_SANDBOX.timeoutMs`).
+      // A sandbox that could not be told to rest ends by itself (`REPOSITORY_SANDBOX.timeoutMs`).
     } finally {
       const access = this.#access
       this.#access = null

@@ -83,6 +83,21 @@ export const READ_FILE = `bash -c '${inside('READ_PATH')} && cd -- "$R" && test 
  */
 export const SHELL = `bash -c 'cd -- "$REPO_ROOT" && timeout -k 2 ${String(REPOSITORY_SANDBOX.shellSeconds)} bash -c "$SHELL_COMMAND" 2>&1 < /dev/null | dd bs=1 count=${String(REPOSITORY_SANDBOX.outputMaxBytes)} status=none; exit "\${PIPESTATUS[0]}"'`
 
+/** Where the owner's terminal keeps its folder between two commands: beside the clone. */
+export const terminalCwdFile = (root: string) => `${root}.terminal.cwd`
+
+/**
+ * `SHELL` for the owner's own terminal, with what makes it one: `$SHELL_COMMAND` starts in the
+ * folder the command before it ended in (kept in a file beside the clone, the clone's root when
+ * it is gone) and leaves its own there, and its process is noted for `STOP_TERMINAL`. Same
+ * limits and same rule as `SHELL`: only in a sandbox cut off the network, which never gets a
+ * token afterwards.
+ */
+export const TERMINAL = `S="$REPO_ROOT.terminal"; export S; cd -- "$REPO_ROOT" || exit 1; cd -- "$(cat "$S.cwd" 2>/dev/null)" 2>/dev/null; { echo "$BASHPID" > "$S.pid"; exec timeout -k 2 ${String(REPOSITORY_SANDBOX.shellSeconds)} bash -c 'trap "pwd > \\"\\$S.cwd\\"" EXIT; eval "$SHELL_COMMAND"'; } 2>&1 < /dev/null | dd bs=1 count=${String(REPOSITORY_SANDBOX.outputMaxBytes)} status=none; code="\${PIPESTATUS[0]}"; rm -f "$S.pid"; exit "$code"`
+
+/** Stops the command `TERMINAL` is running, and what it started (Ctrl+C). */
+export const STOP_TERMINAL = `kill -TERM "$(cat "$REPO_ROOT.terminal.pid" 2>/dev/null)" 2>/dev/null; true`
+
 /** What `MAP` exits with when the clone cannot be mapped. */
 export const MAP_EXIT = { extraction: 2, tooLarge: 4, tooManyFiles: 5 } as const
 

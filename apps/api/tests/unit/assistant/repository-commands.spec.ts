@@ -21,6 +21,8 @@ import {
   READ_FILE,
   SEARCH,
   SHELL,
+  STOP_TERMINAL,
+  TERMINAL,
 } from '#app/assistant/services/repository-commands'
 import { GITHUB_IMPORT_LIMITS } from '#app/code-maps/constants/code-map'
 import { GITHUB_SOURCE_LIMITS } from '#app/github/constants/github'
@@ -173,6 +175,27 @@ test.group('repository sandbox command lines', (group) => {
     assert.deepEqual(quoted, { exitCode: 0, stdout: `a'b $(echo c) d\n` })
     const long = await sh(SHELL, { SHELL_COMMAND: 'head -c 100000 /dev/zero | tr "\\0" x' })
     assert.lengthOf(long.stdout, REPOSITORY_SANDBOX.outputMaxBytes)
+  })
+
+  test('TERMINAL keeps its folder, and STOP_TERMINAL stops what it runs', async ({ assert }) => {
+    const quoted = await sh(TERMINAL, { SHELL_COMMAND: `cd src && echo "a'b" '$(echo c)'; exit 4` })
+    assert.deepEqual(quoted, { exitCode: 4, stdout: `a'b $(echo c)\n` })
+    assert.deepEqual(await sh(TERMINAL, { SHELL_COMMAND: 'pwd' }), {
+      exitCode: 0,
+      stdout: `${join(root, 'src')}\n`,
+    })
+    await sh(TERMINAL, { SHELL_COMMAND: 'cd ..' })
+
+    const started = performance.now()
+    const running = sh(TERMINAL, { SHELL_COMMAND: 'echo up; sleep 20 & sleep 20; echo never' })
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    await sh(STOP_TERMINAL, {})
+    const stopped = await running
+    assert.isBelow(performance.now() - started, 5000)
+    assert.equal(stopped.stdout, 'up\n')
+    assert.notEqual(stopped.exitCode, 0)
+    // Stopping when nothing runs is no error.
+    assert.equal((await sh(STOP_TERMINAL, {})).exitCode, 0)
   })
 
   test('CLONE refuses an unknown branch and a repository it cannot reach', async ({ assert }) => {

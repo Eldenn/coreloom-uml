@@ -36,8 +36,14 @@ export const REPOSITORY_TEMPLATE_NAME = `coreloom-uml-repository-${GRAPHIFY_TEST
 export const REPOSITORY_SANDBOX = {
   /** Where the repository is cloned in the sandbox (its Git folder is `<root>.git`). */
   root: '/home/user/repo',
-  /** Running between a resume and its pause: E2B kills it after this should the API die first. */
+  /** Running for one message or import: E2B ends it after this should the API die first. */
   timeoutMs: 120_000,
+  /**
+   * A conversation's sandbox stays awake this long after its last use (a message, a command
+   * of the owner's terminal), then E2B pauses it by itself: the next use within it waits for
+   * no resume. Each awake sandbox holds its memory (`REPOSITORY_TEMPLATE.memoryMB`).
+   */
+  idleMs: 5 * 60_000,
   startTimeoutMs: 20_000,
   commandTimeoutMs: 20_000,
   closeTimeoutMs: 5_000,
@@ -73,6 +79,12 @@ export const REPOSITORY_TOOL_LIMITS = {
   showLines: 300,
   commandLength: 2000,
 } as const
+
+/** Commands of the owner's terminal, per user and per minute. */
+export const TERMINAL_COMMANDS_PER_MINUTE = 60
+
+/** The most of the terminal's folder answered, in characters. */
+export const TERMINAL_CWD_MAX_LENGTH = 300
 
 /** When the daily prune of idle repository sandboxes runs (cron, UTC). */
 export const SANDBOX_PRUNE_SCHEDULE = { key: 'assistant-sandboxes-prune', pattern: '30 3 * * *' }
