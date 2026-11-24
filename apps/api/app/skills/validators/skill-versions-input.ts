@@ -1,4 +1,5 @@
 import vine from '@vinejs/vine'
+import { SKILL_OVERRIDE_REASON } from '#app/skills/constants/skill-scan'
 import {
   SKILL_VERSION_DECISIONS,
   SKILL_VERSION_STATUSES,
@@ -13,7 +14,18 @@ export const listSkillVersionsInput = vine.create(
   }),
 )
 
-/** `PATCH /admin/skill-versions/:id`: the admin's decision. */
+/**
+ * `PATCH /admin/skill-versions/:id`: the admin's decision and, only to approve a copy SkillSpector
+ * recommends not installing, why.
+ */
 export const reviewSkillVersionInput = vine.create(
-  vine.object({ status: vine.enum(SKILL_VERSION_DECISIONS) }),
+  vine.object({
+    status: vine.enum(SKILL_VERSION_DECISIONS),
+    overrideReason: vine
+      .string()
+      .trim()
+      .minLength(SKILL_OVERRIDE_REASON.minLength)
+      .maxLength(SKILL_OVERRIDE_REASON.maxLength)
+      .optional(),
+  }),
 )

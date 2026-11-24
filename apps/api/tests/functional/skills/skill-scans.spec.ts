@@ -221,9 +221,66 @@ test.group('Skill scans', (group) => {
       await client
         .patch(`/admin/skill-versions/${version.id}`)
         .headers(json)
+        .json({ status: 'rejected', overrideReason: 'Read it, the findings are quotes.' })
+        .loginAs(admin)
+    ).assertStatus(422)
+    ;(
+      await client
+        .patch(`/admin/skill-versions/${version.id}`)
+        .headers(json)
+        .json({ status: 'approved', overrideReason: 'too short' })
+        .loginAs(admin)
+    ).assertStatus(422)
+    ;(
+      await client
+        .patch(`/admin/skill-versions/${version.id}`)
+        .headers(json)
         .json({ status: 'rejected' })
         .loginAs(admin)
     ).assertStatus(200)
+  })
+
+  test('lets the admin override a do-not-install verdict with a reason', async ({
+    client,
+    assert,
+  }) => {
+    const version = await pendingCopy()
+    fakeScanner(await readFile(REPORT, 'utf8'), { exitCode: 1 })
+    await scanSkillVersion(version)
+    const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
+    const approved = await client
+      .patch(`/admin/skill-versions/${version.id}`)
+      .headers(json)
+      .json({ status: 'approved', overrideReason: '  Read it: the findings quote git commands.  ' })
+      .loginAs(admin)
+    approved.assertStatus(200)
+    assert.equal(approved.body().status, 'approved')
+    assert.equal(approved.body().overrideReason, 'Read it: the findings quote git commands.')
+    await version.refresh()
+    assert.equal(version.overrideReason, 'Read it: the findings quote git commands.')
+  })
+
+  test('takes no reason to approve a copy that is clean or not scanned whole', async ({
+    client,
+  }) => {
+    const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
+    const unscanned = await pendingCopy()
+    ;(
+      await client
+        .patch(`/admin/skill-versions/${unscanned.id}`)
+        .headers(json)
+        .json({ status: 'approved', overrideReason: 'I trust this one anyway.' })
+        .loginAs(admin)
+    ).assertStatus(422)
+    unscanned.scan = CLEAN_SCAN
+    await unscanned.save()
+    ;(
+      await client
+        .patch(`/admin/skill-versions/${unscanned.id}`)
+        .headers(json)
+        .json({ status: 'approved', overrideReason: 'I trust this one anyway.' })
+        .loginAs(admin)
+    ).assertStatus(422)
   })
 
   test('lets a copy scanned clean be approved', async ({ client, assert }) => {

@@ -63,4 +63,10 @@ export const SkillApprovalProblem = {
   DoNotInstall: 'do_not_install',
 } as const
 
+/**
+ * The admin's written reason for approving a copy SkillSpector recommends not installing
+ * (`overrideReason`): kept on that copy only, so its next version is blocked again.
+ */
+export const SKILL_OVERRIDE_REASON = { minLength: 10, maxLength: 1000 } as const
+
 export type SkillApprovalProblem = (typeof SkillApprovalProblem)[keyof typeof SkillApprovalProblem]

@@ -1110,8 +1110,14 @@ export const en = {
       scan_failed:
         'It cannot be approved: the scan gave no verdict. The next refresh scans it again.',
       scan_incomplete: 'It cannot be approved: the scan could not read every file.',
-      do_not_install: 'It cannot be approved: SkillSpector recommends not installing it.',
+      do_not_install:
+        'SkillSpector recommends not installing it. Read every finding: if they are wrong, approve it despite the scan with your reason, kept with this copy only.',
     },
+    overrideLabel: 'Why approve it despite the scan',
+    overridePlaceholder:
+      'What you read, and why the findings do not hold (10 characters at least).',
+    approveDespiteScan: 'Approve despite the scan',
+    overriddenBecause: 'Approved despite the scan:',
   },
   skills: {
     title: 'Skills',
@@ -2782,8 +2788,13 @@ export const fr: Messages = {
       scan_incomplete:
         'Elle ne peut pas être approuvée : l’analyse n’a pas pu lire tous les fichiers.',
       do_not_install:
-        'Elle ne peut pas être approuvée : SkillSpector recommande de ne pas l’installer.',
+        'SkillSpector recommande de ne pas l’installer. Lisez chaque problème : s’ils sont faux, approuvez-la malgré l’analyse avec votre raison, gardée pour cette copie seulement.',
     },
+    overrideLabel: 'Pourquoi l’approuver malgré l’analyse',
+    overridePlaceholder:
+      'Ce que vous avez lu, et pourquoi les problèmes ne tiennent pas (10 caractères au moins).',
+    approveDespiteScan: 'Approuver malgré l’analyse',
+    overriddenBecause: 'Approuvée malgré l’analyse :',
   },
   skills: {
     title: 'Skills',

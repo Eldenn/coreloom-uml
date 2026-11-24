@@ -229,6 +229,9 @@ export async function reviewSkillVersion(
   version: SkillVersion,
   status: (typeof SkillVersionStatus)['Approved' | 'Rejected'],
   reviewer: User,
+  overrideReason: string | null = null,
 ): Promise<SkillVersion> {
-  return version.merge({ status, reviewedBy: reviewer.id, reviewedAt: DateTime.now() }).save()
+  return version
+    .merge({ status, overrideReason, reviewedBy: reviewer.id, reviewedAt: DateTime.now() })
+    .save()
 }

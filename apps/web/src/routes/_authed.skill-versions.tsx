@@ -13,10 +13,12 @@ import { Button } from '@/components/ui/button'
 import { DiffViewer } from '@/components/ui/diff-viewer'
 import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
+import { Label } from '@/components/ui/label'
 import { RelativeTime } from '@/components/ui/relative-time'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
+import { Textarea } from '@/components/ui/textarea'
 import { useT } from '@/lib/locale'
 import { pairFiles } from '@/lib/skill-version-files'
 import {
@@ -37,6 +39,9 @@ export const Route = createFileRoute('/_authed/skill-versions')({
 })
 
 const STATUSES: SkillVersionStatus[] = ['pending', 'approved', 'rejected']
+/** The API's bounds on the reason for approving despite the scan (`SKILL_OVERRIDE_REASON`). */
+const OVERRIDE_REASON_MIN = 10
+const OVERRIDE_REASON_MAX = 1000
 
 function SkillVersionsPage() {
   const t = useT().skillVersions
@@ -195,6 +200,7 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
   const t = useT().skillVersions
   const detail = useSkillVersion(id)
   const review = useReviewSkillVersion()
+  const [reason, setReason] = React.useState('')
   if (detail.isPending) return <Skeleton className="h-40" />
   if (!detail.data) {
     return (
@@ -208,9 +214,10 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
   const changed = pairs.filter((pair) => pair.status !== null)
   const unchanged = pairs.filter((pair) => pair.status === null).map((pair) => pair.path)
 
-  const decide = (status: 'approved' | 'rejected') =>
+  const overridable = version.approvalProblem === 'do_not_install'
+  const decide = (status: 'approved' | 'rejected', overrideReason?: string) =>
     review.mutate(
-      { id, status },
+      { id, status, overrideReason },
       {
         onSuccess: () => toast.success(status === 'approved' ? t.approved : t.rejected),
         onError: () => toast.error(t.reviewFailed),
@@ -255,14 +262,40 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
           {t.approvalProblems[version.approvalProblem]}
         </p>
       )}
+      {version.overrideReason && (
+        <p className="m-0 text-sm">
+          {t.overriddenBecause} {version.overrideReason}
+        </p>
+      )}
+      {pending && overridable && (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`override-${id}`}>{t.overrideLabel}</Label>
+          <Textarea
+            id={`override-${id}`}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            maxLength={OVERRIDE_REASON_MAX}
+            placeholder={t.overridePlaceholder}
+          />
+        </div>
+      )}
       {pending && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             onClick={() => decide('approved')}
             disabled={review.isPending || version.approvalProblem !== null}
           >
             {t.approve}
           </Button>
+          {overridable && (
+            <Button
+              variant="destructive"
+              onClick={() => decide('approved', reason.trim())}
+              disabled={review.isPending || reason.trim().length < OVERRIDE_REASON_MIN}
+            >
+              {t.approveDespiteScan}
+            </Button>
+          )}
           <Button
             variant="secondary"
             onClick={() => decide('rejected')}

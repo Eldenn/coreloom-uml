@@ -45,6 +45,10 @@ export default class SkillVersion extends BaseModel {
   @column({ prepare: (value: unknown) => (value === null ? null : JSON.stringify(value)) })
   declare scan: SkillScan | null
 
+  /** Why the admin approved it although SkillSpector recommends not installing it. */
+  @column()
+  declare overrideReason: string | null
+
   @column()
   declare status: SkillVersionStatus
 

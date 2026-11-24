@@ -1,5 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { paginate } from '#app/shared/pagination/paginate'
+import { SkillApprovalProblem } from '#app/skills/constants/skill-scan'
 import { SkillVersionStatus } from '#app/skills/constants/skill-version'
 import SkillVersion from '#app/skills/models/skill-version'
 import { approvalProblem } from '#app/skills/services/skill-scans'
@@ -57,14 +58,25 @@ export default class AdminSkillVersionsController {
   async update({ auth, params, request, response }: HttpContext) {
     const version = await find(params.id)
     if (!version) return response.notFound(VERSION_NOT_FOUND)
-    const { status } = await request.validateUsing(reviewSkillVersionInput)
+    const { status, overrideReason } = await request.validateUsing(reviewSkillVersionInput)
     const problem = status === SkillVersionStatus.Approved ? approvalProblem(version) : null
-    if (problem) {
+    // Only SkillSpector's verdict can be overridden: a copy it did not scan whole has none.
+    const overridden = problem === SkillApprovalProblem.DoNotInstall && overrideReason !== undefined
+    if (overrideReason !== undefined && !overridden) {
+      return response.unprocessableEntity({
+        error: {
+          message:
+            'A reason is only taken to approve a copy SkillSpector recommends not installing',
+          field: 'overrideReason',
+        },
+      })
+    }
+    if (problem && !overridden) {
       return response.conflict({
         error: { message: 'This copy cannot be approved', reason: problem },
       })
     }
-    await reviewSkillVersion(version, status, auth.getUserOrFail())
+    await reviewSkillVersion(version, status, auth.getUserOrFail(), overrideReason ?? null)
     const output: SkillVersionOutput = serialize(version)
     return response.ok(output)
   }
@@ -90,6 +102,7 @@ function serialize(version: SkillVersion): SkillVersionOutput {
     bytes: version.bytes,
     scan: version.scan,
     approvalProblem: approvalProblem(version),
+    overrideReason: version.overrideReason,
     status: version.status,
     reviewedAt: version.reviewedAt?.toISO() ?? null,
     createdAt: version.createdAt.toISO() ?? '',

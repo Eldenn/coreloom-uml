@@ -29,8 +29,15 @@ export function useSkillVersion(id: number | null) {
 
 export function useReviewSkillVersion() {
   return useMutation({
-    mutationFn: ({ id, status }: { id: number; status: 'approved' | 'rejected' }) =>
-      client.api.admin.skillVersions.update({ params: { id: String(id) }, body: { status } }),
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: number
+      status: 'approved' | 'rejected'
+      /** Only to approve a copy SkillSpector recommends not installing. */
+      overrideReason?: string
+    }) => client.api.admin.skillVersions.update({ params: { id: String(id) }, body }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
   })
 }
