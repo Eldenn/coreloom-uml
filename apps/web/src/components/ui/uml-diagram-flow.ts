@@ -8,6 +8,8 @@ import {
 import {
   type DiagramFlowEdge,
   type DiagramFlowNode,
+  edgeText,
+  FOLDER_TAB,
   nodeLabel,
 } from '@/components/ui/uml-diagram-parts'
 import type { Messages } from '@/lib/i18n'
@@ -20,6 +22,7 @@ import {
   relationIndexOf,
 } from '@/lib/uml-graph'
 import { type LayoutBox, regionLines } from '@/lib/uml-layout'
+import { labelSize, type RouteBox, routeEdges } from '@/lib/uml-route'
 import { cn } from '@/lib/utils'
 
 type DiagramText = Messages['diagram']
@@ -123,33 +126,68 @@ function edgeLabel(edge: DiagramEdge, names: Map<string, string>, t: DiagramText
   return text
 }
 
+/** Each box where it is drawn: its place in its frame, added to its frame's own. */
+function drawnBoxes(graph: DiagramGraph, boxes: Map<string, LayoutBox>): RouteBox[] {
+  const byId = new Map(graph.nodes.map((n) => [n.id, n]))
+  const origin = (id: string | undefined, depth = 0): { x: number; y: number } => {
+    const box = id === undefined ? undefined : boxes.get(id)
+    if (!box || depth > 50) return { x: 0, y: 0 }
+    const outer = origin(byId.get(id ?? '')?.parent, depth + 1)
+    return { x: outer.x + box.x, y: outer.y + box.y }
+  }
+  return graph.nodes.flatMap((node) => {
+    const box = boxes.get(node.id)
+    if (!box) return []
+    const parent = node.parent !== undefined && boxes.has(node.parent) ? node.parent : undefined
+    // Lines stop at a folder's body, below its tab.
+    const tab = node.role === 'package' ? FOLDER_TAB : 0
+    const { x, y } = origin(node.id)
+    return [
+      {
+        id: node.id,
+        x,
+        y: y + tab,
+        width: box.width,
+        height: box.height - tab,
+        ...(parent === undefined ? {} : { parent }),
+      },
+    ]
+  })
+}
+
 function flowEdges(input: {
   graph: DiagramGraph
+  /** Where the boxes are: every line is routed round them. */
+  boxes: Map<string, LayoutBox>
   markers: string
   selected: ReadonlySet<number>
   t: DiagramText
 }): DiagramFlowEdge[] {
-  const { graph, markers, selected, t } = input
+  const { graph, boxes, markers, selected, t } = input
   const names = new Map(graph.nodes.map((n) => [n.id, n.title || t.roles[n.role]]))
   const valid = graph.edges.filter((e) => names.has(e.source) && names.has(e.target))
-  // Lines between the same two boxes fan out instead of lying on top of each other.
-  const pair = (e: DiagramEdge) => [e.source, e.target].sort().join('\u0000')
-  const counts = new Map<string, number>()
-  for (const e of valid) counts.set(pair(e), (counts.get(pair(e)) ?? 0) + 1)
-  const seen = new Map<string, number>()
+  const routes = routeEdges(
+    drawnBoxes(graph, boxes),
+    valid.map((edge) => {
+      const text = edgeText(edge)
+      return {
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        ...(text ? { label: labelSize(text) } : {}),
+      }
+    }),
+  )
   return valid.map((edge) => {
-    const key = pair(edge)
-    const i = seen.get(key) ?? 0
-    seen.set(key, i + 1)
-    const offset = (i - ((counts.get(key) ?? 1) - 1) / 2) * 16
     const index = relationIndexOf(edge.id)
+    const route = routes.get(edge.id)
     return {
       id: edge.id,
       selected: index !== null && selected.has(index),
       source: edge.source,
       target: edge.target,
       type: 'uml',
-      data: { edge, markers, offset, flow: graph.direction },
+      data: { edge, markers, ...(route ? { route } : {}) },
       ariaLabel: edgeLabel(edge, names, t),
     }
   })

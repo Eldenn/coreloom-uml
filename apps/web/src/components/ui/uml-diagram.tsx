@@ -447,7 +447,7 @@ function DiagramCanvas(props: CanvasProps) {
     ? flowNodes({ graph, boxes, editable, connectable, selected, highlighted, exporting, layer, t })
     : []
   const pickedLines = new Set(shown.relations)
-  const edges = graph ? flowEdges({ graph, markers, selected: pickedLines, t }) : []
+  const edges = graph ? flowEdges({ graph, boxes, markers, selected: pickedLines, t }) : []
 
   const flow = useReactFlow()
   const rename = useRename({ canvas, graph, onRename: editable ? onRename : undefined, diagram })
