@@ -18,6 +18,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as AuthedFeatureFlagsRouteImport } from './routes/_authed.feature-flags'
 import { Route as AuthedSettingsRouteImport } from './routes/_authed.settings'
+import { Route as AuthedSkillVersionsRouteImport } from './routes/_authed.skill-versions'
 import { Route as AuthedSkillsRouteImport } from './routes/_authed.skills'
 import { Route as STokenRouteImport } from './routes/s.$token'
 import { Route as AuthedAgentConfigsIndexRouteImport } from './routes/_authed.agent-configs.index'
@@ -71,6 +72,11 @@ const AuthedFeatureFlagsRoute = AuthedFeatureFlagsRouteImport.update({
 const AuthedSettingsRoute = AuthedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedSkillVersionsRoute = AuthedSkillVersionsRouteImport.update({
+  id: '/skill-versions',
+  path: '/skill-versions',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedSkillsRoute = AuthedSkillsRouteImport.update({
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof VerifyEmailRoute
   '/feature-flags': typeof AuthedFeatureFlagsRoute
   '/settings': typeof AuthedSettingsRoute
+  '/skill-versions': typeof AuthedSkillVersionsRoute
   '/skills': typeof AuthedSkillsRoute
   '/s/$token': typeof STokenRoute
   '/agent-configs/$id': typeof AuthedAgentConfigsIdRoute
@@ -154,6 +161,7 @@ export interface FileRoutesByTo {
   '/verify-email': typeof VerifyEmailRoute
   '/feature-flags': typeof AuthedFeatureFlagsRoute
   '/settings': typeof AuthedSettingsRoute
+  '/skill-versions': typeof AuthedSkillVersionsRoute
   '/skills': typeof AuthedSkillsRoute
   '/s/$token': typeof STokenRoute
   '/agent-configs/$id': typeof AuthedAgentConfigsIdRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/verify-email': typeof VerifyEmailRoute
   '/_authed/feature-flags': typeof AuthedFeatureFlagsRoute
   '/_authed/settings': typeof AuthedSettingsRoute
+  '/_authed/skill-versions': typeof AuthedSkillVersionsRoute
   '/_authed/skills': typeof AuthedSkillsRoute
   '/s/$token': typeof STokenRoute
   '/_authed/agent-configs/$id': typeof AuthedAgentConfigsIdRoute
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/feature-flags'
     | '/settings'
+    | '/skill-versions'
     | '/skills'
     | '/s/$token'
     | '/agent-configs/$id'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/feature-flags'
     | '/settings'
+    | '/skill-versions'
     | '/skills'
     | '/s/$token'
     | '/agent-configs/$id'
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/_authed/feature-flags'
     | '/_authed/settings'
+    | '/_authed/skill-versions'
     | '/_authed/skills'
     | '/s/$token'
     | '/_authed/agent-configs/$id'
@@ -327,6 +339,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedSettingsRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/skill-versions': {
+      id: '/_authed/skill-versions'
+      path: '/skill-versions'
+      fullPath: '/skill-versions'
+      preLoaderRoute: typeof AuthedSkillVersionsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/skills': {
       id: '/_authed/skills'
       path: '/skills'
@@ -403,6 +422,7 @@ declare module '@tanstack/react-router' {
 interface AuthedRouteChildren {
   AuthedFeatureFlagsRoute: typeof AuthedFeatureFlagsRoute
   AuthedSettingsRoute: typeof AuthedSettingsRoute
+  AuthedSkillVersionsRoute: typeof AuthedSkillVersionsRoute
   AuthedSkillsRoute: typeof AuthedSkillsRoute
   AuthedAgentConfigsIdRoute: typeof AuthedAgentConfigsIdRoute
   AuthedArchitecturesIdRoute: typeof AuthedArchitecturesIdRoute
@@ -417,6 +437,7 @@ interface AuthedRouteChildren {
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedFeatureFlagsRoute: AuthedFeatureFlagsRoute,
   AuthedSettingsRoute: AuthedSettingsRoute,
+  AuthedSkillVersionsRoute: AuthedSkillVersionsRoute,
   AuthedSkillsRoute: AuthedSkillsRoute,
   AuthedAgentConfigsIdRoute: AuthedAgentConfigsIdRoute,
   AuthedArchitecturesIdRoute: AuthedArchitecturesIdRoute,

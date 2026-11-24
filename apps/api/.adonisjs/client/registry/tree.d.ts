@@ -89,6 +89,11 @@ export interface ApiDefinition {
       store: typeof routes['admin.github_app.store']
       destroy: typeof routes['admin.github_app.destroy']
     }
+    skillVersions: {
+      index: typeof routes['admin.skill_versions.index']
+      show: typeof routes['admin.skill_versions.show']
+      update: typeof routes['admin.skill_versions.update']
+    }
     featureFlags: {
       index: typeof routes['admin.feature_flags.index']
       update: typeof routes['admin.feature_flags.update']

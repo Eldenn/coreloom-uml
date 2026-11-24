@@ -96,6 +96,7 @@ test.group('searchSkills', () => {
       added: ['danger', 'browser-tests', 'c4-docs', 'rare'],
       checked: 2,
       eligible: 2,
+      copied: [],
       warnings: [],
     })
   })
@@ -353,8 +354,15 @@ test.group('skills search helpers', () => {
 
   test('renders the report as one line', ({ assert }) => {
     assert.equal(
-      renderReport({ found: 3, added: ['a'], checked: 2, eligible: 1, warnings: ['w'] }),
-      '3 skills found; 1 new; 2 checked on GitHub; 1 eligible; w',
+      renderReport({
+        found: 3,
+        added: ['a'],
+        checked: 2,
+        eligible: 1,
+        copied: ['a'],
+        warnings: ['w'],
+      }),
+      '3 skills found; 1 new; 2 checked on GitHub; 1 eligible; 1 copied for review; w',
     )
   })
 })

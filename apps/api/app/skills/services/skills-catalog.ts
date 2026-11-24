@@ -5,6 +5,7 @@ import { DateTime } from 'luxon'
 import { SKILLS_SEARCH_LIMITS, SkillStatus } from '#app/skills/constants/skill'
 import CatalogSkill from '#app/skills/models/catalog-skill'
 import SkillSnapshot from '#app/skills/models/skill-snapshot'
+import { captureSkillVersions } from '#app/skills/services/skill-versions'
 import {
   type KnownSkill,
   type SearchReport,
@@ -106,6 +107,14 @@ export async function refreshCatalog(options: RefreshCatalogOptions = {}): Promi
       }
     }
   })
+  // After the rows are written: a skill checked this run is copied at its new pin.
+  const versions = await captureSkillVersions({
+    fetch: options.fetch,
+    githubToken: options.githubToken,
+    onProgress: options.onProgress,
+  })
+  report.copied = versions.captured
+  report.warnings.push(...versions.warnings)
   return report
 }
 

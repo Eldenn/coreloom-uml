@@ -1135,6 +1135,42 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/skills-controller').default['show']>>>
     }
   }
+  'admin.skill_versions.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/admin/skill-versions'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/skills/validators/skill-versions-input').listSkillVersionsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'admin.skill_versions.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/admin/skill-versions/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['show']>>>
+    }
+  }
+  'admin.skill_versions.update': {
+    methods: ["PATCH"]
+    pattern: '/admin/skill-versions/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/skills/validators/skill-versions-input').reviewSkillVersionInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/skills/validators/skill-versions-input').reviewSkillVersionInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'architectures.index': {
     methods: ["GET","HEAD"]
     pattern: '/architectures'

@@ -741,6 +741,39 @@ export class SkillSnapshotSchema extends BaseModel {
   declare takenAt: DateTime
 }
 
+export class SkillVersionSchema extends BaseModel {
+  static $columns = ['bytes', 'commit', 'contentSha', 'createdAt', 'files', 'folder', 'id', 'license', 'repository', 'reviewedAt', 'reviewedBy', 'skillId', 'status', 'storageKey'] as const
+  $columns = SkillVersionSchema.$columns
+  @column()
+  declare bytes: number
+  @column()
+  declare commit: string
+  @column()
+  declare contentSha: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare files: any
+  @column()
+  declare folder: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare license: string
+  @column()
+  declare repository: string
+  @column.dateTime()
+  declare reviewedAt: DateTime | null
+  @column()
+  declare reviewedBy: number | null
+  @column()
+  declare skillId: number
+  @column()
+  declare status: string
+  @column()
+  declare storageKey: string
+}
+
 export class SkillSchema extends BaseModel {
   static $columns = ['affinities', 'audits', 'checkedAt', 'contentSha', 'createdAt', 'description', 'eligible', 'firstSeenAt', 'id', 'ineligibleReason', 'installs', 'lastSeenAt', 'license', 'name', 'origin', 'registryId', 'slug', 'source', 'status', 'statusReason', 'targets', 'topics', 'updatedAt', 'url'] as const
   $columns = SkillSchema.$columns
