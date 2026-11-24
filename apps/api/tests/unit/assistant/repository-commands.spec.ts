@@ -1,19 +1,29 @@
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { access, chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
+import { gunzipSync } from 'node:zlib'
+import { GRAPHIFY_TESTED_VERSION, importGraphify } from '@coreloom-uml/codemap'
 import { test } from '@japa/runner'
 import { REPOSITORY_SANDBOX, REPOSITORY_TOOL_LIMITS } from '#app/assistant/constants/repository'
 import {
   CLONE,
+  CLONE_AT,
   GIT_BLAME,
   GIT_LOG,
   GIT_SHOW,
   LIST,
+  MAP,
+  MAP_EXIT,
+  mapFile,
   READ,
+  READ_FILE,
   SEARCH,
+  SHELL,
 } from '#app/assistant/services/repository-commands'
+import { GITHUB_IMPORT_LIMITS } from '#app/code-maps/constants/code-map'
+import { GITHUB_SOURCE_LIMITS } from '#app/github/constants/github'
 
 /**
  * The fixed command lines of a repository sandbox, run here with this machine's bash and git on
@@ -99,6 +109,70 @@ test.group('repository sandbox command lines', (group) => {
     assert.notInclude(config, 'protocol.file')
     const link = await sh(READ, { READ_PATH: 'src/passwd', READ_FROM: '1', READ_TO: '2' })
     assert.equal(link.stdout.trim(), '0\n/etc/passwd')
+  })
+
+  test('CLONE_AT holds the files of one commit, READ_FILE gives a whole text file', async ({
+    assert,
+  }) => {
+    const saved = root
+    root = join(base, 'at-commit')
+    try {
+      const fetched = await sh(CLONE_AT, {
+        REPO_URL: `file://${join(base, 'source')}`,
+        REPO_COMMIT: firstCommit,
+        ...allowFile,
+      })
+      assert.equal(fetched.exitCode, 0)
+      assert.equal(fetched.stdout.trim(), firstCommit)
+      // The first commit's file, not the branch's: one line, and no later file.
+      const orders = await sh(READ_FILE, { READ_PATH: 'src/orders.ts' })
+      assert.deepEqual(orders, { exitCode: 0, stdout: 'line 1 placeOrder\n' })
+      assert.notEqual((await sh(READ_FILE, { READ_PATH: 'src/logo.bin' })).exitCode, 0)
+      assert.equal(await git(root, 'rev-list', '--count', 'HEAD'), '1')
+      assert.notInclude(await readFile(`${root}.git/config`, 'utf8'), 'protocol.file')
+
+      // A missing file, a folder, a path out of the repository or into its Git folder.
+      for (const path of ['src/none.ts', 'src', '../source/README.md', '.git', '/etc/passwd']) {
+        const refused = await sh(READ_FILE, { READ_PATH: path })
+        assert.notEqual(refused.exitCode, 0, path)
+        assert.equal(refused.stdout, '', path)
+      }
+      // A commit the repository does not hold, a shortened one, a branch name.
+      for (const commit of ['0'.repeat(40), firstCommit.slice(0, 10), 'main; id']) {
+        const unknown = await sh(CLONE_AT, {
+          REPO_URL: `file://${join(base, 'source')}`,
+          REPO_COMMIT: commit,
+          ...allowFile,
+        })
+        assert.equal(unknown.exitCode, 1, commit)
+      }
+    } finally {
+      root = saved
+    }
+  })
+
+  test('READ_FILE gives one byte more than a file may be, so a larger one is told', async ({
+    assert,
+  }) => {
+    await writeFile(join(root, 'large.txt'), 'x'.repeat(GITHUB_SOURCE_LIMITS.fileBytes + 500))
+    const large = await sh(READ_FILE, { READ_PATH: 'large.txt' })
+    assert.equal(large.exitCode, 0)
+    assert.lengthOf(large.stdout, GITHUB_SOURCE_LIMITS.fileBytes + 1)
+    await rm(join(root, 'large.txt'))
+  })
+
+  test('SHELL runs the model’s command from the clone and answers its exit code', async ({
+    assert,
+  }) => {
+    const counted = await sh(SHELL, { SHELL_COMMAND: 'pwd; ls src | wc -l; echo oops >&2; exit 7' })
+    assert.equal(counted.exitCode, 7)
+    assert.include(counted.stdout, `${root}\n`)
+    assert.include(counted.stdout, 'oops')
+    // The command is data for the shell that starts it: quotes and substitutions run inside only.
+    const quoted = await sh(SHELL, { SHELL_COMMAND: `echo "a'b" '$(echo c)' $(echo d); true` })
+    assert.deepEqual(quoted, { exitCode: 0, stdout: `a'b $(echo c) d\n` })
+    const long = await sh(SHELL, { SHELL_COMMAND: 'head -c 100000 /dev/zero | tr "\\0" x' })
+    assert.lengthOf(long.stdout, REPOSITORY_SANDBOX.outputMaxBytes)
   })
 
   test('CLONE refuses an unknown branch and a repository it cannot reach', async ({ assert }) => {
@@ -225,5 +299,112 @@ test.group('repository sandbox command lines', (group) => {
       BLAME_TO: '100',
     })
     assert.notEqual(past.exitCode, 0)
+  })
+})
+
+/**
+ * `MAP`, the line a GitHub code map import runs after a one-commit `CLONE`, with the real
+ * graphify (the version CI installs is the one the sandbox template pins). Without that version on
+ * this machine those cases are skipped; CI fails instead.
+ */
+test.group('repository sandbox command lines: MAP', (group) => {
+  let source = ''
+  let hasGraphify = true
+  const exists = (path: string) =>
+    access(path).then(
+      () => true,
+      () => false,
+    )
+
+  async function cloneInto(name: string) {
+    root = join(base, name)
+    const cloned = await sh(CLONE, {
+      REPO_URL: `file://${source}`,
+      REPO_BRANCH: '',
+      REPO_DEPTH: '1',
+      ...allowFile,
+    })
+    if (cloned.exitCode !== 0) throw new Error(`CLONE failed (${String(cloned.exitCode)})`)
+  }
+
+  group.setup(async () => {
+    // Only the version the template pins writes the graph the importer reads.
+    hasGraphify = await promisify(execFile)('graphify', ['--version']).then(
+      ({ stdout }) => stdout.includes(GRAPHIFY_TESTED_VERSION),
+      () => false,
+    )
+    if (!hasGraphify && process.env.CI) {
+      throw new Error(`graphify ${GRAPHIFY_TESTED_VERSION} is not installed`)
+    }
+    base = await mkdtemp(join(tmpdir(), 'repository-map-'))
+    source = join(base, 'source')
+    await mkdir(join(source, 'src'), { recursive: true })
+    await mkdir(join(source, 'graphify-out'), { recursive: true })
+    await git(base, 'init', '--quiet', '--initial-branch=main', source)
+    await writeFile(
+      join(source, 'src', 'orders.ts'),
+      'export function placeOrder(cart: string[]) {\n  return charge(cart)\n}\n\nfunction charge(cart: string[]) {\n  return cart.length\n}\n',
+    )
+    // A graph committed in the repository is never trusted.
+    await writeFile(join(source, 'graphify-out', 'graph.json'), '{"planted":true}')
+    await git(source, 'add', '.')
+    await git(source, 'commit', '--quiet', '-m', 'Orders')
+    await writeFile(join(source, 'README.md'), 'Shop\n')
+    await git(source, 'add', '.')
+    await git(source, 'commit', '--quiet', '-m', 'Readme')
+    return () => rm(base, { recursive: true, force: true })
+  })
+
+  test('maps a one-commit clone and leaves only the graph beside it', async ({ assert }) => {
+    await cloneInto('mapped')
+    assert.equal(await git(root, 'rev-list', '--count', 'HEAD'), '1')
+
+    const mapped = await sh(MAP, { MAP_IGNORE: 'dist/\n', HOME: base })
+    assert.equal(mapped.exitCode, 0)
+    assert.equal(mapped.stdout, 'main\n')
+    assert.isFalse(await exists(join(root, '.git')))
+    assert.isFalse(await exists(`${root}.git`))
+    assert.equal(await readFile(join(root, '.graphifyignore'), 'utf8'), 'dist/\n')
+
+    const graph: unknown = JSON.parse(gunzipSync(await readFile(mapFile(root))).toString('utf8'))
+    assert.notProperty(graph as object, 'planted')
+    const imported = importGraphify(graph, {})
+    assert.isTrue(imported.ok)
+    assert.include(JSON.stringify(imported), 'src/orders.ts')
+  }).skip(() => !hasGraphify, 'the pinned graphify is not installed')
+
+  test("keeps the repository's own ignore file", async ({ assert }) => {
+    await cloneInto('ignored')
+    await writeFile(join(root, '.graphifyignore'), 'vendor/\n')
+    const mapped = await sh(MAP, { MAP_IGNORE: 'dist/\n', HOME: base })
+    assert.equal(mapped.exitCode, 0)
+    assert.equal(await readFile(join(root, '.graphifyignore'), 'utf8'), 'vendor/\n')
+  }).skip(() => !hasGraphify, 'the pinned graphify is not installed')
+
+  test('refuses more files than a map takes, before graphify runs', async ({ assert }) => {
+    await cloneInto('crowded')
+    await mkdir(join(root, 'many'))
+    for (let index = 0; index <= GITHUB_IMPORT_LIMITS.maxFiles; index++) {
+      await writeFile(join(root, 'many', String(index)), '')
+    }
+    const mapped = await sh(MAP, { MAP_IGNORE: '', HOME: base })
+    assert.equal(mapped.exitCode, MAP_EXIT.tooManyFiles)
+    assert.isFalse(await exists(join(root, 'graphify-out')))
+  })
+
+  test('answers its own exit code when graphify fails or writes no graph', async ({ assert }) => {
+    const bin = join(base, 'bin')
+    await mkdir(bin)
+    const PATH = `${bin}:${process.env.PATH ?? ''}`
+
+    await cloneInto('broken')
+    await writeFile(join(bin, 'graphify'), '#!/bin/sh\nexit 1\n')
+    await chmod(join(bin, 'graphify'), 0o755)
+    assert.equal((await sh(MAP, { MAP_IGNORE: '', PATH })).exitCode, MAP_EXIT.extraction)
+
+    await cloneInto('empty')
+    await writeFile(join(bin, 'graphify'), '#!/bin/sh\nexit 0\n')
+    assert.equal((await sh(MAP, { MAP_IGNORE: '', PATH })).exitCode, MAP_EXIT.extraction)
+    assert.isFalse(await exists(mapFile(root)))
   })
 })

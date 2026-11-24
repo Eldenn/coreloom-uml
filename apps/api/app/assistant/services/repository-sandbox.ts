@@ -1,5 +1,9 @@
-import { CommandExitError, Sandbox, TimeoutError } from 'e2b'
-import { REPOSITORY_SANDBOX } from '#app/assistant/constants/repository'
+import { ALL_TRAFFIC, CommandExitError, Sandbox, Template, TimeoutError } from 'e2b'
+import {
+  REPOSITORY_SANDBOX,
+  REPOSITORY_TEMPLATE,
+  REPOSITORY_TEMPLATE_NAME,
+} from '#app/assistant/constants/repository'
 import { RESEARCH_DENIED_RANGES } from '#app/research/constants/research'
 import { type ResearchConfig, researchConfig } from '#app/research/services/research-config'
 
@@ -13,18 +17,29 @@ export type RepositoryRun = (
 export type OpenRepositorySandbox = {
   sandboxId: string
   run: RepositoryRun
+  /**
+   * Cuts the sandbox off every network, for good (it holds after a pause): false when E2B did
+   * not confirm it. Called once the clone is in, before the model runs anything in it.
+   */
+  isolate(): Promise<boolean>
+  /** The bytes of a file a command line left in the sandbox; null when it cannot be read. */
+  readFile(path: string): Promise<Uint8Array | null>
   /** Pauses it until the next message (`resume`); the clone stays in it. */
   pause(): Promise<void>
 }
 
 /**
- * The E2B sandbox holding a repository for the workspace assistant: with `ResearchSandbox`, the
- * only files that import `e2b`. Resolved from the container, so tests swap it and never reach
- * E2B. It gets no file of ours and no key: the only secret it ever sees is an installation token
- * for its one repository, as an environment variable of one git command (never a file), revoked
- * when the message ends. It runs only the fixed command lines of `repository-commands.ts`, may
- * not reach a private address range, is paused between messages and killed with its
- * conversation, its account, or after `maxIdleDays` unused.
+ * The E2B sandbox holding a repository, for the workspace assistant and for a GitHub code map
+ * import: with `ResearchSandbox`, the only files that import `e2b`. Resolved from the container,
+ * so tests swap it and never reach E2B. It starts from the template of
+ * `REPOSITORY_TEMPLATE` (E2B's base and graphify, nothing of ours) and gets no file of ours and no key:
+ * the only secret it ever sees is an installation token for its one repository, as an
+ * environment variable of one git command (never a file), revoked when the message or the import
+ * ends. It runs only the fixed command lines of `repository-commands.ts`, one of which (`SHELL`)
+ * runs a command of the model: only in a sandbox cut off every network (`isolate`), which never
+ * gets a token again. Until then it may not reach a private address range. It is paused between
+ * messages and killed with its conversation, its account, after `maxIdleDays` unused, or as
+ * soon as an import or a reading is over.
  */
 export default class RepositorySandbox {
   /** Whether this server can run sandboxes (`E2B_API_KEY`). */
@@ -32,14 +47,39 @@ export default class RepositorySandbox {
     return researchConfig() !== null
   }
 
-  /** A new, empty sandbox (the session clones into it); null when E2B fails. */
-  async create(): Promise<OpenRepositorySandbox | null> {
+  /**
+   * Builds the template on this E2B install unless it holds it already (`assistant:setup`).
+   * Throws when E2B cannot build it; null without `E2B_API_KEY`.
+   */
+  async ensureTemplate(): Promise<'ready' | 'built' | null> {
+    const config = researchConfig()
+    if (!config) return null
+    if (await Template.exists(REPOSITORY_TEMPLATE_NAME, connection(config))) return 'ready'
+    const template = Template()
+      .fromTemplate(REPOSITORY_TEMPLATE.from)
+      .pipInstall([REPOSITORY_TEMPLATE.graphify])
+    await Template.build(template, REPOSITORY_TEMPLATE_NAME, {
+      ...connection(config),
+      cpuCount: REPOSITORY_TEMPLATE.cpuCount,
+      memoryMB: REPOSITORY_TEMPLATE.memoryMB,
+      minFreeDiskMb: REPOSITORY_TEMPLATE.minFreeDiskMb,
+    })
+    return 'built'
+  }
+
+  /**
+   * A new, empty sandbox (the caller clones into it); null when E2B fails. It ends by itself
+   * after `timeoutMs` should the API die first.
+   */
+  async create(
+    timeoutMs: number = REPOSITORY_SANDBOX.timeoutMs,
+  ): Promise<OpenRepositorySandbox | null> {
     const config = researchConfig()
     if (!config) return null
     try {
-      const sandbox = await Sandbox.create({
+      const sandbox = await Sandbox.create(REPOSITORY_TEMPLATE_NAME, {
         ...connection(config),
-        timeoutMs: REPOSITORY_SANDBOX.timeoutMs,
+        timeoutMs,
         requestTimeoutMs: REPOSITORY_SANDBOX.startTimeoutMs,
         // It reaches GitHub; a private network is never reachable.
         network: { denyOut: [...RESEARCH_DENIED_RANGES] },
@@ -100,7 +140,28 @@ function handle(sandbox: Sandbox): OpenRepositorySandbox {
       } catch (error) {
         if (error instanceof CommandExitError) return { exitCode: error.exitCode, output: '' }
         if (error instanceof TimeoutError) return { exitCode: 124, output: '' }
-        return { exitCode: 1, output: '' }
+        return { exitCode: REPOSITORY_SANDBOX.goneExitCode, output: '' }
+      }
+    },
+    async isolate() {
+      try {
+        await sandbox.updateNetwork(
+          { denyOut: [ALL_TRAFFIC] },
+          { requestTimeoutMs: REPOSITORY_SANDBOX.closeTimeoutMs },
+        )
+        return true
+      } catch {
+        return false
+      }
+    },
+    async readFile(path) {
+      try {
+        return await sandbox.files.read(path, {
+          format: 'bytes',
+          requestTimeoutMs: REPOSITORY_SANDBOX.commandTimeoutMs,
+        })
+      } catch {
+        return null
       }
     },
     async pause() {

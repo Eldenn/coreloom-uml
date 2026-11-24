@@ -15,7 +15,7 @@ import { CodeMapStatus, CodeMapSuggestionStatus } from '#app/code-maps/constants
 import { serializeSuggestion } from '#app/code-maps/serializers/code-map-suggestion-serializer'
 import { readDetectedCodeMap } from '#app/code-maps/services/code-map-storage'
 import { CODE_MAPS_NOT_FOUND, codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
-import { readSource, withSourceSentence } from '#app/code-maps/services/code-source'
+import { readSource, sourceExplorer, withSourceSentence } from '#app/code-maps/services/code-source'
 import { drawingSource } from '#app/code-maps/services/drawing-source'
 import { findOwnedSuggestion, SUGGESTION_NOT_FOUND } from '#app/code-maps/services/owned-suggestion'
 import {
@@ -106,7 +106,16 @@ export default class CodeMapSuggestionDraftsController {
     }
 
     const started = performance.now()
-    const reading = await readSource(codeMap, user, source.sourceNodes)
+    const reading = await readSource(
+      codeMap,
+      user,
+      source.sourceNodes,
+      sourceExplorer(
+        provider.kind,
+        built.model,
+        `A UML ${suggestion.kind} diagram of this code will be drawn.`,
+      ),
+    )
     let result: DrawingResult
     try {
       result = await source.draw(built.model, reading?.excerpts)

@@ -16,7 +16,7 @@ import Architecture from '#app/architectures/models/architecture'
 import AssistantConversation from '#app/assistant/models/assistant-conversation'
 import AssistantMessage from '#app/assistant/models/assistant-message'
 import AssistantSandbox from '#app/assistant/models/assistant-sandbox'
-import { CLONE } from '#app/assistant/services/repository-commands'
+import { CLONE, SHELL } from '#app/assistant/services/repository-commands'
 import RepositorySandbox, {
   type OpenRepositorySandbox,
 } from '#app/assistant/services/repository-sandbox'
@@ -127,6 +127,12 @@ class FakeSandboxes extends RepositorySandbox {
   folders = new Map<string, string>()
   /** The environment of every clone, as the sandbox would get it. */
   clones: Record<string, string>[] = []
+  /** The environment of every other command. */
+  afterClone: Record<string, string>[] = []
+  /** What happened to the sandboxes, in order: 'clone', 'isolate', 'shell', 'tool'. */
+  events: string[] = []
+  /** False: E2B does not confirm the sandbox is cut off the network. */
+  isolates = true
 
   constructor(private origin: string) {
     super()
@@ -163,6 +169,8 @@ class FakeSandboxes extends RepositorySandbox {
       sandboxId: id,
       run: (command, envs) => {
         if (command === CLONE) this.clones.push(envs)
+        this.events.push(command === CLONE ? 'clone' : command === SHELL ? 'shell' : 'tool')
+        if (command !== CLONE) this.afterClone.push(envs)
         // GitHub's URL is cloned from the fixture, which the sandbox's git (https only) refuses
         // unless allowed, the same way a token is passed.
         const count = Number(envs.GIT_CONFIG_COUNT ?? 0)
@@ -185,6 +193,11 @@ class FakeSandboxes extends RepositorySandbox {
               }),
           )
         })
+      },
+      readFile: async () => null,
+      isolate: async () => {
+        this.events.push('isolate')
+        return this.isolates
       },
       pause: async () => {
         this.paused += 1
@@ -403,6 +416,56 @@ test.group('Assistant repository', (group) => {
     } finally {
       restore()
     }
+  })
+
+  test('runs a command of the model only once the sandbox is cut off the network', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('repo-shell@example.com')
+    const command = 'grep -c placeOrder src/orders.ts; exit 3'
+    const model = toolCallingModel([
+      { calls: [{ tool: 'run_repository_command', input: { projectId: f.project.id, command } }] },
+      { text: 'Two lines.' },
+    ])
+    useModel(model)
+    const response = await client
+      .post(`${f.path}/messages`)
+      .headers(json)
+      .loginAs(f.user)
+      .json({ provider, apiKey: KEY, message: 'How long is it?', locale: 'en', auto: true })
+    response.assertStatus(200)
+    assert.deepEqual(sandboxes.events, ['clone', 'isolate', 'shell'])
+    // The command reaches the sandbox as one environment variable, with nothing else of ours.
+    assert.deepEqual(Object.keys(sandboxes.afterClone[0] ?? {}).sort(), [
+      'REPO_ROOT',
+      'SHELL_COMMAND',
+    ])
+    assert.include(toolResults(model), '\\"exitCode\\":3')
+    assert.include(response.body().messages[1].content, 'Commands run in the sandbox: 1')
+
+    // E2B does not confirm the cut: the sandbox is not used, and nothing runs in it.
+    const other = await setup('repo-shell-open@example.com')
+    sandboxes.isolates = false
+    sandboxes.events = []
+    useModel(
+      toolCallingModel([
+        {
+          calls: [
+            { tool: 'run_repository_command', input: { projectId: other.project.id, command } },
+          ],
+        },
+        { text: 'I could not read it.' },
+      ]),
+    )
+    const refused = await client
+      .post(`${other.path}/messages`)
+      .headers(json)
+      .loginAs(other.user)
+      .json({ provider, apiKey: KEY, message: 'How long is it?', locale: 'en', auto: true })
+    refused.assertStatus(200)
+    assert.deepEqual(sandboxes.events, ['clone', 'isolate'])
+    assert.isNull(await AssistantSandbox.findBy('conversationId', other.conversation.id))
   })
 
   test('refuses paths out of the repository and another account’s project', async ({

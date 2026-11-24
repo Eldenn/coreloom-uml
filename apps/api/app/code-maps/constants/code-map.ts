@@ -5,7 +5,7 @@ export const CodeMapSource = {
   /** Uploaded from the web app (a graphify `graph.json`). */
   Upload: 'upload',
   /**
-   * Extracted by the server from a GitHub repository (the analyzer service): a public one, or one
+   * Extracted by the server from a GitHub repository (in a sandbox): a public one, or one
    * the owner reads through the GitHub App.
    */
   Github: 'github',
@@ -61,33 +61,32 @@ export const CODE_MAP_UPLOAD_EXTENSIONS = ['json', 'gz'] as const
 export const CODE_MAP_STORAGE_FOLDER = 'code-maps'
 
 /**
- * The queue of GitHub extractions (`config/queue.ts`): one at a time, since the analyzer maps one
- * repository at a time.
+ * The queue of GitHub extractions (`config/queue.ts`): one at a time, each in its own sandbox.
  */
 export const CODE_MAPS_QUEUE = 'code-maps' as const
 
-/** The extractor the analyzer runs, until it answers with its version. */
+/** The extractor the sandbox runs. */
 export const GITHUB_EXTRACTOR = 'graphify'
 
-/** What the analyzer answers when a repository cannot be mapped (`apps/analyzer`, `ERRORS`). */
-export const AnalyzerError = {
+/** Why a repository cannot be mapped (`services/code-map-extraction.ts`). */
+export const ExtractionError = {
   NotFound: 'not_found',
   TooLarge: 'too_large',
   TooManyFiles: 'too_many_files',
   Timeout: 'timeout',
   ExtractionFailed: 'extraction_failed',
 } as const
-export type AnalyzerError = (typeof AnalyzerError)[keyof typeof AnalyzerError]
+export type ExtractionError = (typeof ExtractionError)[keyof typeof ExtractionError]
 
 /** The `failureReason` shown for each refusal, and for the cases the job itself gives up on. */
 export const GITHUB_IMPORT_FAILURES = {
-  [AnalyzerError.NotFound]:
+  [ExtractionError.NotFound]:
     'The repository or branch does not exist, or it is private and the GitHub App does not reach it.',
-  [AnalyzerError.TooLarge]: 'The repository is larger than 200 MB.',
-  [AnalyzerError.TooManyFiles]: 'The repository holds more than 20,000 files.',
-  [AnalyzerError.Timeout]: 'Reading the repository took more than 5 minutes.',
-  [AnalyzerError.ExtractionFailed]: 'graphify could not read the repository.',
-  unreachable: 'The code analyzer could not be reached. Try again later.',
+  [ExtractionError.TooLarge]: 'The repository is larger than 200 MB.',
+  [ExtractionError.TooManyFiles]: 'The repository holds more than 20,000 files.',
+  [ExtractionError.Timeout]: 'Reading the repository took more than 5 minutes.',
+  [ExtractionError.ExtractionFailed]: 'graphify could not read the repository.',
+  unreachable: 'The sandbox that reads the repository could not be reached. Try again later.',
   githubAccess:
     'The GitHub App no longer reaches this repository: install it on the repository again, then connect GitHub.',
   githubUnreachable:
@@ -98,16 +97,32 @@ export const GITHUB_IMPORT_FAILURES = {
   stale: 'The repository was not read in time: no worker took the job. Try again.',
 } as const
 
+/**
+ * Reading source files for a drawing or a review (`services/code-source.ts`): a sandbox of its
+ * own, within the one request that then calls the model.
+ */
+export const SOURCE_READ_LIMITS = {
+  /** The sandbox ends by itself after this, should the API die first. */
+  sandboxTimeoutMs: 90_000,
+  /** Past it nothing is read and the drawing goes on from the structure. */
+  cloneTimeoutMs: 30_000,
+} as const
+
 export const GITHUB_IMPORT_LIMITS = {
-  /** How long the worker waits for the analyzer (it stops itself after 5 minutes). */
-  analyzerTimeoutMs: 6 * 60 * 1000,
+  /** The sandbox of one import ends by itself after this, should the worker die first. */
+  sandboxTimeoutMs: 8 * 60 * 1000,
+  cloneTimeoutMs: 2 * 60 * 1000,
+  /** graphify on the clone. */
+  mapTimeoutMs: 5 * 60 * 1000,
+  /** Files in the clone, its history left out. */
+  maxFiles: 20_000,
   /**
    * A map still `pending` or `running` after this long is failed when a new import starts: the
    * job's attempts (5 minutes each, with retries) are long over, or no worker ever took it.
    */
   staleMinutes: 30,
-  /** The analyzer's answer, gzipped. */
-  responseBytes: 50 * 1024 * 1024,
+  /** graphify's graph, gzipped. */
+  graphBytes: 50 * 1024 * 1024,
 } as const
 
 /** What the owner did with a diagram the model proposed for the map. */

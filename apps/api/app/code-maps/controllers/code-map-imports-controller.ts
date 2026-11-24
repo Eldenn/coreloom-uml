@@ -30,7 +30,7 @@ export const GITHUB_FOLLOW_NOT_FOUND = {
 
 /**
  * Code maps the server extracts itself from a GitHub repository: the map is created `pending`
- * and `ImportGithubCodeMapJob` has the analyzer service clone and read it, with a token of the
+ * and `ImportGithubCodeMapJob` has a sandbox clone and read it, with a token of the
  * GitHub App when the owner reaches the repository through it (private repositories). A project
  * can also follow such a repository, so that each push reads it again. Owner-scoped, behind the
  * `code-maps` flag (404 while off).
@@ -39,7 +39,7 @@ export default class CodeMapImportsController {
   /**
    * `POST /projects/:id/code-maps/github` `{ url, branch?, follow? }`: 202 with the pending map,
    * which the client polls (`GET /code-maps/:id`) until it is `ready` or `failed`. One extraction
-   * per project at a time (409); 503 when the server has no analyzer. `follow: true` makes the
+   * per project at a time (409); 503 when the server has no sandboxes. `follow: true` makes the
    * project follow the repository (it must be one of the owner's GitHub App repositories, 422
    * otherwise); `follow: false` stops following; left out, the follow is unchanged.
    */

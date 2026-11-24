@@ -37,8 +37,9 @@ services:
       # file lives. For a manual build, pass `--project-directory ..` too.
       context: .
       dockerfile: apps/api/Dockerfile
-    # Migrations, the default account from DEFAULT_ACCOUNT_*, then the hand-picked skills
-    # and the weekly skills.sh search (all idempotent).
+    # Migrations, the default account from DEFAULT_ACCOUNT_*, the hand-picked skills and the
+    # weekly skills.sh search, then the sandbox prune and the E2B template repository
+    # sandboxes start from, built the first time (all idempotent).
     command:
       - sh
       - '-c'
@@ -55,6 +56,12 @@ services:
       SKILLS_REFRESH_ENABLED: '${SKILLS_REFRESH_ENABLED:-true}'
       SKILLS_GITHUB_TOKEN: '${SKILLS_GITHUB_TOKEN:-}'
       FRONTEND_URL: '${SERVICE_URL_WEB}'
+      # E2B sandboxes, required: code maps from GitHub, the assistant's repository tools and
+      # the web research all run there. The key alone is E2B Cloud; a self-hosted install
+      # (e2b-dev/runtime, Embed) adds its two URLs.
+      E2B_API_KEY: '${E2B_API_KEY:?set E2B_API_KEY (E2B Cloud, or a self-hosted install with E2B_API_URL and E2B_SANDBOX_URL)}'
+      E2B_API_URL: '${E2B_API_URL:-}'
+      E2B_SANDBOX_URL: '${E2B_SANDBOX_URL:-}'
       DB_HOST: postgres
       DB_PORT: '5432'
       DB_USER: '${DB_USER:-coreloom_uml}'
@@ -130,7 +137,12 @@ services:
       # OTEL_EXPORTER_OTLP_ENDPOINT is set, so this is what turns tracing on.
       # No `depends_on: signoz-otel-collector`: the exporter retries/drops
       # silently, the API must not wait on (or fail with) SigNoz.
-      ANALYZER_URL: http://analyzer:8080
+      # E2B sandboxes, required: code maps from GitHub, the assistant's repository tools and
+      # the web research all run there. The key alone is E2B Cloud; a self-hosted install
+      # (e2b-dev/runtime, Embed) adds its two URLs.
+      E2B_API_KEY: '${E2B_API_KEY:?set E2B_API_KEY (E2B Cloud, or a self-hosted install with E2B_API_URL and E2B_SANDBOX_URL)}'
+      E2B_API_URL: '${E2B_API_URL:-}'
+      E2B_SANDBOX_URL: '${E2B_SANDBOX_URL:-}'
       # The API's public address: the GitHub App's webhook URL when it is created from the settings.
       API_URL: '${SERVICE_URL_API}'
       # GitHub App (private repositories, push webhook): all six or none, or leave them empty and
@@ -210,7 +222,12 @@ services:
       S3_ACCESS_KEY_ID: '${S3_ACCESS_KEY_ID}'
       S3_SECRET_ACCESS_KEY: '${S3_SECRET_ACCESS_KEY}'
       S3_PUBLIC_URL: '${S3_PUBLIC_URL:-}'
-      ANALYZER_URL: http://analyzer:8080
+      # E2B sandboxes, required: code maps from GitHub, the assistant's repository tools and
+      # the web research all run there. The key alone is E2B Cloud; a self-hosted install
+      # (e2b-dev/runtime, Embed) adds its two URLs.
+      E2B_API_KEY: '${E2B_API_KEY:?set E2B_API_KEY (E2B Cloud, or a self-hosted install with E2B_API_URL and E2B_SANDBOX_URL)}'
+      E2B_API_URL: '${E2B_API_URL:-}'
+      E2B_SANDBOX_URL: '${E2B_SANDBOX_URL:-}'
       # GitHub App (private repositories, push webhook): all six or none; see the README.
       GITHUB_APP_ID: '${GITHUB_APP_ID:-}'
       GITHUB_APP_SLUG: '${GITHUB_APP_SLUG:-}'
@@ -227,24 +244,6 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
-
-  # analyzer — clones a public GitHub repository and maps its code with graphify
-  # for the queue worker (code maps "From GitHub"). No secret, no port published,
-  # no volume: only `api`/`queue-worker` reach it over the Compose network.
-  analyzer:
-    build:
-      context: .
-      dockerfile: apps/analyzer/Dockerfile
-    restart: unless-stopped
-    expose:
-      - '8080'
-    mem_limit: 2g
-    cpus: 1.5
-    pids_limit: 512
-    security_opt:
-      - 'no-new-privileges:true'
-    cap_drop:
-      - ALL
 
   # bull-board — queue dashboard (inspect / retry / remove jobs). Published on
   # its own subdomain by Coolify; drop this service if tunnel-only access is

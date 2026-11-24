@@ -128,7 +128,7 @@ export async function answerChat(
         },
         stream,
       )
-      reply = withFilesRead(result.reply, repository.read, locale)
+      reply = withFilesRead(result.reply, repository, locale)
       unfinished = result.unfinished
       // Recorded by the tools as the loop went, in the same order: keep the ones the loop kept.
       actions = recorded.slice(0, result.proposed.length)

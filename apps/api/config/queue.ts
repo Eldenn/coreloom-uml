@@ -66,8 +66,8 @@ const queueConfig = defineConfig({
     default: {},
 
     /**
-     * GitHub code map extractions (`ImportGithubCodeMapJob`): one at a time across workers, as
-     * the analyzer service maps one repository at a time.
+     * GitHub code map extractions (`ImportGithubCodeMapJob`): one at a time across workers.
+     * Each runs in a sandbox of its own, so this may be raised when imports queue up.
      */
     [CODE_MAPS_QUEUE]: { globalConcurrency: 1 },
 

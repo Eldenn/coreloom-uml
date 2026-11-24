@@ -6,6 +6,7 @@ import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import type { ApiClient } from '@japa/api-client'
 import { test } from '@japa/runner'
 import queue from '@nemoventures/adonis-jobs/services/main'
+import { tokenEnvs } from '#app/assistant/services/repository-commands'
 import {
   CODE_MAPS_QUEUE,
   CodeMapSource,
@@ -39,7 +40,11 @@ import ImportGithubCodeMapJob from '#app/jobs/import-github-code-map_job'
 import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
 import env from '#start/env'
-import { ANALYZED_SHA, FakeAnalyzer, graphAnswer } from '#tests/helpers/fake-analyzer'
+import {
+  type FakeMapSandboxes,
+  MAPPED_SHA,
+  useFakeMapSandboxes,
+} from '#tests/helpers/fake-map-sandbox'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
 
@@ -546,20 +551,21 @@ test.group('GitHub App: webhook', (group) => {
 })
 
 test.group('GitHub App: private repositories and follows', (group) => {
-  let analyzer: FakeAnalyzer
+  let sandboxes: FakeMapSandboxes
   group.each.setup(() => withDefaultFlags())
   group.each.setup(() => withGithubApp())
   group.each.setup(async () => {
     drive.fake()
-    analyzer = new FakeAnalyzer()
-    const previous = env.get('ANALYZER_URL')
-    env.set('ANALYZER_URL', await analyzer.start())
+    const fake = useFakeMapSandboxes()
+    sandboxes = fake.sandboxes
+    const previous = env.get('E2B_API_KEY')
+    env.set('E2B_API_KEY', 'e2b_key_for_tests')
     await queue.useQueue(CODE_MAPS_QUEUE).drain(true)
     return async () => {
       drive.restore()
       app.container.restore(GithubApi)
-      await analyzer.stop()
-      env.set('ANALYZER_URL', previous ?? '')
+      fake.restore()
+      env.set('E2B_API_KEY', previous ?? '')
       await queue.useQueue(CODE_MAPS_QUEUE).drain(true)
     }
   })
@@ -637,7 +643,6 @@ test.group('GitHub App: private repositories and follows', (group) => {
     const { user, project } = await setup()
     await grant(user)
     const codeMap = await pendingMap(user, project)
-    analyzer.answers.push(graphAnswer())
     const logs = captureLogs()
     try {
       assert.isNull(await runImport(codeMap.id))
@@ -645,7 +650,9 @@ test.group('GitHub App: private repositories and follows', (group) => {
       logs.restore()
     }
     assert.deepEqual(github.calls, ['installation-token:77:9001', 'revoke-installation:token'])
-    assert.equal(analyzer.requests[0]?.token, INSTALLATION_TOKEN)
+    // The clone's environment only: graphify never gets the token.
+    assert.deepInclude(sandboxes.cloned, tokenEnvs(INSTALLATION_TOKEN))
+    assert.notInclude(JSON.stringify(sandboxes.runs[1]?.envs), 'GIT_CONFIG')
     assert.equal((await CodeMap.findOrFail(codeMap.id)).status, CodeMapStatus.Ready)
     assert.notInclude(await dumpDatabase(), INSTALLATION_TOKEN)
     assert.notInclude(logs.lines.join('\n'), INSTALLATION_TOKEN)
@@ -655,18 +662,17 @@ test.group('GitHub App: private repositories and follows', (group) => {
     const github = useFakeGithub()
     const { user, project } = await setup()
     const codeMap = await pendingMap(user, project)
-    analyzer.answers.push(graphAnswer())
     assert.isNull(await runImport(codeMap.id))
     assert.deepEqual(github.calls, [])
-    assert.notProperty(analyzer.requests[0] ?? {}, 'token')
+    assert.notInclude(JSON.stringify(sandboxes.runs.map((run) => run.envs)), 'GIT_CONFIG')
   })
 
-  test('the token is revoked when the analyzer fails too', async ({ assert }) => {
+  test('the token is revoked when the sandbox fails too', async ({ assert }) => {
     const github = useFakeGithub()
     const { user, project } = await setup()
     await grant(user)
     const codeMap = await pendingMap(user, project)
-    analyzer.answers.push({ status: 422, body: { error: { code: 'not_found' } } })
+    sandboxes.clone = { exitCode: 1, output: '' }
     await runImport(codeMap.id)
     assert.include(github.calls, 'revoke-installation:token')
     assert.equal((await CodeMap.findOrFail(codeMap.id)).status, CodeMapStatus.Failed)
@@ -684,7 +690,7 @@ test.group('GitHub App: private repositories and follows', (group) => {
     const row = await CodeMap.findOrFail(refused.id)
     assert.equal(row.status, CodeMapStatus.Failed)
     assert.equal(row.failureReason, GITHUB_IMPORT_FAILURES.githubAccess)
-    assert.lengthOf(analyzer.requests, 0)
+    assert.lengthOf(sandboxes.runs, 0)
 
     github.tokenAnswer = { ok: false, failure: GithubFailure.Unreachable }
     const down = await pendingMap(user, project)
@@ -737,7 +743,7 @@ test.group('GitHub App: private repositories and follows', (group) => {
     assert.lengthOf(await CodeMap.query().where('projectId', project.id), 1)
 
     await GithubRepositoryGrant.query().where('userId', user.id).delete()
-    await runPush({ branch: 'release', commit: ANALYZED_SHA })
+    await runPush({ branch: 'release', commit: MAPPED_SHA })
     assert.lengthOf(await CodeMap.query().where('projectId', project.id), 1)
   })
 })

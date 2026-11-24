@@ -31,7 +31,7 @@ import CodeMap from '#app/code-maps/models/code-map'
 import CodeMapSuggestion from '#app/code-maps/models/code-map-suggestion'
 import type DiagramCodeLink from '#app/code-maps/models/diagram-code-link'
 import GithubCodeMapFollow from '#app/code-maps/models/github-code-map-follow'
-import { analyzerUrl } from '#app/code-maps/services/code-map-analyzer'
+import { extractionConfigured } from '#app/code-maps/services/code-map-extraction'
 import { readCodeMapFile } from '#app/code-maps/services/code-map-storage'
 import { deleteCodeMap } from '#app/code-maps/services/code-map-writes'
 import { codeMapsEnabled } from '#app/code-maps/services/code-maps-flag'
@@ -301,7 +301,7 @@ export const CODE_MAP_ACTIONS: readonly AssistantAction[] = [
     before: ({ projectId, follow }) =>
       follow === undefined ? Promise.resolve(null) : followedNow(projectId),
     async currentProblem({ url, follow }, user) {
-      if (!analyzerUrl()) return GITHUB_IMPORT_REFUSALS[GithubImportRefusal.Off]
+      if (!extractionConfigured()) return GITHUB_IMPORT_REFUSALS[GithubImportRefusal.Off]
       if (follow === true && !((await githubAppConfig()) && (await findGrant(user.id, url))))
         return GITHUB_IMPORT_REFUSALS[GithubImportRefusal.FollowRefused]
       return null

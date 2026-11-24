@@ -249,6 +249,11 @@ export {
   sourcePaths,
 } from './source-excerpts.ts'
 export {
+  exploreSource,
+  SOURCE_EXPLORATION,
+  type SourceExplorationInput,
+} from './source-exploration.ts'
+export {
   proposeStructureDiagram,
   STRUCTURE_DIAGRAM_KINDS,
   STRUCTURE_INSTRUCTIONS,

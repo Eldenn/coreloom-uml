@@ -168,8 +168,7 @@ coreloom-uml/
 │   ├── api/                  # AdonisJS v7 backend — same app/ domain layout as coreloom
 │   │                         #   app/architectures/ is the reference domain — copy it for new user-owned resources
 │   ├── web/                  # React 19 + Vite SPA built with coreloom-ui (sign-in, architectures, editor, settings)
-│   ├── cli/                  # `@coreloom-uml/cli` (npm): pulls agent conventions, sends code maps
-│   └── analyzer/             # Python service: clones a GitHub repository, maps it with graphify
+│   └── cli/                  # `@coreloom-uml/cli` (npm): pulls agent conventions, sends code maps
 ├── packages/
 │   ├── config/               # Shared TypeScript config — copied from coreloom, unmodified
 │   ├── auth-policy/          # Password policy — copied from coreloom (consumed from source, no build step)
@@ -180,9 +179,9 @@ coreloom-uml/
 └── infra/
     ├── docker-compose.yml         # local dev: postgres (+ postgres-init, which creates the dev and
     │                              #   test databases on every `up`) + redis + mailpit + minio + bull-board
-    │                              #   + analyzer
     ├── docker-compose.staging.yml # Coolify staging stack
-    ├── e2b/                       # self-hosted E2B sandboxes for the web research, started on demand
+    ├── e2b/                       # self-hosted E2B sandboxes (code maps from GitHub, the assistant's
+    │                              #   repository, web research), started on demand
     └── .env.staging.example       # staging environment variables
 ```
 
@@ -352,20 +351,21 @@ also has a GitHub Actions workflow that sends one on every push).
 The server can also read a **public GitHub repository** itself:
 `POST /projects/:id/code-maps/github` `{ url, branch? }` (github.com only, the default branch when
 `branch` is left out) creates a `pending` map and answers 202; 409 while the project already has
-one being read, 503 when `ANALYZER_URL` is not set. `ImportGithubCodeMapJob` runs on its own queue
-(`code-maps`, one job at a time) and calls the analyzer service (`apps/analyzer`, a stdlib Python
-HTTP server in its own image with graphify pinned). The analyzer holds no secret and is never
-published: it clones the repository shallowly with no submodules, symlinks, hooks, LFS or
+one being read, 503 when `E2B_API_KEY` is not set. `ImportGithubCodeMapJob` runs on its own queue
+(`code-maps`, one job at a time) and maps the repository in an E2B sandbox of its own
+(`mapRepository`, in the same kind of sandbox as the assistant's repository tools): the code is
+cloned and read there and never reaches the server. The sandbox holds nothing of ours and runs
+two fixed command lines: it clones one commit with no submodules, symlinks, hooks, LFS or
 credentials, refuses more than 200 MB, 20,000 files or 5 minutes, drops any committed
 `graphify-out/` (never reused: the map is always extracted again; the repository's own
-`.graphifyignore` is kept and wins over the default one), runs graphify with
-`GRAPHIFY_BACKEND=none`, answers the `graph.json` gzipped with the commit and branch, and deletes
-the clone. The worker checks and stores it like an upload (`ready`), or fails the map with a
-reason (`failed`); an analyzer that cannot be reached is tried 3 times. The web app polls a map
-while it is `pending` or `running`. Locally the dev compose runs the analyzer on port 8080 and
-`.env.example` already points `ANALYZER_URL` at it (run the queue worker too); without Docker,
-run `python3 apps/analyzer/analyzer.py` with graphify installed. Its tests run with
-`python3 -m unittest discover -s apps/analyzer`.
+`.graphifyignore` is kept and wins over the default one) and runs graphify with
+`GRAPHIFY_BACKEND=none`; only the `graph.json`, gzipped, leaves it, and it is killed whatever
+happened. The worker checks and stores the graph like an upload (`ready`), or fails the map with
+a reason (`failed`); a sandbox that cannot be started is tried 3 times. The web app polls a map
+while it is `pending` or `running`. The sandboxes start from an E2B template of ours (E2B's base
+plus graphify, pinned to the version the importer reads), which `node ace assistant:setup` builds
+on the E2B install the first time: run it once locally after setting the three `E2B_*` values
+(see `infra/e2b/` below for a local install), and run the queue worker too.
 
 **Proposed diagrams.** The owner's own model (provider and key in the body, used for that call
 only, counted against the LLM limit, session only) can propose the diagrams worth drawing for a
@@ -396,10 +396,16 @@ opens an architecture's assistant with "Draw from the code" switched on.
 **Source code.** A sequence, activity or class diagram drawn from a map (a message with
 `codeMapId`, a proposal's draft, a process proposal) also reads the source of the files it covers,
 for what a map cannot show: the order of the calls, conditions, loops, error paths, attributes.
-`readSource` reads them on GitHub at the map's commit, at most 8 files, 12,000 characters each and
-48,000 in all (a larger file is cut to 60 lines from each node), with an installation token made
-for that read and revoked at once when the owner reaches the repository through the GitHub App,
-anonymously otherwise. The code goes to the owner's model for that one call and is never stored,
+`readSource` reads them at the map's commit in an E2B sandbox of its own, which fetches that one
+commit from GitHub and is killed once the files are read (the server itself asks GitHub for no
+file): at most 8 files, 12,000 characters each and 48,000 in all (a larger file is cut to 60 lines
+from each node), with an installation token made for that fetch and revoked at once when the owner
+reaches the repository through the GitHub App, with none otherwise. The owner's model may then
+look at the repository by itself before it draws or reviews: the sandbox is first cut off every
+network, the model runs a few commands of its own in it (never with the token), and what they
+printed is read with the files. The workspace assistant has the same in its conversation's sandbox
+(`run_repository_command`), under the same rule: no network and no secret where the model runs a
+command. The code goes to the owner's model for that one call and is never stored,
 logged or returned; a map still holds none. The stored answer ends with what was read, or why
 nothing was: the map names no GitHub repository, it has no commit, the repository could not be
 read, or the files were not found at that commit (a map pushed from a subfolder, a commit never
@@ -420,9 +426,9 @@ App on, and a project can **follow** one: each push on its branch reads it into 
   installation token.
 - **Reading.** `POST /projects/:id/code-maps/github` is unchanged; when the owner has a grant on the
   repository, `ImportGithubCodeMapJob` makes an installation token for that repository only, with
-  `contents: read`, sends it to the analyzer in the request (git gets it as an HTTP header through
-  its environment, never in the URL, the command line or a file), and revokes it once the analyzer
-  answered. It never reaches Redis, the database or a log. `follow: true` makes the project follow
+  `contents: read`, hands it to the sandbox's clone (git gets it as an HTTP header through its
+  environment, never in the URL, the command line or a file; graphify never gets it), and revokes
+  it once the sandbox answered. It never reaches Redis, the database or a log. `follow: true` makes the project follow
   the repository (`GET|DELETE /projects/:id/code-maps/github/follow`).
 - **Webhook.** `POST /github/webhook` checks `X-Hub-Signature-256` over the raw body before reading
   anything. A push on a followed branch queues `FollowGithubPushJob` (same `code-maps` queue), which
@@ -847,7 +853,10 @@ real SMTP provider.
    **Environment Variables** editor. `API_FQDN` / `WEB_FQDN` are subdomains
    under a wildcard already pointed at the Coolify host — Coolify provisions
    them, wires its proxy to the right container port and issues Let's Encrypt
-   certificates. Generate a real `APP_KEY`.
+   certificates. Generate a real `APP_KEY`. `E2B_API_KEY` is required (the
+   stack does not start without it): everything that touches a repository's
+   code or a web page runs in an E2B sandbox, on E2B Cloud or on a self-hosted
+   install reachable from the stack (`E2B_API_URL`, `E2B_SANDBOX_URL`).
 3. Publish the SigNoz dashboard by setting
    `SERVICE_FQDN_SIGNOZ_8080=https://signoz-staging-oratoria.drcode.fr` in the
    same **Environment Variables** editor (the `signoz` service carries the

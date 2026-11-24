@@ -1,17 +1,39 @@
 import app from '@adonisjs/core/services/app'
 import logger from '@adonisjs/core/services/logger'
-import { excerptSource, type SourceExcerpt, type SourceFile, sourcePaths } from '@coreloom-uml/llm'
+import {
+  excerptSource,
+  exploreSource,
+  type LanguageModel,
+  type SourceExcerpt,
+  type SourceFile,
+  sourcePaths,
+} from '@coreloom-uml/llm'
+import { REPOSITORY_SANDBOX } from '#app/assistant/constants/repository'
+import { CLONE_AT, READ_FILE, SHELL, tokenEnvs } from '#app/assistant/services/repository-commands'
+import RepositorySandbox from '#app/assistant/services/repository-sandbox'
+import { SOURCE_READ_LIMITS } from '#app/code-maps/constants/code-map'
 import type CodeMap from '#app/code-maps/models/code-map'
 import { parseGithubRepository } from '#app/code-maps/services/github-repository'
-import GithubApi, { isCommitId, isRepositoryPath } from '#app/github/services/github-api'
+import { GITHUB_SOURCE_LIMITS } from '#app/github/constants/github'
+import type GithubApi from '#app/github/services/github-api'
+import { isCommitId, isRepositoryPath } from '#app/github/services/github-api'
 import { findGrant } from '#app/github/services/github-grants'
 import { repositoryToken } from '#app/github/services/repository-token'
+import { ProviderKind } from '#app/llm-connections/constants/llm-connections'
 import type User from '#app/users/models/user'
 
 /**
- * The source code of the files a diagram is drawn from, read on GitHub at the map's commit for
- * that one call. It is never stored, logged, traced or returned, and a map still holds none. A
- * private repository is read with an installation token made here and revoked before returning.
+ * The source code of the files a diagram is drawn from, read at the map's commit for that one
+ * call, in a sandbox of its own (`RepositorySandbox`, the assistant's): the sandbox fetches that
+ * commit from GitHub and the files are read there with one fixed command line each; this server
+ * never asks GitHub for a file. The source is never stored, logged, traced or returned, and a
+ * map still holds none. A private repository is fetched with an installation token made here,
+ * given to that one fetch and revoked before returning. The sandbox is killed whatever happens.
+ *
+ * With an explorer, the owner's model then looks at the repository by itself (`exploreSource`):
+ * it runs commands of its own in that sandbox, which is first cut off every network and gets no
+ * token (the fetch had it, before any command of the model), and what they printed joins the
+ * files read. Nothing else leaves the sandbox.
  */
 
 /** Why no source was read: the drawing then goes on from the structure only. */
@@ -20,7 +42,7 @@ export const SourceAbsence = {
   NoRepository: 'no_repository',
   /** The map has no commit id. */
   NoCommit: 'no_commit',
-  /** GitHub refused or could not be reached. */
+  /** GitHub refused, or the sandbox could not fetch the commit. */
   Unreadable: 'unreadable',
   /** No file of the slice exists at that commit. */
   NotFound: 'not_found',
@@ -32,18 +54,36 @@ export type SourceReading = {
   /** Files left out: beyond the limits, missing, too large or not text. */
   omitted: number
   absence: SourceAbsence | null
+  /** Commands of its own the model ran in the sandbox whose output joined the excerpts. */
+  commands: number
 }
+
+/** The owner's model looking at the repository before the call that draws or reviews. */
+export type SourceExplorer = { model: LanguageModel; task: string }
+
+/** Null for a model that carries no tool call from one step to the next (`openai-codex`). */
+export function sourceExplorer(
+  kind: string,
+  model: LanguageModel,
+  task: string,
+): SourceExplorer | null {
+  return kind === ProviderKind.OpenAICodex ? null : { model, task }
+}
+
+/** The nodes named to the explorer, at most. */
+const SUBJECT_MAX = 40
 
 type Located = { kind: string; path?: string; line?: number }
 
 /**
- * Reads the files of `nodes` on GitHub at the map's commit; null when the nodes name no file
+ * Reads the files of `nodes` at the map's commit, in a sandbox; null when the nodes name no file
  * (nothing to read, nothing to say). Never throws, never logs a path, a file or a token.
  */
 export async function readSource(
   codeMap: CodeMap,
   user: User,
   nodes: readonly Located[],
+  explorer: SourceExplorer | null = null,
 ): Promise<SourceReading | null> {
   const listed = sourcePaths(nodes)
   if (listed.paths.length === 0) return null
@@ -52,7 +92,8 @@ export async function readSource(
     logger.info(
       {
         codeMapId: codeMap.id,
-        files: reading.excerpts.length,
+        files: reading.excerpts.length - reading.commands,
+        commands: reading.commands,
         omitted: reading.omitted,
         absence: reading.absence,
         durationMs: Math.round(performance.now() - started),
@@ -61,7 +102,8 @@ export async function readSource(
     )
     return reading
   }
-  const absent = (absence: SourceAbsence) => done({ excerpts: [], omitted: 0, absence })
+  const absent = (absence: SourceAbsence) =>
+    done({ excerpts: [], omitted: 0, absence, commands: 0 })
 
   const repository = codeMap.repositoryUrl ? parseGithubRepository(codeMap.repositoryUrl) : null
   if (!repository) return absent(SourceAbsence.NoRepository)
@@ -78,25 +120,65 @@ export async function readSource(
   }
   if (typeof access === 'string') return absent(SourceAbsence.Unreadable)
   const files: SourceFile[] = []
+  let outputs: SourceExcerpt[] = []
   try {
     if (access && !(await stillGranted(access, user.id, repository))) {
       return absent(SourceAbsence.Unreadable)
     }
-    const github = access?.github ?? (await app.container.make(GithubApi))
-    // One file GitHub fails on is left out like a missing one; none read at all is a refusal.
-    const answers = await Promise.all(
-      paths.map((path) =>
-        github
-          .readFile(repository, commit, path, access?.token)
-          .catch(() => ({ ok: false as const })),
-      ),
-    )
-    if (answers.every((answer) => !answer.ok)) return absent(SourceAbsence.Unreadable)
-    answers.forEach((answer, index) => {
-      if (answer.ok && answer.value !== null) {
-        files.push({ path: paths[index] as string, text: answer.value })
+    const sandboxes = await app.container.make(RepositorySandbox)
+    const sandbox = await sandboxes.create(SOURCE_READ_LIMITS.sandboxTimeoutMs)
+    if (!sandbox) return absent(SourceAbsence.Unreadable)
+    try {
+      const root = REPOSITORY_SANDBOX.root
+      const fetched = await sandbox.run(
+        CLONE_AT,
+        {
+          REPO_ROOT: root,
+          REPO_URL: `${repository.url}.git`,
+          REPO_COMMIT: commit,
+          ...(access ? tokenEnvs(access.token) : {}),
+        },
+        SOURCE_READ_LIMITS.cloneTimeoutMs,
+      )
+      if (fetched.exitCode !== 0) return absent(SourceAbsence.Unreadable)
+      // The files are in the sandbox: reading one needs no token.
+      const answers = await Promise.all(
+        paths.map((path) => sandbox.run(READ_FILE, { REPO_ROOT: root, READ_PATH: path })),
+      )
+      // A file the sandbox does not give (missing, binary, too large) is left out; a sandbox
+      // that answers for none is a refusal.
+      if (answers.every((answer) => answer.exitCode === REPOSITORY_SANDBOX.goneExitCode)) {
+        return absent(SourceAbsence.Unreadable)
       }
-    })
+      answers.forEach((answer, index) => {
+        const whole = Buffer.byteLength(answer.output) <= GITHUB_SOURCE_LIMITS.fileBytes
+        if (answer.exitCode === 0 && whole && !answer.output.includes('\u0000')) {
+          files.push({ path: paths[index] as string, text: answer.output })
+        }
+      })
+      // The model's commands run only once the sandbox is cut off, and nothing with the token
+      // runs after them.
+      if (explorer && files.length > 0 && (await sandbox.isolate())) {
+        outputs = await exploreSource(explorer.model, {
+          task: explorer.task,
+          subject: nodes
+            .slice(0, SUBJECT_MAX)
+            .map(
+              (node) =>
+                `${node.kind} ${node.path ?? ''}${node.line ? `:${String(node.line)}` : ''}`,
+            ),
+          files: files.map((file) => file.path),
+          run: (command) =>
+            sandbox.run(
+              SHELL,
+              { REPO_ROOT: root, SHELL_COMMAND: command },
+              (REPOSITORY_SANDBOX.shellSeconds + 5) * 1000,
+            ),
+        })
+      }
+    } finally {
+      await sandboxes.kill(sandbox.sandboxId)
+    }
   } catch {
     return absent(SourceAbsence.Unreadable)
   } finally {
@@ -105,9 +187,10 @@ export async function readSource(
   if (files.length === 0) return absent(SourceAbsence.NotFound)
   const excerpts = excerptSource(files, nodes)
   return done({
-    excerpts,
+    excerpts: [...excerpts, ...outputs],
     omitted: listed.omitted + listed.paths.length - excerpts.length,
     absence: null,
+    commands: outputs.length,
   })
 }
 
@@ -155,13 +238,15 @@ const NOT_READ = {
 export function sourceSentence(reading: SourceReading | null, locale: 'en' | 'fr'): string {
   if (!reading) return ''
   if (reading.absence) return `${NOT_READ[locale][reading.absence]} ${STRUCTURE_ONLY[locale]}`
-  const { omitted } = reading
-  const files = reading.excerpts.length
+  const { omitted, commands } = reading
+  const files = reading.excerpts.length - commands
   if (locale === 'fr') {
     const left = omitted ? `, ${plural(omitted, 'laissé de côté', 'laissés de côté')}` : ''
-    return `Code source lu : ${plural(files, 'fichier', 'fichiers')}${left}.`
+    const ran = commands ? `, ${plural(commands, 'commande lancée', 'commandes lancées')}` : ''
+    return `Code source lu : ${plural(files, 'fichier', 'fichiers')}${left}${ran}.`
   }
-  return `Source code read: ${plural(files, 'file', 'files')}${omitted ? `, ${String(omitted)} left out` : ''}.`
+  const ran = commands ? `, ${plural(commands, 'command run', 'commands run')}` : ''
+  return `Source code read: ${plural(files, 'file', 'files')}${omitted ? `, ${String(omitted)} left out` : ''}${ran}.`
 }
 
 /** The answer's text followed by what was read of the source. */

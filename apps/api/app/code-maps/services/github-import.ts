@@ -11,7 +11,7 @@ import {
 } from '#app/code-maps/constants/code-map'
 import CodeMap from '#app/code-maps/models/code-map'
 import GithubCodeMapFollow from '#app/code-maps/models/github-code-map-follow'
-import { analyzerUrl } from '#app/code-maps/services/code-map-analyzer'
+import { extractionConfigured } from '#app/code-maps/services/code-map-extraction'
 import { pruneCodeMaps } from '#app/code-maps/services/code-map-pruning'
 import { deleteCodeMapFiles } from '#app/code-maps/services/code-map-storage'
 import { parseGithubRepository } from '#app/code-maps/services/github-repository'
@@ -106,7 +106,7 @@ export async function createGithubImport(
 
 /** Why a GitHub import is refused, before anything is written. */
 export const GithubImportRefusal = {
-  /** The server has no analyzer. */
+  /** The server has no sandboxes (`E2B_API_KEY`). */
   Off: 'off',
   NotGithub: 'not_github',
   /** Following needs a grant of the GitHub App on the repository. */
@@ -129,7 +129,7 @@ export const GITHUB_IMPORT_REFUSALS = {
  * `POST /projects/:id/code-maps/github`: the pending map, in `trx`. `queue` runs once `trx` has
  * committed: it queues the job, then sets the project's follow (`follow: true`, which needs the
  * owner's grant of the GitHub App on the repository) or drops it (`false`). A job that cannot be
- * queued removes the map and leaves the follow as it was. Calls neither GitHub nor the analyzer.
+ * queued removes the map and leaves the follow as it was. Calls neither GitHub nor a sandbox.
  */
 export async function importGithubRepository(
   project: Project,
@@ -137,7 +137,7 @@ export async function importGithubRepository(
   input: { url: string; branch?: string | null; follow?: boolean },
   trx: TransactionClientContract,
 ): Promise<{ refused: GithubImportRefusal } | { codeMap: CodeMap; queue: () => Promise<void> }> {
-  if (!analyzerUrl()) return { refused: GithubImportRefusal.Off }
+  if (!extractionConfigured()) return { refused: GithubImportRefusal.Off }
   const repository = parseGithubRepository(input.url)
   if (!repository) return { refused: GithubImportRefusal.NotGithub }
   const grant = (await githubAppConfig()) ? await findGrant(user.id, repository.url) : null

@@ -1,4 +1,38 @@
-/** The repository sandbox of an assistant conversation (`services/repository-sandbox.ts`). */
+import { GRAPHIFY_TESTED_VERSION } from '@coreloom-uml/codemap'
+
+/**
+ * The E2B template every repository sandbox starts from: the install's own `base` template (what
+ * these sandboxes started from before: Debian, git, Python) plus graphify, pinned to the version
+ * `@coreloom-uml/codemap` reads. `node ace assistant:setup` builds it when the install does not
+ * hold it yet. Its name carries what it holds: a new graphify version builds a new template by
+ * itself; after any other change here, raise `revision`.
+ */
+export const REPOSITORY_TEMPLATE = {
+  from: 'base',
+  graphify: `graphifyy==${GRAPHIFY_TESTED_VERSION}`,
+  cpuCount: 2,
+  /**
+   * Twice the base template's: graphify holds the whole graph in memory. Every repository
+   * sandbox gets it, the assistant's too, and a self-hosted install backs it with hugepages
+   * (`HUGEPAGES`, `infra/e2b`). graphify running out of it reads as `extraction_failed`: raise
+   * it then, with `revision`.
+   */
+  memoryMB: 1024,
+  /**
+   * Free disk asked for the clone (`cloneMaxBytes`), graphify's work and its graph. Best effort:
+   * a self-hosted install (Embed) keeps the base template's disk whatever is asked, about
+   * 600 MB free once graphify is installed.
+   */
+  minFreeDiskMb: 2048,
+  revision: 1,
+} as const
+
+export const REPOSITORY_TEMPLATE_NAME = `coreloom-uml-repository-${GRAPHIFY_TESTED_VERSION.replaceAll('.', '-')}-r${String(REPOSITORY_TEMPLATE.revision)}`
+
+/**
+ * The repository sandbox (`services/repository-sandbox.ts`): of an assistant conversation, and
+ * of one GitHub code map import (`code-maps/services/code-map-extraction.ts`).
+ */
 export const REPOSITORY_SANDBOX = {
   /** Where the repository is cloned in the sandbox (its Git folder is `<root>.git`). */
   root: '/home/user/repo',
@@ -7,9 +41,15 @@ export const REPOSITORY_SANDBOX = {
   startTimeoutMs: 20_000,
   commandTimeoutMs: 20_000,
   closeTimeoutMs: 5_000,
+  /** Answered for a command the sandbox never answered (gone, unreachable). */
+  goneExitCode: 125,
   /** The clone, Git folder included: past this size it is refused, past this time abandoned. */
   cloneMaxBytes: 200 * 1024 * 1024,
   cloneTimeoutMs: 45_000,
+  /** The first try, with every file of the history: past it, the files of one commit only. */
+  fullCloneTimeoutMs: 25_000,
+  /** One command of the model (`SHELL`): killed in the sandbox after this many seconds. */
+  shellSeconds: 30,
   /** A paused sandbox unused this long is killed by `PruneAssistantSandboxesJob`. */
   maxIdleDays: 7,
   /** Most of one command's output read back, in bytes (capped in the sandbox, then here). */
@@ -29,6 +69,7 @@ export const REPOSITORY_TOOL_LIMITS = {
   queryLength: 200,
   logCommits: 30,
   showLines: 300,
+  commandLength: 2000,
 } as const
 
 /** When the daily prune of idle repository sandboxes runs (cron, UTC). */

@@ -9,6 +9,8 @@ import type { TestContext } from '@japa/runner/core'
 import Architecture from '#app/architectures/models/architecture'
 import AssistantConversation from '#app/assistant/models/assistant-conversation'
 import AssistantMessage from '#app/assistant/models/assistant-message'
+import { tokenEnvs } from '#app/assistant/services/repository-commands'
+import RepositorySandbox from '#app/assistant/services/repository-sandbox'
 import { CodeMapSuggestionStatus } from '#app/code-maps/constants/code-map'
 import CodeMap from '#app/code-maps/models/code-map'
 import CodeMapSuggestion from '#app/code-maps/models/code-map-suggestion'
@@ -22,12 +24,19 @@ import LanguageModels from '#app/llm/services/language-models'
 import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
 import env from '#start/env'
+import {
+  type FakeSourceSandboxes,
+  type SourceAnswer,
+  type SourceRead,
+  useFakeSourceSandbox,
+} from '#tests/helpers/fake-source-sandbox'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
 
 /**
- * The source code read on GitHub for a diagram drawn from a code map. GitHub and the provider
- * are never called: `GithubApi` and `LanguageModels` are swapped for fakes.
+ * The source code read for a diagram drawn from a code map, in a sandbox that fetches the map's
+ * commit. E2B, GitHub and the provider are never called: `RepositorySandbox`, `GithubApi` and
+ * `LanguageModels` are swapped for fakes.
  */
 
 type Client = TestContext['client']
@@ -71,18 +80,18 @@ function withGithubApp() {
 
 class FakeGithubApi extends GithubApi {
   reads: { owner: string; commit: string; path: string; token: string | undefined }[] = []
+  /** The sandbox the files are read in: GitHub is only asked for tokens and grants. */
+  sandboxes!: FakeSourceSandboxes
   tokens = 0
   revoked: string[] = []
   answer: (path: string) => GithubResult<string | null> = () => ({ ok: true, value: SOURCE })
 
-  override async readFile(
-    repository: { owner: string; name: string },
-    commit: string,
-    path: string,
-    token?: string,
-  ) {
-    this.reads.push({ owner: `${repository.owner}/${repository.name}`, commit, path, token })
-    return this.answer(path)
+  /** One file read in the sandbox, answered the way these tests say it: found, missing, failed. */
+  read({ repository, commit, path, authorization }: SourceRead): SourceAnswer {
+    const token = authorization === tokenEnvs(TOKEN).GIT_CONFIG_VALUE_0 ? TOKEN : undefined
+    this.reads.push({ owner: repository, commit, path, token })
+    const answer = this.answer(path)
+    return answer.ok ? answer.value : 'gone'
   }
 
   override async installationToken(): Promise<GithubResult<string>> {
@@ -106,6 +115,7 @@ class FakeGithubApi extends GithubApi {
 function useFakeGithub() {
   const fake = new FakeGithubApi()
   app.container.swap(GithubApi, () => fake)
+  fake.sandboxes = useFakeSourceSandbox((read) => fake.read(read))
   return fake
 }
 
@@ -138,10 +148,51 @@ const PACKAGES = JSON.stringify({
 })
 
 /** A model that gives these answers in turn; an `Error` is thrown instead. */
+/**
+ * The commands the fake model runs when it is given the sandbox (a call with tools), before it
+ * answers DONE: none unless a test says so.
+ */
+let explores: string[] = []
+
+/**
+ * A model answering `answers` in order. Its calls with tools (the model looking at the
+ * repository) take none of them and are counted apart, in `explorations`.
+ */
 function useModel(...answers: (string | Error)[]) {
   let call = 0
+  const usage = {
+    inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
+    outputTokens: { total: 10, text: 10, reasoning: undefined },
+  }
+  const calls: { prompt: unknown }[] = []
+  const explorations: { prompt: unknown }[] = []
   const model = new MockLanguageModelV4({
-    doGenerate: async () => {
+    doGenerate: async (options) => {
+      if (options.tools?.length) {
+        const command = explores[explorations.length]
+        explorations.push(options)
+        return command === undefined
+          ? {
+              content: [{ type: 'text', text: 'DONE' }],
+              finishReason: { unified: 'stop', raw: 'stop' },
+              usage,
+              warnings: [],
+            }
+          : {
+              content: [
+                {
+                  type: 'tool-call' as const,
+                  toolCallId: `call-${String(explorations.length)}`,
+                  toolName: 'run',
+                  input: JSON.stringify({ command }),
+                },
+              ],
+              finishReason: { unified: 'tool-calls', raw: 'tool_calls' },
+              usage,
+              warnings: [],
+            }
+      }
+      calls.push(options)
       const answer = answers[call]
       call += 1
       if (answer === undefined) throw new Error('the model was called once too often')
@@ -149,10 +200,7 @@ function useModel(...answers: (string | Error)[]) {
       return {
         content: [{ type: 'text', text: answer }],
         finishReason: { unified: 'stop', raw: 'stop' },
-        usage: {
-          inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
-          outputTokens: { total: 10, text: 10, reasoning: undefined },
-        },
+        usage,
         warnings: [],
       }
     },
@@ -162,7 +210,7 @@ function useModel(...answers: (string | Error)[]) {
     fake.create = () => model
     return fake
   })
-  return model
+  return { doGenerateCalls: calls, explorations }
 }
 
 /** A user with a project, an architecture, a conversation and a ready map naming a repository. */
@@ -251,6 +299,8 @@ test.group('Code maps - source code read for a drawing', (group) => {
   group.each.teardown(() => {
     app.container.restore(LanguageModels)
     app.container.restore(GithubApi)
+    app.container.restore(RepositorySandbox)
+    explores = []
   })
 
   test('an assistant message reads the files of the slice anonymously and sends them to the drawing', async ({
@@ -295,6 +345,58 @@ test.group('Code maps - source code read for a drawing', (group) => {
     assert.isTrue(github.reads.every((read) => read.token === TOKEN))
     assert.deepEqual(github.revoked, [TOKEN])
     assert.deepEqual(github.asked, ['acme/shop:octo'])
+    // The token goes to the fetch of the commit only; reading a file needs none.
+    assert.lengthOf(github.sandboxes.fetches, 1)
+    assert.equal(github.sandboxes.killed, 1)
+  })
+
+  test('the model then runs commands of its own, in the sandbox cut off the network', async ({
+    client,
+    assert,
+  }) => {
+    const context = await setup(client)
+    await grant(context.user)
+    const github = useFakeGithub()
+    explores = ['grep -rn charge src']
+    const model = useModel(TARGET('sequence', ['s1']), DRAWING)
+    ;(await ask(client, context)).assertStatus(200)
+
+    // Fetched with the token, read, cut off, and only then a command of the model.
+    assert.deepEqual(github.sandboxes.events, ['fetch', 'read', 'isolate', '$ grep -rn charge src'])
+    assert.lengthOf(model.explorations, 2)
+    // The model is told what is drawn and which files are read, never the source.
+    const asked = JSON.stringify(model.explorations[0]?.prompt)
+    assert.include(asked, 'A UML sequence diagram of this code will be drawn.')
+    assert.include(asked, CONTROLLER)
+    assert.notInclude(asked, MARKER)
+    // What the command printed reaches the drawing, as one more source.
+    const prompt = JSON.stringify(model.doGenerateCalls[1]?.prompt)
+    assert.include(prompt, '<source_file path=\\"$ grep -rn charge src\\">')
+    assert.include(prompt, github.sandboxes.shellOutput.trim())
+    assert.include(prompt, MARKER)
+    assert.match(
+      await answer(context.conversation.id),
+      /Source code read: \d+ files?, 1 command run\.$/,
+    )
+    assert.equal(github.sandboxes.killed, 1)
+    assert.deepEqual(github.revoked, [TOKEN])
+  })
+
+  test('a sandbox that cannot start, or cannot fetch the commit, reads nothing', async ({
+    client,
+    assert,
+  }) => {
+    const { codeMap, user } = await setup(client)
+    await grant(user)
+    const github = useFakeGithub()
+    github.sandboxes.available = false
+    assert.equal((await readSource(codeMap, user, NODES))?.absence, SourceAbsence.Unreadable)
+    github.sandboxes.available = true
+    github.sandboxes.fetchExitCode = 1
+    assert.equal((await readSource(codeMap, user, NODES))?.absence, SourceAbsence.Unreadable)
+    assert.lengthOf(github.reads, 0)
+    assert.equal(github.sandboxes.killed, 1)
+    assert.deepEqual(github.revoked, [TOKEN, TOKEN])
   })
 
   test('a grant GitHub no longer backs reads nothing and is dropped', async ({
@@ -353,7 +455,12 @@ test.group('Code maps - source code read for a drawing', (group) => {
     }
     const reading = await readSource(context.codeMap, context.user, NODES)
     assert.deepEqual(github.revoked, [TOKEN])
-    assert.deepEqual(reading, { excerpts: [], omitted: 0, absence: SourceAbsence.Unreadable })
+    assert.deepEqual(reading, {
+      excerpts: [],
+      omitted: 0,
+      absence: SourceAbsence.Unreadable,
+      commands: 0,
+    })
   })
 
   test('says why when the map has no repository, no commit, GitHub refuses, or no file is found', async ({

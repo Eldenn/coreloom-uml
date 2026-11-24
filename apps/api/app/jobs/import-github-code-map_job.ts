@@ -10,7 +10,7 @@ import {
   GITHUB_IMPORT_FAILURES,
 } from '#app/code-maps/constants/code-map'
 import CodeMap from '#app/code-maps/models/code-map'
-import { analyzeRepository } from '#app/code-maps/services/code-map-analyzer'
+import { mapRepository } from '#app/code-maps/services/code-map-extraction'
 import { pruneCodeMaps } from '#app/code-maps/services/code-map-pruning'
 import { deleteCodeMapFiles, storeCodeMapFile } from '#app/code-maps/services/code-map-storage'
 import { readCodeMapValue } from '#app/code-maps/services/code-map-upload'
@@ -19,11 +19,11 @@ import { repositoryToken } from '#app/github/services/repository-token'
 
 /**
  * Maps a GitHub repository for a `pending` code map (`POST /projects/:id/code-maps/github`, or a
- * push the project follows): the analyzer service clones it and runs graphify, then the map is
- * checked and stored like an upload. When the owner reads the repository through the GitHub App,
- * an installation token is made here, for this repository only and read only, handed to the
- * analyzer in the request and revoked once it answered: it never reaches Redis, the database or
- * a log. A repository that cannot be mapped fails the map at once; an analyzer that cannot be
+ * push the project follows): a sandbox clones it and runs graphify (`mapRepository`), then the
+ * map is checked and stored like an upload. When the owner reads the repository through the
+ * GitHub App, an installation token is made here, for this repository only and read only, handed
+ * to the sandbox's clone and revoked once it answered: it never reaches Redis, the database or
+ * a log. A repository that cannot be mapped fails the map at once; a sandbox that cannot be
  * reached is tried again, and fails the map after the last attempt. No model is called.
  */
 /** A failed attempt worth retrying, with the reason the map gets after the last one. */
@@ -70,9 +70,9 @@ export default class ImportGithubCodeMapJob extends Job<ImportGithubCodeMapJobDa
       )
     }
 
-    let result: Awaited<ReturnType<typeof analyzeRepository>>
+    let result: Awaited<ReturnType<typeof mapRepository>>
     try {
-      result = await analyzeRepository({
+      result = await mapRepository({
         repository: codeMap.repositoryUrl,
         branch: codeMap.branch,
         ignore: defaultGraphifyIgnore(),
@@ -92,11 +92,10 @@ export default class ImportGithubCodeMapJob extends Job<ImportGithubCodeMapJobDa
     }
 
     const branch = codeMap.branch ?? result.branch ?? undefined
-    const commit = result.commit ?? undefined
     const read = readCodeMapValue(result.graph, {
       repository: codeMap.repositoryUrl,
       ...(branch ? { branch } : {}),
-      ...(commit ? { commit } : {}),
+      commit: result.commit,
     })
     if (!read.ok) {
       const reason = `${GITHUB_IMPORT_FAILURES.refused}: ${read.problems.join(' ')}`
@@ -124,7 +123,7 @@ export default class ImportGithubCodeMapJob extends Job<ImportGithubCodeMapJobDa
           branch: header.branch ?? null,
           commitSha: header.commit ?? null,
           extractor: header.extractor.name,
-          extractorVersion: result.version ?? header.extractor.version,
+          extractorVersion: result.version,
           nodeCount: header.nodeCount,
           edgeCount: header.edgeCount,
           storageKey,
