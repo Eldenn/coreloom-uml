@@ -5,8 +5,11 @@ import { gzip } from 'node:zlib'
 import app from '@adonisjs/core/services/app'
 import drive from '@adonisjs/drive/services/main'
 import { TARGETS } from '@coreloom-uml/catalog'
+import type { LanguageModel } from '@coreloom-uml/llm'
+import { answeringModel, failingModel } from '@coreloom-uml/llm/testing'
 import { test } from '@japa/runner'
 import queue from '@nemoventures/adonis-jobs/services/main'
+import LanguageModels from '#app/llm/services/language-models'
 import { SkillStatus } from '#app/skills/constants/skill'
 import {
   SKILL_SCANS_QUEUE,
@@ -26,6 +29,7 @@ import {
 } from '#app/skills/services/skill-scans'
 import User from '#app/users/models/user'
 import env from '#start/env'
+import { captureLogs } from '#tests/helpers/leaks'
 import { CLEAN_SCAN, withEmptySkillsCatalog } from '#tests/helpers/skills'
 
 const json = { accept: 'application/json' }
@@ -432,5 +436,132 @@ test.group('Skill scans: the queue', (group) => {
       jobs.map((job) => job.data.skillVersionId),
       [unscanned.id, failed.id],
     )
+  })
+})
+
+/** The fixture key: it must never show up in a response or a log line. */
+const KEY = 'sk-fixture-skill-review-never-stored'
+const MODEL_CALL = {
+  provider: { kind: 'mistral', model: 'mistral-small-latest' },
+  apiKey: KEY,
+  locale: 'en',
+}
+
+function useModel(model: LanguageModel) {
+  app.container.swap(LanguageModels, () => {
+    const fake = new LanguageModels()
+    fake.create = () => model
+    return fake
+  })
+}
+
+test.group('Skill scans: the model reads a copy', (group) => {
+  group.each.setup(() => withEmptySkillsCatalog())
+  group.each.setup(() => {
+    drive.fake()
+    env.set('DEFAULT_ACCOUNT_EMAIL', ADMIN)
+    env.set('DEFAULT_ACCOUNT_PASSWORD', 'the-default-passphrase')
+    return () => {
+      drive.restore()
+      app.container.restore(SkillScanner)
+      app.container.restore(LanguageModels)
+      env.set('DEFAULT_ACCOUNT_EMAIL', '')
+      env.set('DEFAULT_ACCOUNT_PASSWORD', '')
+    }
+  })
+
+  test("keeps what the admin's model says of the findings and the unchecked passages", async ({
+    client,
+    assert,
+  }) => {
+    const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
+    const version = await pendingCopy()
+    fakeScanner(await partialReport([{ ...LEDGER_EXCEPTION, path: 'scripts/run.sh' }]), {
+      exitCode: 0,
+    })
+    await scanSkillVersion(version)
+    const model = answeringModel(
+      JSON.stringify({
+        verdict: 'no_risk_seen',
+        summary: 'A deploy helper.',
+        notes: [
+          { ref: 'g1', file: '', assessment: 'benign', comment: 'It only prints a word.' },
+          { ref: '', file: 'absent.sh', assessment: 'risky', comment: 'Not a file of the copy.' },
+        ],
+      }),
+    )
+    useModel(model)
+    const logs = captureLogs()
+
+    const response = await client
+      .post(`/admin/skill-versions/${version.id}/model-review`)
+      .headers(json)
+      .json(MODEL_CALL)
+      .loginAs(admin)
+    logs.restore()
+
+    response.assertStatus(200)
+    assert.deepInclude(response.body().modelReview, {
+      verdict: 'no_risk_seen',
+      summary: 'A deploy helper.',
+      model: 'mistral mistral-small-latest',
+      omittedFiles: [],
+      notes: [
+        {
+          about: 'gap',
+          label: 'static_parse_limit',
+          file: 'scripts/run.sh',
+          line: 537,
+          assessment: 'benign',
+          comment: 'It only prints a word.',
+        },
+      ],
+    })
+    // An aid only: what the admin may decide is still what the scan says.
+    assert.equal(response.body().approvalProblem, SkillApprovalProblem.ScanIncomplete)
+    const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt)
+    assert.include(prompt, 'echo run')
+    assert.include(prompt, 'g1 | scripts/run.sh:537-723 | static_parse_limit')
+    assert.notInclude(JSON.stringify(response.body()), KEY)
+    assert.notInclude(logs.lines.join('\n'), KEY)
+    assert.notInclude(logs.lines.join('\n'), 'echo run')
+
+    await version.refresh()
+    assert.equal(version.modelReview?.verdict, 'no_risk_seen')
+  })
+
+  test('reads a copy that was never scanned, and keeps nothing when the call fails', async ({
+    client,
+    assert,
+  }) => {
+    const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
+    const version = await pendingCopy()
+    const ask = (user: User) =>
+      client
+        .post(`/admin/skill-versions/${version.id}/model-review`)
+        .headers(json)
+        .json(MODEL_CALL)
+        .loginAs(user)
+
+    useModel(failingModel(new Error('boom')))
+    const failed = await ask(admin)
+    failed.assertStatus(502)
+    await version.refresh()
+    assert.isNull(version.modelReview)
+
+    useModel(
+      answeringModel(
+        JSON.stringify({ verdict: 'unsure', summary: 'Too little to say.', notes: [] }),
+      ),
+    )
+    const read = await ask(admin)
+    read.assertStatus(200)
+    assert.equal(read.body().modelReview.verdict, 'unsure')
+
+    const other = await User.create({
+      email: 'someone@example.com',
+      password: 'a-strong-passphrase',
+    })
+    ;(await ask(other)).assertStatus(404)
   })
 })

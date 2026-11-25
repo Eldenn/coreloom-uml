@@ -43,6 +43,7 @@ import {
   useSkillCopies,
   useSkillVersion,
 } from '@/lib/skill-versions'
+import { SkillModelReview } from '@/skills/skill-model-review'
 
 /** The API's bounds on the reason for approving despite the scan (`SKILL_OVERRIDE_REASON`). */
 const OVERRIDE_REASON_MIN = 10
@@ -367,6 +368,7 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
       </div>
       <ScanSummary scan={version.scan} />
       <ScanButton id={id} pending={pending} scanned={version.scan !== null} />
+      <SkillModelReview version={version} />
       {changed.map((pair) => (
         <section key={pair.path} className="flex flex-col gap-1.5">
           <h3 className="m-0 flex flex-wrap items-center gap-2 text-sm font-medium">

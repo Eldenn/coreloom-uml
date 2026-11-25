@@ -576,7 +576,10 @@ static analysis only, by the `skill-scanner` worker (its own image and service, 
 `skill-scans` queue: see `infra/skill-scanner/README.md`); a copy it scanned whole and does not
 recommend against is approved as it is. Any other (never scanned, a scan that failed, passages left
 unchecked, which the sheet lists with their file and lines, or a recommendation not to install) is
-approved only through a dialog that warns the admin and takes their written reason, kept on that copy. The admin asks for the scans from
+approved only through a dialog that warns the admin and takes their written reason, kept on that copy.
+From the same sheet the admin can ask their own model (the provider set in the settings) to read the
+copy next to the scan: it says of each finding and each unchecked passage whether it sees a risk
+there. That reading is a help, never a verdict, and changes nothing to what may be approved. The admin asks for the scans from
 `/skills` too: "Scan waiting copies" in the header, and "Scan" / "Scan again" on a pending copy.
 
 #### The Skills screen

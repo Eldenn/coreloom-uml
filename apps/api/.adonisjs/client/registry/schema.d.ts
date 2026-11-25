@@ -1207,6 +1207,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['scan']>>>
     }
   }
+  'admin.skill_versions.model_review': {
+    methods: ["POST"]
+    pattern: '/admin/skill-versions/:id/model-review'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/skills/validators/skill-versions-input').modelReviewSkillVersionInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/skills/validators/skill-versions-input').modelReviewSkillVersionInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['modelReview']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['modelReview']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'admin.skill_versions.show': {
     methods: ["GET","HEAD"]
     pattern: '/admin/skill-versions/:id'

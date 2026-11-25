@@ -1119,6 +1119,24 @@ export const en = {
         unreadable: 'Its report could not be read.',
       } as Record<string, string>,
     },
+    model: {
+      title: 'Reading by your model',
+      caution:
+        'A help to read this copy, not a verdict: its files are a stranger’s and may be written to mislead a model. It changes nothing to what you may decide.',
+      ask: (model: string) => `Ask ${model} to read it`,
+      askAgain: (model: string) => `Ask ${model} again`,
+      noProvider: 'Set a model in the settings to have it read this copy',
+      failed: 'The model could not read this copy',
+      by: (model: string) => `Read by ${model}.`,
+      omitted: (files: string) => `Not read, too large to send: ${files}.`,
+      other: 'Also noticed',
+      verdicts: {
+        no_risk_seen: 'No risk seen',
+        risk_seen: 'Risk seen',
+        unsure: 'Cannot conclude',
+      },
+      assessments: { benign: 'Benign', risky: 'Risky', unsure: 'Unsure' },
+    },
     approvalProblems: {
       not_scanned:
         'It has not been scanned: nothing has checked its files (the skill-scanner worker scans each new copy).',
@@ -2837,6 +2855,24 @@ export const fr: Messages = {
         exit: 'SkillSpector s’est arrêté sur une erreur.',
         unreadable: 'Son rapport n’a pas pu être lu.',
       },
+    },
+    model: {
+      title: 'Lecture par votre modèle',
+      caution:
+        'Une aide pour lire cette copie, pas un verdict : ses fichiers viennent d’un inconnu et peuvent être écrits pour tromper un modèle. Elle ne change rien à ce que vous pouvez décider.',
+      ask: (model: string) => `Demander à ${model} de la lire`,
+      askAgain: (model: string) => `Redemander à ${model}`,
+      noProvider: 'Configurez un modèle dans les réglages pour lui faire lire cette copie',
+      failed: 'Le modèle n’a pas pu lire cette copie',
+      by: (model: string) => `Lu par ${model}.`,
+      omitted: (files: string) => `Non lus, trop volumineux pour être envoyés : ${files}.`,
+      other: 'Remarqué aussi',
+      verdicts: {
+        no_risk_seen: 'Aucun risque relevé',
+        risk_seen: 'Risque relevé',
+        unsure: 'Ne peut pas conclure',
+      },
+      assessments: { benign: 'Bénin', risky: 'À risque', unsure: 'Incertain' },
     },
     approvalProblems: {
       not_scanned:
