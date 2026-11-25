@@ -1121,19 +1121,20 @@ export const en = {
     },
     approvalProblems: {
       not_scanned:
-        'It cannot be approved before it is scanned (the skill-scanner worker scans each new copy).',
+        'It has not been scanned: nothing has checked its files (the skill-scanner worker scans each new copy).',
       scan_failed:
-        'It cannot be approved: the scan gave no verdict. Scan it again, or wait for the next search.',
+        'Its scan gave no verdict: nothing has checked its files. Scan it again, or wait for the next search.',
       scan_incomplete:
-        'It cannot be approved: the scan could not read every file, and does not say which passages. Scan it again.',
-      do_not_install:
-        'SkillSpector recommends not installing it. Read every finding: if they are wrong, approve it despite the scan with your reason, kept with this copy only.',
+        'SkillSpector left passages unchecked: read each of those listed in the scan, or every file when it lists none.',
+      do_not_install: 'SkillSpector recommends not installing it: read every finding.',
     },
-    incompleteOverridable:
-      'SkillSpector left the passages listed above unchecked. Read each of them in the files below: if nothing there is a risk, approve it despite the scan with your reason, kept with this copy only.',
+    confirmTitle: (name: string) => `Approve this copy of ${name} despite its scan?`,
+    confirmBody:
+      'Once approved, it can be installed in repositories, where a coding agent follows it as instructions and may run its scripts. Approve it only if this is the skill you mean and you have read its files yourself.',
+    confirmAction: 'I have read it: approve',
+    confirmCancel: 'Cancel',
     overrideLabel: 'Why approve it despite the scan',
-    overridePlaceholder:
-      'What you read, and why the findings or the unchecked passages are no risk (10 characters at least).',
+    overridePlaceholder: 'What you read, and why it is safe (10 characters at least).',
     approveDespiteScan: 'Approve despite the scan',
     overriddenBecause: 'Approved despite the scan:',
   },
@@ -2839,19 +2840,20 @@ export const fr: Messages = {
     },
     approvalProblems: {
       not_scanned:
-        'Elle ne peut pas être approuvée avant d’être analysée (le worker skill-scanner analyse chaque nouvelle copie).',
+        'Elle n’a pas été analysée : rien n’a vérifié ses fichiers (le worker skill-scanner analyse chaque nouvelle copie).',
       scan_failed:
-        'Elle ne peut pas être approuvée : l’analyse n’a pas donné de verdict. La prochaine recherche la relance.',
+        'Son analyse n’a pas donné de verdict : rien n’a vérifié ses fichiers. Relancez-la, ou attendez la prochaine recherche.',
       scan_incomplete:
-        'Elle ne peut pas être approuvée : l’analyse n’a pas pu lire tous les fichiers, et ne dit pas quels passages. Relancez-la.',
-      do_not_install:
-        'SkillSpector recommande de ne pas l’installer. Lisez chaque problème : s’ils sont faux, approuvez-la malgré l’analyse avec votre raison, gardée pour cette copie seulement.',
+        'SkillSpector n’a pas vérifié certains passages : lisez chacun de ceux que l’analyse liste, ou tous les fichiers si elle n’en liste aucun.',
+      do_not_install: 'SkillSpector recommande de ne pas l’installer : lisez chaque problème.',
     },
-    incompleteOverridable:
-      'SkillSpector n’a pas vérifié les passages listés ci-dessus. Lisez chacun d’eux dans les fichiers ci-dessous : si rien n’y présente de risque, approuvez-la malgré l’analyse avec votre raison, gardée pour cette copie seulement.',
+    confirmTitle: (name: string) => `Approuver cette copie de ${name} malgré son analyse ?`,
+    confirmBody:
+      'Une fois approuvée, elle peut être installée dans des dépôts, où un agent de code la suit comme des instructions et peut lancer ses scripts. Ne l’approuvez que si c’est bien le skill voulu et que vous avez lu ses fichiers vous-même.',
+    confirmAction: 'Je l’ai lue : approuver',
+    confirmCancel: 'Annuler',
     overrideLabel: 'Pourquoi l’approuver malgré l’analyse',
-    overridePlaceholder:
-      'Ce que vous avez lu, et pourquoi les problèmes ou les passages non vérifiés sont sans risque (10 caractères au moins).',
+    overridePlaceholder: 'Ce que vous avez lu, et pourquoi elle est sûre (10 caractères au moins).',
     approveDespiteScan: 'Approuver malgré l’analyse',
     overriddenBecause: 'Approuvée malgré l’analyse :',
   },

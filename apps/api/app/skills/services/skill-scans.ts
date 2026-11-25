@@ -158,7 +158,7 @@ export function readScanReport(json: string, scannedAt: string): SkillScan | nul
 /**
  * Scans one copy with SkillSpector and keeps its verdict on the row. The copy's files (read from
  * Drive, never from GitHub again) are written to a folder of their own, scanned and deleted; a
- * scan that gives no verdict is kept as `failed` with why, and the copy can then only be rejected.
+ * scan that gives no verdict is kept as `failed` with why, and the copy is then approved only with a reason.
  * Run by `ScanSkillVersionJob` on the `skill-scanner` worker only.
  */
 export async function scanSkillVersion(version: SkillVersion): Promise<SkillScan> {
@@ -232,8 +232,10 @@ export async function queueSkillScans(): Promise<number> {
 }
 
 /**
- * Why the admin cannot approve this copy, or null when they may: it needs a complete scan whose
- * recommendation is not SkillSpector's `DO_NOT_INSTALL`. Rejecting is always possible.
+ * Why this copy is not approved as it is, or null when it may be: it needs a complete scan whose
+ * recommendation is not SkillSpector's `DO_NOT_INSTALL`. With a problem, the admin approves it only
+ * with a written reason (`overrideReason`), after the screen has warned them. Rejecting is always
+ * possible.
  */
 export function approvalProblem(version: SkillVersion): SkillApprovalProblem | null {
   const scan = version.scan
@@ -244,17 +246,4 @@ export function approvalProblem(version: SkillVersion): SkillApprovalProblem | n
     return SkillApprovalProblem.DoNotInstall
   }
   return null
-}
-
-/**
- * Whether the admin may approve this copy despite `problem`, with a written reason: SkillSpector's
- * `DO_NOT_INSTALL`, or a scan that left passages unchecked and names every one of them (the admin
- * reads those). A copy without a scan, whose scan failed or that says nothing of what it skipped
- * (a scan stored before the passages were kept: scan it again) never is.
- */
-export function canOverride(version: SkillVersion, problem: SkillApprovalProblem | null): boolean {
-  if (problem === SkillApprovalProblem.DoNotInstall) return true
-  if (problem !== SkillApprovalProblem.ScanIncomplete) return false
-  const scan = version.scan
-  return scan?.status === SkillScanStatus.Done && (scan.gaps?.length ?? 0) > 0 && !scan.moreGaps
 }

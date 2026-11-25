@@ -20,10 +20,8 @@ export type SkillVersionOutput = {
   bytes: number
   /** SkillSpector's verdict, null until the skill-scanner worker has scanned it. */
   scan: SkillScan | null
-  /** Why it cannot be approved now, null when it can (`approvalProblem`). */
+  /** Why it is approved only with a written reason, null when it needs none (`approvalProblem`). */
   approvalProblem: SkillApprovalProblem | null
-  /** Whether a written reason lets the admin approve it despite that problem (`canOverride`). */
-  overridable: boolean
   /** Why the admin approved it despite its scan. */
   overrideReason: string | null
   status: SkillVersionStatus

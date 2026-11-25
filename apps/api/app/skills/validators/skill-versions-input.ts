@@ -25,7 +25,7 @@ export const captureSkillVersionInput = vine.create(vine.object({ slug: slug() }
 
 /**
  * `PATCH /admin/skill-versions/:id`: the admin's decision and, only to approve a copy despite
- * its scan (`canOverride`), why.
+ * its `approvalProblem`, why.
  */
 export const reviewSkillVersionInput = vine.create(
   vine.object({

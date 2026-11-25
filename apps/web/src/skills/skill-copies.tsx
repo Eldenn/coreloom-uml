@@ -6,6 +6,17 @@ import { ExternalLinkIcon, RefreshCwIcon, ScanSearchIcon } from 'lucide-react'
 import * as React from 'react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -261,15 +272,58 @@ function ScanButton({ id, pending, scanned }: { id: number; pending: boolean; sc
   )
 }
 
-/** Why a copy cannot be approved as it is, and what the admin can do about it. */
-function ApprovalProblem({ version }: { version: SkillVersion }) {
+/**
+ * Approving a copy despite its scan: a dialog that says what was not checked and what approving
+ * does, and takes the admin's reason, kept with the copy.
+ */
+function ApproveAnyway({
+  version,
+  disabled,
+  onConfirm,
+}: {
+  version: SkillVersion
+  disabled: boolean
+  onConfirm: (reason: string) => void
+}) {
   const t = useT().skillVersions
+  const [reason, setReason] = React.useState('')
   if (!version.approvalProblem) return null
-  const listed = version.overridable && version.approvalProblem === 'scan_incomplete'
   return (
-    <p className="m-0 text-sm text-muted-foreground">
-      {listed ? t.incompleteOverridable : t.approvalProblems[version.approvalProblem]}
-    </p>
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="destructive" disabled={disabled}>
+          {t.approveDespiteScan}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t.confirmTitle(version.skill.name)}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t.approvalProblems[version.approvalProblem]} {t.confirmBody}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`override-${String(version.id)}`}>{t.overrideLabel}</Label>
+          <Textarea
+            id={`override-${String(version.id)}`}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            maxLength={OVERRIDE_REASON_MAX}
+            placeholder={t.overridePlaceholder}
+          />
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t.confirmCancel}</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={reason.trim().length < OVERRIDE_REASON_MIN}
+            onClick={() => onConfirm(reason.trim())}
+          >
+            {t.confirmAction}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 
@@ -277,7 +331,6 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
   const t = useT().skillVersions
   const detail = useSkillVersion(id)
   const review = useReviewSkillVersion()
-  const [reason, setReason] = React.useState('')
   if (detail.isPending) return <Skeleton className="h-40" />
   if (!detail.data) {
     return (
@@ -291,7 +344,6 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
   const changed = pairs.filter((pair) => pair.status !== null)
   const unchanged = pairs.filter((pair) => pair.status === null).map((pair) => pair.path)
 
-  const overridable = version.overridable
   const decide = (status: 'approved' | 'rejected', overrideReason?: string) =>
     review.mutate(
       { id, status, overrideReason },
@@ -335,23 +387,15 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
       {unchanged.length > 0 && (
         <p className="m-0 text-[13px] text-muted-foreground">{t.unchanged(unchanged.join(', '))}</p>
       )}
-      {pending && <ApprovalProblem version={version} />}
+      {pending && version.approvalProblem && (
+        <p className="m-0 text-sm text-muted-foreground">
+          {t.approvalProblems[version.approvalProblem]}
+        </p>
+      )}
       {version.overrideReason && (
         <p className="m-0 text-sm">
           {t.overriddenBecause} {version.overrideReason}
         </p>
-      )}
-      {pending && overridable && (
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`override-${id}`}>{t.overrideLabel}</Label>
-          <Textarea
-            id={`override-${id}`}
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            maxLength={OVERRIDE_REASON_MAX}
-            placeholder={t.overridePlaceholder}
-          />
-        </div>
       )}
       {pending && (
         <div className="flex flex-wrap gap-2">
@@ -361,15 +405,11 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
           >
             {t.approve}
           </Button>
-          {overridable && (
-            <Button
-              variant="destructive"
-              onClick={() => decide('approved', reason.trim())}
-              disabled={review.isPending || reason.trim().length < OVERRIDE_REASON_MIN}
-            >
-              {t.approveDespiteScan}
-            </Button>
-          )}
+          <ApproveAnyway
+            version={version}
+            disabled={review.isPending}
+            onConfirm={(reason) => decide('approved', reason)}
+          />
           <Button
             variant="secondary"
             onClick={() => decide('rejected')}

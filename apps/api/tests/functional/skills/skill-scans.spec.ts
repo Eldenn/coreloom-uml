@@ -322,58 +322,13 @@ test.group('Skill scans', (group) => {
     assert.equal(version.overrideReason, 'Read it: the findings quote git commands.')
   })
 
-  test('lets the admin approve a copy left partly unchecked, with a reason, once every passage is named', async ({
-    client,
-    assert,
-  }) => {
+  test('takes no reason to approve a copy scanned clean', async ({ client }) => {
     const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
-    const body = { status: 'approved', overrideReason: 'Read lines 537 to 723: a fixed launcher.' }
-    const review = (id: number) =>
-      client.patch(`/admin/skill-versions/${id}`).headers(json).json(body).loginAs(admin)
-
-    // A scan that says it is partial without saying where (stored before the passages were kept).
-    const unnamed = await pendingCopy('unnamed')
-    fakeScanner(await partialReport([]), { exitCode: 0 })
-    await scanSkillVersion(unnamed)
-    ;(await review(unnamed.id)).assertStatus(422)
-
-    // More passages than the scan keeps: some are not named.
-    const cut = await pendingCopy('cut')
-    fakeScanner(await partialReport(Array.from({ length: 60 }, () => LEDGER_EXCEPTION)), {
-      exitCode: 0,
-    })
-    await scanSkillVersion(cut)
-    ;(await review(cut.id)).assertStatus(422)
-
     const version = await pendingCopy()
-    fakeScanner(await partialReport([LEDGER_EXCEPTION]), { exitCode: 0 })
-    await scanSkillVersion(version)
-    const detail = await client
-      .get(`/admin/skill-versions/${version.id}`)
-      .headers(json)
-      .loginAs(admin)
-    assert.equal(detail.body().version.approvalProblem, SkillApprovalProblem.ScanIncomplete)
-    assert.isTrue(detail.body().version.overridable)
-    const approved = await review(version.id)
-    approved.assertStatus(200)
-    assert.equal(approved.body().overrideReason, 'Read lines 537 to 723: a fixed launcher.')
-  })
-
-  test('takes no reason to approve a copy that is clean or not scanned', async ({ client }) => {
-    const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
-    const unscanned = await pendingCopy()
+    await version.merge({ scan: CLEAN_SCAN }).save()
     ;(
       await client
-        .patch(`/admin/skill-versions/${unscanned.id}`)
-        .headers(json)
-        .json({ status: 'approved', overrideReason: 'I trust this one anyway.' })
-        .loginAs(admin)
-    ).assertStatus(422)
-    unscanned.scan = CLEAN_SCAN
-    await unscanned.save()
-    ;(
-      await client
-        .patch(`/admin/skill-versions/${unscanned.id}`)
+        .patch(`/admin/skill-versions/${version.id}`)
         .headers(json)
         .json({ status: 'approved', overrideReason: 'I trust this one anyway.' })
         .loginAs(admin)
@@ -416,11 +371,11 @@ test.group('Skill scans', (group) => {
     }
   })
 
-  test('a copy scanned incomplete, or not yet, cannot be approved without a reason', async ({
+  test('a copy scanned incomplete, not scanned or whose scan failed is approved only with a reason', async ({
     client,
+    assert,
   }) => {
     const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
-    const version = await pendingCopy()
     const cases: [SkillScan | null, SkillApprovalProblem][] = [
       [null, SkillApprovalProblem.NotScanned],
       [{ ...CLEAN_SCAN, complete: false } as SkillScan, SkillApprovalProblem.ScanIncomplete],
@@ -429,15 +384,20 @@ test.group('Skill scans', (group) => {
         SkillApprovalProblem.ScanFailed,
       ],
     ]
-    for (const [scan, reason] of cases) {
+    for (const [index, [scan, reason]] of cases.entries()) {
+      const version = await pendingCopy(`skill-${index}`)
       await version.merge({ scan }).save()
-      const refused = await client
-        .patch(`/admin/skill-versions/${version.id}`)
-        .headers(json)
-        .json({ status: 'approved' })
-        .loginAs(admin)
+      const review = (body: object) =>
+        client.patch(`/admin/skill-versions/${version.id}`).headers(json).json(body).loginAs(admin)
+      const refused = await review({ status: 'approved' })
       refused.assertStatus(409)
       refused.assertBodyContains({ error: { reason } })
+      const approved = await review({
+        status: 'approved',
+        overrideReason: 'Read every file of this copy myself.',
+      })
+      approved.assertStatus(200)
+      assert.equal(approved.body().overrideReason, 'Read every file of this copy myself.')
     }
   })
 })
