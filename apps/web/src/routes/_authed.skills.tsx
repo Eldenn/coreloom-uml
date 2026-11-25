@@ -1,6 +1,6 @@
 // The skills catalog: what the weekly search on skills.sh found, as a live dashboard and a ranked
 // list. `?skill=<slug>` opens a skill's sheet; the list's search, filters, sort and page are in
-// the URL too, so a view can be shared.
+// the URL too, so a view can be shared. The list comes first; `?view=overview` shows the trends.
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { SparklesIcon } from 'lucide-react'
 import { z } from 'zod'
@@ -11,11 +11,12 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { RelativeTime } from '@/components/ui/relative-time'
 import { toast } from '@/components/ui/sonner'
 import { StatusIndicator } from '@/components/ui/status-indicator'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useT } from '@/lib/locale'
 import { type LiveStatus, useSkillsLiveUpdates, useSkillsStats } from '@/lib/skills'
 import { SkillSheet } from '@/skills/skill-sheet'
 import { SkillsCatalog } from '@/skills/skills-catalog'
-import { SkillsOverview } from '@/skills/skills-overview'
+import { SkillsFigures, SkillsTrends } from '@/skills/skills-overview'
 
 /** A URL parameter: kept as text (the router reads `2` as a number), dropped when malformed. */
 const param = z.union([z.string(), z.number()]).transform(String).optional().catch(undefined)
@@ -30,6 +31,7 @@ const searchSchema = z.object({
   sort: param,
   page: param,
   skill: param,
+  view: param,
 })
 
 type SkillsSearch = z.infer<typeof searchSchema>
@@ -108,14 +110,30 @@ function SkillsPage() {
         </Empty>
       ) : (
         <>
-          <SkillsOverview stats={stats.data} onOpen={open} />
-          <SkillsCatalog
-            params={toParams({ ...search, skill: undefined })}
-            onParamsChange={(params) => {
-              setSearch({ ...Object.fromEntries(params), skill: search.skill })
+          <SkillsFigures stats={stats.data} />
+          <Tabs
+            value={search.view === 'overview' ? 'overview' : 'catalog'}
+            onValueChange={(view) => {
+              setSearch({ ...search, view: view === 'overview' ? view : undefined })
             }}
-            onOpen={open}
-          />
+          >
+            <TabsList variant="line">
+              <TabsTrigger value="catalog">{t.skills.tabs.catalog}</TabsTrigger>
+              <TabsTrigger value="overview">{t.skills.tabs.overview}</TabsTrigger>
+            </TabsList>
+            <TabsContent value="catalog">
+              <SkillsCatalog
+                params={toParams({ ...search, skill: undefined, view: undefined })}
+                onParamsChange={(params) => {
+                  setSearch({ ...Object.fromEntries(params), skill: search.skill })
+                }}
+                onOpen={open}
+              />
+            </TabsContent>
+            <TabsContent value="overview">
+              <SkillsTrends stats={stats.data} onOpen={open} />
+            </TabsContent>
+          </Tabs>
         </>
       )}
       <SkillSheet

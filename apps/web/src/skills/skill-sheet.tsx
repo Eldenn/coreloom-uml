@@ -146,7 +146,7 @@ function SkillBody({ skill }: { skill: SkillDetail }) {
           ))}
         </div>
       </SheetHeader>
-      <div className="flex flex-col gap-6 overflow-y-auto px-4 pb-4">
+      <div className="flex flex-col gap-6 overflow-y-auto px-[22px] pt-4 pb-4">
         <Reason skill={skill} />
         <SkillFacts skill={skill} />
         {user?.isAdmin && <SkillCopies slug={skill.slug} canCopy={skill.state === 'suggested'} />}

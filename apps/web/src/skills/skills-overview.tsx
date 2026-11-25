@@ -37,6 +37,8 @@ function StatsGrid({ stats }: { stats: SkillsStats }) {
   const added = runs.map((run) => run.newSkills)
   return (
     <StatGrid
+      // Two by two on a phone, so the catalog stays near the top.
+      className="grid-cols-2 gap-3 sm:gap-4"
       stats={[
         {
           label: t.stats.skills,
@@ -116,21 +118,23 @@ function Trending({ stats, onOpen }: { stats: SkillsStats; onOpen: (slug: string
     return <p className="m-0 text-sm text-muted-foreground">{t.charts.trendingEmpty}</p>
   }
   return (
-    <ItemGroup className="gap-1">
+    <ItemGroup className="-mx-2 gap-1">
       {stats.trending.map((skill) => (
-        <Item key={skill.slug} size="sm" asChild>
+        <Item key={skill.slug} size="sm" className="flex-nowrap px-2 py-2" asChild>
           <button
             type="button"
-            className="w-full text-left"
+            className="w-full cursor-pointer text-left hover:bg-accent/60"
             onClick={() => {
               onOpen(skill.slug)
             }}
           >
-            <ItemContent>
-              <ItemTitle>{skill.name}</ItemTitle>
-              <ItemDescription className="font-mono text-[12px]">{skill.source}</ItemDescription>
+            <ItemContent className="min-w-0">
+              <ItemTitle className="block w-full truncate">{skill.name}</ItemTitle>
+              <ItemDescription className="truncate font-mono text-[12px]">
+                {skill.source}
+              </ItemDescription>
             </ItemContent>
-            <ItemActions className="font-mono text-[12px] text-success">
+            <ItemActions className="shrink-0 font-mono text-[12px] whitespace-nowrap text-success">
               <TrendingUpIcon aria-hidden className="size-3.5" />
               {t.list.gained(formatValue(skill.installsDelta ?? 0, locale, { format: 'compact' }))}
             </ItemActions>
@@ -173,6 +177,8 @@ function Breakdown({ stats, onOpen }: { stats: SkillsStats; onOpen: (slug: strin
             key: entry.topic,
             label: topicLabel(t, entry.topic),
             value: entry.count,
+            // Opens the catalog on that topic.
+            href: `/skills?topic=${encodeURIComponent(entry.topic)}`,
           }))}
           limit={6}
           aria-label={t.charts.topicsTitle}
@@ -189,25 +195,31 @@ function Breakdown({ stats, onOpen }: { stats: SkillsStats; onOpen: (slug: strin
   )
 }
 
-export function SkillsOverview({
-  stats,
-  onOpen,
-}: {
-  stats: SkillsStats | undefined
-  onOpen: (slug: string) => void
-}) {
+/** The catalog in four figures, above the tabs. */
+export function SkillsFigures({ stats }: { stats: SkillsStats | undefined }) {
   if (!stats) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
           <Skeleton key={i} className="h-28" />
         ))}
       </div>
     )
   }
+  return <StatsGrid stats={stats} />
+}
+
+/** The catalog's history and what it is made of. */
+export function SkillsTrends({
+  stats,
+  onOpen,
+}: {
+  stats: SkillsStats | undefined
+  onOpen: (slug: string) => void
+}) {
+  if (!stats) return <Skeleton className="h-64" />
   return (
     <div className="flex flex-col gap-4">
-      <StatsGrid stats={stats} />
       <HistoryCharts stats={stats} />
       <Breakdown stats={stats} onOpen={onOpen} />
     </div>
