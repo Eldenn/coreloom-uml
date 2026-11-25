@@ -1,21 +1,23 @@
-// The admin's review of the skills' copies: each copy is read file by file against the last
-// approved copy of the same skill, then approved or rejected. Only the default account
-// (`user.isAdmin`) gets here; the API refuses everyone else anyway.
-import { createFileRoute, redirect } from '@tanstack/react-router'
-import { ExternalLinkIcon } from 'lucide-react'
+// The copies of one skill's files, in its sheet, for the admin only (the API refuses everyone
+// else): each copy is read file by file against the last approved copy of the same skill, then
+// approved or rejected. "Copy now" asks for a copy without waiting for the weekly search.
+import { DownloadIcon, ExternalLinkIcon } from 'lucide-react'
 import * as React from 'react'
 
-import { meQueryOptions } from '@/auth/auth-context'
-import { PageHeader } from '@/components/app-shell'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { DiffViewer } from '@/components/ui/diff-viewer'
-import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
 import { Label } from '@/components/ui/label'
 import { RelativeTime } from '@/components/ui/relative-time'
-import { SegmentedControl } from '@/components/ui/segmented-control'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
 import { Textarea } from '@/components/ui/textarea'
@@ -23,108 +25,114 @@ import { useT } from '@/lib/locale'
 import { pairFiles } from '@/lib/skill-version-files'
 import {
   type SkillVersion,
-  type SkillVersionStatus,
+  useCaptureSkillCopy,
   useReviewSkillVersion,
+  useSkillCopies,
   useSkillVersion,
-  useSkillVersions,
 } from '@/lib/skill-versions'
 
-export const Route = createFileRoute('/_authed/skill-versions')({
-  beforeLoad: async ({ context }) => {
-    const user = await context.queryClient.query({ ...meQueryOptions, staleTime: 'static' })
-    if (!user?.isAdmin) throw redirect({ to: '/projects', replace: true })
-  },
-  staticData: { crumb: (t) => t.nav.skillVersions },
-  component: SkillVersionsPage,
-})
-
-const STATUSES: SkillVersionStatus[] = ['pending', 'approved', 'rejected']
 /** The API's bounds on the reason for approving despite the scan (`SKILL_OVERRIDE_REASON`). */
 const OVERRIDE_REASON_MIN = 10
 const OVERRIDE_REASON_MAX = 1000
 
-function SkillVersionsPage() {
-  const t = useT().skillVersions
-  const [status, setStatus] = React.useState<SkillVersionStatus>('pending')
+const STATUS_BADGES = { pending: 'warning', approved: 'success', rejected: 'secondary' } as const
+
+function describe(t: ReturnType<typeof useT>['skillVersions'], version: SkillVersion) {
+  const licence = version.license === 'in-folder' ? t.licenceInFolder : version.license
+  return `${version.repository} · ${t.files(version.files.length)} · ${t.licence(licence)}`
+}
+
+/** `canCopy`: the skill is one the search copies (a suggested one). */
+export function SkillCopies({ slug, canCopy }: { slug: string; canCopy: boolean }) {
+  const t = useT()
+  const tv = t.skillVersions
+  const copies = useSkillCopies(slug)
+  const capture = useCaptureSkillCopy()
   const [selected, setSelected] = React.useState<number | null>(null)
-  const list = useSkillVersions(status, 1)
+  // Read from the list, so a decision taken in the dialog shows there at once.
+  const open = copies.data?.data.find((version) => version.id === selected)
 
   return (
-    <>
-      <PageHeader title={t.title} description={t.description} />
-      <SegmentedControl
-        aria-label={t.title}
-        options={STATUSES.map((value) => ({ value, label: t.statuses[value] }))}
-        value={status}
-        onValueChange={(value) => {
-          setStatus(value as SkillVersionStatus)
-          setSelected(null)
-        }}
-        className="self-start"
-      />
-      {list.isError && (
+    <section className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="m-0 text-sm font-medium text-foreground">{tv.title}</h3>
+        {canCopy && (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={capture.isPending}
+            onClick={() => {
+              capture.mutate(slug, {
+                onSuccess: () => toast.success(tv.copyQueued),
+                onError: () => toast.error(tv.copyFailed),
+              })
+            }}
+          >
+            <DownloadIcon /> {tv.copyNow}
+          </Button>
+        )}
+      </div>
+      {copies.isError && (
         <Alert variant="destructive">
-          <AlertDescription>{t.loadFailed}</AlertDescription>
+          <AlertDescription>{tv.loadFailed}</AlertDescription>
         </Alert>
       )}
-      {list.isPending && <Skeleton className="h-24" />}
-      {list.data?.data.length === 0 && (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>{t.empty}</EmptyTitle>
-          </EmptyHeader>
-        </Empty>
+      {copies.isPending && <Skeleton className="h-16" />}
+      {copies.data?.data.length === 0 && (
+        <p className="m-0 text-sm text-muted-foreground">{tv.empty}</p>
       )}
-      {list.data && list.data.data.length > 0 && (
-        <ItemGroup>
-          {list.data.data.map((version) => (
-            <VersionRow
-              key={version.id}
-              version={version}
-              open={selected === version.id}
-              onToggle={() => setSelected(selected === version.id ? null : version.id)}
-            />
+      {copies.data && copies.data.data.length > 0 && (
+        <ItemGroup className="gap-2">
+          {copies.data.data.map((version) => (
+            <Item key={version.id} variant="outline" asChild>
+              <button
+                type="button"
+                className="text-left"
+                onClick={() => {
+                  setSelected(version.id)
+                }}
+              >
+                <ItemContent>
+                  <ItemTitle className="flex-wrap">
+                    <code className="text-xs">{version.contentSha.slice(0, 7)}</code>
+                    <Badge variant={STATUS_BADGES[version.status]}>
+                      {t.skills.copies[version.status]}
+                    </Badge>
+                    {version.files.some((file) => file.executable) && (
+                      <Badge variant="warning">{tv.hasScripts}</Badge>
+                    )}
+                    <ScanBadge scan={version.scan} />
+                  </ItemTitle>
+                  <ItemDescription>
+                    {describe(tv, version)} · <RelativeTime date={new Date(version.createdAt)} />
+                  </ItemDescription>
+                </ItemContent>
+              </button>
+            </Item>
           ))}
         </ItemGroup>
       )}
-    </>
-  )
-}
-
-function VersionRow({
-  version,
-  open,
-  onToggle,
-}: {
-  version: SkillVersion
-  open: boolean
-  onToggle: () => void
-}) {
-  const t = useT().skillVersions
-  const scripts = version.files.some((file) => file.executable)
-  return (
-    <div className="flex flex-col gap-3">
-      <Item variant="outline" asChild>
-        <button type="button" aria-expanded={open} onClick={onToggle} className="text-left">
-          <ItemContent>
-            <ItemTitle>
-              {version.skill.name}
-              <code className="text-xs text-muted-foreground">
-                {version.contentSha.slice(0, 7)}
-              </code>
-              {scripts && <Badge variant="warning">{t.hasScripts}</Badge>}
-              <ScanBadge scan={version.scan} />
-            </ItemTitle>
-            <ItemDescription>
-              {version.repository} · {t.files(version.files.length)} ·{' '}
-              {t.licence(version.license === 'in-folder' ? t.licenceInFolder : version.license)} ·{' '}
-              <RelativeTime date={new Date(version.createdAt)} />
-            </ItemDescription>
-          </ItemContent>
-        </button>
-      </Item>
-      {open && <VersionReview id={version.id} pending={version.status === 'pending'} />}
-    </div>
+      <Dialog
+        open={!!open}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setSelected(null)
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
+          {open && (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  {open.skill.name} <code className="text-xs">{open.contentSha.slice(0, 7)}</code>
+                </DialogTitle>
+                <DialogDescription>{describe(tv, open)}</DialogDescription>
+              </DialogHeader>
+              <VersionReview id={open.id} pending={open.status === 'pending'} />
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </section>
   )
 }
 
@@ -225,7 +233,7 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
     )
 
   return (
-    <section className="flex flex-col gap-4 rounded-lg border p-4">
+    <section className="flex min-w-0 flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="m-0 text-sm text-muted-foreground">
           {previous ? t.againstPrevious(previous.version.commit.slice(0, 7)) : t.firstCopy}

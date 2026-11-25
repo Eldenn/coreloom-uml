@@ -51,6 +51,14 @@ function useFacets(counts: Record<string, Record<string, number>> | undefined) {
     { key: 'state', label: t.list.state, options: options('state', (v) => labelOf(t.states, v)) },
     { key: 'risk', label: t.list.risk, options: options('risk', (v) => labelOf(t.risks, v)) },
   ]
+  // Counted for the admin only: which skills have a copy, and where it stands.
+  if (counts?.copy) {
+    facets.push({
+      key: 'copy',
+      label: t.list.copy,
+      options: options('copy', (v) => labelOf(t.copies, v)),
+    })
+  }
   return facets
 }
 
@@ -171,6 +179,7 @@ export function SkillsCatalog({
     kinds,
     states: t.states,
     risks: t.risks,
+    copies: t.copies,
     sorts: t.sorts,
   })
   const skills = useSkills(query)

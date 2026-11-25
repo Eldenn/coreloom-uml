@@ -15,7 +15,6 @@ import {
   FolderIcon,
   LanguagesIcon,
   NetworkIcon,
-  PackageCheckIcon,
   PlusIcon,
   SettingsIcon,
   SparklesIcon,
@@ -129,11 +128,6 @@ function useCommands(isAdmin: boolean) {
                 label: t.nav.featureFlags,
                 icon: FlagIcon,
                 onSelect: () => void navigate({ to: '/feature-flags' }),
-              },
-              {
-                label: t.nav.skillVersions,
-                icon: PackageCheckIcon,
-                onSelect: () => void navigate({ to: '/skill-versions' }),
               },
             ]
           : []),
@@ -259,12 +253,6 @@ function AuthedLayout() {
                       url: '/feature-flags',
                       icon: FlagIcon,
                       isActive: isActive('/feature-flags'),
-                    },
-                    {
-                      title: t.nav.skillVersions,
-                      url: '/skill-versions',
-                      icon: PackageCheckIcon,
-                      isActive: isActive('/skill-versions'),
                     },
                   ]
                 : []),

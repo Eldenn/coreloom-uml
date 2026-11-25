@@ -1,6 +1,7 @@
 import type { DiagramKind, SkillAffinity, SkillOrigin, Topic } from '@coreloom-uml/catalog'
 import type { Paginated } from '#app/shared/pagination/paginate'
 import type { SkillRiskLevel, SkillState } from '#app/skills/constants/skill'
+import type { SkillCopyState } from '#app/skills/constants/skill-version'
 import type { SkillAudit } from '#app/skills/models/catalog-skill'
 
 /** A row of the catalog. */
@@ -50,6 +51,8 @@ export type SkillFacetsOutput = {
   diagramKind: Partial<Record<DiagramKind, number>>
   state: Partial<Record<SkillState, number>>
   risk: Partial<Record<SkillRiskLevel, number>>
+  /** By the statuses of a skill's copies; for the admin only. */
+  copy?: Partial<Record<SkillCopyState, number>>
 }
 
 /** Shape returned by `GET /skills`. */

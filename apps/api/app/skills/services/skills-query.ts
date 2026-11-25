@@ -8,6 +8,7 @@ import {
   type SkillState,
   SkillStatus,
 } from '#app/skills/constants/skill'
+import { SKILL_COPY_NONE, type SkillCopyState } from '#app/skills/constants/skill-version'
 import CatalogSkill from '#app/skills/models/catalog-skill'
 
 /**
@@ -53,12 +54,21 @@ const PREVIOUS_INSTALLS_SQL = `(select previous.installs from skill_snapshots pr
 export const DELTA_SQL = `case when skills.last_seen_at = ${LAST_RUN_SQL}
   then skills.installs - ${PREVIOUS_INSTALLS_SQL} end`
 
+const COPIES_SQL = 'select 1 from skill_versions where skill_versions.skill_id = skills.id'
+
+/** One row per status among a skill's copies, `none` without any. */
+const COPY_SQL = `unnest(coalesce(
+  (select array_agg(distinct skill_versions.status::text) from skill_versions
+    where skill_versions.skill_id = skills.id),
+  array['${SKILL_COPY_NONE}']))`
+
 export type SkillFilters = {
   search?: string
   topic?: Topic[]
   diagramKind?: DiagramKind[]
   state?: SkillState[]
   risk?: SkillRiskLevel[]
+  copy?: SkillCopyState[]
 }
 
 export type SkillFacet = Exclude<keyof SkillFilters, 'search'>
@@ -91,6 +101,15 @@ export function filtersSql(filters: SkillFilters, except?: SkillFacet): Fragment
   }
   if (filters.risk?.length && except !== 'risk') {
     parts.push(inSql(RISK_SQL, filters.risk))
+  }
+  if (filters.copy?.length && except !== 'copy') {
+    parts.push(
+      anyOf(filters.copy, (copy) =>
+        copy === SKILL_COPY_NONE
+          ? { sql: `not exists (${COPIES_SQL})`, bindings: [] }
+          : { sql: `exists (${COPIES_SQL} and skill_versions.status = ?)`, bindings: [copy] },
+      ),
+    )
   }
   return {
     sql: parts.map((part) => `(${part.sql})`).join(' and '),
@@ -141,8 +160,11 @@ export function skillsQuery(filters: SkillFilters, sort: SkillSort = SkillSort.I
   return query.orderBy('skills.id', 'asc')
 }
 
-/** How many skills match each value of each filter, the other filters applied. */
-export async function facetCounts(filters: SkillFilters) {
+/**
+ * How many skills match each value of each filter, the other filters applied; `copy` only when
+ * asked for (the admin).
+ */
+export async function facetCounts(filters: SkillFilters, copies = false) {
   // One after the other: inside a transaction they share a single connection.
   const topic = await countBy(filters, 'topic', 'jsonb_array_elements_text(skills.topics)')
   const diagramKind = await countBy(
@@ -152,7 +174,8 @@ export async function facetCounts(filters: SkillFilters) {
   )
   const state = await countBy(filters, 'state', STATE_SQL)
   const risk = await countBy(filters, 'risk', RISK_SQL)
-  return { topic, diagramKind, state, risk }
+  if (!copies) return { topic, diagramKind, state, risk }
+  return { topic, diagramKind, state, risk, copy: await countBy(filters, 'copy', COPY_SQL) }
 }
 
 async function countBy(

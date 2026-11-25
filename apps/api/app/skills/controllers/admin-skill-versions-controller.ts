@@ -1,15 +1,18 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import CaptureSkillVersionJob from '#app/jobs/capture-skill-version_job'
 import { paginate } from '#app/shared/pagination/paginate'
 import { SkillApprovalProblem } from '#app/skills/constants/skill-scan'
 import { SkillVersionStatus } from '#app/skills/constants/skill-version'
 import SkillVersion from '#app/skills/models/skill-version'
 import { approvalProblem } from '#app/skills/services/skill-scans'
 import {
+  capturableSkills,
   previousApproved,
   readSkillVersionFiles,
   reviewSkillVersion,
 } from '#app/skills/services/skill-versions'
 import {
+  captureSkillVersionInput,
   listSkillVersionsInput,
   reviewSkillVersionInput,
 } from '#app/skills/validators/skill-versions-input'
@@ -28,16 +31,33 @@ const VERSION_NOT_FOUND = { error: { message: 'Skill version not found' } }
  */
 export default class AdminSkillVersionsController {
   async index({ request, response }: HttpContext) {
-    const { status, ...page } = await request.validateUsing(listSkillVersionsInput, {
+    const { status, skill, ...page } = await request.validateUsing(listSkillVersionsInput, {
       data: request.qs(),
     })
+    // Every copy of one skill, or the copies in one status (the ones waiting by default).
+    const only = status ?? (skill ? undefined : SkillVersionStatus.Pending)
     const query = SkillVersion.query()
-      .where('status', status ?? SkillVersionStatus.Pending)
+      .if(skill, (versions) =>
+        versions.whereHas('skill', (skills) => skills.where('slug', skill as string)),
+      )
+      .if(only, (versions) => versions.where('status', only as string))
       .preload('skill')
       .orderBy('createdAt', 'desc')
       .orderBy('id', 'desc')
     const output: SkillVersionsOutput = await paginate(query, page, serialize)
     return response.ok(output)
+  }
+
+  /**
+   * Copies one skill's files now instead of at the next weekly search. The job does it (no
+   * request handler calls GitHub); the copy arrives `pending` like any other.
+   */
+  async store({ request, response }: HttpContext) {
+    const { slug } = await request.validateUsing(captureSkillVersionInput)
+    const skill = await capturableSkills().where('slug', slug).first()
+    if (!skill) return response.notFound({ error: { message: 'No skill to copy' } })
+    await CaptureSkillVersionJob.dispatch({ slug })
+    return response.accepted({ queued: true })
   }
 
   async show({ params, response }: HttpContext) {

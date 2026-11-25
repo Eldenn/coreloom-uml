@@ -6,6 +6,7 @@ import {
   SKILL_STATES,
   SKILLS_SEARCH_MAX_LENGTH,
 } from '#app/skills/constants/skill'
+import { SKILL_COPY_STATES } from '#app/skills/constants/skill-version'
 
 /**
  * `GET /skills` query params. A filter given several times (`?topic=react&topic=testing`)
@@ -20,6 +21,8 @@ export const listSkillsInput = vine.create(
     diagramKind: vine.array(vine.enum(DIAGRAM_KINDS)).parse(toArray).optional(),
     state: vine.array(vine.enum(SKILL_STATES)).parse(toArray).optional(),
     risk: vine.array(vine.enum(SKILL_RISK_LEVELS)).parse(toArray).optional(),
+    /** Read for the admin only (see `SkillsController.index`). */
+    copy: vine.array(vine.enum(SKILL_COPY_STATES)).parse(toArray).optional(),
     sort: vine.enum(SKILL_SORTS).optional(),
   }),
 )

@@ -91,6 +91,7 @@ export interface ApiDefinition {
     }
     skillVersions: {
       index: typeof routes['admin.skill_versions.index']
+      store: typeof routes['admin.skill_versions.store']
       show: typeof routes['admin.skill_versions.show']
       update: typeof routes['admin.skill_versions.update']
     }

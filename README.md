@@ -567,8 +567,9 @@ node ace skills:block <slug> --reason "…"  # never suggest it again (--unblock
 `SKILLS_REFRESH_ENABLED` defaults to `true`.
 
 After each search, the folder of every skill that may be suggested is copied (files in Drive, the
-list in `skill_versions`) and the admin reads each new copy on `/skill-versions` before approving
-it. Each copy is first scanned by NVIDIA's [SkillSpector](https://github.com/NVIDIA/SkillSpector),
+list in `skill_versions`) and the admin reads each new copy before approving it, in the skill's
+sheet on `/skills` (the admin's "Copy" filter lists the skills with a copy to review; "Copy now"
+asks for one skill's copy without waiting for the next search). Each copy is first scanned by NVIDIA's [SkillSpector](https://github.com/NVIDIA/SkillSpector),
 static analysis only, by the `skill-scanner` worker (its own image and service, on the
 `skill-scans` queue: see `infra/skill-scanner/README.md`); a copy without a complete scan, or that
 SkillSpector recommends not installing, can only be rejected.

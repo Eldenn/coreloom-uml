@@ -14,6 +14,14 @@ export const SKILL_VERSION_STATUSES = Object.values(
   SkillVersionStatus,
 ) as readonly SkillVersionStatus[]
 
+/**
+ * The `copy` filter of `GET /skills` (admin only): the statuses of the copies a skill has, or
+ * `none` when it has no copy.
+ */
+export const SKILL_COPY_NONE = 'none'
+export const SKILL_COPY_STATES = [...SKILL_VERSION_STATUSES, SKILL_COPY_NONE] as const
+export type SkillCopyState = (typeof SKILL_COPY_STATES)[number]
+
 /** What the admin can set a copy to. */
 export const SKILL_VERSION_DECISIONS = [
   SkillVersionStatus.Approved,

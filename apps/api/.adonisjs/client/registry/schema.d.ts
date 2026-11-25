@@ -1171,6 +1171,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'admin.skill_versions.store': {
+    methods: ["POST"]
+    pattern: '/admin/skill-versions'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/skills/validators/skill-versions-input').captureSkillVersionInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/skills/validators/skill-versions-input').captureSkillVersionInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'admin.skill_versions.show': {
     methods: ["GET","HEAD"]
     pattern: '/admin/skill-versions/:id'
