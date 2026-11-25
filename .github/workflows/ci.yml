@@ -95,4 +95,7 @@ jobs:
       - run: pnpm build
 
       - name: Validate production compose file
+        # The file refuses to load without E2B_API_KEY: a placeholder is enough to check it.
+        env:
+          E2B_API_KEY: ci-placeholder
         run: docker compose -f infra/docker-compose.production.yml config --quiet
