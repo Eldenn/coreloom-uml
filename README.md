@@ -564,15 +564,18 @@ node ace skills:block <slug> --reason "…"  # never suggest it again (--unblock
 ```
 
 `skills:setup` runs on every deploy after the migrations (see `infra/docker-compose.*.yml`), where
-`SKILLS_REFRESH_ENABLED` defaults to `true`.
+`SKILLS_REFRESH_ENABLED` defaults to `true`. The admin does the other two from `/skills` as well:
+"Search now" in the page's header, and "Stop suggesting" / "Suggest again" in a skill's sheet.
 
 After each search, the folder of every skill that may be suggested is copied (files in Drive, the
 list in `skill_versions`) and the admin reads each new copy before approving it, in the skill's
-sheet on `/skills` (the admin's "Copy" filter lists the skills with a copy to review; "Copy now"
-asks for one skill's copy without waiting for the next search). Each copy is first scanned by NVIDIA's [SkillSpector](https://github.com/NVIDIA/SkillSpector),
+sheet on `/skills` (the admin's "Copy" filter lists the skills with a copy to review; "Sync now"
+reads one skill's audits and pin again and copies it without waiting for the next search, with the
+installs, affinities and tags the last search found). Each copy is first scanned by NVIDIA's [SkillSpector](https://github.com/NVIDIA/SkillSpector),
 static analysis only, by the `skill-scanner` worker (its own image and service, on the
 `skill-scans` queue: see `infra/skill-scanner/README.md`); a copy without a complete scan, or that
-SkillSpector recommends not installing, can only be rejected.
+SkillSpector recommends not installing, can only be rejected. The admin asks for the scans from
+`/skills` too: "Scan waiting copies" in the header, and "Scan" / "Scan again" on a pending copy.
 
 #### The Skills screen
 
@@ -587,9 +590,14 @@ the skill's sheet: source, licence, audits, why it is not suggested, installs at
 | `GET /skills` | The catalog filtered (`search`, `topic`, `diagramKind`, `state`, `risk`; a filter given several times matches any of its values), sorted (`sort=installs\|trending\|newest\|name`) and paginated, with `facets`: each filter's counts under the other filters |
 | `GET /skills/stats` | Totals, the last 26 search runs (skills returned, installs, new, eligible), audit and topic breakdowns, top gainers |
 | `GET /skills/:slug` | One skill with its run history and the reason it is not suggested |
-| `GET /skills/events` | Server-Sent Events: `catalog.refreshed` after a search, `catalog.updated` after `skills:block` |
+| `GET /skills/events` | Server-Sent Events: `catalog.refreshed` after a search, `catalog.updated` after a skill is blocked, synced or a copy scanned |
+| `POST /admin/skills/refresh` | Admin: queue the search now (409 while one asked earlier has not ended) |
+| `PATCH /admin/skills/:slug` | Admin: `{ blocked, reason? }`, stop suggesting a skill or suggest it again |
+| `POST /admin/skill-versions` | Admin: `{ slug }`, queue one skill's sync (audits, pin, copy) |
+| `POST /admin/skill-versions/scans` | Admin: queue a scan of every pending copy without a verdict; answers how many |
+| `POST /admin/skill-versions/:id/scan` | Admin: queue a scan of one pending copy, again when it has a verdict |
 
-All four take the session or an API key with `read`. A skill's `state` is `suggested`, `catalogued`
+The four `GET` routes take the session or an API key with `read`; the admin routes take the default account's session and answer 404 to anyone else. A skill's `state` is `suggested`, `catalogued`
 or `blocked`; its `risk` is its worst skills.sh audit (`none` without any). Live updates cross
 processes through Redis pub/sub (channel `skills:catalog`): the job and the commands publish, the
 HTTP server holds one subscription and pushes to every open stream; the screen then reloads its

@@ -25,6 +25,7 @@ import { type SkillDetail, useSkill } from '@/lib/skills'
 import { SkillCopies } from '@/skills/skill-copies'
 import { RiskBadge, StateBadge } from '@/skills/skill-labels'
 import { labelOf, topicLabel } from '@/skills/skill-values'
+import { SkillBlock } from '@/skills/skills-admin'
 
 function dateOrNone(date: string | null, none: string) {
   return date ? <RelativeTime date={date} /> : none
@@ -149,7 +150,8 @@ function SkillBody({ skill }: { skill: SkillDetail }) {
       <div className="flex flex-col gap-6 overflow-y-auto px-[22px] pt-4 pb-4">
         <Reason skill={skill} />
         <SkillFacts skill={skill} />
-        {user?.isAdmin && <SkillCopies slug={skill.slug} canCopy={skill.state === 'suggested'} />}
+        {user?.isAdmin && <SkillBlock skill={skill} />}
+        {user?.isAdmin && <SkillCopies slug={skill.slug} canCopy={skill.state !== 'blocked'} />}
         <section className="flex flex-col gap-2">
           <h3 className="m-0 text-sm font-medium text-foreground">{t.sheet.audits}</h3>
           <Audits skill={skill} />

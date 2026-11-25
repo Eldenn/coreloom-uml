@@ -1,9 +1,11 @@
+import app from '@adonisjs/core/services/app'
 import { Job } from '@nemoventures/adonis-jobs'
 import type { BullJobsOptions } from '@nemoventures/adonis-jobs/types'
 import { SKILL_SCANS_QUEUE, SkillScanStatus } from '#app/skills/constants/skill-scan'
 import { SkillVersionStatus } from '#app/skills/constants/skill-version'
 import SkillVersion from '#app/skills/models/skill-version'
 import { scanSkillVersion } from '#app/skills/services/skill-scans'
+import SkillsEvents from '#app/skills/services/skills-events'
 
 /**
  * Scans one copy of a skill with SkillSpector (`scanSkillVersion`), queued by each skills refresh
@@ -13,6 +15,8 @@ import { scanSkillVersion } from '#app/skills/services/skill-scans'
  */
 export type ScanSkillVersionJobData = {
   skillVersionId: number
+  /** Scan again a copy that has a verdict (the admin asked, `POST /admin/skill-versions/:id/scan`). */
+  force?: boolean
 }
 
 export default class ScanSkillVersionJob extends Job<ScanSkillVersionJobData, void> {
@@ -31,7 +35,7 @@ export default class ScanSkillVersionJob extends Job<ScanSkillVersionJobData, vo
     const version = await SkillVersion.find(this.data.skillVersionId)
     // Deleted with its skill, already decided, or scanned meanwhile: nothing to do.
     if (!version || version.status !== SkillVersionStatus.Pending) return
-    if (version.scan?.status === SkillScanStatus.Done) return
+    if (version.scan?.status === SkillScanStatus.Done && !this.data.force) return
     const scan = await scanSkillVersion(version)
     this.logger.info(
       {
@@ -43,6 +47,8 @@ export default class ScanSkillVersionJob extends Job<ScanSkillVersionJobData, vo
       },
       'skill copy scanned',
     )
+    // Open Skills screens reload (see `GET /skills/events`).
+    await (await app.container.make(SkillsEvents)).publish('catalog.updated')
   }
 
   async onFailed(): Promise<void> {

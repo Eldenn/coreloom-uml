@@ -62,6 +62,11 @@ export type SearchOptions = {
   minInstalls: number
   /** The most skills checked on GitHub in this run, most installed first. */
   githubChecks: number
+  /**
+   * One skill's sync (`syncSkill`): every known skill with a registry entry is checked again,
+   * whether or not it was eligible, with the figures it has.
+   */
+  recheck?: boolean
   /** Told what the run is doing, step by step (the command prints it). */
   onProgress?: (message: string) => void
 }
@@ -289,9 +294,10 @@ async function collectCandidates(
     throw new Error('Every skills.sh search failed: nothing was changed')
   }
   for (const skill of options.known) {
-    if (skill.origin !== SkillOrigin.Search || !skill.registryId || byId.has(skill.registryId))
-      continue
-    if (!skill.eligible || skill.blocked) continue
+    if (!skill.registryId || byId.has(skill.registryId)) continue
+    if (!options.recheck) {
+      if (skill.origin !== SkillOrigin.Search || !skill.eligible || skill.blocked) continue
+    }
     const [owner, repo, ...rest] = skill.registryId.split('/')
     byId.set(skill.registryId, {
       registryId: skill.registryId,

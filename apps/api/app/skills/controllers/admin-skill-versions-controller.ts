@@ -1,12 +1,14 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import CaptureSkillVersionJob from '#app/jobs/capture-skill-version_job'
+import ScanSkillVersionJob from '#app/jobs/scan-skill-version_job'
 import { paginate } from '#app/shared/pagination/paginate'
+import { SkillStatus } from '#app/skills/constants/skill'
 import { SkillApprovalProblem } from '#app/skills/constants/skill-scan'
 import { SkillVersionStatus } from '#app/skills/constants/skill-version'
+import CatalogSkill from '#app/skills/models/catalog-skill'
 import SkillVersion from '#app/skills/models/skill-version'
-import { approvalProblem } from '#app/skills/services/skill-scans'
+import { approvalProblem, queueSkillScans } from '#app/skills/services/skill-scans'
 import {
-  capturableSkills,
   previousApproved,
   readSkillVersionFiles,
   reviewSkillVersion,
@@ -49,14 +51,37 @@ export default class AdminSkillVersionsController {
   }
 
   /**
-   * Copies one skill's files now instead of at the next weekly search. The job does it (no
-   * request handler calls GitHub); the copy arrives `pending` like any other.
+   * Syncs one skill now instead of at the next weekly search: its audits and its pin are read
+   * again, then its files are copied (`syncSkill`). The job does it (no request handler calls
+   * skills.sh or GitHub); the copy arrives `pending` like any other. A blocked skill is left alone.
    */
   async store({ request, response }: HttpContext) {
     const { slug } = await request.validateUsing(captureSkillVersionInput)
-    const skill = await capturableSkills().where('slug', slug).first()
-    if (!skill) return response.notFound({ error: { message: 'No skill to copy' } })
+    const skill = await CatalogSkill.query()
+      .where('slug', slug)
+      .where('status', SkillStatus.Active)
+      .first()
+    if (!skill) return response.notFound({ error: { message: 'No skill to sync' } })
     await CaptureSkillVersionJob.dispatch({ slug })
+    return response.accepted({ queued: true })
+  }
+
+  /** Queues a scan for every pending copy without a verdict (`queueSkillScans`). */
+  async scans({ response }: HttpContext) {
+    return response.accepted({ queued: await queueSkillScans() })
+  }
+
+  /**
+   * Queues a scan of one pending copy, again when it has a verdict already. The `skill-scanner`
+   * worker runs it: no request handler does.
+   */
+  async scan({ params, response }: HttpContext) {
+    const version = await find(params.id)
+    if (!version) return response.notFound(VERSION_NOT_FOUND)
+    if (version.status !== SkillVersionStatus.Pending) {
+      return response.conflict({ error: { message: 'Only a pending copy is scanned' } })
+    }
+    await ScanSkillVersionJob.dispatch({ skillVersionId: version.id, force: true })
     return response.accepted({ queued: true })
   }
 

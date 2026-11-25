@@ -2,7 +2,11 @@ import db from '@adonisjs/lucid/services/db'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import { SKILL_SEARCH_PLAN, SKILLS, type Skill, SkillOrigin, TARGETS } from '@coreloom-uml/catalog'
 import { DateTime } from 'luxon'
-import { SKILLS_SEARCH_LIMITS, SkillStatus } from '#app/skills/constants/skill'
+import {
+  SKILL_BLOCK_REASON_MAX_LENGTH,
+  SKILLS_SEARCH_LIMITS,
+  SkillStatus,
+} from '#app/skills/constants/skill'
 import CatalogSkill from '#app/skills/models/catalog-skill'
 import SkillSnapshot from '#app/skills/models/skill-snapshot'
 import { captureSkillVersions } from '#app/skills/services/skill-versions'
@@ -58,23 +62,7 @@ export type RefreshCatalogOptions = {
 export async function refreshCatalog(options: RefreshCatalogOptions = {}): Promise<SearchReport> {
   const now = options.now ?? DateTime.now()
   const rows = await CatalogSkill.all()
-  const known: KnownSkill[] = rows.map((row) => ({
-    slug: row.slug,
-    origin: row.origin,
-    blocked: row.status === SkillStatus.Blocked,
-    registryId: row.registryId,
-    name: row.name,
-    description: row.description,
-    url: row.url,
-    affinities: row.affinities,
-    topics: row.topics,
-    installs: row.installs,
-    audits: row.audits,
-    license: row.license,
-    contentSha: row.contentSha,
-    eligible: row.eligible,
-    ineligibleReason: row.ineligibleReason,
-  }))
+  const known = rows.map(toKnown)
 
   const { records, report } = await searchSkills({
     known,
@@ -112,6 +100,62 @@ export async function refreshCatalog(options: RefreshCatalogOptions = {}): Promi
     fetch: options.fetch,
     githubToken: options.githubToken,
     onProgress: options.onProgress,
+  })
+  report.copied = versions.captured
+  report.warnings.push(...versions.warnings)
+  return report
+}
+
+function toKnown(row: CatalogSkill): KnownSkill {
+  return {
+    slug: row.slug,
+    origin: row.origin,
+    blocked: row.status === SkillStatus.Blocked,
+    registryId: row.registryId,
+    name: row.name,
+    description: row.description,
+    url: row.url,
+    affinities: row.affinities,
+    topics: row.topics,
+    installs: row.installs,
+    audits: row.audits,
+    license: row.license,
+    contentSha: row.contentSha,
+    eligible: row.eligible,
+    ineligibleReason: row.ineligibleReason,
+  }
+}
+
+/**
+ * One skill's share of the search, when the admin asks for it instead of waiting for the weekly
+ * run: its audits are read again on skills.sh, a found skill is checked and pinned again on
+ * GitHub, then its files are copied at that pin. No search runs, so its installs, affinities and
+ * tags stay what the last one found, and a skill no search matched yet (no registry entry) is
+ * only copied. Null when the catalog has no such skill.
+ */
+export async function syncSkill(
+  slug: string,
+  options: RefreshCatalogOptions = {},
+): Promise<SearchReport | null> {
+  const row = await CatalogSkill.findBy('slug', slug)
+  if (!row) return null
+  const { records, report } = await searchSkills({
+    known: [toKnown(row)],
+    plan: [],
+    recheck: true,
+    fetch: options.fetch ?? fetch,
+    githubToken: options.githubToken,
+    minInstalls: SKILLS_SEARCH_LIMITS.minInstalls,
+    githubChecks: 1,
+  })
+  const now = options.now ?? DateTime.now()
+  await db.transaction(async (trx) => {
+    for (const record of records) await saveRecord(record, row, now, trx)
+  })
+  const versions = await captureSkillVersions({
+    slug,
+    fetch: options.fetch,
+    githubToken: options.githubToken,
   })
   report.copied = versions.captured
   report.warnings.push(...versions.warnings)
@@ -206,7 +250,7 @@ export async function setSkillBlocked(
   await row
     .merge({
       status: blocked ? SkillStatus.Blocked : SkillStatus.Active,
-      statusReason: blocked ? (reason?.slice(0, 300) ?? null) : null,
+      statusReason: blocked ? (reason?.slice(0, SKILL_BLOCK_REASON_MAX_LENGTH) ?? null) : null,
     })
     .save()
   return true

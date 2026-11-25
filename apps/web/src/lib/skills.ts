@@ -1,6 +1,6 @@
 // Query hooks for the skills catalog (the pattern of src/lib/query.ts), and the live stream that
 // tells the screen when the weekly search changed it.
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 
 import { apiBaseUrl, client } from '@/lib/client'
@@ -42,6 +42,21 @@ export function useSkill(slug: string | undefined) {
 
 export function useSkillsStats() {
   return useQuery({ queryKey: skillKeys.stats, queryFn: () => client.api.skills.stats({}) })
+}
+
+/** The admin's: runs the skills.sh search now (409 while one asked earlier has not ended). */
+export function useRefreshSkills() {
+  return useMutation({ mutationFn: () => client.api.admin.skills.refresh({}) })
+}
+
+/** The admin's: stops suggesting a skill, with why, or suggests it again. */
+export function useBlockSkill() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ slug, ...body }: { slug: string; blocked: boolean; reason?: string }) =>
+      client.api.admin.skills.update({ params: { slug }, body }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: skillKeys.all }),
+  })
 }
 
 export type LiveStatus = 'connecting' | 'live' | 'offline'

@@ -5,6 +5,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { SparklesIcon } from 'lucide-react'
 import { z } from 'zod'
 
+import { useAuth } from '@/auth/auth-context'
 import { PageHeader } from '@/components/app-shell'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
@@ -15,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useT } from '@/lib/locale'
 import { type LiveStatus, useSkillsLiveUpdates, useSkillsStats } from '@/lib/skills'
 import { SkillSheet } from '@/skills/skill-sheet'
+import { SkillsAdminActions } from '@/skills/skills-admin'
 import { SkillsCatalog } from '@/skills/skills-catalog'
 import { SkillsFigures, SkillsTrends } from '@/skills/skills-overview'
 
@@ -74,6 +76,7 @@ function SkillsPage() {
   const t = useT()
   const navigate = useNavigate({ from: Route.fullPath })
   const search = Route.useSearch()
+  const { user } = useAuth()
   const stats = useSkillsStats()
   const live = useSkillsLiveUpdates(() => toast.info(t.skills.catalogChanged))
 
@@ -91,7 +94,12 @@ function SkillsPage() {
       <PageHeader
         title={t.skills.title}
         description={t.skills.description}
-        actions={<LiveBadge status={live} lastRunAt={stats.data?.lastRunAt ?? null} />}
+        actions={
+          <div className="flex flex-wrap items-center gap-3">
+            <LiveBadge status={live} lastRunAt={stats.data?.lastRunAt ?? null} />
+            {user?.isAdmin && <SkillsAdminActions />}
+          </div>
+        }
       />
       {stats.isError && (
         <Alert variant="destructive">

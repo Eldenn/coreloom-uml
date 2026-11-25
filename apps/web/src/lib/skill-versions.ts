@@ -45,7 +45,22 @@ export function useReviewSkillVersion() {
   })
 }
 
-/** Asks for a copy of a skill's files now; it shows up once the queue has made it. */
+/** Asks for a scan of one pending copy, again when it has a verdict already. */
+export function useScanSkillVersion() {
+  return useMutation({
+    mutationFn: (id: number) => client.api.admin.skillVersions.scan({ params: { id: String(id) } }),
+  })
+}
+
+/** Asks for a scan of every pending copy that has no verdict; answers how many. */
+export function useQueueSkillScans() {
+  return useMutation({ mutationFn: () => client.api.admin.skillVersions.scans({}) })
+}
+
+/**
+ * Asks for a sync of one skill now (its audits and pin read again, then a copy); what changed
+ * shows up once the queue has done it.
+ */
 export function useCaptureSkillCopy() {
   return useMutation({
     mutationFn: (slug: string) => client.api.admin.skillVersions.store({ body: { slug } }),
