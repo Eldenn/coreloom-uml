@@ -1153,6 +1153,9 @@ export const en = {
       block: 'Stop suggesting',
       unblock: 'Suggest again',
       blockReason: 'Why stop suggesting it (optional)',
+      suggestionTitle: 'Suggestion',
+      blockHelp:
+        'A skill no longer suggested stays in the catalog but never reaches agent conventions.',
       blocked: 'This skill is no longer suggested.',
       unblocked: 'This skill can be suggested again.',
       blockFailed: 'The skill could not be changed.',
@@ -1263,7 +1266,6 @@ export const en = {
       license: 'Licence',
       firstSeen: 'First seen',
       checked: 'Last checked on GitHub',
-      topics: 'Topics',
       diagramKinds: 'Fits diagrams',
       none: 'None',
       whyNot: 'Why it is not suggested',
@@ -1275,6 +1277,8 @@ export const en = {
       historyEmpty: 'No search has returned this skill yet.',
       openSource: 'Open the pinned source',
       openRegistry: 'Open on skills.sh',
+      overviewTab: 'Overview',
+      adminTab: 'Administration',
       thirdParty:
         'A third-party resource: read it before adding it to your tools. Coreloom links to it and never installs it.',
     },
@@ -2876,6 +2880,9 @@ export const fr: Messages = {
       block: 'Ne plus suggérer',
       unblock: 'Suggérer à nouveau',
       blockReason: 'Pourquoi ne plus le suggérer (facultatif)',
+      suggestionTitle: 'Suggestion',
+      blockHelp:
+        'Un skill qui n’est plus suggéré reste au catalogue mais n’entre plus dans les conventions d’agents.',
       blocked: 'Ce skill n’est plus suggéré.',
       unblocked: 'Ce skill peut de nouveau être suggéré.',
       blockFailed: 'Le skill n’a pas pu être modifié.',
@@ -2986,7 +2993,6 @@ export const fr: Messages = {
       license: 'Licence',
       firstSeen: 'Vu pour la première fois',
       checked: 'Dernière vérification sur GitHub',
-      topics: 'Sujets',
       diagramKinds: 'Diagrammes concernés',
       none: 'Aucun',
       whyNot: 'Pourquoi il n’est pas suggéré',
@@ -2998,6 +3004,8 @@ export const fr: Messages = {
       historyEmpty: 'Aucune recherche n’a encore renvoyé ce skill.',
       openSource: 'Ouvrir la source épinglée',
       openRegistry: 'Ouvrir sur skills.sh',
+      overviewTab: 'Aperçu',
+      adminTab: 'Administration',
       thirdParty:
         'Une ressource tierce : lisez-la avant de l’ajouter à vos outils. Coreloom la référence sans jamais l’installer.',
     },

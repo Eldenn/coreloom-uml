@@ -63,39 +63,44 @@ export function SkillBlock({ skill }: { skill: SkillDetail }) {
   const blocked = skill.state === 'blocked'
   const id = `block-reason-${skill.slug}`
   return (
-    <section className="flex flex-wrap items-end gap-2">
-      {!blocked && (
-        <div className="flex min-w-48 flex-1 flex-col gap-1.5">
-          <Label htmlFor={id}>{t.blockReason}</Label>
-          <Input
-            id={id}
-            value={reason}
-            maxLength={BLOCK_REASON_MAX}
-            onChange={(event) => {
-              setReason(event.target.value)
-            }}
-          />
-        </div>
-      )}
-      <Button
-        variant={blocked ? 'outline' : 'destructive'}
-        size="sm"
-        disabled={block.isPending}
-        onClick={() => {
-          block.mutate(
-            { slug: skill.slug, blocked: !blocked, reason: reason.trim() || undefined },
-            {
-              onSuccess: () => {
-                setReason('')
-                toast.success(blocked ? t.unblocked : t.blocked)
+    <section className="flex flex-col gap-3 rounded-md border border-destructive/40 p-4">
+      <div className="flex flex-col gap-1">
+        <h3 className="m-0 text-sm font-medium text-foreground">{t.suggestionTitle}</h3>
+        <p className="m-0 text-sm text-muted-foreground">{t.blockHelp}</p>
+      </div>
+      <div className="flex flex-wrap items-end gap-2">
+        {!blocked && (
+          <div className="flex min-w-48 flex-1 flex-col gap-1.5">
+            <Label htmlFor={id}>{t.blockReason}</Label>
+            <Input
+              id={id}
+              value={reason}
+              maxLength={BLOCK_REASON_MAX}
+              onChange={(event) => {
+                setReason(event.target.value)
+              }}
+            />
+          </div>
+        )}
+        <Button
+          variant={blocked ? 'outline' : 'destructive'}
+          disabled={block.isPending}
+          onClick={() => {
+            block.mutate(
+              { slug: skill.slug, blocked: !blocked, reason: reason.trim() || undefined },
+              {
+                onSuccess: () => {
+                  setReason('')
+                  toast.success(blocked ? t.unblocked : t.blocked)
+                },
+                onError: () => toast.error(t.blockFailed),
               },
-              onError: () => toast.error(t.blockFailed),
-            },
-          )
-        }}
-      >
-        {blocked ? t.unblock : t.block}
-      </Button>
+            )
+          }}
+        >
+          {blocked ? t.unblock : t.block}
+        </Button>
+      </div>
     </section>
   )
 }

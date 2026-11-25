@@ -19,6 +19,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { useLocale, useT } from '@/lib/locale'
 import { type SkillDetail, useSkill } from '@/lib/skills'
@@ -45,7 +46,7 @@ function Audits({ skill }: { skill: SkillDetail }) {
         <li key={audit.provider} className="flex flex-wrap items-center gap-2 text-sm">
           <span className="min-w-16 font-medium text-foreground">{audit.provider}</span>
           <RiskBadge risk={audit.risk} />
-          <span className="font-mono text-[12px] text-muted-foreground">
+          <span className="text-[13px] text-muted-foreground">
             {t.auditedOn(day.format(new Date(audit.analyzedAt)))}
           </span>
         </li>
@@ -109,22 +110,38 @@ function SkillFacts({ skill }: { skill: SkillDetail }) {
         { term: t.sheet.license, value: skill.license ?? none },
         { term: t.sheet.firstSeen, value: dateOrNone(skill.firstSeenAt, none) },
         { term: t.sheet.checked, value: dateOrNone(skill.checkedAt, none) },
-        {
-          term: t.sheet.topics,
-          wide: true,
-          value: skill.topics.length
-            ? skill.topics.map((topic) => topicLabel(t, topic)).join(', ')
-            : none,
-        },
-        {
-          term: t.sheet.diagramKinds,
-          wide: true,
-          value: skill.diagramKinds.length
-            ? skill.diagramKinds.map((kind) => labelOf(kinds, kind)).join(', ')
-            : none,
-        },
+        // Its topics are the header's badges; diagram kinds only when it has some.
+        ...(skill.diagramKinds.length
+          ? [
+              {
+                term: t.sheet.diagramKinds,
+                wide: true,
+                value: skill.diagramKinds.map((kind) => labelOf(kinds, kind)).join(', '),
+              },
+            ]
+          : []),
       ]}
     />
+  )
+}
+
+/** What everyone reads: why it is not suggested, the facts, its audits and installs. */
+function Overview({ skill }: { skill: SkillDetail }) {
+  const t = useT().skills
+  return (
+    <div className="flex flex-col gap-6">
+      <Reason skill={skill} />
+      <SkillFacts skill={skill} />
+      <section className="flex flex-col gap-2">
+        <h3 className="m-0 text-sm font-medium text-foreground">{t.sheet.audits}</h3>
+        <Audits skill={skill} />
+      </section>
+      <section className="flex flex-col gap-2">
+        <h3 className="m-0 text-sm font-medium text-foreground">{t.sheet.history}</h3>
+        <History skill={skill} />
+      </section>
+      <p className="m-0 text-[13px] text-muted-foreground">{t.sheet.thirdParty}</p>
+    </div>
   )
 }
 
@@ -148,21 +165,25 @@ function SkillBody({ skill }: { skill: SkillDetail }) {
           ))}
         </div>
       </SheetHeader>
-      <div className="flex flex-col gap-6 overflow-y-auto px-[22px] pt-4 pb-4">
-        <Reason skill={skill} />
-        <SkillFacts skill={skill} />
-        {user?.isAdmin && <SkillBlock skill={skill} />}
-        {user?.isAdmin && <SkillTopicsEditor key={skill.topics.join()} skill={skill} />}
-        {user?.isAdmin && <SkillCopies slug={skill.slug} canCopy={skill.state !== 'blocked'} />}
-        <section className="flex flex-col gap-2">
-          <h3 className="m-0 text-sm font-medium text-foreground">{t.sheet.audits}</h3>
-          <Audits skill={skill} />
-        </section>
-        <section className="flex flex-col gap-2">
-          <h3 className="m-0 text-sm font-medium text-foreground">{t.sheet.history}</h3>
-          <History skill={skill} />
-        </section>
-        <p className="m-0 text-[13px] text-muted-foreground">{t.sheet.thirdParty}</p>
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-[22px] pt-2 pb-4">
+        {user?.isAdmin ? (
+          <Tabs defaultValue="overview" className="gap-4">
+            <TabsList variant="line">
+              <TabsTrigger value="overview">{t.sheet.overviewTab}</TabsTrigger>
+              <TabsTrigger value="admin">{t.sheet.adminTab}</TabsTrigger>
+            </TabsList>
+            <TabsContent value="overview">
+              <Overview skill={skill} />
+            </TabsContent>
+            <TabsContent value="admin" className="flex flex-col gap-8">
+              <SkillTopicsEditor key={skill.topics.join()} skill={skill} />
+              <SkillCopies slug={skill.slug} canCopy={skill.state !== 'blocked'} />
+              <SkillBlock skill={skill} />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <Overview skill={skill} />
+        )}
       </div>
       <SheetFooter className="flex-row flex-wrap">
         <Button variant="outline" asChild>
