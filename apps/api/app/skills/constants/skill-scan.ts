@@ -16,6 +16,10 @@ export const SKILL_SCAN_LIMITS = {
   findings: 100,
   /** Each finding's quoted text, cut past this. */
   findingText: 300,
+  /** The passages left unchecked kept per copy; the count of the others is kept too. */
+  gaps: 50,
+  /** SkillSpector's sentence on why a passage was left unchecked, cut past this. */
+  gapMessage: 400,
 } as const
 
 export const SkillScanStatus = {
@@ -64,8 +68,9 @@ export const SkillApprovalProblem = {
 } as const
 
 /**
- * The admin's written reason for approving a copy SkillSpector recommends not installing
- * (`overrideReason`): kept on that copy only, so its next version is blocked again.
+ * The admin's written reason for approving a copy despite its scan (`overrideReason`), when
+ * SkillSpector recommends not installing it or left passages unchecked that the scan names: kept on
+ * that copy only, so its next version is blocked again.
  */
 export const SKILL_OVERRIDE_REASON = { minLength: 10, maxLength: 1000 } as const
 

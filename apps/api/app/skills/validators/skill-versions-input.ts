@@ -24,8 +24,8 @@ export const listSkillVersionsInput = vine.create(
 export const captureSkillVersionInput = vine.create(vine.object({ slug: slug() }))
 
 /**
- * `PATCH /admin/skill-versions/:id`: the admin's decision and, only to approve a copy SkillSpector
- * recommends not installing, why.
+ * `PATCH /admin/skill-versions/:id`: the admin's decision and, only to approve a copy despite
+ * its scan (`canOverride`), why.
  */
 export const reviewSkillVersionInput = vine.create(
   vine.object({

@@ -573,8 +573,10 @@ sheet on `/skills` (the admin's "Copy" filter lists the skills with a copy to re
 reads one skill's audits and pin again and copies it without waiting for the next search, with the
 installs, affinities and tags the last search found). Each copy is first scanned by NVIDIA's [SkillSpector](https://github.com/NVIDIA/SkillSpector),
 static analysis only, by the `skill-scanner` worker (its own image and service, on the
-`skill-scans` queue: see `infra/skill-scanner/README.md`); a copy without a complete scan, or that
-SkillSpector recommends not installing, can only be rejected. The admin asks for the scans from
+`skill-scans` queue: see `infra/skill-scanner/README.md`); a copy without a scan, or whose scan
+failed, can only be rejected. One that SkillSpector recommends not installing, or that it left
+passages of unchecked (the sheet lists them: file, lines, why), is approved only with the admin's
+written reason, kept on that copy. The admin asks for the scans from
 `/skills` too: "Scan waiting copies" in the header, and "Scan" / "Scan again" on a pending copy.
 
 #### The Skills screen

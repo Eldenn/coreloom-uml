@@ -46,6 +46,29 @@ async function cleanReport(): Promise<string> {
   return JSON.stringify(report)
 }
 
+/** One `ledger_exceptions` entry of a real 2.13.7 report: a file the static parser gave up on. */
+const LEDGER_EXCEPTION = {
+  outcome: 'partial',
+  phase: 'static',
+  reason_code: 'static_parse_limit',
+  message:
+    'A security-relevant expression could not be fully resolved by the bounded static parser.',
+  path: 'scripts/server.cjs',
+  start_line: null,
+  end_line: null,
+  fatal: false,
+  analyzers: ['static_patterns_tool_misuse'],
+  parser_diagnostic: { cause: 'runtime_dependent', start_line: 537, end_line: 723 },
+}
+
+/** SkillSpector's report on a clean skill it could not check whole, naming `exceptions`. */
+async function partialReport(exceptions: unknown[]): Promise<string> {
+  const report = JSON.parse(await cleanReport())
+  report.analysis_completeness.is_complete = false
+  report.analysis_completeness.ledger_exceptions = exceptions
+  return JSON.stringify(report)
+}
+
 /** A pending copy of a skill, its files in (fake) Drive. */
 async function pendingCopy(slug = 'deploy-helper'): Promise<SkillVersion> {
   const skill = await CatalogSkill.create({
@@ -128,6 +151,7 @@ test.group('Skill scans: the report', () => {
     assert.equal(scan.score, 100)
     assert.equal(scan.recommendation, 'DO_NOT_INSTALL')
     assert.isTrue(scan.complete)
+    assert.deepEqual(scan.gaps, [])
     assert.equal(scan.version, '2.13.7')
     assert.lengthOf(scan.findings, 7)
     assert.deepEqual(scan.findings[0], {
@@ -143,6 +167,44 @@ test.group('Skill scans: the report', () => {
       scan.findings.map((finding) => finding.severity),
       ['HIGH', 'HIGH', 'HIGH', 'HIGH', 'HIGH', 'MEDIUM', 'MEDIUM'],
     )
+  })
+
+  test('keeps the passages left unchecked, bounded and cut', async ({ assert }) => {
+    const noLines = {
+      reason_code: 'reference_missing',
+      path: 'SKILL.md',
+      start_line: 3,
+      end_line: 3,
+    }
+    const scan = readScanReport(
+      await partialReport([LEDGER_EXCEPTION, noLines]),
+      '2026-11-24T00:00:00.000Z',
+    )
+    if (scan?.status !== SkillScanStatus.Done) return assert.fail('no verdict')
+    assert.isFalse(scan.complete)
+    assert.deepEqual(scan.gaps, [
+      {
+        file: 'scripts/server.cjs',
+        startLine: 537,
+        endLine: 723,
+        reason: 'static_parse_limit',
+        message:
+          'A security-relevant expression could not be fully resolved by the bounded static parser.',
+      },
+      { file: 'SKILL.md', startLine: 3, endLine: 3, reason: 'reference_missing', message: '' },
+    ])
+    assert.equal(scan.moreGaps, 0)
+
+    const many = readScanReport(
+      await partialReport(
+        Array.from({ length: 60 }, () => ({ ...LEDGER_EXCEPTION, message: 'x'.repeat(1000) })),
+      ),
+      '2026-11-24T00:00:00.000Z',
+    )
+    if (many?.status !== SkillScanStatus.Done) return assert.fail('no verdict')
+    assert.lengthOf(many.gaps ?? [], 50)
+    assert.equal(many.moreGaps, 10)
+    assert.lengthOf(many.gaps?.[0]?.message ?? '', 400)
   })
 
   test('gives no verdict for anything else', async ({ assert }) => {
@@ -260,9 +322,44 @@ test.group('Skill scans', (group) => {
     assert.equal(version.overrideReason, 'Read it: the findings quote git commands.')
   })
 
-  test('takes no reason to approve a copy that is clean or not scanned whole', async ({
+  test('lets the admin approve a copy left partly unchecked, with a reason, once every passage is named', async ({
     client,
+    assert,
   }) => {
+    const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
+    const body = { status: 'approved', overrideReason: 'Read lines 537 to 723: a fixed launcher.' }
+    const review = (id: number) =>
+      client.patch(`/admin/skill-versions/${id}`).headers(json).json(body).loginAs(admin)
+
+    // A scan that says it is partial without saying where (stored before the passages were kept).
+    const unnamed = await pendingCopy('unnamed')
+    fakeScanner(await partialReport([]), { exitCode: 0 })
+    await scanSkillVersion(unnamed)
+    ;(await review(unnamed.id)).assertStatus(422)
+
+    // More passages than the scan keeps: some are not named.
+    const cut = await pendingCopy('cut')
+    fakeScanner(await partialReport(Array.from({ length: 60 }, () => LEDGER_EXCEPTION)), {
+      exitCode: 0,
+    })
+    await scanSkillVersion(cut)
+    ;(await review(cut.id)).assertStatus(422)
+
+    const version = await pendingCopy()
+    fakeScanner(await partialReport([LEDGER_EXCEPTION]), { exitCode: 0 })
+    await scanSkillVersion(version)
+    const detail = await client
+      .get(`/admin/skill-versions/${version.id}`)
+      .headers(json)
+      .loginAs(admin)
+    assert.equal(detail.body().version.approvalProblem, SkillApprovalProblem.ScanIncomplete)
+    assert.isTrue(detail.body().version.overridable)
+    const approved = await review(version.id)
+    approved.assertStatus(200)
+    assert.equal(approved.body().overrideReason, 'Read lines 537 to 723: a fixed launcher.')
+  })
+
+  test('takes no reason to approve a copy that is clean or not scanned', async ({ client }) => {
     const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
     const unscanned = await pendingCopy()
     ;(
@@ -319,7 +416,9 @@ test.group('Skill scans', (group) => {
     }
   })
 
-  test('a copy scanned incomplete, or not yet, cannot be approved', async ({ client }) => {
+  test('a copy scanned incomplete, or not yet, cannot be approved without a reason', async ({
+    client,
+  }) => {
     const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
     const version = await pendingCopy()
     const cases: [SkillScan | null, SkillApprovalProblem][] = [

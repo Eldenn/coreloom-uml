@@ -22,7 +22,9 @@ export type SkillVersionOutput = {
   scan: SkillScan | null
   /** Why it cannot be approved now, null when it can (`approvalProblem`). */
   approvalProblem: SkillApprovalProblem | null
-  /** Why the admin approved it although SkillSpector recommends not installing it. */
+  /** Whether a written reason lets the admin approve it despite that problem (`canOverride`). */
+  overridable: boolean
+  /** Why the admin approved it despite its scan. */
   overrideReason: string | null
   status: SkillVersionStatus
   reviewedAt: string | null

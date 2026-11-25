@@ -3,11 +3,10 @@ import CaptureSkillVersionJob from '#app/jobs/capture-skill-version_job'
 import ScanSkillVersionJob from '#app/jobs/scan-skill-version_job'
 import { paginate } from '#app/shared/pagination/paginate'
 import { SkillStatus } from '#app/skills/constants/skill'
-import { SkillApprovalProblem } from '#app/skills/constants/skill-scan'
 import { SkillVersionStatus } from '#app/skills/constants/skill-version'
 import CatalogSkill from '#app/skills/models/catalog-skill'
 import SkillVersion from '#app/skills/models/skill-version'
-import { approvalProblem, queueSkillScans } from '#app/skills/services/skill-scans'
+import { approvalProblem, canOverride, queueSkillScans } from '#app/skills/services/skill-scans'
 import {
   previousApproved,
   readSkillVersionFiles,
@@ -105,13 +104,12 @@ export default class AdminSkillVersionsController {
     if (!version) return response.notFound(VERSION_NOT_FOUND)
     const { status, overrideReason } = await request.validateUsing(reviewSkillVersionInput)
     const problem = status === SkillVersionStatus.Approved ? approvalProblem(version) : null
-    // Only SkillSpector's verdict can be overridden: a copy it did not scan whole has none.
-    const overridden = problem === SkillApprovalProblem.DoNotInstall && overrideReason !== undefined
+    const overridden = overrideReason !== undefined && canOverride(version, problem)
     if (overrideReason !== undefined && !overridden) {
       return response.unprocessableEntity({
         error: {
           message:
-            'A reason is only taken to approve a copy SkillSpector recommends not installing',
+            'A reason is only taken to approve a copy SkillSpector recommends not installing or left passages of unchecked',
           field: 'overrideReason',
         },
       })
@@ -147,6 +145,7 @@ function serialize(version: SkillVersion): SkillVersionOutput {
     bytes: version.bytes,
     scan: version.scan,
     approvalProblem: approvalProblem(version),
+    overridable: canOverride(version, approvalProblem(version)),
     overrideReason: version.overrideReason,
     status: version.status,
     reviewedAt: version.reviewedAt?.toISO() ?? null,

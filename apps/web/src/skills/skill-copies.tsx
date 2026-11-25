@@ -139,6 +139,7 @@ export function SkillCopies({ slug, canCopy }: { slug: string; canCopy: boolean 
 }
 
 type Scan = SkillVersion['scan']
+type DoneScan = Extract<NonNullable<Scan>, { status: 'done' }>
 
 const RECOMMENDATION_BADGES: Record<string, 'success' | 'warning'> = {
   SAFE: 'success',
@@ -200,9 +201,40 @@ function ScanSummary({ scan }: { scan: Scan }) {
           {scan.moreFindings > 0 && (
             <p className="m-0 text-[13px] text-muted-foreground">{t.more(scan.moreFindings)}</p>
           )}
+          {!scan.complete && <ScanGaps gaps={scan.gaps ?? []} more={scan.moreGaps ?? 0} />}
         </>
       )}
     </section>
+  )
+}
+
+/** The passages SkillSpector left unchecked, which the admin reads before approving despite them. */
+function ScanGaps({ gaps, more }: { gaps: NonNullable<DoneScan['gaps']>; more: number }) {
+  const t = useT().skillVersions.scan
+  return (
+    <>
+      <h4 className="m-0 mt-1 text-[13px] font-medium">{t.gapsTitle}</h4>
+      {gaps.length === 0 ? (
+        <p className="m-0 text-[13px] text-muted-foreground">{t.gapsUnknown}</p>
+      ) : (
+        <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[13px]">
+          {gaps.map((gap, index) => (
+            <li key={`${gap.reason}-${String(index)}`} className="flex flex-col">
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">{gap.reason}</span>
+                {gap.file && (
+                  <code className="text-muted-foreground">
+                    {t.lines(gap.file, gap.startLine, gap.endLine)}
+                  </code>
+                )}
+              </span>
+              {gap.message && <span className="text-xs text-muted-foreground">{gap.message}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {more > 0 && <p className="m-0 text-[13px] text-muted-foreground">{t.more(more)}</p>}
+    </>
   )
 }
 
@@ -229,6 +261,18 @@ function ScanButton({ id, pending, scanned }: { id: number; pending: boolean; sc
   )
 }
 
+/** Why a copy cannot be approved as it is, and what the admin can do about it. */
+function ApprovalProblem({ version }: { version: SkillVersion }) {
+  const t = useT().skillVersions
+  if (!version.approvalProblem) return null
+  const listed = version.overridable && version.approvalProblem === 'scan_incomplete'
+  return (
+    <p className="m-0 text-sm text-muted-foreground">
+      {listed ? t.incompleteOverridable : t.approvalProblems[version.approvalProblem]}
+    </p>
+  )
+}
+
 function VersionReview({ id, pending }: { id: number; pending: boolean }) {
   const t = useT().skillVersions
   const detail = useSkillVersion(id)
@@ -247,7 +291,7 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
   const changed = pairs.filter((pair) => pair.status !== null)
   const unchanged = pairs.filter((pair) => pair.status === null).map((pair) => pair.path)
 
-  const overridable = version.approvalProblem === 'do_not_install'
+  const overridable = version.overridable
   const decide = (status: 'approved' | 'rejected', overrideReason?: string) =>
     review.mutate(
       { id, status, overrideReason },
@@ -291,11 +335,7 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
       {unchanged.length > 0 && (
         <p className="m-0 text-[13px] text-muted-foreground">{t.unchanged(unchanged.join(', '))}</p>
       )}
-      {pending && version.approvalProblem && (
-        <p className="m-0 text-sm text-muted-foreground">
-          {t.approvalProblems[version.approvalProblem]}
-        </p>
-      )}
+      {pending && <ApprovalProblem version={version} />}
       {version.overrideReason && (
         <p className="m-0 text-sm">
           {t.overriddenBecause} {version.overrideReason}

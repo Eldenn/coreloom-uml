@@ -45,7 +45,7 @@ export default class SkillVersion extends BaseModel {
   @column({ prepare: (value: unknown) => (value === null ? null : JSON.stringify(value)) })
   declare scan: SkillScan | null
 
-  /** Why the admin approved it although SkillSpector recommends not installing it. */
+  /** Why the admin approved it despite its scan (`canOverride`). */
   @column()
   declare overrideReason: string | null
 

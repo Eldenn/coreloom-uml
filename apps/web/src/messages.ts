@@ -1101,6 +1101,14 @@ export const en = {
       } as Record<string, string>,
       score: (score: number, severity: string) => `Risk ${score}/100 (${severity})`,
       incomplete: 'Not every file could be read.',
+      gapsTitle: 'Left unchecked',
+      gapsUnknown: 'This scan does not say which passages. Scan it again to list them.',
+      lines: (file: string, start: number | null, end: number | null) => {
+        if (start === null) return file
+        return end === null || end === start
+          ? `${file}, line ${start}`
+          : `${file}, lines ${start} to ${end}`
+      },
       none: 'Nothing found.',
       more: (count: number) => `${count} more not shown.`,
       at: (file: string, line: number | null) => (line === null ? file : `${file}, line ${line}`),
@@ -1116,13 +1124,16 @@ export const en = {
         'It cannot be approved before it is scanned (the skill-scanner worker scans each new copy).',
       scan_failed:
         'It cannot be approved: the scan gave no verdict. Scan it again, or wait for the next search.',
-      scan_incomplete: 'It cannot be approved: the scan could not read every file.',
+      scan_incomplete:
+        'It cannot be approved: the scan could not read every file, and does not say which passages. Scan it again.',
       do_not_install:
         'SkillSpector recommends not installing it. Read every finding: if they are wrong, approve it despite the scan with your reason, kept with this copy only.',
     },
+    incompleteOverridable:
+      'SkillSpector left the passages listed above unchecked. Read each of them in the files below: if nothing there is a risk, approve it despite the scan with your reason, kept with this copy only.',
     overrideLabel: 'Why approve it despite the scan',
     overridePlaceholder:
-      'What you read, and why the findings do not hold (10 characters at least).',
+      'What you read, and why the findings or the unchecked passages are no risk (10 characters at least).',
     approveDespiteScan: 'Approve despite the scan',
     overriddenBecause: 'Approved despite the scan:',
   },
@@ -2808,6 +2819,14 @@ export const fr: Messages = {
       },
       score: (score: number, severity: string) => `Risque ${score}/100 (${severity})`,
       incomplete: 'Tous les fichiers n’ont pas pu être lus.',
+      gapsTitle: 'Non vérifié',
+      gapsUnknown: 'Cette analyse ne dit pas quels passages. Relancez-la pour en avoir la liste.',
+      lines: (file: string, start: number | null, end: number | null) => {
+        if (start === null) return file
+        return end === null || end === start
+          ? `${file}, ligne ${start}`
+          : `${file}, lignes ${start} à ${end}`
+      },
       none: 'Rien de trouvé.',
       more: (count: number) => `${count} autres non affichés.`,
       at: (file: string, line: number | null) => (line === null ? file : `${file}, ligne ${line}`),
@@ -2824,13 +2843,15 @@ export const fr: Messages = {
       scan_failed:
         'Elle ne peut pas être approuvée : l’analyse n’a pas donné de verdict. La prochaine recherche la relance.',
       scan_incomplete:
-        'Elle ne peut pas être approuvée : l’analyse n’a pas pu lire tous les fichiers.',
+        'Elle ne peut pas être approuvée : l’analyse n’a pas pu lire tous les fichiers, et ne dit pas quels passages. Relancez-la.',
       do_not_install:
         'SkillSpector recommande de ne pas l’installer. Lisez chaque problème : s’ils sont faux, approuvez-la malgré l’analyse avec votre raison, gardée pour cette copie seulement.',
     },
+    incompleteOverridable:
+      'SkillSpector n’a pas vérifié les passages listés ci-dessus. Lisez chacun d’eux dans les fichiers ci-dessous : si rien n’y présente de risque, approuvez-la malgré l’analyse avec votre raison, gardée pour cette copie seulement.',
     overrideLabel: 'Pourquoi l’approuver malgré l’analyse',
     overridePlaceholder:
-      'Ce que vous avez lu, et pourquoi les problèmes ne tiennent pas (10 caractères au moins).',
+      'Ce que vous avez lu, et pourquoi les problèmes ou les passages non vérifiés sont sans risque (10 caractères au moins).',
     approveDespiteScan: 'Approuver malgré l’analyse',
     overriddenBecause: 'Approuvée malgré l’analyse :',
   },
