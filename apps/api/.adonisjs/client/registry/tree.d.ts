@@ -101,6 +101,7 @@ export interface ApiDefinition {
     skills: {
       refresh: typeof routes['admin.skills.refresh']
       update: typeof routes['admin.skills.update']
+      topics: typeof routes['admin.skills.topics']
     }
     featureFlags: {
       index: typeof routes['admin.feature_flags.index']

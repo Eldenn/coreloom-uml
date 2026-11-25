@@ -220,6 +220,10 @@ pnpm --filter @coreloom-uml/api queue:work
 
 # 7. (optional) Scan the skills' copies with SkillSpector (see infra/skill-scanner/README.md)
 docker compose -f infra/docker-compose.yml --profile skills up -d skill-scanner
+
+# 8. (optional) Tag the skills (see infra/skill-tagger/README.md; on a Linux or macOS host,
+#    `pnpm --filter @coreloom-uml/api queue:tag` does the same without Docker)
+docker compose -f infra/docker-compose.yml --profile skills up -d skill-tagger
 ```
 
 By default:
@@ -560,6 +564,7 @@ anything.
 ```bash
 node ace skills:setup                      # copy the hand-picked skills; schedule the search when SKILLS_REFRESH_ENABLED=true
 node ace skills:refresh                    # run the search now
+node ace skills:classify                   # tag the skills now (the search and the admin queue it)
 node ace skills:block <slug> --reason "…"  # never suggest it again (--unblock to undo)
 ```
 
@@ -581,6 +586,12 @@ From the same sheet the admin can ask their own model (the provider set in the s
 copy next to the scan: it says of each finding and each unchecked passage whether it sees a risk
 there. That reading is a help, never a verdict, and changes nothing to what may be approved. The admin asks for the scans from
 `/skills` too: "Scan waiting copies" in the header, and "Scan" / "Scan again" on a pending copy.
+
+Each skill is also tagged by the `skill-tagger` worker (its own image and service, on the
+`skill-topics` queue: see `infra/skill-tagger/README.md`): an embedding model reads it once, and a
+regression fitted on the tags set by hand (a seed of 224 skills, and the tags the admin sets on a
+skill's sheet) picks its tags. A tag the admin sets replaces the tagger's at once, and the tagger
+learns from it at its next run, queued right away.
 
 #### The Skills screen
 

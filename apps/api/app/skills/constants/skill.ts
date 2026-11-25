@@ -33,6 +33,11 @@ export const SKILLS_SEARCH_LIMITS = {
   minInstalls: 500,
   githubChecks: 200,
   githubChecksWithoutToken: 10,
+  /**
+   * Skills without a description whose skills.sh page is read per run, one request each, so
+   * the tagger can tag them: a skill keeps its description, so after the first runs only new ones.
+   */
+  pageDescriptions: 1000,
 } as const
 
 /**

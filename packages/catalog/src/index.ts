@@ -153,6 +153,7 @@ export {
 } from './targets/types.ts'
 export { AGENT_FILE_KINDS, AGENTS_FILE, AgentFileKind, TARGETS, Target } from './targets.ts'
 export {
+  isTopic,
   SLOT_PREFIX_TOPICS,
   SLOT_TOPICS,
   slotTopics,

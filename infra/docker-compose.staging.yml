@@ -188,7 +188,8 @@ services:
       - './instrumentation.js'
       - 'bin/console.js'
       - 'queue:work'
-      # Every queue but `skill-scans`, which only the skill-scanner below holds the binary for.
+      # Every queue but `skill-scans` and `skill-topics`, which only the skill-scanner and the
+      # skill-tagger below can run.
       - '--queues=default'
       - '--queues=code-maps'
     environment:
@@ -289,6 +290,52 @@ services:
       S3_PUBLIC_URL: '${S3_PUBLIC_URL:-}'
       OTEL_SERVICE_NAME: coreloom-uml-skill-scanner-staging
       OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Skill tagger — the API's worker in its own image (stage `skill-tagger` of
+  # apps/api/Dockerfile: Debian, since the embedding model's runtime needs glibc),
+  # listening to the `skill-topics` queue only. It reads each new or changed
+  # skill with an embedding model pinned by commit (about 600 MB, downloaded once
+  # into skill-tagger-models) and tags the catalog from the labels; about 1.5 GB
+  # of memory while it reads. Its own APP_KEY, and none of the GitHub, E2B, Drive,
+  # account or mail settings it never uses. See infra/skill-tagger/README.md.
+  skill-tagger:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: skill-tagger
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3333'
+      APP_NAME: coreloom-uml-skill-tagger-staging
+      LOG_LEVEL: info
+      APP_KEY: '${SERVICE_PASSWORD_64_SKILLTAGGERKEY}'
+      FRONTEND_URL: '${SERVICE_URL_WEB}'
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_USER: '${DB_USER:-coreloom_uml}'
+      DB_PASSWORD: '${SERVICE_PASSWORD_POSTGRES}'
+      DB_DATABASE: '${DB_DATABASE:-coreloom_uml_staging}'
+      DB_SSL: 'false'
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      # Required by the API's settings, never used by the tagger.
+      SMTP_HOST: mailpit
+      SMTP_PORT: '1025'
+      MAIL_FROM_ADDRESS: no-reply@coreloom-uml.staging
+      SKILL_TAGGER_CACHE: /models
+      OTEL_SERVICE_NAME: coreloom-uml-skill-tagger-staging
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
+    volumes:
+      - 'skill-tagger-models:/models'
     depends_on:
       postgres:
         condition: service_healthy
@@ -545,6 +592,7 @@ volumes:
   claude-config:
   postgres-data:
   redis-data:
+  skill-tagger-models:
   signoz-clickhouse:
   signoz-clickhouse-user-scripts:
   signoz-zookeeper:

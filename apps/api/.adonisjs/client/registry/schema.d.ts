@@ -1267,6 +1267,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skills-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'admin.skills.topics': {
+    methods: ["PATCH"]
+    pattern: '/admin/skills/:slug/topics'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/skills/validators/skills-input').reviewSkillTopicsInput)>>
+      paramsTuple: [ParamValue]
+      params: { slug: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/skills/validators/skills-input').reviewSkillTopicsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-topics-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-topics-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'architectures.index': {
     methods: ["GET","HEAD"]
     pattern: '/architectures'

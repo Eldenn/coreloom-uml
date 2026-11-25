@@ -32,6 +32,7 @@ function uncheckedSkill() {
     targets: [...TARGETS],
     affinities: [{ slot: 'testing.levels', values: ['e2e'] }],
     topics: ['testing'],
+    searchTopics: ['testing'],
     origin: 'search',
     status: SkillStatus.Active,
     eligible: false,

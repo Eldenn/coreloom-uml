@@ -13,6 +13,9 @@ export type SkillVersion = Awaited<
   ReturnType<typeof client.api.admin.skillVersions.index>
 >['data'][number]
 
+/** The tags the admin may set, as the API types them. */
+export type ReviewedTopics = Parameters<typeof client.api.admin.skills.topics>[0]['body']['topics']
+
 const KEY = [...skillKeys.all, 'copies'] as const
 
 /** Every copy of one skill, newest first. */
@@ -90,5 +93,17 @@ export function useQueueSkillScans() {
 export function useCaptureSkillCopy() {
   return useMutation({
     mutationFn: (slug: string) => client.api.admin.skillVersions.store({ body: { slug } }),
+  })
+}
+
+/**
+ * The admin sets a skill's tags, the main one first (the tagger learns from it at its next run),
+ * or gives them back to the tagger with `null`.
+ */
+export function useReviewSkillTopics() {
+  return useMutation({
+    mutationFn: ({ slug, topics }: { slug: string; topics: ReviewedTopics }) =>
+      client.api.admin.skills.topics({ params: { slug }, body: { topics } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: skillKeys.all }),
   })
 }

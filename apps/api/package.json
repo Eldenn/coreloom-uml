@@ -13,6 +13,7 @@
     "test": "node ace test",
     "queue:work": "node ace queue:work --queues=default --queues=code-maps",
     "queue:scan": "QUEUE_PORT=9010 node ace queue:work --queues=skill-scans",
+    "queue:tag": "QUEUE_PORT=9011 node ace queue:work --queues=skill-topics",
     "migration:run": "node ace migration:run",
     "migration:rollback": "node ace migration:rollback",
     "db:seed": "node ace db:seed"
@@ -45,6 +46,7 @@
     "@coreloom-uml/feature-flags": "workspace:*",
     "@coreloom-uml/llm": "workspace:*",
     "@coreloom-uml/uml": "workspace:*",
+    "@huggingface/transformers": "4.3.2",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@nemoventures/adonis-jobs": "2.2.0",
     "@opentelemetry/api": "1.9.1",

@@ -52,5 +52,18 @@ RUN uv python install 3.12.13 \
 USER node
 CMD ["node", "--import", "./instrumentation.js", "bin/console.js", "queue:work", "--queues=skill-scans"]
 
+# The skill tagger worker (`queue:work --queues=skill-topics`, the `skill-tagger` service): the
+# API on Debian rather than Alpine, since onnxruntime's prebuilt binary, which reads the skills
+# with the embedding model (`SkillEmbedder`), needs glibc. No Claude Code binary: it never calls a
+# model of an account. The model is downloaded on first use into /models (a volume). See
+# infra/skill-tagger/README.md.
+FROM node:26.3.0-slim AS skill-tagger
+ENV NODE_ENV=production SKILL_TAGGER_CACHE=/models
+COPY --from=build /app /app
+RUN mkdir -p /models && chown node:node /models
+WORKDIR /app/apps/api/build
+USER node
+CMD ["node", "--import", "./instrumentation.js", "bin/console.js", "queue:work", "--queues=skill-topics"]
+
 # The default target stays the API's image.
 FROM runtime

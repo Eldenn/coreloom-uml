@@ -1,6 +1,7 @@
 import app from '@adonisjs/core/services/app'
 import { Job } from '@nemoventures/adonis-jobs'
 import type { BullJobsOptions } from '@nemoventures/adonis-jobs/types'
+import ClassifySkillTopicsJob from '#app/jobs/classify-skill-topics_job'
 import { queueSkillScans } from '#app/skills/services/skill-scans'
 import { refreshCatalog } from '#app/skills/services/skills-catalog'
 import SkillsEvents from '#app/skills/services/skills-events'
@@ -28,6 +29,8 @@ export default class RefreshSkillsJob extends Job<RefreshSkillsJobData, void> {
     // The new copies, and those whose scan failed, are scanned by the skill-scanner worker.
     const scans = await queueSkillScans()
     this.logger.info({ scans }, 'skill copies queued for a scan')
+    // The skill tagger embeds the new and changed skills and tags the catalog again.
+    await ClassifySkillTopicsJob.dispatch({})
     // Open Skills screens reload (see `GET /skills/events`).
     await (await app.container.make(SkillsEvents)).publish('catalog.refreshed')
     await releaseSkillsRefresh()

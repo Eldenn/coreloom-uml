@@ -13,6 +13,17 @@ allowBuilds:
   '@tailwindcss/oxide': true
   # protobufjs' only install script is a no-op version-scheme warning check.
   protobufjs: false
+  # The CPU build the skill tagger runs is in the package; its install script only downloads
+  # the CUDA and other accelerator builds, which nothing here uses.
+  onnxruntime-node: false
+
+# The API is built on Alpine (musl), and its `skill-tagger` image runs that build on Debian (glibc),
+# which onnxruntime needs: install the glibc builds of native packages (sharp, for transformers.js)
+# beside those of the machine's own libc.
+supportedArchitectures:
+  libc:
+    - current
+    - glibc
 
 minimumReleaseAgeExclude:
   - '@tanstack/history@1.162.4'

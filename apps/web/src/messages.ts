@@ -1082,6 +1082,13 @@ export const en = {
     againstPrevious: (commit: string) => `Compared with the approved copy at ${commit}.`,
     fileStatuses: { added: 'Added', removed: 'Removed', changed: 'Changed' },
     unchanged: (paths: string) => `Unchanged: ${paths}`,
+    filesLabel: 'Files of the copy',
+    findingsInFile: (count: number) =>
+      count === 1 ? '1 finding of the scan' : `${count} findings of the scan`,
+    unread: (count: number) =>
+      count === 1
+        ? '1 changed file not marked as viewed.'
+        : `${count} changed files not marked as viewed.`,
     licence: (licence: string) => `Licence: ${licence}`,
     licenceInFolder: 'its own file',
     source: 'Source on GitHub',
@@ -1183,6 +1190,9 @@ export const en = {
       block: 'Stop suggesting',
       unblock: 'Suggest again',
       blockReason: 'Why stop suggesting it (optional)',
+      suggestionTitle: 'Suggestion',
+      blockHelp:
+        'A skill no longer suggested stays in the catalog but never reaches agent conventions.',
       blocked: 'This skill is no longer suggested.',
       unblocked: 'This skill can be suggested again.',
       blockFailed: 'The skill could not be changed.',
@@ -1269,6 +1279,21 @@ export const en = {
       manual: 'Hand-picked',
       search: 'Found on skills.sh',
     },
+    tagging: {
+      title: 'Tags',
+      help: 'Pick up to three, the main one first: they replace the tagger’s tags now, and the tagger learns from the main one within a minute.',
+      main: (topic: string) => `Main tag: ${topic}`,
+      save: 'Save the tags',
+      giveBack: 'Give them back to the tagger',
+      saved: 'Tags saved.',
+      reset: 'The tagger tags this skill again.',
+      failed: 'The tags could not be saved.',
+      sources: {
+        reviewed: 'Set by hand',
+        tagger: 'From the tagger',
+        search: 'From the search',
+      },
+    },
     sheet: {
       loading: 'Loading the skill…',
       notFound: 'This skill is not in the catalog.',
@@ -1278,7 +1303,6 @@ export const en = {
       license: 'Licence',
       firstSeen: 'First seen',
       checked: 'Last checked on GitHub',
-      topics: 'Topics',
       diagramKinds: 'Fits diagrams',
       none: 'None',
       whyNot: 'Why it is not suggested',
@@ -1290,6 +1314,8 @@ export const en = {
       historyEmpty: 'No search has returned this skill yet.',
       openSource: 'Open the pinned source',
       openRegistry: 'Open on skills.sh',
+      overviewTab: 'Overview',
+      adminTab: 'Administration',
       thirdParty:
         'A third-party resource: read it before adding it to your tools. Coreloom links to it and never installs it.',
     },
@@ -2819,6 +2845,13 @@ export const fr: Messages = {
     againstPrevious: (commit: string) => `Comparée à la copie approuvée au commit ${commit}.`,
     fileStatuses: { added: 'Ajouté', removed: 'Supprimé', changed: 'Modifié' },
     unchanged: (paths: string) => `Inchangés : ${paths}`,
+    filesLabel: 'Fichiers de la copie',
+    findingsInFile: (count: number) =>
+      count === 1 ? '1 constat de l’analyse' : `${count} constats de l’analyse`,
+    unread: (count: number) =>
+      count === 1
+        ? '1 fichier modifié pas encore marqué comme vu.'
+        : `${count} fichiers modifiés pas encore marqués comme vus.`,
     licence: (licence: string) => `Licence : ${licence}`,
     licenceInFolder: 'son propre fichier',
     source: 'Source sur GitHub',
@@ -2920,6 +2953,9 @@ export const fr: Messages = {
       block: 'Ne plus suggérer',
       unblock: 'Suggérer à nouveau',
       blockReason: 'Pourquoi ne plus le suggérer (facultatif)',
+      suggestionTitle: 'Suggestion',
+      blockHelp:
+        'Un skill qui n’est plus suggéré reste au catalogue mais n’entre plus dans les conventions d’agents.',
       blocked: 'Ce skill n’est plus suggéré.',
       unblocked: 'Ce skill peut de nouveau être suggéré.',
       blockFailed: 'Le skill n’a pas pu être modifié.',
@@ -3006,6 +3042,21 @@ export const fr: Messages = {
       manual: 'Choisi à la main',
       search: 'Trouvé sur skills.sh',
     },
+    tagging: {
+      title: 'Tags',
+      help: 'Choisissez-en jusqu’à trois, le principal d’abord : ils remplacent tout de suite les tags du classifieur, qui apprend du principal en moins d’une minute.',
+      main: (topic: string) => `Tag principal : ${topic}`,
+      save: 'Enregistrer les tags',
+      giveBack: 'Les rendre au classifieur',
+      saved: 'Tags enregistrés.',
+      reset: 'Le classifieur tague de nouveau ce skill.',
+      failed: 'Les tags n’ont pas pu être enregistrés.',
+      sources: {
+        reviewed: 'Posés à la main',
+        tagger: 'Du classifieur',
+        search: 'De la recherche',
+      },
+    },
     sheet: {
       loading: 'Chargement du skill…',
       notFound: 'Ce skill n’est pas dans le catalogue.',
@@ -3015,7 +3066,6 @@ export const fr: Messages = {
       license: 'Licence',
       firstSeen: 'Vu pour la première fois',
       checked: 'Dernière vérification sur GitHub',
-      topics: 'Sujets',
       diagramKinds: 'Diagrammes concernés',
       none: 'Aucun',
       whyNot: 'Pourquoi il n’est pas suggéré',
@@ -3027,6 +3077,8 @@ export const fr: Messages = {
       historyEmpty: 'Aucune recherche n’a encore renvoyé ce skill.',
       openSource: 'Ouvrir la source épinglée',
       openRegistry: 'Ouvrir sur skills.sh',
+      overviewTab: 'Aperçu',
+      adminTab: 'Administration',
       thirdParty:
         'Une ressource tierce : lisez-la avant de l’ajouter à vos outils. Coreloom la référence sans jamais l’installer.',
     },
