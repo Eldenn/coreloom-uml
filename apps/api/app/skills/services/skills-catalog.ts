@@ -1,6 +1,13 @@
 import db from '@adonisjs/lucid/services/db'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
-import { SKILL_SEARCH_PLAN, SKILLS, type Skill, SkillOrigin, TARGETS } from '@coreloom-uml/catalog'
+import {
+  isTopic,
+  SKILL_SEARCH_PLAN,
+  SKILLS,
+  type Skill,
+  SkillOrigin,
+  TARGETS,
+} from '@coreloom-uml/catalog'
 import { DateTime } from 'luxon'
 import {
   SKILL_BLOCK_REASON_MAX_LENGTH,
@@ -9,6 +16,7 @@ import {
 } from '#app/skills/constants/skill'
 import CatalogSkill from '#app/skills/models/catalog-skill'
 import SkillSnapshot from '#app/skills/models/skill-snapshot'
+import { effectiveTopics } from '#app/skills/services/skill-topics'
 import { captureSkillVersions } from '#app/skills/services/skill-versions'
 import {
   type KnownSkill,
@@ -40,9 +48,23 @@ export async function syncManualSkills(skills: readonly Skill[] = SKILLS): Promi
         // A found skill took the slug first: the hand-picked entry replaces it.
         existing.merge({ registryId: null, source: null, contentSha: null, license: null })
       }
-      await existing.merge(values).save()
+      const searchTopics = [...new Set([...(skill.topics ?? []), ...existing.searchTopics])]
+      await existing
+        .merge({
+          ...values,
+          searchTopics,
+          topics: effectiveTopics(searchTopics, existing.taggerTopics, existing.reviewedTopics),
+        })
+        .save()
     } else {
-      await CatalogSkill.create({ slug: skill.id, ...values, topics: [], audits: [] })
+      const searchTopics = [...(skill.topics ?? [])]
+      await CatalogSkill.create({
+        slug: skill.id,
+        ...values,
+        searchTopics,
+        topics: searchTopics,
+        audits: [],
+      })
     }
   }
   return skills.length
@@ -74,6 +96,7 @@ export async function refreshCatalog(options: RefreshCatalogOptions = {}): Promi
     githubChecks: options.githubToken
       ? SKILLS_SEARCH_LIMITS.githubChecks
       : SKILLS_SEARCH_LIMITS.githubChecksWithoutToken,
+    pageDescriptions: SKILLS_SEARCH_LIMITS.pageDescriptions,
   })
 
   const bySlug = new Map(rows.map((row) => [row.slug, row]))
@@ -116,7 +139,8 @@ function toKnown(row: CatalogSkill): KnownSkill {
     description: row.description,
     url: row.url,
     affinities: row.affinities,
-    topics: row.topics,
+    // The search adds its queries' tags to these; the tagger's are kept apart (`skill-topics.ts`).
+    topics: row.searchTopics,
     installs: row.installs,
     audits: row.audits,
     license: row.license,
@@ -179,8 +203,13 @@ async function saveRecord(
   }
   if (row && (row.origin === SkillOrigin.Manual || row.status === SkillStatus.Blocked)) {
     row.useTransaction(trx)
+    const searchTopics = [...new Set([...row.searchTopics, ...record.topics])]
     return row
-      .merge({ ...registry, topics: [...new Set([...row.topics, ...record.topics])] })
+      .merge({
+        ...registry,
+        searchTopics,
+        topics: effectiveTopics(searchTopics, row.taggerTopics, row.reviewedTopics),
+      })
       .save()
   }
   const values = {
@@ -189,7 +218,8 @@ async function saveRecord(
     description: record.description,
     url: record.url,
     affinities: record.affinities,
-    topics: record.topics,
+    searchTopics: record.topics,
+    topics: effectiveTopics(record.topics, row?.taggerTopics ?? null, row?.reviewedTopics ?? null),
     license: record.license,
     contentSha: record.contentSha,
     eligible: record.eligible,
@@ -217,11 +247,14 @@ async function saveRecord(
  * passed every check, most installed first. Blocked skills are left out.
  */
 export async function suggestableSkills(): Promise<Skill[]> {
+  const manual = await CatalogSkill.query().where('origin', SkillOrigin.Manual)
   const blocked = new Set(
     (await CatalogSkill.query().where('status', SkillStatus.Blocked).select('slug')).map(
       (row) => row.slug,
     ),
   )
+  // A hand-picked skill reads its tags from its row: the tagger's, once it tagged it.
+  const manualTopics = new Map(manual.map((row) => [row.slug, row.topics.filter(isTopic)]))
   const found = await CatalogSkill.query()
     .where('origin', SkillOrigin.Search)
     .where('status', SkillStatus.Active)
@@ -231,7 +264,10 @@ export async function suggestableSkills(): Promise<Skill[]> {
     .orderByRaw('installs desc nulls last')
     .orderBy('id')
   return [
-    ...SKILLS.filter((skill) => !blocked.has(skill.id)),
+    ...SKILLS.filter((skill) => !blocked.has(skill.id)).map((skill) => ({
+      ...skill,
+      topics: manualTopics.get(skill.id) ?? skill.topics,
+    })),
     // A tag alone is enough: it may make a skill compatible (`matchSkills`).
     ...found
       .map((row) => row.toSkill())

@@ -1239,6 +1239,21 @@ export const en = {
       manual: 'Hand-picked',
       search: 'Found on skills.sh',
     },
+    tagging: {
+      title: 'Tags',
+      help: 'Pick up to three, the main one first: they replace the tagger’s tags now, and the tagger learns from the main one within a minute.',
+      main: (topic: string) => `Main tag: ${topic}`,
+      save: 'Save the tags',
+      giveBack: 'Give them back to the tagger',
+      saved: 'Tags saved.',
+      reset: 'The tagger tags this skill again.',
+      failed: 'The tags could not be saved.',
+      sources: {
+        reviewed: 'Set by hand',
+        tagger: 'From the tagger',
+        search: 'From the search',
+      },
+    },
     sheet: {
       loading: 'Loading the skill…',
       notFound: 'This skill is not in the catalog.',
@@ -2946,6 +2961,21 @@ export const fr: Messages = {
     origins: {
       manual: 'Choisi à la main',
       search: 'Trouvé sur skills.sh',
+    },
+    tagging: {
+      title: 'Tags',
+      help: 'Choisissez-en jusqu’à trois, le principal d’abord : ils remplacent tout de suite les tags du classifieur, qui apprend du principal en moins d’une minute.',
+      main: (topic: string) => `Tag principal : ${topic}`,
+      save: 'Enregistrer les tags',
+      giveBack: 'Les rendre au classifieur',
+      saved: 'Tags enregistrés.',
+      reset: 'Le classifieur tague de nouveau ce skill.',
+      failed: 'Les tags n’ont pas pu être enregistrés.',
+      sources: {
+        reviewed: 'Posés à la main',
+        tagger: 'Du classifieur',
+        search: 'De la recherche',
+      },
     },
     sheet: {
       loading: 'Chargement du skill…',

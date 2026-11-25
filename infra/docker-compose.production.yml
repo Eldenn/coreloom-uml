@@ -152,7 +152,8 @@ services:
       - './instrumentation.js'
       - 'bin/console.js'
       - 'queue:work'
-      # Every queue but `skill-scans`, which only the skill-scanner below holds the binary for.
+      # Every queue but `skill-scans` and `skill-topics`, which only the skill-scanner and the
+      # skill-tagger below can run.
       - '--queues=default'
       - '--queues=code-maps'
     environment:
@@ -249,6 +250,47 @@ services:
       S3_PUBLIC_URL: '${S3_PUBLIC_URL:-}'
       OTEL_SERVICE_NAME: coreloom-uml-skill-scanner-production
       OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Skill tagger — the API's worker in its own image (stage `skill-tagger` of
+  # apps/api/Dockerfile: Debian, since the embedding model's runtime needs glibc),
+  # listening to the `skill-topics` queue only. It reads each new or changed
+  # skill with an embedding model pinned by commit (about 600 MB, downloaded once
+  # into skill-tagger-models) and tags the catalog from the labels; about 1.5 GB
+  # of memory while it reads. Its own APP_KEY, and none of the GitHub, E2B, Drive,
+  # account or mail settings it never uses. See infra/skill-tagger/README.md.
+  skill-tagger:
+    image: 'ghcr.io/${IMAGE_OWNER}/coreloom-uml-skill-tagger:${IMAGE_TAG:-production-latest}'
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3333'
+      APP_NAME: coreloom-uml-skill-tagger-production
+      LOG_LEVEL: info
+      APP_KEY: '${SERVICE_PASSWORD_64_SKILLTAGGERKEY}'
+      FRONTEND_URL: '${SERVICE_URL_WEB}'
+      DB_HOST: '${DB_HOST}'
+      DB_PORT: '${DB_PORT:-5432}'
+      DB_USER: '${DB_USER}'
+      DB_PASSWORD: '${DB_PASSWORD}'
+      DB_DATABASE: '${DB_DATABASE}'
+      DB_SSL: '${DB_SSL:-false}'
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      # Required by the API's settings, never used by the tagger.
+      SMTP_HOST: localhost
+      SMTP_PORT: '587'
+      MAIL_FROM_ADDRESS: no-reply@localhost
+      SKILL_TAGGER_CACHE: /models
+      OTEL_SERVICE_NAME: coreloom-uml-skill-tagger-production
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
+    volumes:
+      - 'skill-tagger-models:/models'
     depends_on:
       redis:
         condition: service_healthy
@@ -479,6 +521,7 @@ services:
 volumes:
   claude-config:
   redis-data:
+  skill-tagger-models:
   signoz-clickhouse:
   signoz-clickhouse-user-scripts:
   signoz-zookeeper:

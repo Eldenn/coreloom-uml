@@ -2,6 +2,7 @@ import { RedisCheck, RedisMemoryUsageCheck } from '@adonisjs/redis'
 import { defineConfig } from '@nemoventures/adonis-jobs'
 import { CODE_MAPS_QUEUE } from '#app/code-maps/constants/code-map'
 import { SKILL_SCANS_QUEUE } from '#app/skills/constants/skill-scan'
+import { SKILL_TOPICS_QUEUE } from '#app/skills/constants/skill-topics'
 
 const queueConfig = defineConfig({
   /**
@@ -79,6 +80,13 @@ const queueConfig = defineConfig({
      * `queue-worker` services). One scan at a time.
      */
     [SKILL_SCANS_QUEUE]: { globalConcurrency: 1 },
+
+    /**
+     * The skill tagger (`ClassifySkillTopicsJob`): listened to by the `skill-tagger` worker only
+     * (`queue:work --queues=skill-topics`), the one image that can load the embedding model. One
+     * run at a time.
+     */
+    [SKILL_TOPICS_QUEUE]: { globalConcurrency: 1 },
 
     /**
      * Example of a queue with specific connection and options

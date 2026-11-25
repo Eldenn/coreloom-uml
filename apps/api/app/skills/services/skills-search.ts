@@ -15,6 +15,8 @@ import {
 
 export const SKILLS_SH = 'https://skills.sh'
 export const SKILLS_SH_AUDITS = 'https://www.skills.sh/tele/audit'
+/** A skill's page (`<SKILLS_SH_PAGES>/<registry id>`); `skills.sh` redirects there. */
+export const SKILLS_SH_PAGES = 'https://www.skills.sh'
 export const GITHUB_API = 'https://api.github.com'
 export const GITHUB_RAW = 'https://raw.githubusercontent.com'
 
@@ -67,6 +69,8 @@ export type SearchOptions = {
    * whether or not it was eligible, with the figures it has.
    */
   recheck?: boolean
+  /** The most skills without a description whose skills.sh page is read in this run. */
+  pageDescriptions?: number
   /** Told what the run is doing, step by step (the command prints it). */
   onProgress?: (message: string) => void
 }
@@ -156,6 +160,7 @@ export async function searchSkills(options: SearchOptions): Promise<SearchResult
   const auditCache = new Map<string, Record<string, Record<string, unknown>> | null>()
   const records: SkillRecord[] = []
   let budget = options.githubChecks
+  let pages = options.pageDescriptions ?? 0
 
   for (const candidate of candidates) {
     const known = candidate.known
@@ -183,6 +188,12 @@ export async function searchSkills(options: SearchOptions): Promise<SearchResult
     }
     records.push(record)
     if (!known) report.added.push(slug)
+    if (record.description.en === '' && pages > 0) {
+      // Not read on GitHub yet: its skills.sh page says what it is about, for the tagger to tag it.
+      pages -= 1
+      const description = await pageDescription(http, candidate.registryId).catch(() => '')
+      if (description) record.description = { en: description }
+    }
 
     if (record.origin === SkillOrigin.Manual || known?.blocked) {
       // Only the registry's figures: their entry and whether they are suggested stay as they are.
@@ -230,6 +241,27 @@ export async function searchSkills(options: SearchOptions): Promise<SearchResult
     (record) => record.origin === SkillOrigin.Search && record.eligible,
   ).length
   return { records, report }
+}
+
+/**
+ * The description a skill's skills.sh page gives in its `<meta name="description">` (from its
+ * SKILL.md, cut by skills.sh), or `''`. Text only: entities decoded, cut like any description.
+ */
+export async function pageDescription(http: Http, registryId: string): Promise<string> {
+  const path = registryId.split('/').map(encodeURIComponent).join('/')
+  const html = await http.text(`${SKILLS_SH_PAGES}/${path}`)
+  const content = /<meta\s+name="description"\s+content="([^"]*)"/i.exec(html)?.[1] ?? ''
+  return cleanText(decodeEntities(content), 300)
+}
+
+const ENTITIES: Record<string, string> = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>' }
+
+function decodeEntities(text: string): string {
+  return text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (entity, code: string) => {
+    if (/^#x/i.test(code)) return String.fromCodePoint(Number.parseInt(code.slice(2), 16))
+    if (code.startsWith('#')) return String.fromCodePoint(Number.parseInt(code.slice(1), 10))
+    return ENTITIES[code.toLowerCase()] ?? entity
+  })
 }
 
 function ineligible(record: SkillRecord, reason: string) {

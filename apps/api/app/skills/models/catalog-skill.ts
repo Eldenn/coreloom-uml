@@ -1,12 +1,11 @@
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import {
+  isTopic,
   type Skill,
   type SkillAffinity,
   type SkillOrigin,
   type SkillProvenance,
   type Target,
-  TOPICS,
-  type Topic,
 } from '@coreloom-uml/catalog'
 import type { DateTime } from 'luxon'
 import type { SkillStatus } from '#app/skills/constants/skill'
@@ -40,8 +39,24 @@ export default class CatalogSkill extends BaseModel {
   @column(json)
   declare affinities: SkillAffinity[]
 
+  /** What everything reads (`effectiveTopics`): the admin's, else the tagger's, else the search's. */
   @column(json)
   declare topics: string[]
+
+  /** The tags of the search queries that found it (and the package's, for a hand-picked one). */
+  @column(json)
+  declare searchTopics: string[]
+
+  /** The tags the tagger gave, null until it tagged this skill. */
+  @column({ prepare: (value: unknown) => (value === null ? null : JSON.stringify(value)) })
+  declare taggerTopics: string[] | null
+
+  /** The tags the admin set, the first being the main one, which the tagger learns from. */
+  @column({ prepare: (value: unknown) => (value === null ? null : JSON.stringify(value)) })
+  declare reviewedTopics: string[] | null
+
+  @column.dateTime()
+  declare reviewedAt: DateTime | null
 
   @column()
   declare origin: SkillOrigin
@@ -116,8 +131,4 @@ export default class CatalogSkill extends BaseModel {
       ...(provenance ? { provenance } : {}),
     }
   }
-}
-
-function isTopic(topic: string): topic is Topic {
-  return (TOPICS as readonly string[]).includes(topic)
 }

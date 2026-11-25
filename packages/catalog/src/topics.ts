@@ -25,6 +25,10 @@ export type Topic = (typeof Topic)[keyof typeof Topic]
 
 export const TOPICS = Object.values(Topic) as readonly Topic[]
 
+export function isTopic(value: string): value is Topic {
+  return (TOPICS as readonly string[]).includes(value)
+}
+
 /** The tags of every slot of a prefix (`<prefix>.<name>`); a test keeps every prefix listed. */
 export const SLOT_PREFIX_TOPICS: Readonly<Record<string, readonly Topic[]>> = {
   agents: [Topic.Ai],
