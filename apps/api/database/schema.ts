@@ -755,7 +755,7 @@ export class SkillSnapshotSchema extends BaseModel {
 }
 
 export class SkillVersionSchema extends BaseModel {
-  static $columns = ['bytes', 'commit', 'contentSha', 'createdAt', 'files', 'folder', 'id', 'license', 'overrideReason', 'repository', 'reviewedAt', 'reviewedBy', 'scan', 'skillId', 'status', 'storageKey'] as const
+  static $columns = ['bytes', 'commit', 'contentSha', 'createdAt', 'files', 'folder', 'id', 'license', 'modelReview', 'overrideReason', 'repository', 'reviewedAt', 'reviewedBy', 'scan', 'skillId', 'status', 'storageKey'] as const
   $columns = SkillVersionSchema.$columns
   @column()
   declare bytes: number
@@ -773,6 +773,8 @@ export class SkillVersionSchema extends BaseModel {
   declare id: number
   @column()
   declare license: string
+  @column()
+  declare modelReview: any | null
   @column()
   declare overrideReason: string | null
   @column()

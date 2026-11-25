@@ -1108,6 +1108,14 @@ export const en = {
       } as Record<string, string>,
       score: (score: number, severity: string) => `Risk ${score}/100 (${severity})`,
       incomplete: 'Not every file could be read.',
+      gapsTitle: 'Left unchecked',
+      gapsUnknown: 'This scan does not say which passages. Scan it again to list them.',
+      lines: (file: string, start: number | null, end: number | null) => {
+        if (start === null) return file
+        return end === null || end === start
+          ? `${file}, line ${start}`
+          : `${file}, lines ${start} to ${end}`
+      },
       none: 'Nothing found.',
       more: (count: number) => `${count} more not shown.`,
       at: (file: string, line: number | null) => (line === null ? file : `${file}, line ${line}`),
@@ -1118,18 +1126,40 @@ export const en = {
         unreadable: 'Its report could not be read.',
       } as Record<string, string>,
     },
+    model: {
+      title: 'Reading by your model',
+      caution:
+        'A help to read this copy, not a verdict: its files are a stranger’s and may be written to mislead a model. It changes nothing to what you may decide.',
+      ask: (model: string) => `Ask ${model} to read it`,
+      askAgain: (model: string) => `Ask ${model} again`,
+      noProvider: 'Set a model in the settings to have it read this copy',
+      failed: 'The model could not read this copy',
+      by: (model: string) => `Read by ${model}.`,
+      omitted: (files: string) => `Not read, too large to send: ${files}.`,
+      other: 'Also noticed',
+      verdicts: {
+        no_risk_seen: 'No risk seen',
+        risk_seen: 'Risk seen',
+        unsure: 'Cannot conclude',
+      },
+      assessments: { benign: 'Benign', risky: 'Risky', unsure: 'Unsure' },
+    },
     approvalProblems: {
       not_scanned:
-        'It cannot be approved before it is scanned (the skill-scanner worker scans each new copy).',
+        'It has not been scanned: nothing has checked its files (the skill-scanner worker scans each new copy).',
       scan_failed:
-        'It cannot be approved: the scan gave no verdict. Scan it again, or wait for the next search.',
-      scan_incomplete: 'It cannot be approved: the scan could not read every file.',
-      do_not_install:
-        'SkillSpector recommends not installing it. Read every finding: if they are wrong, approve it despite the scan with your reason, kept with this copy only.',
+        'Its scan gave no verdict: nothing has checked its files. Scan it again, or wait for the next search.',
+      scan_incomplete:
+        'SkillSpector left passages unchecked: read each of those listed in the scan, or every file when it lists none.',
+      do_not_install: 'SkillSpector recommends not installing it: read every finding.',
     },
+    confirmTitle: (name: string) => `Approve this copy of ${name} despite its scan?`,
+    confirmBody:
+      'Once approved, it can be installed in repositories, where a coding agent follows it as instructions and may run its scripts. Approve it only if this is the skill you mean and you have read its files yourself.',
+    confirmAction: 'I have read it: approve',
+    confirmCancel: 'Cancel',
     overrideLabel: 'Why approve it despite the scan',
-    overridePlaceholder:
-      'What you read, and why the findings do not hold (10 characters at least).',
+    overridePlaceholder: 'What you read, and why it is safe (10 characters at least).',
     approveDespiteScan: 'Approve despite the scan',
     overriddenBecause: 'Approved despite the scan:',
   },
@@ -2841,6 +2871,14 @@ export const fr: Messages = {
       },
       score: (score: number, severity: string) => `Risque ${score}/100 (${severity})`,
       incomplete: 'Tous les fichiers n’ont pas pu être lus.',
+      gapsTitle: 'Non vérifié',
+      gapsUnknown: 'Cette analyse ne dit pas quels passages. Relancez-la pour en avoir la liste.',
+      lines: (file: string, start: number | null, end: number | null) => {
+        if (start === null) return file
+        return end === null || end === start
+          ? `${file}, ligne ${start}`
+          : `${file}, lignes ${start} à ${end}`
+      },
       none: 'Rien de trouvé.',
       more: (count: number) => `${count} autres non affichés.`,
       at: (file: string, line: number | null) => (line === null ? file : `${file}, ligne ${line}`),
@@ -2851,19 +2889,40 @@ export const fr: Messages = {
         unreadable: 'Son rapport n’a pas pu être lu.',
       },
     },
+    model: {
+      title: 'Lecture par votre modèle',
+      caution:
+        'Une aide pour lire cette copie, pas un verdict : ses fichiers viennent d’un inconnu et peuvent être écrits pour tromper un modèle. Elle ne change rien à ce que vous pouvez décider.',
+      ask: (model: string) => `Demander à ${model} de la lire`,
+      askAgain: (model: string) => `Redemander à ${model}`,
+      noProvider: 'Configurez un modèle dans les réglages pour lui faire lire cette copie',
+      failed: 'Le modèle n’a pas pu lire cette copie',
+      by: (model: string) => `Lu par ${model}.`,
+      omitted: (files: string) => `Non lus, trop volumineux pour être envoyés : ${files}.`,
+      other: 'Remarqué aussi',
+      verdicts: {
+        no_risk_seen: 'Aucun risque relevé',
+        risk_seen: 'Risque relevé',
+        unsure: 'Ne peut pas conclure',
+      },
+      assessments: { benign: 'Bénin', risky: 'À risque', unsure: 'Incertain' },
+    },
     approvalProblems: {
       not_scanned:
-        'Elle ne peut pas être approuvée avant d’être analysée (le worker skill-scanner analyse chaque nouvelle copie).',
+        'Elle n’a pas été analysée : rien n’a vérifié ses fichiers (le worker skill-scanner analyse chaque nouvelle copie).',
       scan_failed:
-        'Elle ne peut pas être approuvée : l’analyse n’a pas donné de verdict. La prochaine recherche la relance.',
+        'Son analyse n’a pas donné de verdict : rien n’a vérifié ses fichiers. Relancez-la, ou attendez la prochaine recherche.',
       scan_incomplete:
-        'Elle ne peut pas être approuvée : l’analyse n’a pas pu lire tous les fichiers.',
-      do_not_install:
-        'SkillSpector recommande de ne pas l’installer. Lisez chaque problème : s’ils sont faux, approuvez-la malgré l’analyse avec votre raison, gardée pour cette copie seulement.',
+        'SkillSpector n’a pas vérifié certains passages : lisez chacun de ceux que l’analyse liste, ou tous les fichiers si elle n’en liste aucun.',
+      do_not_install: 'SkillSpector recommande de ne pas l’installer : lisez chaque problème.',
     },
+    confirmTitle: (name: string) => `Approuver cette copie de ${name} malgré son analyse ?`,
+    confirmBody:
+      'Une fois approuvée, elle peut être installée dans des dépôts, où un agent de code la suit comme des instructions et peut lancer ses scripts. Ne l’approuvez que si c’est bien le skill voulu et que vous avez lu ses fichiers vous-même.',
+    confirmAction: 'Je l’ai lue : approuver',
+    confirmCancel: 'Annuler',
     overrideLabel: 'Pourquoi l’approuver malgré l’analyse',
-    overridePlaceholder:
-      'Ce que vous avez lu, et pourquoi les problèmes ne tiennent pas (10 caractères au moins).',
+    overridePlaceholder: 'Ce que vous avez lu, et pourquoi elle est sûre (10 caractères au moins).',
     approveDespiteScan: 'Approuver malgré l’analyse',
     overriddenBecause: 'Approuvée malgré l’analyse :',
   },

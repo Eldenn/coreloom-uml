@@ -30,6 +30,17 @@ export type SkillScanFinding = {
   text: string
 }
 
+/** A passage SkillSpector left unchecked (a `ledger_exceptions` entry of its report). */
+export type SkillScanGap = {
+  file: string | null
+  startLine: number | null
+  endLine: number | null
+  /** SkillSpector's `reason_code` (`static_parse_limit`, `reference_missing`…). */
+  reason: string
+  /** Its own sentence, cut to `SKILL_SCAN_LIMITS.gapMessage`. */
+  message: string
+}
+
 /** What `skill_versions.scan` holds. */
 export type SkillScan =
   | {
@@ -40,6 +51,9 @@ export type SkillScan =
       recommendation: string
       /** False when SkillSpector could not read every file (its `analysis_completeness`). */
       complete: boolean
+      /** What it left unchecked, at most `SKILL_SCAN_LIMITS.gaps`; absent on a scan stored before. */
+      gaps?: SkillScanGap[]
+      moreGaps?: number
       findings: SkillScanFinding[]
       /** Findings past `SKILL_SCAN_LIMITS.findings`, not kept. */
       moreFindings: number
@@ -68,7 +82,27 @@ const reportSchema = z.object({
     }),
   ),
   execution_successful: z.boolean(),
-  analysis_completeness: z.object({ is_complete: z.boolean() }),
+  analysis_completeness: z.object({
+    is_complete: z.boolean(),
+    ledger_exceptions: z
+      .array(
+        z.object({
+          reason_code: z.string().max(100),
+          message: z.string().nullish(),
+          path: z.string().max(500).nullish(),
+          start_line: z.number().int().nullish(),
+          end_line: z.number().int().nullish(),
+          // Where the parser stopped, more precise than the entry's own lines when present.
+          parser_diagnostic: z
+            .object({
+              start_line: z.number().int().nullish(),
+              end_line: z.number().int().nullish(),
+            })
+            .nullish(),
+        }),
+      )
+      .optional(),
+  }),
   metadata: z.object({ skillspector_version: z.string().max(40) }),
 })
 
@@ -99,12 +133,21 @@ export function readScanReport(json: string, scannedAt: string): SkillScan | nul
       text: (issue.finding ?? '').slice(0, SKILL_SCAN_LIMITS.findingText),
     }))
     .sort((a, b) => severityRank(a.severity) - severityRank(b.severity))
+  const gaps = (report.data.analysis_completeness.ledger_exceptions ?? []).map((gap) => ({
+    file: gap.path ?? null,
+    startLine: gap.parser_diagnostic?.start_line ?? gap.start_line ?? null,
+    endLine: gap.parser_diagnostic?.end_line ?? gap.end_line ?? null,
+    reason: gap.reason_code,
+    message: (gap.message ?? '').slice(0, SKILL_SCAN_LIMITS.gapMessage),
+  }))
   return {
     status: SkillScanStatus.Done,
     score: risk.score,
     severity: risk.severity,
     recommendation: risk.recommendation,
     complete: report.data.analysis_completeness.is_complete,
+    gaps: gaps.slice(0, SKILL_SCAN_LIMITS.gaps),
+    moreGaps: Math.max(0, gaps.length - SKILL_SCAN_LIMITS.gaps),
     findings: findings.slice(0, SKILL_SCAN_LIMITS.findings),
     moreFindings: Math.max(0, findings.length - SKILL_SCAN_LIMITS.findings),
     version: report.data.metadata.skillspector_version,
@@ -115,7 +158,7 @@ export function readScanReport(json: string, scannedAt: string): SkillScan | nul
 /**
  * Scans one copy with SkillSpector and keeps its verdict on the row. The copy's files (read from
  * Drive, never from GitHub again) are written to a folder of their own, scanned and deleted; a
- * scan that gives no verdict is kept as `failed` with why, and the copy can then only be rejected.
+ * scan that gives no verdict is kept as `failed` with why, and the copy is then approved only with a reason.
  * Run by `ScanSkillVersionJob` on the `skill-scanner` worker only.
  */
 export async function scanSkillVersion(version: SkillVersion): Promise<SkillScan> {
@@ -189,8 +232,10 @@ export async function queueSkillScans(): Promise<number> {
 }
 
 /**
- * Why the admin cannot approve this copy, or null when they may: it needs a complete scan whose
- * recommendation is not SkillSpector's `DO_NOT_INSTALL`. Rejecting is always possible.
+ * Why this copy is not approved as it is, or null when it may be: it needs a complete scan whose
+ * recommendation is not SkillSpector's `DO_NOT_INSTALL`. With a problem, the admin approves it only
+ * with a written reason (`overrideReason`), after the screen has warned them. Rejecting is always
+ * possible.
  */
 export function approvalProblem(version: SkillVersion): SkillApprovalProblem | null {
   const scan = version.scan

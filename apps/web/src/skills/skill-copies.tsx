@@ -13,6 +13,17 @@ import * as React from 'react'
 
 import { CodeReview, type ReviewFile } from '@/components/code-review'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -38,6 +49,7 @@ import {
   useSkillCopies,
   useSkillVersion,
 } from '@/lib/skill-versions'
+import { SkillModelReview } from '@/skills/skill-model-review'
 
 /** The API's bounds on the reason for approving despite the scan (`SKILL_OVERRIDE_REASON`). */
 const OVERRIDE_REASON_MIN = 10
@@ -215,7 +227,41 @@ function ScanSummary({ scan, action }: { scan: Scan; action: React.ReactNode }) 
       {scan?.status === 'done' && scan.moreFindings > 0 && (
         <p className="m-0 text-[13px] text-muted-foreground">{t.more(scan.moreFindings)}</p>
       )}
+      <ScanGaps scan={scan} />
     </section>
+  )
+}
+
+/** The passages SkillSpector left unchecked, which the admin reads before approving despite them. */
+function ScanGaps({ scan }: { scan: Scan }) {
+  const t = useT().skillVersions.scan
+  if (scan?.status !== 'done' || scan.complete) return null
+  const gaps = scan.gaps ?? []
+  const more = scan.moreGaps ?? 0
+  return (
+    <>
+      <h4 className="m-0 mt-1 text-[13px] font-medium text-foreground">{t.gapsTitle}</h4>
+      {gaps.length === 0 ? (
+        <p className="m-0 text-[13px] text-muted-foreground">{t.gapsUnknown}</p>
+      ) : (
+        <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[13px]">
+          {gaps.map((gap, index) => (
+            <li key={`${gap.reason}-${String(index)}`} className="flex flex-col">
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="font-medium text-foreground">{gap.reason}</span>
+                {gap.file && (
+                  <code className="text-xs text-muted-foreground">
+                    {t.lines(gap.file, gap.startLine, gap.endLine)}
+                  </code>
+                )}
+              </span>
+              {gap.message && <span className="text-xs text-muted-foreground">{gap.message}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {more > 0 && <p className="m-0 text-[13px] text-muted-foreground">{t.more(more)}</p>}
+    </>
   )
 }
 
@@ -333,6 +379,7 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
           scan={scan}
           action={<ScanButton id={id} pending={pending} scanned={scan !== null} />}
         />
+        <SkillModelReview version={version} />
       </div>
       <div className="min-h-0 flex-1 p-3">
         <CodeReview
@@ -352,7 +399,62 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
   )
 }
 
-/** The decision, kept in view under the files: approve, approve despite the scan with a reason, or reject. */
+/**
+ * Approving a copy despite its scan: a dialog that says what was not checked and what approving
+ * does, and takes the admin's reason, kept with the copy.
+ */
+function ApproveAnyway({
+  version,
+  disabled,
+  onConfirm,
+}: {
+  version: SkillVersion
+  disabled: boolean
+  onConfirm: (reason: string) => void
+}) {
+  const t = useT().skillVersions
+  const [reason, setReason] = React.useState('')
+  if (!version.approvalProblem) return null
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="destructive" disabled={disabled}>
+          {t.approveDespiteScan}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t.confirmTitle(version.skill.name)}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t.approvalProblems[version.approvalProblem]} {t.confirmBody}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`override-${String(version.id)}`}>{t.overrideLabel}</Label>
+          <Textarea
+            id={`override-${String(version.id)}`}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            maxLength={OVERRIDE_REASON_MAX}
+            placeholder={t.overridePlaceholder}
+          />
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t.confirmCancel}</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={reason.trim().length < OVERRIDE_REASON_MIN}
+            onClick={() => onConfirm(reason.trim())}
+          >
+            {t.confirmAction}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+/** The decision, kept in view under the files: approve, approve despite the scan through a dialog that warns and takes a reason, or reject. */
 function ReviewFooter({
   id,
   version,
@@ -366,10 +468,8 @@ function ReviewFooter({
 }) {
   const t = useT().skillVersions
   const review = useReviewSkillVersion()
-  const [reason, setReason] = React.useState('')
   if (!pending && !version.overrideReason) return null
 
-  const overridable = pending && version.approvalProblem === 'do_not_install'
   const decide = (status: 'approved' | 'rejected', overrideReason?: string) =>
     review.mutate(
       { id, status, overrideReason },
@@ -391,18 +491,6 @@ function ReviewFooter({
           {t.overriddenBecause} {version.overrideReason}
         </p>
       )}
-      {overridable && (
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`override-${id}`}>{t.overrideLabel}</Label>
-          <Textarea
-            id={`override-${id}`}
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            maxLength={OVERRIDE_REASON_MAX}
-            placeholder={t.overridePlaceholder}
-          />
-        </div>
-      )}
       {pending && (
         <div className="flex flex-wrap items-center justify-end gap-2">
           {unread > 0 && (
@@ -415,15 +503,11 @@ function ReviewFooter({
           >
             {t.reject}
           </Button>
-          {overridable && (
-            <Button
-              variant="destructive"
-              onClick={() => decide('approved', reason.trim())}
-              disabled={review.isPending || reason.trim().length < OVERRIDE_REASON_MIN}
-            >
-              {t.approveDespiteScan}
-            </Button>
-          )}
+          <ApproveAnyway
+            version={version}
+            disabled={review.isPending}
+            onConfirm={(reason) => decide('approved', reason)}
+          />
           <Button
             onClick={() => decide('approved')}
             disabled={review.isPending || version.approvalProblem !== null}

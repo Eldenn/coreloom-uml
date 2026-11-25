@@ -33,7 +33,7 @@ Not a service of its own code: the API's queue worker, in an image of its own.
 
 - Locally: `docker compose -f infra/docker-compose.yml --profile skills up -d skill-scanner`
   (reads `apps/api/.env`), or `pnpm --filter @coreloom-uml/api queue:scan` with `skillspector` on
-  your `PATH`. Without either, copies stay unscanned and cannot be approved.
+  your `PATH`. Without either, copies stay unscanned and are approved only with the admin's written reason.
 - Staging and production: the `skill-scanner` service of their compose files.
 
 ## Raising SkillSpector's version

@@ -1,12 +1,16 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import logger from '@adonisjs/core/services/logger'
+import { LlmCallError, reviewSkill } from '@coreloom-uml/llm'
 import CaptureSkillVersionJob from '#app/jobs/capture-skill-version_job'
 import ScanSkillVersionJob from '#app/jobs/scan-skill-version_job'
+import { llmFailure, userLanguageModel } from '#app/llm/services/language-models'
+import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
 import { paginate } from '#app/shared/pagination/paginate'
 import { SkillStatus } from '#app/skills/constants/skill'
-import { SkillApprovalProblem } from '#app/skills/constants/skill-scan'
 import { SkillVersionStatus } from '#app/skills/constants/skill-version'
 import CatalogSkill from '#app/skills/models/catalog-skill'
 import SkillVersion from '#app/skills/models/skill-version'
+import { modelReviewSource, type SkillModelReview } from '#app/skills/services/skill-model-reviews'
 import { approvalProblem, queueSkillScans } from '#app/skills/services/skill-scans'
 import {
   previousApproved,
@@ -16,6 +20,7 @@ import {
 import {
   captureSkillVersionInput,
   listSkillVersionsInput,
+  modelReviewSkillVersionInput,
   reviewSkillVersionInput,
 } from '#app/skills/validators/skill-versions-input'
 import type {
@@ -85,6 +90,59 @@ export default class AdminSkillVersionsController {
     return response.accepted({ queued: true })
   }
 
+  /**
+   * `POST /admin/skill-versions/:id/model-review`: one call of the admin's own model, which reads
+   * the copy's files next to SkillSpector's findings and the passages it left unchecked. Its
+   * answer replaces the copy's earlier one and never changes what the admin may decide. The key is
+   * used for this call only, never stored or logged; nothing of the files is logged either.
+   */
+  async modelReview({ params, request, auth, response }: HttpContext) {
+    const version = await find(params.id)
+    if (!version) return response.notFound(VERSION_NOT_FOUND)
+    const { provider, apiKey, locale } = await request.validateUsing(modelReviewSkillVersionInput)
+    const built = await userLanguageModel(provider, apiKey, auth.getUserOrFail())
+    if ('problem' in built)
+      return response.unprocessableEntity({ error: { message: built.problem } })
+    if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)
+    const log = { skillVersionId: version.id, kind: provider.kind, model: provider.model }
+    if ('reason' in built) {
+      logger.warn({ ...log, reason: built.reason }, 'skill model review failed')
+      return response.badGateway(llmFailure(built.reason))
+    }
+
+    const started = performance.now()
+    try {
+      const { dropped, ...result } = await reviewSkill(
+        built.model,
+        await modelReviewSource(version, locale),
+      )
+      logger.info(
+        {
+          ...log,
+          durationMs: Math.round(performance.now() - started),
+          verdict: result.verdict,
+          notes: result.notes.length,
+          dropped,
+          omittedFiles: result.omittedFiles.length,
+        },
+        'skill model review',
+      )
+      const modelReview: SkillModelReview = {
+        ...result,
+        model: `${provider.kind} ${provider.model}`,
+        reviewedAt: new Date().toISOString(),
+      }
+      await version.merge({ modelReview }).save()
+      const output: SkillVersionOutput = serialize(version)
+      return response.ok(output)
+    } catch (error) {
+      if (!(error instanceof LlmCallError)) throw error
+      const durationMs = Math.round(performance.now() - started)
+      logger.warn({ ...log, durationMs, reason: error.reason }, 'skill model review failed')
+      return response.badGateway(llmFailure(error.reason))
+    }
+  }
+
   async show({ params, response }: HttpContext) {
     const version = await find(params.id)
     if (!version) return response.notFound(VERSION_NOT_FOUND)
@@ -105,20 +163,18 @@ export default class AdminSkillVersionsController {
     if (!version) return response.notFound(VERSION_NOT_FOUND)
     const { status, overrideReason } = await request.validateUsing(reviewSkillVersionInput)
     const problem = status === SkillVersionStatus.Approved ? approvalProblem(version) : null
-    // Only SkillSpector's verdict can be overridden: a copy it did not scan whole has none.
-    const overridden = problem === SkillApprovalProblem.DoNotInstall && overrideReason !== undefined
+    const overridden = overrideReason !== undefined && problem !== null
     if (overrideReason !== undefined && !overridden) {
       return response.unprocessableEntity({
         error: {
-          message:
-            'A reason is only taken to approve a copy SkillSpector recommends not installing',
+          message: 'A reason is only taken to approve a copy that cannot be approved without one',
           field: 'overrideReason',
         },
       })
     }
     if (problem && !overridden) {
       return response.conflict({
-        error: { message: 'This copy cannot be approved', reason: problem },
+        error: { message: 'This copy is approved only with a reason', reason: problem },
       })
     }
     await reviewSkillVersion(version, status, auth.getUserOrFail(), overrideReason ?? null)
@@ -146,6 +202,7 @@ function serialize(version: SkillVersion): SkillVersionOutput {
     files: version.files,
     bytes: version.bytes,
     scan: version.scan,
+    modelReview: version.modelReview,
     approvalProblem: approvalProblem(version),
     overrideReason: version.overrideReason,
     status: version.status,

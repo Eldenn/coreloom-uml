@@ -606,6 +606,12 @@ const routes = {
     tokens: [{"old":"/admin/skill-versions/:id/scan","type":0,"val":"admin","end":""},{"old":"/admin/skill-versions/:id/scan","type":0,"val":"skill-versions","end":""},{"old":"/admin/skill-versions/:id/scan","type":1,"val":"id","end":""},{"old":"/admin/skill-versions/:id/scan","type":0,"val":"scan","end":""}],
     types: placeholder as Registry['admin.skill_versions.scan']['types'],
   },
+  'admin.skill_versions.model_review': {
+    methods: ["POST"],
+    pattern: '/admin/skill-versions/:id/model-review',
+    tokens: [{"old":"/admin/skill-versions/:id/model-review","type":0,"val":"admin","end":""},{"old":"/admin/skill-versions/:id/model-review","type":0,"val":"skill-versions","end":""},{"old":"/admin/skill-versions/:id/model-review","type":1,"val":"id","end":""},{"old":"/admin/skill-versions/:id/model-review","type":0,"val":"model-review","end":""}],
+    types: placeholder as Registry['admin.skill_versions.model_review']['types'],
+  },
   'admin.skill_versions.show': {
     methods: ["GET","HEAD"],
     pattern: '/admin/skill-versions/:id',

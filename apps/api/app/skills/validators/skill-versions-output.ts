@@ -2,6 +2,7 @@ import type { Paginated } from '#app/shared/pagination/paginate'
 import type { SkillApprovalProblem } from '#app/skills/constants/skill-scan'
 import type { SkillVersionStatus } from '#app/skills/constants/skill-version'
 import type { SkillVersionFile } from '#app/skills/models/skill-version'
+import type { SkillModelReview } from '#app/skills/services/skill-model-reviews'
 import type { SkillScan } from '#app/skills/services/skill-scans'
 import type { SkillBundleFile } from '#app/skills/services/skill-versions'
 
@@ -20,9 +21,11 @@ export type SkillVersionOutput = {
   bytes: number
   /** SkillSpector's verdict, null until the skill-scanner worker has scanned it. */
   scan: SkillScan | null
-  /** Why it cannot be approved now, null when it can (`approvalProblem`). */
+  /** What the admin's model said of it, null until asked: an aid, never a condition. */
+  modelReview: SkillModelReview | null
+  /** Why it is approved only with a written reason, null when it needs none (`approvalProblem`). */
   approvalProblem: SkillApprovalProblem | null
-  /** Why the admin approved it although SkillSpector recommends not installing it. */
+  /** Why the admin approved it despite its scan. */
   overrideReason: string | null
   status: SkillVersionStatus
   reviewedAt: string | null

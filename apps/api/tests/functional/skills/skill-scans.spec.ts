@@ -5,8 +5,11 @@ import { gzip } from 'node:zlib'
 import app from '@adonisjs/core/services/app'
 import drive from '@adonisjs/drive/services/main'
 import { TARGETS } from '@coreloom-uml/catalog'
+import type { LanguageModel } from '@coreloom-uml/llm'
+import { answeringModel, failingModel } from '@coreloom-uml/llm/testing'
 import { test } from '@japa/runner'
 import queue from '@nemoventures/adonis-jobs/services/main'
+import LanguageModels from '#app/llm/services/language-models'
 import { SkillStatus } from '#app/skills/constants/skill'
 import {
   SKILL_SCANS_QUEUE,
@@ -26,6 +29,7 @@ import {
 } from '#app/skills/services/skill-scans'
 import User from '#app/users/models/user'
 import env from '#start/env'
+import { captureLogs } from '#tests/helpers/leaks'
 import { CLEAN_SCAN, withEmptySkillsCatalog } from '#tests/helpers/skills'
 
 const json = { accept: 'application/json' }
@@ -43,6 +47,29 @@ async function cleanReport(): Promise<string> {
     max_issue_severity: 'NONE',
   }
   report.issues = []
+  return JSON.stringify(report)
+}
+
+/** One `ledger_exceptions` entry of a real 2.13.7 report: a file the static parser gave up on. */
+const LEDGER_EXCEPTION = {
+  outcome: 'partial',
+  phase: 'static',
+  reason_code: 'static_parse_limit',
+  message:
+    'A security-relevant expression could not be fully resolved by the bounded static parser.',
+  path: 'scripts/server.cjs',
+  start_line: null,
+  end_line: null,
+  fatal: false,
+  analyzers: ['static_patterns_tool_misuse'],
+  parser_diagnostic: { cause: 'runtime_dependent', start_line: 537, end_line: 723 },
+}
+
+/** SkillSpector's report on a clean skill it could not check whole, naming `exceptions`. */
+async function partialReport(exceptions: unknown[]): Promise<string> {
+  const report = JSON.parse(await cleanReport())
+  report.analysis_completeness.is_complete = false
+  report.analysis_completeness.ledger_exceptions = exceptions
   return JSON.stringify(report)
 }
 
@@ -128,6 +155,7 @@ test.group('Skill scans: the report', () => {
     assert.equal(scan.score, 100)
     assert.equal(scan.recommendation, 'DO_NOT_INSTALL')
     assert.isTrue(scan.complete)
+    assert.deepEqual(scan.gaps, [])
     assert.equal(scan.version, '2.13.7')
     assert.lengthOf(scan.findings, 7)
     assert.deepEqual(scan.findings[0], {
@@ -143,6 +171,44 @@ test.group('Skill scans: the report', () => {
       scan.findings.map((finding) => finding.severity),
       ['HIGH', 'HIGH', 'HIGH', 'HIGH', 'HIGH', 'MEDIUM', 'MEDIUM'],
     )
+  })
+
+  test('keeps the passages left unchecked, bounded and cut', async ({ assert }) => {
+    const noLines = {
+      reason_code: 'reference_missing',
+      path: 'SKILL.md',
+      start_line: 3,
+      end_line: 3,
+    }
+    const scan = readScanReport(
+      await partialReport([LEDGER_EXCEPTION, noLines]),
+      '2026-11-24T00:00:00.000Z',
+    )
+    if (scan?.status !== SkillScanStatus.Done) return assert.fail('no verdict')
+    assert.isFalse(scan.complete)
+    assert.deepEqual(scan.gaps, [
+      {
+        file: 'scripts/server.cjs',
+        startLine: 537,
+        endLine: 723,
+        reason: 'static_parse_limit',
+        message:
+          'A security-relevant expression could not be fully resolved by the bounded static parser.',
+      },
+      { file: 'SKILL.md', startLine: 3, endLine: 3, reason: 'reference_missing', message: '' },
+    ])
+    assert.equal(scan.moreGaps, 0)
+
+    const many = readScanReport(
+      await partialReport(
+        Array.from({ length: 60 }, () => ({ ...LEDGER_EXCEPTION, message: 'x'.repeat(1000) })),
+      ),
+      '2026-11-24T00:00:00.000Z',
+    )
+    if (many?.status !== SkillScanStatus.Done) return assert.fail('no verdict')
+    assert.lengthOf(many.gaps ?? [], 50)
+    assert.equal(many.moreGaps, 10)
+    assert.lengthOf(many.gaps?.[0]?.message ?? '', 400)
   })
 
   test('gives no verdict for anything else', async ({ assert }) => {
@@ -260,23 +326,13 @@ test.group('Skill scans', (group) => {
     assert.equal(version.overrideReason, 'Read it: the findings quote git commands.')
   })
 
-  test('takes no reason to approve a copy that is clean or not scanned whole', async ({
-    client,
-  }) => {
+  test('takes no reason to approve a copy scanned clean', async ({ client }) => {
     const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
-    const unscanned = await pendingCopy()
+    const version = await pendingCopy()
+    await version.merge({ scan: CLEAN_SCAN }).save()
     ;(
       await client
-        .patch(`/admin/skill-versions/${unscanned.id}`)
-        .headers(json)
-        .json({ status: 'approved', overrideReason: 'I trust this one anyway.' })
-        .loginAs(admin)
-    ).assertStatus(422)
-    unscanned.scan = CLEAN_SCAN
-    await unscanned.save()
-    ;(
-      await client
-        .patch(`/admin/skill-versions/${unscanned.id}`)
+        .patch(`/admin/skill-versions/${version.id}`)
         .headers(json)
         .json({ status: 'approved', overrideReason: 'I trust this one anyway.' })
         .loginAs(admin)
@@ -319,9 +375,11 @@ test.group('Skill scans', (group) => {
     }
   })
 
-  test('a copy scanned incomplete, or not yet, cannot be approved', async ({ client }) => {
+  test('a copy scanned incomplete, not scanned or whose scan failed is approved only with a reason', async ({
+    client,
+    assert,
+  }) => {
     const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
-    const version = await pendingCopy()
     const cases: [SkillScan | null, SkillApprovalProblem][] = [
       [null, SkillApprovalProblem.NotScanned],
       [{ ...CLEAN_SCAN, complete: false } as SkillScan, SkillApprovalProblem.ScanIncomplete],
@@ -330,15 +388,20 @@ test.group('Skill scans', (group) => {
         SkillApprovalProblem.ScanFailed,
       ],
     ]
-    for (const [scan, reason] of cases) {
+    for (const [index, [scan, reason]] of cases.entries()) {
+      const version = await pendingCopy(`skill-${index}`)
       await version.merge({ scan }).save()
-      const refused = await client
-        .patch(`/admin/skill-versions/${version.id}`)
-        .headers(json)
-        .json({ status: 'approved' })
-        .loginAs(admin)
+      const review = (body: object) =>
+        client.patch(`/admin/skill-versions/${version.id}`).headers(json).json(body).loginAs(admin)
+      const refused = await review({ status: 'approved' })
       refused.assertStatus(409)
       refused.assertBodyContains({ error: { reason } })
+      const approved = await review({
+        status: 'approved',
+        overrideReason: 'Read every file of this copy myself.',
+      })
+      approved.assertStatus(200)
+      assert.equal(approved.body().overrideReason, 'Read every file of this copy myself.')
     }
   })
 })
@@ -373,5 +436,132 @@ test.group('Skill scans: the queue', (group) => {
       jobs.map((job) => job.data.skillVersionId),
       [unscanned.id, failed.id],
     )
+  })
+})
+
+/** The fixture key: it must never show up in a response or a log line. */
+const KEY = 'sk-fixture-skill-review-never-stored'
+const MODEL_CALL = {
+  provider: { kind: 'mistral', model: 'mistral-small-latest' },
+  apiKey: KEY,
+  locale: 'en',
+}
+
+function useModel(model: LanguageModel) {
+  app.container.swap(LanguageModels, () => {
+    const fake = new LanguageModels()
+    fake.create = () => model
+    return fake
+  })
+}
+
+test.group('Skill scans: the model reads a copy', (group) => {
+  group.each.setup(() => withEmptySkillsCatalog())
+  group.each.setup(() => {
+    drive.fake()
+    env.set('DEFAULT_ACCOUNT_EMAIL', ADMIN)
+    env.set('DEFAULT_ACCOUNT_PASSWORD', 'the-default-passphrase')
+    return () => {
+      drive.restore()
+      app.container.restore(SkillScanner)
+      app.container.restore(LanguageModels)
+      env.set('DEFAULT_ACCOUNT_EMAIL', '')
+      env.set('DEFAULT_ACCOUNT_PASSWORD', '')
+    }
+  })
+
+  test("keeps what the admin's model says of the findings and the unchecked passages", async ({
+    client,
+    assert,
+  }) => {
+    const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
+    const version = await pendingCopy()
+    fakeScanner(await partialReport([{ ...LEDGER_EXCEPTION, path: 'scripts/run.sh' }]), {
+      exitCode: 0,
+    })
+    await scanSkillVersion(version)
+    const model = answeringModel(
+      JSON.stringify({
+        verdict: 'no_risk_seen',
+        summary: 'A deploy helper.',
+        notes: [
+          { ref: 'g1', file: '', assessment: 'benign', comment: 'It only prints a word.' },
+          { ref: '', file: 'absent.sh', assessment: 'risky', comment: 'Not a file of the copy.' },
+        ],
+      }),
+    )
+    useModel(model)
+    const logs = captureLogs()
+
+    const response = await client
+      .post(`/admin/skill-versions/${version.id}/model-review`)
+      .headers(json)
+      .json(MODEL_CALL)
+      .loginAs(admin)
+    logs.restore()
+
+    response.assertStatus(200)
+    assert.deepInclude(response.body().modelReview, {
+      verdict: 'no_risk_seen',
+      summary: 'A deploy helper.',
+      model: 'mistral mistral-small-latest',
+      omittedFiles: [],
+      notes: [
+        {
+          about: 'gap',
+          label: 'static_parse_limit',
+          file: 'scripts/run.sh',
+          line: 537,
+          assessment: 'benign',
+          comment: 'It only prints a word.',
+        },
+      ],
+    })
+    // An aid only: what the admin may decide is still what the scan says.
+    assert.equal(response.body().approvalProblem, SkillApprovalProblem.ScanIncomplete)
+    const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt)
+    assert.include(prompt, 'echo run')
+    assert.include(prompt, 'g1 | scripts/run.sh:537-723 | static_parse_limit')
+    assert.notInclude(JSON.stringify(response.body()), KEY)
+    assert.notInclude(logs.lines.join('\n'), KEY)
+    assert.notInclude(logs.lines.join('\n'), 'echo run')
+
+    await version.refresh()
+    assert.equal(version.modelReview?.verdict, 'no_risk_seen')
+  })
+
+  test('reads a copy that was never scanned, and keeps nothing when the call fails', async ({
+    client,
+    assert,
+  }) => {
+    const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
+    const version = await pendingCopy()
+    const ask = (user: User) =>
+      client
+        .post(`/admin/skill-versions/${version.id}/model-review`)
+        .headers(json)
+        .json(MODEL_CALL)
+        .loginAs(user)
+
+    useModel(failingModel(new Error('boom')))
+    const failed = await ask(admin)
+    failed.assertStatus(502)
+    await version.refresh()
+    assert.isNull(version.modelReview)
+
+    useModel(
+      answeringModel(
+        JSON.stringify({ verdict: 'unsure', summary: 'Too little to say.', notes: [] }),
+      ),
+    )
+    const read = await ask(admin)
+    read.assertStatus(200)
+    assert.equal(read.body().modelReview.verdict, 'unsure')
+
+    const other = await User.create({
+      email: 'someone@example.com',
+      password: 'a-strong-passphrase',
+    })
+    ;(await ask(other)).assertStatus(404)
   })
 })

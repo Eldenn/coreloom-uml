@@ -1,4 +1,6 @@
 import vine from '@vinejs/vine'
+import { CODE_REVIEW_LOCALES } from '#app/code-reviews/constants/code-review'
+import { llmCallFields } from '#app/llm/validators/llm-input'
 import { SKILL_OVERRIDE_REASON } from '#app/skills/constants/skill-scan'
 import {
   SKILL_VERSION_DECISIONS,
@@ -24,8 +26,8 @@ export const listSkillVersionsInput = vine.create(
 export const captureSkillVersionInput = vine.create(vine.object({ slug: slug() }))
 
 /**
- * `PATCH /admin/skill-versions/:id`: the admin's decision and, only to approve a copy SkillSpector
- * recommends not installing, why.
+ * `PATCH /admin/skill-versions/:id`: the admin's decision and, only to approve a copy despite
+ * its `approvalProblem`, why.
  */
 export const reviewSkillVersionInput = vine.create(
   vine.object({
@@ -37,4 +39,13 @@ export const reviewSkillVersionInput = vine.create(
       .maxLength(SKILL_OVERRIDE_REASON.maxLength)
       .optional(),
   }),
+)
+
+/**
+ * `POST /admin/skill-versions/:id/model-review`: the admin's provider and its key, used for this
+ * call only, and the language of the answer. The browser sends nothing of the copy: the server
+ * reads it.
+ */
+export const modelReviewSkillVersionInput = vine.create(
+  vine.object({ ...llmCallFields(), locale: vine.enum(CODE_REVIEW_LOCALES) }),
 )

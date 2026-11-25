@@ -94,6 +94,7 @@ export interface ApiDefinition {
       store: typeof routes['admin.skill_versions.store']
       scans: typeof routes['admin.skill_versions.scans']
       scan: typeof routes['admin.skill_versions.scan']
+      modelReview: typeof routes['admin.skill_versions.model_review']
       show: typeof routes['admin.skill_versions.show']
       update: typeof routes['admin.skill_versions.update']
     }
