@@ -24,6 +24,7 @@ import { useLocale, useT } from '@/lib/locale'
 import { type SkillDetail, useSkill } from '@/lib/skills'
 import { SkillCopies } from '@/skills/skill-copies'
 import { RiskBadge, StateBadge } from '@/skills/skill-labels'
+import { SkillTopicsEditor } from '@/skills/skill-topics-editor'
 import { labelOf, topicLabel } from '@/skills/skill-values'
 import { SkillBlock } from '@/skills/skills-admin'
 
@@ -151,6 +152,7 @@ function SkillBody({ skill }: { skill: SkillDetail }) {
         <Reason skill={skill} />
         <SkillFacts skill={skill} />
         {user?.isAdmin && <SkillBlock skill={skill} />}
+        {user?.isAdmin && <SkillTopicsEditor key={skill.topics.join()} skill={skill} />}
         {user?.isAdmin && <SkillCopies slug={skill.slug} canCopy={skill.state !== 'blocked'} />}
         <section className="flex flex-col gap-2">
           <h3 className="m-0 text-sm font-medium text-foreground">{t.sheet.audits}</h3>

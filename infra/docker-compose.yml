@@ -114,6 +114,38 @@ services:
         condition: service_healthy
 
   # -----------------------------------------------
+  # Skill tagger — the API's worker on the `skill-topics` queue, in its own image
+  # (Debian: the embedding model's runtime needs glibc). Its first run downloads
+  # the model (about 600 MB) into skill_tagger_models. On a Linux or macOS host,
+  # `pnpm --filter @coreloom-uml/api queue:tag` or `node ace skills:classify`
+  # run it without this service. See infra/skill-tagger/README.md.
+  # -----------------------------------------------
+  skill-tagger:
+    profiles: ["skills"]
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+      target: skill-tagger
+    restart: unless-stopped
+    env_file: ../apps/api/.env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      DB_HOST: postgres
+      # NODE_ENV=production turns TLS on, which the local Postgres does not speak.
+      DB_SSL: 'false'
+      REDIS_HOST: redis
+      SMTP_HOST: mailpit
+      SKILL_TAGGER_CACHE: /models
+    volumes:
+      - skill_tagger_models:/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # -----------------------------------------------
   # Mailpit — local SMTP catch-all (dev only). Password reset and email
   # verification land here instead of a real inbox; nothing leaves the machine.
   # SMTP:    mailpit:1025 (as seen by the api container)
@@ -180,3 +212,4 @@ services:
 volumes:
   postgres_data:
   minio_data:
+  skill_tagger_models:

@@ -88,6 +88,18 @@ jobs:
             ghcr.io/${{ steps.owner.outputs.value }}/coreloom-uml-skill-scanner:${{ github.ref_name }}
             ghcr.io/${{ steps.owner.outputs.value }}/coreloom-uml-skill-scanner:production-latest
 
+      # The API's worker on Debian, which tags the skills, for the `skill-tagger` service.
+      - name: Build and push skill tagger image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          target: skill-tagger
+          push: true
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.value }}/coreloom-uml-skill-tagger:${{ github.ref_name }}
+            ghcr.io/${{ steps.owner.outputs.value }}/coreloom-uml-skill-tagger:production-latest
+
       - name: Build and push web image
         uses: docker/build-push-action@v6
         with:

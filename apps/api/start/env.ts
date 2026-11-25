@@ -149,6 +149,11 @@ export default await Env.create(new URL('../', import.meta.url), {
   */
   SKILLS_REFRESH_ENABLED: Env.schema.boolean.optional(),
   SKILLS_GITHUB_TOKEN: Env.schema.string.optional(),
+  /*
+  | Where the skill tagger (`infra/skill-tagger/`) keeps the embedding model it
+  | downloads on first use (about 600 MB). Defaults to the app's tmp folder.
+  */
+  SKILL_TAGGER_CACHE: Env.schema.string.optional(),
 
   /*
   |--------------------------------------------------------------------------

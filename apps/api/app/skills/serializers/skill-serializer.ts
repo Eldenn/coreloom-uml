@@ -1,5 +1,6 @@
 import { DIAGRAM_KINDS, type DiagramKind, isSlotAffinity } from '@coreloom-uml/catalog'
 import type { SkillRiskLevel, SkillState } from '#app/skills/constants/skill'
+import { TopicsSource } from '#app/skills/constants/skill-topics'
 import type CatalogSkill from '#app/skills/models/catalog-skill'
 import type SkillSnapshot from '#app/skills/models/skill-snapshot'
 import type { SkillDetailOutput, SkillSummaryOutput } from '#app/skills/validators/skills-output'
@@ -47,6 +48,7 @@ export function serializeSkillDetail(
     license: skill.license,
     reason: summary.state === 'blocked' ? skill.statusReason : skill.ineligibleReason,
     affinities: skill.affinities,
+    topicsSource: topicsSource(skill),
     lastSeenAt: skill.lastSeenAt?.toUTC().toISO() ?? null,
     checkedAt: skill.checkedAt?.toUTC().toISO() ?? null,
     history: history.map((snapshot) => ({
@@ -55,4 +57,9 @@ export function serializeSkillDetail(
       eligible: snapshot.eligible,
     })),
   }
+}
+
+function topicsSource(skill: CatalogSkill): TopicsSource {
+  if (skill.reviewedTopics?.length) return TopicsSource.Reviewed
+  return skill.taggerTopics?.length ? TopicsSource.Tagger : TopicsSource.Search
 }

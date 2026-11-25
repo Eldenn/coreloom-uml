@@ -617,6 +617,19 @@ router
   .use([middleware.auth(), middleware.admin()])
 
 /*
+| The admin sets a skill's tags, which replace the tagger's and teach it at its next run
+| (`app/skills/services/skill-topics.ts`). Other accounts get a 404.
+*/
+router
+  .patch('/admin/skills/:slug/topics', [
+    () => import('#app/skills/controllers/admin-skill-topics-controller'),
+    'update',
+  ])
+  .as('admin.skills.topics')
+  .where('slug', /^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  .use([middleware.auth(), middleware.admin()])
+
+/*
 |--------------------------------------------------------------------------
 | Architectures and their diagrams (reference user-owned resource — copy this for new domains)
 |--------------------------------------------------------------------------

@@ -630,6 +630,12 @@ const routes = {
     tokens: [{"old":"/admin/skills/:slug","type":0,"val":"admin","end":""},{"old":"/admin/skills/:slug","type":0,"val":"skills","end":""},{"old":"/admin/skills/:slug","type":1,"val":"slug","end":""}],
     types: placeholder as Registry['admin.skills.update']['types'],
   },
+  'admin.skills.topics': {
+    methods: ["PATCH"],
+    pattern: '/admin/skills/:slug/topics',
+    tokens: [{"old":"/admin/skills/:slug/topics","type":0,"val":"admin","end":""},{"old":"/admin/skills/:slug/topics","type":0,"val":"skills","end":""},{"old":"/admin/skills/:slug/topics","type":1,"val":"slug","end":""},{"old":"/admin/skills/:slug/topics","type":0,"val":"topics","end":""}],
+    types: placeholder as Registry['admin.skills.topics']['types'],
+  },
   'architectures.index': {
     methods: ["GET","HEAD"],
     pattern: '/architectures',

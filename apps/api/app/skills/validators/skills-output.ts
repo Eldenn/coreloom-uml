@@ -1,6 +1,7 @@
 import type { DiagramKind, SkillAffinity, SkillOrigin, Topic } from '@coreloom-uml/catalog'
 import type { Paginated } from '#app/shared/pagination/paginate'
 import type { SkillRiskLevel, SkillState } from '#app/skills/constants/skill'
+import type { TopicsSource } from '#app/skills/constants/skill-topics'
 import type { SkillCopyState } from '#app/skills/constants/skill-version'
 import type { SkillAudit } from '#app/skills/models/catalog-skill'
 
@@ -39,11 +40,16 @@ export type SkillDetailOutput = SkillSummaryOutput & {
   /** Why it is not suggested: a failed check, or the reason it was blocked. */
   reason: string | null
   affinities: SkillAffinity[]
+  /** Who set `topics`: the admin, the tagger or the search queries that found it. */
+  topicsSource: TopicsSource
   lastSeenAt: string | null
   checkedAt: string | null
   /** The last runs that returned it, oldest first. */
   history: SkillHistoryPointOutput[]
 }
+
+/** Shape returned by `PATCH /admin/skills/:slug/topics`. */
+export type SkillTopicsOutput = { topics: string[]; reviewedTopics: string[] | null }
 
 /** How many skills match each value of a filter, given the other filters. */
 export type SkillFacetsOutput = {

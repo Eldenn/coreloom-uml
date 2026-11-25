@@ -722,6 +722,19 @@ export class RequirementSchema extends BaseModel {
   declare userId: number
 }
 
+export class SkillEmbeddingSchema extends BaseModel {
+  static $columns = ['createdAt', 'hash', 'skillId', 'vector'] as const
+  $columns = SkillEmbeddingSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare hash: string
+  @column({ isPrimary: true })
+  declare skillId: number
+  @column()
+  declare vector: any
+}
+
 export class SkillSnapshotSchema extends BaseModel {
   static $columns = ['audits', 'eligible', 'id', 'ineligibleReason', 'installs', 'skillId', 'takenAt'] as const
   $columns = SkillSnapshotSchema.$columns
@@ -779,7 +792,7 @@ export class SkillVersionSchema extends BaseModel {
 }
 
 export class SkillSchema extends BaseModel {
-  static $columns = ['affinities', 'audits', 'checkedAt', 'contentSha', 'createdAt', 'description', 'eligible', 'firstSeenAt', 'id', 'ineligibleReason', 'installs', 'lastSeenAt', 'license', 'name', 'origin', 'registryId', 'slug', 'source', 'status', 'statusReason', 'targets', 'topics', 'updatedAt', 'url'] as const
+  static $columns = ['affinities', 'audits', 'checkedAt', 'contentSha', 'createdAt', 'description', 'eligible', 'firstSeenAt', 'id', 'ineligibleReason', 'installs', 'lastSeenAt', 'license', 'name', 'origin', 'registryId', 'reviewedAt', 'reviewedTopics', 'searchTopics', 'slug', 'source', 'status', 'statusReason', 'taggerTopics', 'targets', 'topics', 'updatedAt', 'url'] as const
   $columns = SkillSchema.$columns
   @column()
   declare affinities: any
@@ -813,6 +826,12 @@ export class SkillSchema extends BaseModel {
   declare origin: string
   @column()
   declare registryId: string | null
+  @column.dateTime()
+  declare reviewedAt: DateTime | null
+  @column()
+  declare reviewedTopics: any | null
+  @column()
+  declare searchTopics: any
   @column()
   declare slug: string
   @column()
@@ -821,6 +840,8 @@ export class SkillSchema extends BaseModel {
   declare status: string
   @column()
   declare statusReason: string | null
+  @column()
+  declare taggerTopics: any | null
   @column()
   declare targets: any
   @column()

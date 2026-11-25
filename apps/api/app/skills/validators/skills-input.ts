@@ -7,6 +7,7 @@ import {
   SKILL_STATES,
   SKILLS_SEARCH_MAX_LENGTH,
 } from '#app/skills/constants/skill'
+import { SKILL_TOPIC_LIMITS } from '#app/skills/constants/skill-topics'
 import { SKILL_COPY_STATES } from '#app/skills/constants/skill-version'
 
 /**
@@ -39,5 +40,20 @@ export const blockSkillInput = vine.create(
   vine.object({
     blocked: vine.boolean(),
     reason: vine.string().trim().minLength(1).maxLength(SKILL_BLOCK_REASON_MAX_LENGTH).optional(),
+  }),
+)
+
+/**
+ * `PATCH /admin/skills/:slug/topics`: the skill's tags as the admin sets them, the main one first
+ * (the tagger learns from it), or `null` to give them back to the tagger.
+ */
+export const reviewSkillTopicsInput = vine.create(
+  vine.object({
+    topics: vine
+      .array(vine.enum(TOPICS))
+      .minLength(1)
+      .maxLength(SKILL_TOPIC_LIMITS.maxTopics)
+      .distinct()
+      .nullable(),
   }),
 )

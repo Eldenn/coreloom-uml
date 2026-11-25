@@ -23,6 +23,11 @@ export default class SkillsRefresh extends BaseCommand {
       this.logger.success(renderReport(report))
       const { queueSkillScans } = await import('#app/skills/services/skill-scans')
       this.logger.info(`${await queueSkillScans()} copies queued for a scan (skill-scanner worker)`)
+      const { default: ClassifySkillTopicsJob } = await import(
+        '#app/jobs/classify-skill-topics_job'
+      )
+      await ClassifySkillTopicsJob.dispatch({})
+      this.logger.info('skills queued for the tagger (or run node ace skills:classify now)')
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : String(error))
       this.exitCode = 1
