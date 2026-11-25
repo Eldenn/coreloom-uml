@@ -242,6 +242,19 @@ export {
   researchWeb,
 } from './research.ts'
 export {
+  cleanSkillReview,
+  fitSkillFiles,
+  reviewSkill,
+  SKILL_REVIEW_ASSESSMENTS,
+  SKILL_REVIEW_VERDICTS,
+  type SkillReviewAssessment,
+  type SkillReviewNote,
+  type SkillReviewResult,
+  type SkillReviewSource,
+  type SkillReviewVerdict,
+  skillReviewPrompt,
+} from './skill-review.ts'
+export {
   excerptSource,
   SOURCE_LIMITS,
   type SourceExcerpt,

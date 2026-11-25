@@ -593,6 +593,9 @@ router
     router.post('/', [adminSkillVersionsController, 'store']).as('store')
     router.post('/scans', [adminSkillVersionsController, 'scans']).as('scans')
     router.post('/:id/scan', [adminSkillVersionsController, 'scan']).as('scan')
+    router
+      .post('/:id/model-review', [adminSkillVersionsController, 'modelReview'])
+      .as('model_review')
     router.get('/:id', [adminSkillVersionsController, 'show']).as('show')
     router.patch('/:id', [adminSkillVersionsController, 'update']).as('update')
   })

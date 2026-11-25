@@ -4,6 +4,8 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { client } from '@/lib/client'
+import { MODEL_CALL } from '@/lib/llm-provider'
+import { callBody, type StoredProvider } from '@/lib/llm-provider-body'
 import { queryClient } from '@/lib/query'
 import { skillKeys } from '@/lib/skills'
 
@@ -41,6 +43,30 @@ export function useReviewSkillVersion() {
       /** Only to approve a copy SkillSpector recommends not installing. */
       overrideReason?: string
     }) => client.api.admin.skillVersions.update({ params: { id: String(id) }, body }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: skillKeys.all }),
+  })
+}
+
+/**
+ * Asks the admin's own model to read one copy next to its scan: one call with the provider this
+ * browser keeps, whose answer is stored with the copy and shown in its sheet.
+ */
+export function useModelReviewSkillVersion() {
+  return useMutation({
+    mutationFn: ({
+      id,
+      provider,
+      locale,
+    }: {
+      id: number
+      provider: StoredProvider
+      locale: 'en' | 'fr'
+    }) =>
+      client.api.admin.skillVersions.modelReview({
+        params: { id: String(id) },
+        body: { ...callBody(provider), locale },
+        ...MODEL_CALL,
+      }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: skillKeys.all }),
   })
 }
