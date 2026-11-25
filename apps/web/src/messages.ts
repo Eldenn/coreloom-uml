@@ -1131,6 +1131,7 @@ export const en = {
     neverRun: 'The weekly search has not run yet',
     catalogChanged: 'The skills catalog was just updated.',
     loadFailed: 'The skills catalog could not be loaded.',
+    tabs: { catalog: 'Catalog', overview: 'Trends' },
     emptyTitle: 'No skills yet',
     emptyText:
       'The catalog fills up when the weekly search on skills.sh runs. An administrator can run it now with node ace skills:refresh.',
@@ -2816,6 +2817,7 @@ export const fr: Messages = {
     neverRun: 'La recherche hebdomadaire n’a pas encore tourné',
     catalogChanged: 'Le catalogue des skills vient d’être mis à jour.',
     loadFailed: 'Le catalogue des skills n’a pas pu être chargé.',
+    tabs: { catalog: 'Catalogue', overview: 'Tendances' },
     emptyTitle: 'Aucun skill pour l’instant',
     emptyText:
       'Le catalogue se remplit quand la recherche hebdomadaire sur skills.sh tourne. Un administrateur peut la lancer tout de suite avec node ace skills:refresh.',

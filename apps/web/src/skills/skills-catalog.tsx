@@ -1,6 +1,6 @@
 // The catalog as a ranked list, the way skills.sh shows it: search, filters with counts, a sort
 // and pages, all filtered by the API (`GET /skills`) and kept in the URL.
-import { ArrowUpRightIcon, TrendingUpIcon } from 'lucide-react'
+import { TrendingUpIcon } from 'lucide-react'
 
 import {
   type DataList,
@@ -32,6 +32,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { useLocale, useT } from '@/lib/locale'
 import { type SkillsSort, type SkillSummary, useSkills } from '@/lib/skills'
+import { cn } from '@/lib/utils'
 import { RiskBadge, StateBadge } from '@/skills/skill-labels'
 import { labelOf, SKILLS_PAGE_SIZE, skillsQueryFrom, topicLabel } from '@/skills/skill-values'
 
@@ -94,15 +95,15 @@ function SkillRow({
   const { formatNumber } = useCoreloomI18n()
   const description = (locale === 'fr' ? skill.description.fr : undefined) ?? skill.description.en
   return (
-    <Item variant="outline" className="flex-wrap" asChild>
+    <Item variant="outline" className="items-start sm:flex-nowrap" asChild>
       <button
         type="button"
-        className="w-full text-left"
+        className="w-full cursor-pointer text-left hover:bg-accent/60"
         onClick={() => {
           onOpen(skill.slug)
         }}
       >
-        <ItemMedia className="w-10 justify-end font-mono text-[12px] text-muted-foreground">
+        <ItemMedia className="w-10 justify-end pt-0.5 font-mono text-[12px] text-muted-foreground">
           {t.list.rank(formatNumber(rank))}
         </ItemMedia>
         <ItemContent className="min-w-0">
@@ -123,7 +124,7 @@ function SkillRow({
             ))}
           </span>
         </ItemContent>
-        <ItemActions className="flex-col items-end gap-0.5 font-mono text-[12px] max-sm:w-full max-sm:flex-row max-sm:items-center max-sm:justify-start max-sm:gap-3 max-sm:pl-14">
+        <ItemActions className="shrink-0 flex-col items-end gap-0.5 pt-0.5 font-mono text-[12px] whitespace-nowrap max-sm:w-full max-sm:flex-row max-sm:items-center max-sm:justify-start max-sm:gap-3 max-sm:pl-14">
           <span className="text-foreground">
             {skill.installs === null
               ? t.list.noInstalls
@@ -135,7 +136,6 @@ function SkillRow({
               {t.list.gained(formatValue(skill.installsDelta, locale, { format: 'compact' }))}
             </span>
           )}
-          <ArrowUpRightIcon aria-hidden className="size-4 text-muted-foreground max-sm:hidden" />
         </ItemActions>
       </button>
     </Item>
@@ -155,7 +155,10 @@ function SkillRows({
 }) {
   if (list.matched === 0) return <DataListEmpty list={list} />
   return (
-    <ItemGroup className="gap-2" aria-busy={loading}>
+    <ItemGroup
+      className={cn('gap-2 transition-opacity', loading && 'opacity-60')}
+      aria-busy={loading}
+    >
       {list.pageRows.map((skill, index) => (
         <SkillRow key={skill.slug} skill={skill} rank={firstRank + index} onOpen={onOpen} />
       ))}
