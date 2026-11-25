@@ -1082,6 +1082,13 @@ export const en = {
     againstPrevious: (commit: string) => `Compared with the approved copy at ${commit}.`,
     fileStatuses: { added: 'Added', removed: 'Removed', changed: 'Changed' },
     unchanged: (paths: string) => `Unchanged: ${paths}`,
+    filesLabel: 'Files of the copy',
+    findingsInFile: (count: number) =>
+      count === 1 ? '1 finding of the scan' : `${count} findings of the scan`,
+    unread: (count: number) =>
+      count === 1
+        ? '1 changed file not marked as viewed.'
+        : `${count} changed files not marked as viewed.`,
     licence: (licence: string) => `Licence: ${licence}`,
     licenceInFolder: 'its own file',
     source: 'Source on GitHub',
@@ -2808,6 +2815,13 @@ export const fr: Messages = {
     againstPrevious: (commit: string) => `Comparée à la copie approuvée au commit ${commit}.`,
     fileStatuses: { added: 'Ajouté', removed: 'Supprimé', changed: 'Modifié' },
     unchanged: (paths: string) => `Inchangés : ${paths}`,
+    filesLabel: 'Fichiers de la copie',
+    findingsInFile: (count: number) =>
+      count === 1 ? '1 constat de l’analyse' : `${count} constats de l’analyse`,
+    unread: (count: number) =>
+      count === 1
+        ? '1 fichier modifié pas encore marqué comme vu.'
+        : `${count} fichiers modifiés pas encore marqués comme vus.`,
     licence: (licence: string) => `Licence : ${licence}`,
     licenceInFolder: 'son propre fichier',
     source: 'Source sur GitHub',
