@@ -100,6 +100,21 @@ type CodeReviewProps = ReviewDiscussion & {
 }
 
 /**
+ * With `fill`, brings a file to the top of the review's own scrolling box (the files column, or the
+ * whole body on a narrow review). scrollIntoView would also scroll every box around the review, and
+ * a dialog it fills would lose what sits above it.
+ */
+function scrollInReview(section: HTMLElement, review: Element) {
+  for (let box = section.parentElement; box && box !== review; box = box.parentElement) {
+    const { overflowY } = getComputedStyle(box)
+    if (box.scrollHeight <= box.clientHeight || !/auto|scroll/.test(overflowY)) continue
+    const margin = parseFloat(getComputedStyle(section).scrollMarginTop) || 0
+    box.scrollTop += section.getBoundingClientRect().top - box.getBoundingClientRect().top - margin
+    return
+  }
+}
+
+/**
  * Moves to a file after the render that opens it: scrolls to it and puts focus on its header.
  * Call it from an event that also changes state, so a render follows.
  */
@@ -109,7 +124,10 @@ function useGoToFile(fileIds: Map<string, string>) {
     if (!target.current) return
     const button = document.getElementById(fileIds.get(target.current) ?? '')
     target.current = null
-    button?.closest('section')?.scrollIntoView({ block: 'start' })
+    const section = button?.closest('section')
+    const review = section?.closest('[data-slot="code-review"]')
+    if (section && review?.hasAttribute('data-fill')) scrollInReview(section, review)
+    else section?.scrollIntoView({ block: 'start' })
     button?.focus({ preventScroll: true })
   })
   return (path: string) => {
