@@ -2,6 +2,7 @@
 // why it is or is not suggested, and its installs at each weekly search.
 import { ExternalLinkIcon } from 'lucide-react'
 
+import { useAuth } from '@/auth/auth-context'
 import { TrendChart } from '@/components/dashboard'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { useLocale, useT } from '@/lib/locale'
 import { type SkillDetail, useSkill } from '@/lib/skills'
+import { SkillCopies } from '@/skills/skill-copies'
 import { RiskBadge, StateBadge } from '@/skills/skill-labels'
 import { labelOf, topicLabel } from '@/skills/skill-values'
 
@@ -127,6 +129,7 @@ function SkillFacts({ skill }: { skill: SkillDetail }) {
 function SkillBody({ skill }: { skill: SkillDetail }) {
   const t = useT().skills
   const { locale } = useLocale()
+  const { user } = useAuth()
   const description = (locale === 'fr' ? skill.description.fr : undefined) ?? skill.description.en
   return (
     <>
@@ -146,6 +149,7 @@ function SkillBody({ skill }: { skill: SkillDetail }) {
       <div className="flex flex-col gap-6 overflow-y-auto px-4 pb-4">
         <Reason skill={skill} />
         <SkillFacts skill={skill} />
+        {user?.isAdmin && <SkillCopies slug={skill.slug} canCopy={skill.state === 'suggested'} />}
         <section className="flex flex-col gap-2">
           <h3 className="m-0 text-sm font-medium text-foreground">{t.sheet.audits}</h3>
           <Audits skill={skill} />

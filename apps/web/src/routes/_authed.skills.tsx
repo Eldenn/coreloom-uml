@@ -26,6 +26,7 @@ const searchSchema = z.object({
   diagramKind: param,
   state: param,
   risk: param,
+  copy: param,
   sort: param,
   page: param,
   skill: param,

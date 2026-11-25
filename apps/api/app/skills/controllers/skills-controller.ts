@@ -1,5 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { SkillOrigin } from '@coreloom-uml/catalog'
+import { isDefaultAccount } from '#app/auth/services/default-account'
 import { paginate } from '#app/shared/pagination/paginate'
 import { SKILLS_HISTORY_RUNS, SkillSort, SkillStatus } from '#app/skills/constants/skill'
 import CatalogSkill from '#app/skills/models/catalog-skill'
@@ -26,15 +27,18 @@ const NO_APPROVED_COPY = { error: { message: 'No approved copy of this skill' } 
  * kept up to date by the weekly search (`RefreshSkillsJob`).
  */
 export default class SkillsController {
-  async index({ request, response }: HttpContext) {
-    const { page, perPage, sort, ...filters } = await request.validateUsing(listSkillsInput)
+  async index({ auth, request, response }: HttpContext) {
+    const { page, perPage, sort, copy, ...rest } = await request.validateUsing(listSkillsInput)
+    // Which skills have a copy, and in what state, is the admin's to see.
+    const admin = isDefaultAccount(auth.getUserOrFail())
+    const filters = admin ? { ...rest, copy } : rest
 
     const list = await paginate(
       skillsQuery(filters, sort ?? SkillSort.Installs),
       { page, perPage },
       serializeSkillSummary,
     )
-    const output: SkillsListOutput = { ...list, facets: await facetCounts(filters) }
+    const output: SkillsListOutput = { ...list, facets: await facetCounts(filters, admin) }
     return response.ok(output)
   }
 

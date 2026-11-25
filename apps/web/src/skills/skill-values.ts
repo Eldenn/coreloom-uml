@@ -29,6 +29,7 @@ interface SkillsLabels {
   kinds: Record<ValuesOf<'diagramKind'>, string>
   states: Record<ValuesOf<'state'>, string>
   risks: Record<ValuesOf<'risk'>, string>
+  copies: Record<ValuesOf<'copy'>, string>
   sorts: Record<SkillsSort, string>
 }
 
@@ -45,6 +46,7 @@ export function skillsQueryFrom(
     diagramKind: pickValues(labels.kinds, params.get('diagramKind') ?? undefined),
     state: pickValues(labels.states, params.get('state') ?? undefined),
     risk: pickValues(labels.risks, params.get('risk') ?? undefined),
+    copy: pickValues(labels.copies, params.get('copy') ?? undefined),
     sort: sort ?? 'installs',
     page: Math.max(1, Number(params.get('page')) || 1),
     perPage: SKILLS_PAGE_SIZE,

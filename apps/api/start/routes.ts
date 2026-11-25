@@ -590,6 +590,7 @@ const adminSkillVersionsController = () =>
 router
   .group(() => {
     router.get('/', [adminSkillVersionsController, 'index']).as('index')
+    router.post('/', [adminSkillVersionsController, 'store']).as('store')
     router.get('/:id', [adminSkillVersionsController, 'show']).as('show')
     router.patch('/:id', [adminSkillVersionsController, 'update']).as('update')
   })

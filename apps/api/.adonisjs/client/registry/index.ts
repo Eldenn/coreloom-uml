@@ -588,6 +588,12 @@ const routes = {
     tokens: [{"old":"/admin/skill-versions","type":0,"val":"admin","end":""},{"old":"/admin/skill-versions","type":0,"val":"skill-versions","end":""}],
     types: placeholder as Registry['admin.skill_versions.index']['types'],
   },
+  'admin.skill_versions.store': {
+    methods: ["POST"],
+    pattern: '/admin/skill-versions',
+    tokens: [{"old":"/admin/skill-versions","type":0,"val":"admin","end":""},{"old":"/admin/skill-versions","type":0,"val":"skill-versions","end":""}],
+    types: placeholder as Registry['admin.skill_versions.store']['types'],
+  },
   'admin.skill_versions.show': {
     methods: ["GET","HEAD"],
     pattern: '/admin/skill-versions/:id',

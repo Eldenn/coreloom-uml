@@ -31,6 +31,8 @@ export type SkillBundleFile = { path: string; executable: boolean; content: stri
 type TreeEntry = { path: string; type: string; sha: string; mode?: string; size?: number }
 
 export type CaptureOptions = {
+  /** Only this skill (the admin's "Copy now"), under the same conditions. */
+  slug?: string
   fetch?: typeof fetch
   githubToken?: string
   onProgress?: (message: string) => void
@@ -52,13 +54,8 @@ const utf8 = new TextDecoder('utf-8', { fatal: true })
 export async function captureSkillVersions(options: CaptureOptions = {}): Promise<CaptureReport> {
   const report: CaptureReport = { captured: [], warnings: [] }
   const http = new Http(options.fetch ?? fetch, options.githubToken)
-  const skills = await CatalogSkill.query()
-    .where('status', SkillStatus.Active)
-    .where((query) =>
-      query
-        .where('origin', SkillOrigin.Manual)
-        .orWhere((found) => found.where('eligible', true).whereNotNull('contentSha')),
-    )
+  const skills = await capturableSkills()
+    .if(options.slug, (query) => query.where('slug', options.slug as string))
     .orderByRaw(`origin = '${SkillOrigin.Manual}' desc`)
     .orderByRaw('installs desc nulls last')
     .orderBy('id')
@@ -77,6 +74,17 @@ export async function captureSkillVersions(options: CaptureOptions = {}): Promis
     }
   }
   return report
+}
+
+/** The skills a copy is made of: active, and hand-picked or found eligible with their content. */
+export function capturableSkills() {
+  return CatalogSkill.query()
+    .where('status', SkillStatus.Active)
+    .where((query) =>
+      query
+        .where('origin', SkillOrigin.Manual)
+        .orWhere((found) => found.where('eligible', true).whereNotNull('contentSha')),
+    )
 }
 
 /** The new copy, or null when one of that content exists already. */
