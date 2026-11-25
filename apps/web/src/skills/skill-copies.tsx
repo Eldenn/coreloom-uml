@@ -4,6 +4,8 @@
 // the weekly search; a pending copy can be scanned again.
 import {
   ExternalLinkIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
   RefreshCwIcon,
   ScanSearchIcon,
   TerminalIcon,
@@ -140,7 +142,7 @@ export function SkillCopies({ slug, canCopy }: { slug: string; canCopy: boolean 
       >
         {/* Fixed height, no outer scroll: the file list and the diff scroll on their own, and the
             decision stays in view however long the files are. */}
-        <DialogContent className="flex h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-6xl">
+        <DialogContent className="flex h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(96vw,100rem)]">
           {open && (
             <>
               <DialogHeader className="border-b px-[22px] py-4">
@@ -338,6 +340,9 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
   const detail = useSkillVersion(id)
   // The files ticked "Viewed" in the review, so the admin sees what is still unread before deciding.
   const [viewed, setViewed] = React.useState<string[]>([])
+  // The scan and the model's reading sit beside the files on a wide screen, above them otherwise;
+  // the admin folds them away to give the files the whole width.
+  const [analysisOpen, setAnalysisOpen] = React.useState(true)
   const pairs = React.useMemo(
     () => (detail.data ? pairFiles(detail.data.files, detail.data.previous?.files) : []),
     [detail.data],
@@ -362,37 +367,73 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
 
   return (
     <>
-      <div className="flex max-h-[35%] shrink-0 flex-col gap-3 overflow-y-auto border-b px-[22px] py-3">
-        <p className="m-0 flex flex-wrap items-center gap-x-3 text-[13px] text-muted-foreground">
-          {previous ? t.againstPrevious(previous.version.commit.slice(0, 7)) : t.firstCopy}
-          {unchanged.length > 0 && <span>{t.unchanged(unchanged.join(', '))}</span>}
-          <a
-            href={version.url}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="inline-flex items-center gap-1 text-primary hover:underline"
+      <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
+        {analysisOpen ? (
+          <aside
+            id={`analysis-${String(id)}`}
+            className="flex max-h-[35%] shrink-0 flex-col gap-3 overflow-y-auto border-b px-[22px] py-3 xl:max-h-none xl:w-[22rem] xl:border-r xl:border-b-0"
           >
-            <ExternalLinkIcon className="size-3.5" /> {t.source}
-          </a>
-        </p>
-        <ScanSummary
-          scan={scan}
-          action={<ScanButton id={id} pending={pending} scanned={scan !== null} />}
-        />
-        <SkillModelReview version={version} />
-      </div>
-      <div className="min-h-0 flex-1 p-3">
-        <CodeReview
-          fill
-          wrap
-          files={files}
-          viewed={viewed}
-          onViewedChange={setViewed}
-          renderFileMeta={(file) => (
-            <FileMarks executable={executable.has(file.path)} findings={findingsIn(file.path)} />
-          )}
-          aria-label={t.filesLabel}
-        />
+            <div className="flex items-start gap-2">
+              <p className="m-0 flex flex-1 flex-wrap items-center gap-x-3 text-[13px] text-muted-foreground">
+                {previous ? t.againstPrevious(previous.version.commit.slice(0, 7)) : t.firstCopy}
+                {unchanged.length > 0 && <span>{t.unchanged(unchanged.join(', '))}</span>}
+                <a
+                  href={version.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex items-center gap-1 text-primary hover:underline"
+                >
+                  <ExternalLinkIcon className="size-3.5" /> {t.source}
+                </a>
+              </p>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t.hideAnalysis}
+                aria-expanded
+                aria-controls={`analysis-${String(id)}`}
+                onClick={() => {
+                  setAnalysisOpen(false)
+                }}
+              >
+                <PanelLeftCloseIcon />
+              </Button>
+            </div>
+            <ScanSummary
+              scan={scan}
+              action={<ScanButton id={id} pending={pending} scanned={scan !== null} />}
+            />
+            <SkillModelReview version={version} />
+          </aside>
+        ) : (
+          <div className="flex shrink-0 items-center gap-2 border-b px-3 py-2 xl:flex-col xl:border-r xl:border-b-0">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t.showAnalysis}
+              aria-expanded={false}
+              onClick={() => {
+                setAnalysisOpen(true)
+              }}
+            >
+              <PanelLeftOpenIcon />
+            </Button>
+            <ScanBadge scan={scan} />
+          </div>
+        )}
+        <div className="min-h-0 min-w-0 flex-1 p-3">
+          <CodeReview
+            fill
+            wrap
+            files={files}
+            viewed={viewed}
+            onViewedChange={setViewed}
+            renderFileMeta={(file) => (
+              <FileMarks executable={executable.has(file.path)} findings={findingsIn(file.path)} />
+            )}
+            aria-label={t.filesLabel}
+          />
+        </div>
       </div>
       <ReviewFooter id={id} version={version} pending={pending} unread={unread} />
     </>
