@@ -1,6 +1,7 @@
 import { DIAGRAM_KINDS, TOPICS } from '@coreloom-uml/catalog'
 import vine from '@vinejs/vine'
 import {
+  SKILL_BLOCK_REASON_MAX_LENGTH,
   SKILL_RISK_LEVELS,
   SKILL_SORTS,
   SKILL_STATES,
@@ -32,3 +33,11 @@ function toArray(value: unknown) {
   if (value === undefined || value === null || value === '') return undefined
   return Array.isArray(value) ? value : [value]
 }
+
+/** `PATCH /admin/skills/:slug`: stop suggesting this skill (with why), or suggest it again. */
+export const blockSkillInput = vine.create(
+  vine.object({
+    blocked: vine.boolean(),
+    reason: vine.string().trim().minLength(1).maxLength(SKILL_BLOCK_REASON_MAX_LENGTH).optional(),
+  }),
+)

@@ -1,7 +1,8 @@
 // The copies of one skill's files, in its sheet, for the admin only (the API refuses everyone
 // else): each copy is read file by file against the last approved copy of the same skill, then
-// approved or rejected. "Copy now" asks for a copy without waiting for the weekly search.
-import { DownloadIcon, ExternalLinkIcon } from 'lucide-react'
+// approved or rejected. "Sync now" reads the skill again (audits, pin, copy) without waiting for
+// the weekly search; a pending copy can be scanned again.
+import { ExternalLinkIcon, RefreshCwIcon, ScanSearchIcon } from 'lucide-react'
 import * as React from 'react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -27,6 +28,7 @@ import {
   type SkillVersion,
   useCaptureSkillCopy,
   useReviewSkillVersion,
+  useScanSkillVersion,
   useSkillCopies,
   useSkillVersion,
 } from '@/lib/skill-versions'
@@ -42,7 +44,7 @@ function describe(t: ReturnType<typeof useT>['skillVersions'], version: SkillVer
   return `${version.repository} · ${t.files(version.files.length)} · ${t.licence(licence)}`
 }
 
-/** `canCopy`: the skill is one the search copies (a suggested one). */
+/** `canCopy`: the skill can be synced (any skill that is not blocked). */
 export function SkillCopies({ slug, canCopy }: { slug: string; canCopy: boolean }) {
   const t = useT()
   const tv = t.skillVersions
@@ -68,7 +70,7 @@ export function SkillCopies({ slug, canCopy }: { slug: string; canCopy: boolean 
               })
             }}
           >
-            <DownloadIcon /> {tv.copyNow}
+            <RefreshCwIcon /> {tv.copyNow}
           </Button>
         )}
       </div>
@@ -204,6 +206,29 @@ function ScanSummary({ scan }: { scan: Scan }) {
   )
 }
 
+/** Asks for a scan of a pending copy (a decided one is not scanned again); the verdict arrives with the live updates. */
+function ScanButton({ id, pending, scanned }: { id: number; pending: boolean; scanned: boolean }) {
+  const t = useT().skillVersions
+  const scan = useScanSkillVersion()
+  if (!pending) return null
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="self-start"
+      disabled={scan.isPending}
+      onClick={() => {
+        scan.mutate(id, {
+          onSuccess: () => toast.success(t.scanQueued),
+          onError: () => toast.error(t.scanFailed),
+        })
+      }}
+    >
+      <ScanSearchIcon /> {scanned ? t.scanAgain : t.scanNow}
+    </Button>
+  )
+}
+
 function VersionReview({ id, pending }: { id: number; pending: boolean }) {
   const t = useT().skillVersions
   const detail = useSkillVersion(id)
@@ -245,6 +270,7 @@ function VersionReview({ id, pending }: { id: number; pending: boolean }) {
         </Button>
       </div>
       <ScanSummary scan={version.scan} />
+      <ScanButton id={id} pending={pending} scanned={version.scan !== null} />
       {changed.map((pair) => (
         <section key={pair.path} className="flex flex-col gap-1.5">
           <h3 className="m-0 flex flex-wrap items-center gap-2 text-sm font-medium">

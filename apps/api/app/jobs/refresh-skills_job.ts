@@ -4,13 +4,15 @@ import type { BullJobsOptions } from '@nemoventures/adonis-jobs/types'
 import { queueSkillScans } from '#app/skills/services/skill-scans'
 import { refreshCatalog } from '#app/skills/services/skills-catalog'
 import SkillsEvents from '#app/skills/services/skills-events'
+import { releaseSkillsRefresh } from '#app/skills/services/skills-refresh-lock'
 import { renderReport } from '#app/skills/services/skills-search'
 import env from '#start/env'
 
 /**
  * The weekly search that feeds the skills catalog (see `skills-catalog.ts`). Scheduled by
  * `node ace skills:setup` when SKILLS_REFRESH_ENABLED is true; `node ace skills:refresh` runs
- * the same search right away.
+ * the same search right away, and the admin asks for one from the Skills screen
+ * (`POST /admin/skills/refresh`).
  */
 export type RefreshSkillsJobData = Record<string, never>
 
@@ -28,9 +30,11 @@ export default class RefreshSkillsJob extends Job<RefreshSkillsJobData, void> {
     this.logger.info({ scans }, 'skill copies queued for a scan')
     // Open Skills screens reload (see `GET /skills/events`).
     await (await app.container.make(SkillsEvents)).publish('catalog.refreshed')
+    await releaseSkillsRefresh()
   }
 
   async onFailed(): Promise<void> {
+    await releaseSkillsRefresh()
     this.logger.error({ err: this.error }, 'skills catalog refresh failed after all retries')
   }
 }

@@ -12,6 +12,15 @@ export type SkillStatus = (typeof SkillStatus)[keyof typeof SkillStatus]
 
 export const SKILL_STATUSES = Object.values(SkillStatus) as readonly SkillStatus[]
 
+/** Longest reason kept for a blocked skill. */
+export const SKILL_BLOCK_REASON_MAX_LENGTH = 300
+
+/**
+ * How long a search the admin asked for keeps others from being asked (`skills-refresh-lock.ts`):
+ * the key ends by itself, so a worker that never runs the job does not lock the button for good.
+ */
+export const SKILLS_REFRESH_LOCK_SECONDS = 30 * 60
+
 /** The weekly search on skills.sh: its scheduler key and when it runs (Monday, 06:00 UTC). */
 export const SKILLS_REFRESH_SCHEDULE = { key: 'skills-refresh', pattern: '0 6 * * 1' } as const
 

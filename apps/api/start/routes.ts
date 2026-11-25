@@ -591,12 +591,29 @@ router
   .group(() => {
     router.get('/', [adminSkillVersionsController, 'index']).as('index')
     router.post('/', [adminSkillVersionsController, 'store']).as('store')
+    router.post('/scans', [adminSkillVersionsController, 'scans']).as('scans')
+    router.post('/:id/scan', [adminSkillVersionsController, 'scan']).as('scan')
     router.get('/:id', [adminSkillVersionsController, 'show']).as('show')
     router.patch('/:id', [adminSkillVersionsController, 'update']).as('update')
   })
   .prefix('/admin/skill-versions')
   .as('admin.skill_versions')
   .where('id', /^[0-9]+$/)
+  .use([middleware.auth(), middleware.admin()])
+
+/*
+| What the admin does to the catalog itself: run the skills.sh search now, and stop suggesting a
+| skill or suggest it again. Other accounts get a 404. `refresh` comes before `/:slug`.
+*/
+const adminSkillsController = () => import('#app/skills/controllers/admin-skills-controller')
+router
+  .group(() => {
+    router.post('/refresh', [adminSkillsController, 'refresh']).as('refresh')
+    router.patch('/:slug', [adminSkillsController, 'update']).as('update')
+  })
+  .prefix('/admin/skills')
+  .as('admin.skills')
+  .where('slug', /^[a-z0-9]+(?:-[a-z0-9]+)*$/)
   .use([middleware.auth(), middleware.admin()])
 
 /*

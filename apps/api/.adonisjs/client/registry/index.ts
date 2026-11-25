@@ -594,6 +594,18 @@ const routes = {
     tokens: [{"old":"/admin/skill-versions","type":0,"val":"admin","end":""},{"old":"/admin/skill-versions","type":0,"val":"skill-versions","end":""}],
     types: placeholder as Registry['admin.skill_versions.store']['types'],
   },
+  'admin.skill_versions.scans': {
+    methods: ["POST"],
+    pattern: '/admin/skill-versions/scans',
+    tokens: [{"old":"/admin/skill-versions/scans","type":0,"val":"admin","end":""},{"old":"/admin/skill-versions/scans","type":0,"val":"skill-versions","end":""},{"old":"/admin/skill-versions/scans","type":0,"val":"scans","end":""}],
+    types: placeholder as Registry['admin.skill_versions.scans']['types'],
+  },
+  'admin.skill_versions.scan': {
+    methods: ["POST"],
+    pattern: '/admin/skill-versions/:id/scan',
+    tokens: [{"old":"/admin/skill-versions/:id/scan","type":0,"val":"admin","end":""},{"old":"/admin/skill-versions/:id/scan","type":0,"val":"skill-versions","end":""},{"old":"/admin/skill-versions/:id/scan","type":1,"val":"id","end":""},{"old":"/admin/skill-versions/:id/scan","type":0,"val":"scan","end":""}],
+    types: placeholder as Registry['admin.skill_versions.scan']['types'],
+  },
   'admin.skill_versions.show': {
     methods: ["GET","HEAD"],
     pattern: '/admin/skill-versions/:id',
@@ -605,6 +617,18 @@ const routes = {
     pattern: '/admin/skill-versions/:id',
     tokens: [{"old":"/admin/skill-versions/:id","type":0,"val":"admin","end":""},{"old":"/admin/skill-versions/:id","type":0,"val":"skill-versions","end":""},{"old":"/admin/skill-versions/:id","type":1,"val":"id","end":""}],
     types: placeholder as Registry['admin.skill_versions.update']['types'],
+  },
+  'admin.skills.refresh': {
+    methods: ["POST"],
+    pattern: '/admin/skills/refresh',
+    tokens: [{"old":"/admin/skills/refresh","type":0,"val":"admin","end":""},{"old":"/admin/skills/refresh","type":0,"val":"skills","end":""},{"old":"/admin/skills/refresh","type":0,"val":"refresh","end":""}],
+    types: placeholder as Registry['admin.skills.refresh']['types'],
+  },
+  'admin.skills.update': {
+    methods: ["PATCH"],
+    pattern: '/admin/skills/:slug',
+    tokens: [{"old":"/admin/skills/:slug","type":0,"val":"admin","end":""},{"old":"/admin/skills/:slug","type":0,"val":"skills","end":""},{"old":"/admin/skills/:slug","type":1,"val":"slug","end":""}],
+    types: placeholder as Registry['admin.skills.update']['types'],
   },
   'architectures.index': {
     methods: ["GET","HEAD"],

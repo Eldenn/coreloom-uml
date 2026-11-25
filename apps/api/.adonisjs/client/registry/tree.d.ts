@@ -92,8 +92,14 @@ export interface ApiDefinition {
     skillVersions: {
       index: typeof routes['admin.skill_versions.index']
       store: typeof routes['admin.skill_versions.store']
+      scans: typeof routes['admin.skill_versions.scans']
+      scan: typeof routes['admin.skill_versions.scan']
       show: typeof routes['admin.skill_versions.show']
       update: typeof routes['admin.skill_versions.update']
+    }
+    skills: {
+      refresh: typeof routes['admin.skills.refresh']
+      update: typeof routes['admin.skills.update']
     }
     featureFlags: {
       index: typeof routes['admin.feature_flags.index']

@@ -1183,6 +1183,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'admin.skill_versions.scans': {
+    methods: ["POST"]
+    pattern: '/admin/skill-versions/scans'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['scans']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['scans']>>>
+    }
+  }
+  'admin.skill_versions.scan': {
+    methods: ["POST"]
+    pattern: '/admin/skill-versions/:id/scan'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['scan']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['scan']>>>
+    }
+  }
   'admin.skill_versions.show': {
     methods: ["GET","HEAD"]
     pattern: '/admin/skill-versions/:id'
@@ -1205,6 +1229,30 @@ export interface Registry {
       query: ExtractQuery<InferInput<(typeof import('#app/skills/validators/skill-versions-input').reviewSkillVersionInput)>>
       response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['update']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-versions-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'admin.skills.refresh': {
+    methods: ["POST"]
+    pattern: '/admin/skills/refresh'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skills-controller').default['refresh']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skills-controller').default['refresh']>>>
+    }
+  }
+  'admin.skills.update': {
+    methods: ["PATCH"]
+    pattern: '/admin/skills/:slug'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/skills/validators/skills-input').blockSkillInput)>>
+      paramsTuple: [ParamValue]
+      params: { slug: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/skills/validators/skills-input').blockSkillInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skills-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skills-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'architectures.index': {

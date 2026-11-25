@@ -1065,9 +1065,15 @@ export const en = {
   skillVersions: {
     title: 'Copies',
     empty: 'No copy of its files yet.',
-    copyNow: 'Copy now',
-    copyQueued: 'Copy asked for. It appears here once made, unless nothing changed.',
-    copyFailed: 'The copy could not be asked for.',
+    copyNow: 'Sync now',
+    copyQueued:
+      'Sync asked for. Its audits and its pin are read again; a new copy appears here unless nothing changed.',
+    copyFailed: 'The sync could not be asked for.',
+    scanNow: 'Scan',
+    scanAgain: 'Scan again',
+    scanQueued:
+      'Scan asked for. Its verdict appears here once the skill-scanner worker has run it.',
+    scanFailed: 'The scan could not be asked for.',
     loadFailed: 'The copies could not be loaded.',
     files: (count: number) => (count === 1 ? '1 file' : `${count} files`),
     executable: 'Executable',
@@ -1109,7 +1115,7 @@ export const en = {
       not_scanned:
         'It cannot be approved before it is scanned (the skill-scanner worker scans each new copy).',
       scan_failed:
-        'It cannot be approved: the scan gave no verdict. The next refresh scans it again.',
+        'It cannot be approved: the scan gave no verdict. Scan it again, or wait for the next search.',
       scan_incomplete: 'It cannot be approved: the scan could not read every file.',
       do_not_install:
         'SkillSpector recommends not installing it. Read every finding: if they are wrong, approve it despite the scan with your reason, kept with this copy only.',
@@ -1134,7 +1140,23 @@ export const en = {
     tabs: { catalog: 'Catalog', overview: 'Trends' },
     emptyTitle: 'No skills yet',
     emptyText:
-      'The catalog fills up when the weekly search on skills.sh runs. An administrator can run it now with node ace skills:refresh.',
+      'The catalog fills up when the weekly search on skills.sh runs. An administrator can run it now from this page.',
+    admin: {
+      refresh: 'Search now',
+      refreshQueued: 'Search asked for. The catalog updates here when it ends.',
+      refreshRunning: 'A search is already running.',
+      refreshFailed: 'The search could not be asked for.',
+      scans: 'Scan waiting copies',
+      scansQueued: (count: number) =>
+        count === 0 ? 'No copy is waiting for a scan.' : `Scans asked for: ${count}.`,
+      scansFailed: 'The scans could not be asked for.',
+      block: 'Stop suggesting',
+      unblock: 'Suggest again',
+      blockReason: 'Why stop suggesting it (optional)',
+      blocked: 'This skill is no longer suggested.',
+      unblocked: 'This skill can be suggested again.',
+      blockFailed: 'The skill could not be changed.',
+    },
     stats: {
       skills: 'Skills catalogued',
       suggested: 'Suggested',
@@ -2750,9 +2772,15 @@ export const fr: Messages = {
   skillVersions: {
     title: 'Copies',
     empty: 'Aucune copie de ses fichiers pour l’instant.',
-    copyNow: 'Copier maintenant',
-    copyQueued: 'Copie demandée. Elle apparaît ici une fois faite, sauf si rien n’a changé.',
-    copyFailed: 'La copie n’a pas pu être demandée.',
+    copyNow: 'Synchroniser',
+    copyQueued:
+      'Synchronisation demandée. Ses audits et son épingle sont relus ; une nouvelle copie apparaît ici sauf si rien n’a changé.',
+    copyFailed: 'La synchronisation n’a pas pu être demandée.',
+    scanNow: 'Scanner',
+    scanAgain: 'Scanner à nouveau',
+    scanQueued:
+      'Scan demandé. Son verdict apparaît ici une fois que le worker skill-scanner l’a exécuté.',
+    scanFailed: 'Le scan n’a pas pu être demandé.',
     loadFailed: 'Les copies n’ont pas pu être chargées.',
     files: (count: number) => (count === 1 ? '1 fichier' : `${count} fichiers`),
     executable: 'Exécutable',
@@ -2820,7 +2848,23 @@ export const fr: Messages = {
     tabs: { catalog: 'Catalogue', overview: 'Tendances' },
     emptyTitle: 'Aucun skill pour l’instant',
     emptyText:
-      'Le catalogue se remplit quand la recherche hebdomadaire sur skills.sh tourne. Un administrateur peut la lancer tout de suite avec node ace skills:refresh.',
+      'Le catalogue se remplit quand la recherche hebdomadaire sur skills.sh tourne. Un administrateur peut la lancer tout de suite depuis cette page.',
+    admin: {
+      refresh: 'Lancer la recherche',
+      refreshQueued: 'Recherche demandée. Le catalogue se met à jour ici quand elle se termine.',
+      refreshRunning: 'Une recherche est déjà en cours.',
+      refreshFailed: 'La recherche n’a pas pu être demandée.',
+      scans: 'Scanner les copies en attente',
+      scansQueued: (count: number) =>
+        count === 0 ? 'Aucune copie n’attend de scan.' : `Scans demandés : ${count}.`,
+      scansFailed: 'Les scans n’ont pas pu être demandés.',
+      block: 'Ne plus suggérer',
+      unblock: 'Suggérer à nouveau',
+      blockReason: 'Pourquoi ne plus le suggérer (facultatif)',
+      blocked: 'Ce skill n’est plus suggéré.',
+      unblocked: 'Ce skill peut de nouveau être suggéré.',
+      blockFailed: 'Le skill n’a pas pu être modifié.',
+    },
     stats: {
       skills: 'Skills catalogués',
       suggested: 'Suggérés',
