@@ -50,6 +50,7 @@ export function SkillTopicsEditor({ skill }: { skill: SkillDetail }) {
       <p className="m-0 text-sm text-muted-foreground">{t.tagging.help}</p>
       <ChipGroup
         type="multiple"
+        size="sm"
         aria-label={t.tagging.title}
         options={Object.keys(t.topics).map((topic) => ({
           value: topic,
