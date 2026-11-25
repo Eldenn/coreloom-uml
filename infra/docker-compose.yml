@@ -102,6 +102,8 @@ services:
       NODE_ENV: production
       HOST: 0.0.0.0
       DB_HOST: postgres
+      # NODE_ENV=production turns TLS on, which the local Postgres does not speak.
+      DB_SSL: 'false'
       REDIS_HOST: redis
       SMTP_HOST: mailpit
       S3_ENDPOINT: http://minio:9000
