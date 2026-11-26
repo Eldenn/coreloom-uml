@@ -1,5 +1,7 @@
 import { DateTime } from 'luxon'
+import { LlmSecretPurpose } from '#app/llm-connections/constants/llm-connections'
 import LlmApiKey from '#app/llm-connections/models/llm-api-key'
+import { openLlmSecret, sealLlmSecret } from '#app/llm-connections/services/llm-secrets'
 
 type Person = { id: number }
 
@@ -28,7 +30,11 @@ export function keyHintOf(apiKey: string): string {
 export async function storedApiKey(user: Person, kind: string): Promise<StoredApiKey | null> {
   const row = await LlmApiKey.query().where('user_id', user.id).where('kind', kind).first()
   if (!row) return null
-  return { apiKey: row.apiKey ?? '', baseUrl: row.baseUrl }
+  const apiKey =
+    row.sealedKey === null
+      ? ''
+      : (openLlmSecret(row.sealedKey, LlmSecretPurpose.ApiKey, user) ?? '')
+  return { apiKey, baseUrl: row.baseUrl }
 }
 
 /**
@@ -45,7 +51,12 @@ export async function saveApiKey(
   const stored = apiKey === '' ? null : apiKey
   return LlmApiKey.updateOrCreate(
     { userId: user.id, kind },
-    { apiKey: stored, baseUrl, keyHint: keyHintOf(apiKey), verifiedAt: DateTime.now() },
+    {
+      sealedKey: stored === null ? null : sealLlmSecret(stored, LlmSecretPurpose.ApiKey, user),
+      baseUrl,
+      keyHint: keyHintOf(apiKey),
+      verifiedAt: DateTime.now(),
+    },
   )
 }
 

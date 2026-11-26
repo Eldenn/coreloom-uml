@@ -11,21 +11,25 @@ import { LlmCallError, type LlmFailureReason } from './failure.ts'
 
 /**
  * A model of the user's Claude subscription, called through the unmodified `claude` binary
- * (Claude Code) in print mode. The binary holds the user's credentials in its own configuration
- * folder; this code never reads them. Flags checked against Claude Code 2.1.322 on 2026-11-12.
+ * (Claude Code) in print mode. The binary signs in and calls Claude itself; this code never reads
+ * its credentials: the caller's runner keeps the binary's state and lends it for each launch.
+ * Flags checked against Claude Code 2.1.322 on 2026-11-12.
  *
  * The binary never gets a tool. When the caller has tools (the web research), each call asks
  * it for one action as structured output: which of the caller's tools to run, or the answer.
  * The caller runs the tool and calls again with the result, one launch of the binary a step.
  */
 
-/** What a call with a connected Claude subscription needs: the account's own folder. */
-export type ClaudeCodeCredential = { kind: 'claude-code'; configDir: string }
+/**
+ * What a call with a connected Claude subscription needs: whose subscription it is. The caller's
+ * runner keys the binary's state by it; this package never knows where that state lives.
+ */
+export type ClaudeCodeCredential = { kind: 'claude-code'; owner: number }
 
-/** Runs `claude` with these arguments in this folder. Never through a shell. */
+/** Runs `claude` with these arguments for this owner's subscription. Never through a shell. */
 export type ClaudeRun = (
   args: string[],
-  options: { stdin: string; configDir: string; timeoutMs: number; signal?: AbortSignal },
+  options: { stdin: string; owner: number; timeoutMs: number; signal?: AbortSignal },
 ) => Promise<{
   exitCode: number | null
   stdout: string
@@ -191,7 +195,7 @@ export function createClaudeCodeModel(
       ]
       const outcome = await run(args, {
         stdin,
-        configDir: credential.configDir,
+        owner: credential.owner,
         timeoutMs: CLAUDE_CODE_TIMEOUT_MS,
         // The caller's own timeout (connection test, proposals) stops the binary too.
         signal: options.abortSignal,

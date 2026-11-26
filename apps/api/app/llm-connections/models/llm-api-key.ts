@@ -1,29 +1,5 @@
-import encryption from '@adonisjs/core/services/encryption'
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import type { DateTime } from 'luxon'
-
-/**
- * Binds a stored provider key to this table: a ciphertext copied anywhere else (another row,
- * another column, another flow) fails to decrypt.
- */
-export const LLM_API_KEY_PURPOSE = 'llm-api-key'
-
-/**
- * Encrypted with the dedicated `llmKeys` encrypter on write; `null` for a kind that calls a
- * server without a key, and on read when the ciphertext cannot be decrypted (the key changed) —
- * which the services treat as "no key saved". Never serialized.
- */
-const secret = {
-  prepare: (value: string | null) =>
-    value === null
-      ? null
-      : encryption.use('llmKeys').encrypt(value, { purpose: LLM_API_KEY_PURPOSE }),
-  consume: (value: string | null): string | null =>
-    value === null
-      ? null
-      : (encryption.use('llmKeys').decrypt<string>(value, LLM_API_KEY_PURPOSE) ?? null),
-  serializeAs: null,
-}
 
 /** A provider API key the account saved (see the `llm_api_keys` migration). */
 export default class LlmApiKey extends BaseModel {
@@ -38,8 +14,13 @@ export default class LlmApiKey extends BaseModel {
   @column()
   declare kind: string
 
-  @column(secret)
-  declare apiKey: string | null
+  /**
+   * The key, sealed by `llmKeys` and bound to its owner (`llm-secrets.ts`); only
+   * `llm-api-keys.ts` seals or opens it. `null` for a kind that calls a server without a key.
+   * Never serialized.
+   */
+  @column({ columnName: 'api_key', serializeAs: null })
+  declare sealedKey: string | null
 
   /** The last four characters of the key, plain: what the settings screen shows. */
   @column()

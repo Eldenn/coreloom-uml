@@ -1,5 +1,3 @@
-import { mkdir, rm, stat } from 'node:fs/promises'
-import { join } from 'node:path'
 import app from '@adonisjs/core/services/app'
 import { LlmCallError, LlmFailureReason } from '@coreloom-uml/llm'
 import {
@@ -8,13 +6,24 @@ import {
   CLAUDE_STATUS_TTL_MS,
 } from '#app/llm-connections/constants/llm-connections'
 import ClaudeCodeCli, { type ClaudeLogin } from '#app/llm-connections/services/claude-code-cli'
+import {
+  deleteClaudeState,
+  hasClaudeState,
+  makeClaudeFolder,
+  readClaudeFolder,
+  removeClaudeFolder,
+  saveClaudeState,
+  withClaudeFolder,
+  withClaudeLock,
+} from '#app/llm-connections/services/claude-code-state'
 import type User from '#app/users/models/user'
-import llmConfig from '#config/llm'
 
 /**
- * A Claude subscription is held by the `claude` binary alone, in one folder per account: this code
- * starts its sign-in, passes the pasted code to it, asks whether it is signed in, and signs it out.
- * It never reads, stores, logs or returns the code or the credentials.
+ * A Claude subscription is signed in by the unmodified `claude` binary, and its state is kept in
+ * the database (`claude-code-state.ts`): this code starts the binary's sign-in in a short-lived
+ * folder, passes the pasted code to it, saves the folder's files once it is signed in, asks it
+ * whether it still is, and signs it out. It never reads, logs or returns the code or what the
+ * files hold.
  */
 
 type Person = Pick<User, 'id'>
@@ -22,69 +31,70 @@ type Person = Pick<User, 'id'>
 const statuses = new Map<number, { connected: boolean; at: number }>()
 // ponytail: sign-ins live in this API process; route a user to one instance (or move them to a
 // shared runner) before running several API replicas.
-const logins = new Map<number, { login: ClaudeLogin; timer: NodeJS.Timeout }>()
+const logins = new Map<
+  number,
+  { login: ClaudeLogin; timer: NodeJS.Timeout; dir: string; submitting: boolean }
+>()
 
-function folder(user: Person): string {
-  return join(llmConfig.claudeCodeHome, String(user.id))
-}
-
-/** Whether the account's folder exists: without it, the binary was never signed in for it. */
-async function hasFolder(user: Person): Promise<boolean> {
-  return stat(folder(user)).then(
-    () => true,
-    () => false,
-  )
-}
-
-/** The account's own `CLAUDE_CONFIG_DIR`, created private (0700) on first use. */
-export async function claudeConfigDir(user: Person): Promise<string> {
-  const dir = folder(user)
-  await mkdir(dir, { recursive: true, mode: 0o700 })
-  return dir
-}
-
-/** Stops the user's sign-in; with `only`, only if that sign-in is still the current one. */
+/** Stops the user's sign-in and removes its folder; with `only`, only if it is still current. */
 function stopLogin(user: Person, only?: ClaudeLogin): void {
   const running = logins.get(user.id)
   if (!running || (only && running.login !== only)) return
   clearTimeout(running.timer)
   running.login.kill()
   logins.delete(user.id)
+  void removeClaudeFolder(running.dir).catch(() => {})
 }
 
-/** Whether the binary is signed in for this account; asked again after a short while. */
+/**
+ * Whether the account holds a signed-in subscription; asked again after a short while. An account
+ * without a saved state answers without starting the binary; one whose binary is busy with a
+ * launch is connected, since only a saved state can be launched.
+ */
 export async function claudeConnected(user: Person): Promise<boolean> {
   const cached = statuses.get(user.id)
   if (cached && Date.now() - cached.at < CLAUDE_STATUS_TTL_MS) return cached.connected
-  // Never signed in here: answer without creating the folder or starting the binary.
-  if (!(await hasFolder(user))) return false
+  if (!(await hasClaudeState(user))) return false
   const cli = await app.container.make(ClaudeCodeCli)
-  const connected = await cli.status(await claudeConfigDir(user))
+  let connected: boolean
+  try {
+    connected = await withClaudeFolder(user, (dir) => cli.status(dir), { waitMs: 0 })
+  } catch (error) {
+    if (!(error instanceof LlmCallError)) throw error
+    connected = error.reason === LlmFailureReason.Timeout
+  }
   statuses.set(user.id, { connected, at: Date.now() })
   return connected
 }
 
 /**
- * Starts the binary's sign-in and returns the page it prints. One per account: a new one stops
- * the previous one, and one left waiting stops after `timeoutMs`. A binary that prints no page
- * within `urlTimeoutMs` is stopped, and the call fails with a `timeout` `LlmCallError`.
+ * Starts the binary's sign-in in a new private folder and returns the page it prints. One per
+ * account: a new one stops the previous one, and one left waiting stops after `timeoutMs`. A
+ * binary that prints no page within `urlTimeoutMs` is stopped, and the call fails with a
+ * `timeout` `LlmCallError`.
  */
 export async function startClaudeLogin(
   user: Person,
   options: { timeoutMs?: number; urlTimeoutMs?: number } = {},
 ): Promise<string> {
   const cli = await app.container.make(ClaudeCodeCli)
-  const dir = await claudeConfigDir(user)
+  const dir = await makeClaudeFolder()
   // No await between stopping the previous sign-in and recording this one: two requests at once
   // cannot both pass the stop and leave a process running.
   stopLogin(user)
-  const login = cli.login(dir)
+  let login: ClaudeLogin
+  try {
+    login = cli.login(dir)
+  } catch (error) {
+    await removeClaudeFolder(dir)
+    throw error
+  }
   const timer = setTimeout(
     () => stopLogin(user, login),
     options.timeoutMs ?? CLAUDE_LOGIN_TIMEOUT_MS,
   )
   timer.unref()
-  logins.set(user.id, { login, timer })
+  logins.set(user.id, { login, timer, dir, submitting: false })
   let urlTimer: NodeJS.Timeout | undefined
   const late = new Promise<never>((_resolve, reject) => {
     urlTimer = setTimeout(
@@ -102,29 +112,50 @@ export async function startClaudeLogin(
   }
 }
 
-/** Hands the pasted code to the running sign-in; `null` when none is running. */
+/**
+ * Hands the pasted code to the running sign-in; `null` when none is running or a code is already
+ * being handed to it. Once the binary says it is signed in, its folder's files replace the
+ * account's saved state; the sign-in and its folder go whatever happens.
+ */
 export async function submitClaudeCode(user: Person, code: string): Promise<boolean | null> {
   const running = logins.get(user.id)
-  if (!running) return null
-  const connected = await running.login.submit(code)
-  stopLogin(user)
-  statuses.set(user.id, { connected, at: Date.now() })
-  return connected
+  if (!running || running.submitting) return null
+  running.submitting = true
+  try {
+    let connected = await running.login.submit(code)
+    if (connected) {
+      const files = await readClaudeFolder(running.dir)
+      if (files === null) connected = false
+      else await withClaudeLock(user, () => saveClaudeState(user, files))
+    }
+    statuses.set(user.id, { connected, at: Date.now() })
+    return connected
+  } finally {
+    stopLogin(user, running.login)
+  }
 }
 
-/** Removes the account's folder, credentials included, without asking the binary. */
+/**
+ * Drops the account's saved state, without asking the binary. A launch running meanwhile never
+ * brings it back: it writes its files back only over the row it read.
+ */
 export async function forgetClaude(user: Person): Promise<void> {
   stopLogin(user)
   statuses.delete(user.id)
-  await rm(folder(user), { recursive: true, force: true })
+  await deleteClaudeState(user)
 }
 
-/** Signs the binary out for this account, then removes its folder. */
+/**
+ * Signs the binary out for this account (best effort) and drops its saved state in the same
+ * launch slot, then drops it again in case the slot stayed busy.
+ */
 export async function disconnectClaude(user: Person): Promise<void> {
   stopLogin(user)
-  if (await hasFolder(user)) {
+  if (await hasClaudeState(user)) {
     const cli = await app.container.make(ClaudeCodeCli)
-    await cli.logout(folder(user))
+    await withClaudeFolder(user, (dir) => cli.logout(dir), { drop: true }).catch((error) => {
+      if (!(error instanceof LlmCallError)) throw error
+    })
   }
   await forgetClaude(user)
 }

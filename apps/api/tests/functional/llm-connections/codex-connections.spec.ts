@@ -1,8 +1,10 @@
 import app from '@adonisjs/core/services/app'
+import encryption from '@adonisjs/core/services/encryption'
 import testUtils from '@adonisjs/core/services/test_utils'
 import db from '@adonisjs/lucid/services/db'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
+import { LlmSecretPurpose } from '#app/llm-connections/constants/llm-connections'
 import LlmConnection from '#app/llm-connections/models/llm-connection'
 import {
   codexCredential,
@@ -10,6 +12,7 @@ import {
   saveCodexTokens,
 } from '#app/llm-connections/services/codex-connections'
 import CodexOAuth from '#app/llm-connections/services/codex-oauth'
+import { openLlmSecret } from '#app/llm-connections/services/llm-secrets'
 import User from '#app/users/models/user'
 import { codexJwt, fakeCodexOAuth } from './fakes.js'
 
@@ -50,6 +53,51 @@ test.group('ChatGPT subscription tokens', (group) => {
     })
   })
 
+  test('seals the tokens with llmKeys, bound to their kind and their owner, never APP_KEY', async ({
+    assert,
+  }) => {
+    const user = await makeUser()
+    await saveCodexTokens(user, tokens(3600_000))
+    const raw = await db.from('llm_connections').where('user_id', user.id).firstOrFail()
+    assert.equal(openLlmSecret(raw.refresh_token, LlmSecretPurpose.Connection, user), REFRESH)
+    assert.isNull(encryption.decrypt(raw.refresh_token))
+    // Another kind (a saved key's, the Claude state's) or another account cannot open it.
+    assert.isNull(openLlmSecret(raw.refresh_token, LlmSecretPurpose.ApiKey, user))
+    assert.isNull(
+      openLlmSecret(raw.refresh_token, LlmSecretPurpose.Connection, { id: user.id + 1 }),
+    )
+  })
+
+  test('no longer reads tokens sealed with APP_KEY: the row reads as not connected', async ({
+    assert,
+  }) => {
+    const user = await makeUser()
+    await saveCodexTokens(user, tokens(3600_000))
+    await db
+      .from('llm_connections')
+      .where('user_id', user.id)
+      .update({
+        access_token: encryption.encrypt(ACCESS),
+        refresh_token: encryption.encrypt(REFRESH),
+      })
+    assert.isNull(await codexCredential(user))
+    assert.isNull(await db.from('llm_connections').where('user_id', user.id).first())
+  })
+
+  test("tokens copied into another account's row are not read there", async ({ assert }) => {
+    const owner = await makeUser()
+    const other = await makeUser()
+    await saveCodexTokens(owner, tokens(3600_000))
+    await saveCodexTokens(other, tokens(3600_000))
+    const stolen = await db.from('llm_connections').where('user_id', owner.id).firstOrFail()
+    await db
+      .from('llm_connections')
+      .where('user_id', other.id)
+      .update({ access_token: stolen.access_token, refresh_token: stolen.refresh_token })
+    assert.isNull(await codexCredential(other))
+    assert.equal((await codexCredential(owner))?.accessToken, ACCESS)
+  })
+
   test('refreshes a token about to expire', async ({ assert }) => {
     const user = await makeUser()
     const oauth = fakeCodexOAuth({ refresh: { access_token: NEW_ACCESS, expires_in: 3600 } })
@@ -58,8 +106,11 @@ test.group('ChatGPT subscription tokens', (group) => {
     assert.equal(credential?.accessToken, NEW_ACCESS)
     assert.lengthOf(oauth.calls('/oauth/token'), 1)
     const row = await LlmConnection.query().where('user_id', user.id).firstOrFail()
-    assert.equal(row.accessToken, NEW_ACCESS)
-    assert.equal(row.refreshToken, REFRESH)
+    assert.equal(
+      openLlmSecret(row.sealedAccessToken, LlmSecretPurpose.Connection, user),
+      NEW_ACCESS,
+    )
+    assert.equal(openLlmSecret(row.sealedRefreshToken, LlmSecretPurpose.Connection, user), REFRESH)
     assert.isTrue(row.expiresAt > DateTime.now().plus({ minutes: 50 }))
   })
 

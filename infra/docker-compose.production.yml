@@ -19,8 +19,10 @@ services:
     command:
       - sh
       - '-c'
-      - 'node ace migration:run --force && node ace account:ensure-default && node ace skills:setup && node ace assistant:setup'
+      - 'node ace migration:run --force && node ace account:ensure-default && node ace skills:setup && node ace assistant:setup && node ace claude:import'
     restart: 'no'
+    volumes:
+      - claude-config:/data/claude
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
@@ -32,6 +34,10 @@ services:
       SKILLS_REFRESH_ENABLED: '${SKILLS_REFRESH_ENABLED:-true}'
       SKILLS_GITHUB_TOKEN: '${SKILLS_GITHUB_TOKEN:-}'
       FRONTEND_URL: '${SERVICE_URL_WEB}'
+      # Keys of the encrypter that seals every stored LLM secret (keys, subscriptions).
+      LLM_KEYS_ENCRYPTION_KEYS: '${LLM_KEYS_ENCRYPTION_KEYS:-}'
+      # `claude:import` moves the Claude account folders from before into the DB.
+      CLAUDE_CODE_HOME: /data/claude
       # E2B sandboxes, required: code maps from GitHub, the assistant's repository tools and
       # the web research all run there. The key alone is E2B Cloud; a self-hosted install
       # (e2b-dev/runtime, Embed) adds its two URLs.
@@ -73,9 +79,9 @@ services:
       SKILLS_GITHUB_TOKEN: '${SKILLS_GITHUB_TOKEN:-}'
       # Origins an `ollama` / `openai-compatible` LLM provider may call (comma-separated).
       LLM_ALLOWED_BASE_URLS: '${LLM_ALLOWED_BASE_URLS:-}'
-      # Keys of the encrypter that seals saved provider API keys (`llm_api_keys`).
+      # Keys of the encrypter that seals every stored LLM secret (keys, subscriptions).
       LLM_KEYS_ENCRYPTION_KEYS: '${LLM_KEYS_ENCRYPTION_KEYS:-}'
-      # Each account's Claude subscription lives in its own `claude` config folder here.
+      # Short-lived folders of the `claude` binary's launches (subscriptions are in the DB).
       CLAUDE_CODE_HOME: /data/claude
       FRONTEND_URL: '${SERVICE_URL_WEB}'
       DB_HOST: '${DB_HOST}'
@@ -125,9 +131,10 @@ services:
       GITHUB_APP_WEBHOOK_SECRET: '${GITHUB_APP_WEBHOOK_SECRET:-}'
       OTEL_SERVICE_NAME: coreloom-uml-api-production
       OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
-    volumes:
-      # The `claude` binary's per-account credentials: losing it signs every Claude subscription out.
-      - claude-config:/data/claude
+    # The short-lived folders of the `claude` binary's launches live in memory, so a launch cut off
+    # by a crash leaves nothing on a disk (uid 1000 is the image's `node`).
+    tmpfs:
+      - /data/claude:mode=0700,uid=1000,gid=1000
     depends_on:
       redis:
         condition: service_healthy
@@ -171,6 +178,8 @@ services:
       SKILLS_REFRESH_ENABLED: '${SKILLS_REFRESH_ENABLED:-true}'
       SKILLS_GITHUB_TOKEN: '${SKILLS_GITHUB_TOKEN:-}'
       FRONTEND_URL: '${SERVICE_URL_WEB}'
+      # Keys of the encrypter that seals every stored LLM secret (keys, subscriptions).
+      LLM_KEYS_ENCRYPTION_KEYS: '${LLM_KEYS_ENCRYPTION_KEYS:-}'
       DB_HOST: '${DB_HOST}'
       DB_PORT: '${DB_PORT:-5432}'
       DB_USER: '${DB_USER}'
@@ -521,6 +530,8 @@ services:
         condition: service_completed_successfully
 
 volumes:
+  # The Claude account folders from before `claude_code_states`, read once by `claude:import`
+  # (service `migrate`). Can be removed once that has run.
   claude-config:
   redis-data:
   skill-tagger-models:

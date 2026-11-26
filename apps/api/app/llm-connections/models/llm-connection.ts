@@ -1,17 +1,6 @@
-import encryption from '@adonisjs/core/services/encryption'
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import type { DateTime } from 'luxon'
 import type { ProviderKind } from '#app/llm-connections/constants/llm-connections'
-
-/**
- * Encrypted with `APP_KEY` on write; `null` on read when it cannot be decrypted (the key changed),
- * which the services treat as "not connected". Never serialized.
- */
-const secret = {
-  prepare: (value: string) => encryption.encrypt(value),
-  consume: (value: string): string | null => encryption.decrypt<string>(value) ?? null,
-  serializeAs: null,
-}
 
 /** A connected subscription (see the `llm_connections` migration). */
 export default class LlmConnection extends BaseModel {
@@ -26,11 +15,15 @@ export default class LlmConnection extends BaseModel {
   @column()
   declare kind: ProviderKind
 
-  @column(secret)
-  declare accessToken: string | null
+  /**
+   * The tokens, sealed by `llmKeys` and bound to their owner (`llm-secrets.ts`); only
+   * `codex-connections.ts` seals or opens them. Never serialized.
+   */
+  @column({ columnName: 'access_token', serializeAs: null })
+  declare sealedAccessToken: string
 
-  @column(secret)
-  declare refreshToken: string | null
+  @column({ columnName: 'refresh_token', serializeAs: null })
+  declare sealedRefreshToken: string
 
   @column.dateTime()
   declare expiresAt: DateTime
