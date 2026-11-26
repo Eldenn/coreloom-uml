@@ -19,3 +19,17 @@ export type ClaudeLoginOutput = { url: string }
 
 /** `POST /llm/connections/claude-code/login/code`. */
 export type ClaudeCodeOutput = { connected: boolean }
+
+/**
+ * `PUT /llm/api-keys/:kind`: the key as the settings screen shows it. The key itself is never
+ * returned, by this route or any other.
+ */
+export type LlmApiKeyOutput = {
+  kind: string
+  /** The last four characters of the key, what the screen shows (`…abcd`). */
+  keyHint: string
+  /** The origin the key was saved with; a call reads it from the row, never from the request. */
+  baseUrl: string | null
+  /** The date of the successful test call that stored the key. */
+  verifiedAt: string
+}

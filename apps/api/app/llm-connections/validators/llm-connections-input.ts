@@ -1,4 +1,6 @@
+import { PROVIDER_KINDS } from '@coreloom-uml/catalog'
 import vine from '@vinejs/vine'
+import { LLM_API_KEY_MAX_LENGTH, LLM_BASE_URL_MAX_LENGTH } from '#app/llm/constants/llm'
 
 /**
  * The code the user copied from Claude's sign-in page, passed as is to the binary's stdin: printable
@@ -10,5 +12,32 @@ export const claudeCodeInput = vine.create(
       .string()
       .trim()
       .regex(/^[\x21-\x7E]{1,500}$/),
+  }),
+)
+
+/** The kind of a saved provider key, from the URL of `PUT /llm/api-keys/:kind`. */
+export const apiKeyKindInput = vine.create(
+  vine.object({
+    kind: vine.enum(PROVIDER_KINDS),
+  }),
+)
+
+/**
+ * A provider key the account saves: printable ASCII on one line only (no space, control character
+ * or line break, so it cannot leak into a header or a log line), stored only after the controller
+ * checked it with a successful test call. A kind that calls a server the user names may take none
+ * (`requiresApiKey` is false).
+ */
+export const saveApiKeyInput = vine.create(
+  vine.object({
+    apiKey: vine
+      .string()
+      .trim()
+      .minLength(16)
+      .maxLength(LLM_API_KEY_MAX_LENGTH)
+      .regex(/^[\x21-\x7E]+$/)
+      .nullable()
+      .optional(),
+    baseUrl: vine.string().trim().maxLength(LLM_BASE_URL_MAX_LENGTH).nullable().optional(),
   }),
 )

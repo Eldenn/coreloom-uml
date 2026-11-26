@@ -239,6 +239,10 @@ export interface ApiDefinition {
         destroy: typeof routes['llm.connections.claude_code.destroy']
       }
     }
+    apiKeys: {
+      save: typeof routes['llm.api_keys.save']
+      destroy: typeof routes['llm.api_keys.destroy']
+    }
   }
   rulePacks: {
     index: typeof routes['rule_packs.index']
