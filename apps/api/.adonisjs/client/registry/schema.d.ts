@@ -1202,9 +1202,9 @@ export interface Registry {
       body: {}
       paramsTuple: [ParamValue]
       params: { slug: ParamValue }
-      query: {}
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/skills/validators/skills-input').skillCopyInput)>>
       response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/skills-controller').default['copy']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/skills-controller').default['copy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/skills-controller').default['copy']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'admin.skill_versions.index': {

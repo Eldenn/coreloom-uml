@@ -31,6 +31,11 @@ export const listSkillsInput = vine.create(
   }),
 )
 
+/** `GET /skills/:slug/copy`: `version`, a copy a generation recorded, instead of the newest. */
+export const skillCopyInput = vine.create(
+  vine.object({ version: vine.number().withoutDecimals().min(1).optional() }),
+)
+
 /** A single query value arrives as a string, a repeated one as an array. */
 function toArray(value: unknown) {
   if (value === undefined || value === null || value === '') return undefined

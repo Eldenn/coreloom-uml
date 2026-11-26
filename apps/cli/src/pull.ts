@@ -159,12 +159,21 @@ async function installHeldSkills(
   options.io.log('\nSkills this configuration holds:')
   const targets = generation.targets.filter((target) => target in SKILL_FOLDERS)
   let code: ExitCode = ExitCode.Ok
+  const { copies } = generation.skills
   for (const slug of generation.skills.held) {
+    // The copy the generation recorded, the one its page shows; none when it was not served then.
+    const versionId = copies?.find((copy) => copy.slug === slug)?.versionId
+    if (copies && !versionId) {
+      options.io.warn(`  ${slug} not installed: it had no approved copy when this was generated.`)
+      code = ExitCode.Error
+      continue
+    }
     try {
       const result = await skillsAdd({
         cwd: options.cwd,
         io: options.io,
         slugs: [slug],
+        ...(versionId && { versions: { [slug]: versionId } }),
         apiUrl,
         targets,
         ...(options.dryRun && { dryRun: true }),

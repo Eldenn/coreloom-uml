@@ -25,6 +25,8 @@ export type SkillsAddOptions = {
   cwd: string
   io: Io
   slugs: string[]
+  /** For a slug, the copy to install (`skill_versions.id`) instead of the newest approved one. */
+  versions?: Record<string, number>
   apiUrl?: string
   /** The tools to install for (`SKILL_FOLDERS`); `generic` (`.agents/skills`) when none. */
   targets?: string[]
@@ -60,11 +62,13 @@ export async function fetchSkillCopy(options: {
   apiUrl: string
   apiKey: string
   slug: string
+  version?: number
   fetch?: FetchLike
 }): Promise<SkillCopy> {
+  const query = options.version ? `?version=${options.version}` : ''
   let response: Response
   try {
-    response = await (options.fetch ?? fetch)(`${options.apiUrl}/skills/${options.slug}/copy`, {
+    response = await (options.fetch ?? fetch)(`${options.apiUrl}/skills/${options.slug}/copy${query}`, {
       headers: { Authorization: `Bearer ${options.apiKey}`, Accept: 'application/json' },
       redirect: 'manual',
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -217,6 +221,7 @@ export async function skillsAdd(options: SkillsAddOptions): Promise<ExitCode> {
       apiUrl,
       apiKey,
       slug,
+      ...(options.versions?.[slug] ? { version: options.versions[slug] } : {}),
       ...(options.fetch ? { fetch: options.fetch } : {}),
     })
     io.log(

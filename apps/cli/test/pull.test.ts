@@ -294,6 +294,29 @@ describe('pull, held skills', () => {
     expect(recorder.output()).not.toContain('tidy-tests: https://example.com/tidy-tests')
   })
 
+  it('installs the copy the generation recorded, and none for a skill it recorded no copy of', async () => {
+    api.current = {
+      ...first,
+      skills: {
+        ...first.skills,
+        held: ['tidy-tests', 'gone'],
+        copies: [{ slug: 'tidy-tests', versionId: 7 }],
+      },
+    }
+    api.copies['tidy-tests'] = skill('tidy-tests')
+    api.copies.gone = skill('gone')
+    const recorder = recordingIo()
+
+    expect(await run({}, recorder.io)).toBe(ExitCode.Error)
+
+    expect(await read('.claude/skills/tidy-tests/SKILL.md')).toBe('---\nname: tidy-tests\n---\n')
+    expect(await exists('.claude/skills/gone')).toBe(false)
+    expect(recorder.output()).toContain('gone not installed: it had no approved copy')
+    const urls = api.requests.map((request) => request.url)
+    expect(urls).toContain('/skills/tidy-tests/copy?version=7')
+    expect(urls.some((url) => url?.startsWith('/skills/gone'))).toBe(false)
+  })
+
   it('writes no skill with --dry-run', async () => {
     api.current = { ...first, skills: { ...first.skills, held: ['tidy-tests'] } }
     api.copies['tidy-tests'] = skill('tidy-tests')

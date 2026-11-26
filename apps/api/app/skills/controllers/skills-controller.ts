@@ -3,8 +3,10 @@ import { SkillOrigin } from '@coreloom-uml/catalog'
 import { isDefaultAccount } from '#app/auth/services/default-account'
 import { paginate } from '#app/shared/pagination/paginate'
 import { SKILLS_HISTORY_RUNS, SkillSort, SkillStatus } from '#app/skills/constants/skill'
+import { SkillVersionStatus } from '#app/skills/constants/skill-version'
 import CatalogSkill from '#app/skills/models/catalog-skill'
 import SkillSnapshot from '#app/skills/models/skill-snapshot'
+import SkillVersion from '#app/skills/models/skill-version'
 import {
   serializeSkillDetail,
   serializeSkillSummary,
@@ -16,7 +18,7 @@ import {
 } from '#app/skills/services/skill-versions'
 import { facetCounts, skillsQuery } from '#app/skills/services/skills-query'
 import { skillsStats } from '#app/skills/services/skills-stats'
-import { listSkillsInput } from '#app/skills/validators/skills-input'
+import { listSkillsInput, skillCopyInput } from '#app/skills/validators/skills-input'
 import type { SkillCopyOutput, SkillsListOutput } from '#app/skills/validators/skills-output'
 
 const SKILL_NOT_FOUND = { error: { message: 'Skill not found' } }
@@ -60,14 +62,25 @@ export default class SkillsController {
   /**
    * The newest copy the admin approved, of a skill still active and eligible (blocked, or found
    * ineligible since, it is not served): never a pending or rejected copy, never from GitHub.
+   * With `version`, that copy instead (the one a generation recorded), if it is an approved copy
+   * of this skill.
    */
-  async copy({ params, response }: HttpContext) {
+  async copy({ params, request, response }: HttpContext) {
+    const { version: versionId } = await request.validateUsing(skillCopyInput)
     const skill = await CatalogSkill.query()
       .where('slug', String(params.slug))
       .where('status', SkillStatus.Active)
       .where((query) => query.where('origin', SkillOrigin.Manual).orWhere('eligible', true))
       .first()
-    const version = skill ? await newestApproved(skill.id) : null
+    const version = !skill
+      ? null
+      : versionId
+        ? await SkillVersion.query()
+            .where('id', versionId)
+            .where('skillId', skill.id)
+            .where('status', SkillVersionStatus.Approved)
+            .first()
+        : await newestApproved(skill.id)
     if (!skill || !version) return response.notFound(NO_APPROVED_COPY)
 
     const files = await readSkillVersionFiles(version)
