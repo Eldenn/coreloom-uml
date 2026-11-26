@@ -12,9 +12,14 @@ const llmConfig = {
   /**
    * Where the short-lived private folders a launch of the `claude` binary borrows are made
    * (`withClaudeFolder`): the subscriptions themselves are in the database. `claude:import` also
-   * reads here the account folders from before (`<user id>`) to move them in.
+   * reads here the account folders from before (`<user id>`) to move them in. The tests always
+   * get a folder of their own, whatever `CLAUDE_CODE_HOME` says: the import they run removes every
+   * account folder whose account is not in the test database, which would remove the development
+   * server's.
    */
-  claudeCodeHome: env.get('CLAUDE_CODE_HOME') ?? app.makePath('tmp/claude'),
+  claudeCodeHome: app.inTest
+    ? app.makePath('tmp/claude-test')
+    : (env.get('CLAUDE_CODE_HOME') ?? app.makePath('tmp/claude')),
 }
 
 export default llmConfig
