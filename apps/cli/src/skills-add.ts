@@ -68,11 +68,14 @@ export async function fetchSkillCopy(options: {
   const query = options.version ? `?version=${options.version}` : ''
   let response: Response
   try {
-    response = await (options.fetch ?? fetch)(`${options.apiUrl}/skills/${options.slug}/copy${query}`, {
-      headers: { Authorization: `Bearer ${options.apiKey}`, Accept: 'application/json' },
-      redirect: 'manual',
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    })
+    response = await (options.fetch ?? fetch)(
+      `${options.apiUrl}/skills/${options.slug}/copy${query}`,
+      {
+        headers: { Authorization: `Bearer ${options.apiKey}`, Accept: 'application/json' },
+        redirect: 'manual',
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      },
+    )
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
     throw new CliError(`Could not reach ${options.apiUrl}: ${reason}`)
