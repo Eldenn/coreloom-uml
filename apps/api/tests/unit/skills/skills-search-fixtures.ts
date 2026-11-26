@@ -1,10 +1,26 @@
 import type { SkillSearchQuery } from '@coreloom-uml/catalog'
-import type { KnownSkill } from '#app/skills/services/skills-search'
+import type { KnownSkill, SearchSource } from '#app/skills/services/skills-search'
 
 export const SHA = 'a'.repeat(40)
 export const NEW_SHA = 'b'.repeat(40)
 export const FOLDER = 'c'.repeat(40)
 export const NEW_FOLDER = 'd'.repeat(40)
+
+/** The default source, and a GitHub one on `acme/skills` (which also holds `lint-rules`). */
+export const SKILLS_SH_SOURCE: SearchSource = {
+  id: 1,
+  kind: 'skills-sh',
+  owner: null,
+  repo: null,
+  path: null,
+}
+export const ACME_SOURCE: SearchSource = {
+  id: 2,
+  kind: 'github',
+  owner: 'acme',
+  repo: 'skills',
+  path: null,
+}
 
 export type Route = { status?: number; body: unknown }
 
@@ -99,6 +115,8 @@ export function routes(overrides: Record<string, Route> = {}): Record<string, Ro
           { path: 'skills/browser-tests/SKILL.md', type: 'blob', sha: 'f'.repeat(40) },
           { path: 'skills/c4-docs', type: 'tree', sha: NEW_FOLDER },
           { path: 'skills/c4-docs/SKILL.md', type: 'blob', sha: '1'.repeat(40) },
+          { path: 'skills/lint-rules', type: 'tree', sha: '2'.repeat(40) },
+          { path: 'skills/lint-rules/SKILL.md', type: 'blob', sha: '3'.repeat(40) },
         ],
       },
     },
@@ -107,6 +125,9 @@ export function routes(overrides: Record<string, Route> = {}): Record<string, Ro
     },
     [`https://raw.githubusercontent.com/acme/skills/${SHA}/skills/c4-docs/SKILL.md`]: {
       body: skillMd('c4-docs', '"Document systems with C4 diagrams."'),
+    },
+    [`https://raw.githubusercontent.com/acme/skills/${SHA}/skills/lint-rules/SKILL.md`]: {
+      body: skillMd('lint-rules', 'Keep lint rules strict.'),
     },
     ...overrides,
   }
@@ -130,6 +151,7 @@ export function known(overrides: Partial<KnownSkill> = {}): KnownSkill {
     contentSha: FOLDER,
     eligible: true,
     ineligibleReason: null,
+    trustedBy: [],
     ...overrides,
   }
 }

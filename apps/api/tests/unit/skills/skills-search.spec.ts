@@ -9,6 +9,7 @@ import {
   searchSkills,
 } from '#app/skills/services/skills-search'
 import {
+  ACME_SOURCE,
   FOLDER,
   fakeFetch,
   known,
@@ -18,6 +19,7 @@ import {
   type Route,
   routes,
   SHA,
+  SKILLS_SH_SOURCE,
   skillMd,
 } from '#tests/unit/skills/skills-search-fixtures'
 
@@ -30,6 +32,7 @@ function run(
   const result = searchSkills({
     known: knownSkills,
     plan,
+    sources: [SKILLS_SH_SOURCE],
     fetch: fake.fn,
     githubToken: 'token',
     minInstalls: 500,
@@ -281,7 +284,7 @@ test.group('searchSkills', () => {
   test('stops when every search fails, or an audit request fails', async ({ assert }) => {
     await assert.rejects(
       () => run([], { 'https://skills.sh/api/search*': { status: 503, body: {} } }).result,
-      'Every skills.sh search failed: nothing was changed',
+      'Every source failed: nothing was changed',
     )
     await assert.rejects(
       () =>
@@ -364,5 +367,206 @@ test.group('skills search helpers', () => {
       }),
       '3 skills found; 1 new; 2 checked on GitHub; 1 eligible; 1 copied for review; w',
     )
+  })
+})
+
+const BOTH = { sources: [SKILLS_SH_SOURCE, ACME_SOURCE] }
+const down = (status = 500) => ({ status, body: {} })
+const allSearches = (route: Route) =>
+  Object.fromEntries(
+    plan.map((item) => [
+      `https://skills.sh/api/search?${new URLSearchParams({ q: item.query })}`,
+      route,
+    ]),
+  )
+
+/** A repository `owner/skills` (MIT) whose tree holds the given skill folders. */
+function repository(owner: string, folders: string[], license: string | null = 'MIT') {
+  return {
+    [`https://api.github.com/repos/${owner}/skills`]: {
+      body: { default_branch: 'main', license: license ? { spdx_id: license } : null },
+    },
+    [`https://api.github.com/repos/${owner}/skills/commits/main`]: { body: { sha: SHA } },
+    [`https://api.github.com/repos/${owner}/skills/git/trees/${SHA}?recursive=1`]: {
+      body: {
+        tree: folders.flatMap((folder, index) => [
+          { path: folder, type: 'tree', sha: index.toString(16).padStart(40, '0') },
+          { path: `${folder}/SKILL.md`, type: 'blob', sha: 'f'.repeat(40) },
+        ]),
+      },
+    },
+  }
+}
+
+const github = (owner: string, id = 3) => ({ ...ACME_SOURCE, id, owner })
+
+test.group('searchSkills with sources', () => {
+  test('a skill a GitHub source lists is trusted: eligible with no installs and no audit', async ({
+    assert,
+  }) => {
+    const { records, sources } = await run([], routes(), BOTH).result
+    assert.deepInclude(bySlug(records).get('lint-rules'), {
+      registryId: 'acme/skills/lint-rules',
+      source: 'acme/skills',
+      origin: 'search',
+      installs: 0,
+      audits: [],
+      foundBy: [2],
+      trusted: true,
+      eligible: true,
+      ineligibleReason: null,
+    })
+    assert.deepEqual(sources, [
+      { sourceId: 1, ok: true, complete: true, error: null },
+      { sourceId: 2, ok: true, complete: true, error: null },
+    ])
+  })
+
+  test('a skill both sources find is one record, found by both, with skills.sh installs', async ({
+    assert,
+  }) => {
+    const { records } = await run([], routes(), BOTH).result
+    assert.lengthOf(
+      records.filter((record) => record.slug.startsWith('browser-tests')),
+      1,
+    )
+    assert.deepInclude(bySlug(records).get('browser-tests'), { foundBy: [1, 2], installs: 4000 })
+  })
+
+  test('a bad audit beats trust', async ({ assert }) => {
+    const network = routes({
+      'https://www.skills.sh/tele/audit?source=acme%2Fskills&skills=lint-rules': {
+        body: { 'lint-rules': { snyk: { risk: 'high', analyzedAt: '2026-11-01' } } },
+      },
+    })
+    const { records } = await run([], network, BOTH).result
+    assert.deepInclude(bySlug(records).get('lint-rules'), {
+      trusted: true,
+      eligible: false,
+      ineligibleReason: 'audit snyk: high',
+    })
+  })
+
+  test('skills.sh down does not stop a GitHub source, and a failed audit keeps the last ones', async ({
+    assert,
+  }) => {
+    const network = routes({
+      ...allSearches(down()),
+      'https://www.skills.sh/tele/audit?source=acme%2Fskills&skills=browser-tests': down(),
+    })
+    const { records, sources, report } = await run([known()], network, BOTH).result
+    assert.deepEqual(sources[0], {
+      sourceId: 1,
+      ok: false,
+      complete: false,
+      error: 'every search failed',
+    })
+    assert.deepInclude(bySlug(records).get('lint-rules'), { eligible: true })
+    assert.deepInclude(bySlug(records).get('browser-tests'), {
+      eligible: true,
+      audits: known().audits,
+    })
+    assert.include(
+      report.warnings,
+      'browser-tests: audits not read (500 from www.skills.sh), the last ones kept',
+    )
+  })
+
+  test('every source failing changes nothing', async ({ assert }) => {
+    const network = routes({
+      ...allSearches(down()),
+      'https://api.github.com/repos/acme/skills': down(503),
+    })
+    await assert.rejects(
+      () => run([], network, BOTH).result,
+      'Every source failed: nothing was changed',
+    )
+  })
+
+  test('without skills.sh no request goes to skills.sh', async ({ assert }) => {
+    const { result, calls } = run([], routes(), { sources: [ACME_SOURCE] })
+    const { records } = await result
+    assert.deepEqual(records.map((record) => record.slug).sort(), [
+      'browser-tests',
+      'c4-docs',
+      'lint-rules',
+    ])
+    assert.notExists(calls.find((call) => call.url.includes('skills.sh')))
+  })
+
+  test('a skill only skills.sh found stays eligible on its last figures when skills.sh is off', async ({
+    assert,
+  }) => {
+    const frozen = known({
+      slug: 'old-skill',
+      registryId: 'other/skills/old-skill',
+      url: `https://github.com/other/skills/tree/${SHA}/skills/old-skill`,
+      contentSha: '0'.repeat(40),
+      installs: 3000,
+      description: { en: 'An old skill.' },
+    })
+    const network = routes(repository('other', ['skills/old-skill']))
+    const { result, calls } = run([frozen], network, { sources: [ACME_SOURCE] })
+    const { records } = await result
+    assert.deepInclude(bySlug(records).get('old-skill'), {
+      trusted: false,
+      installs: 3000,
+      audits: frozen.audits,
+      eligible: true,
+      checked: true,
+    })
+    assert.notExists(calls.find((call) => call.url.includes('skills.sh')))
+  })
+
+  test('an archived or unlicensed repository lists nothing and says why', async ({ assert }) => {
+    const network = routes(repository('closed', ['skills/x'], null))
+    const { records, sources } = await run([], network, {
+      sources: [SKILLS_SH_SOURCE, github('closed')],
+    }).result
+    assert.deepEqual(sources[1], {
+      sourceId: 3,
+      ok: true,
+      complete: true,
+      error: 'licence not accepted: none',
+    })
+    assert.notExists(records.find((record) => record.source === 'closed/skills'))
+  })
+
+  test('a source lists at most 100 skills, in path order', async ({ assert }) => {
+    const folders = Array.from(
+      { length: 101 },
+      (_, index) => `skills/s-${String(index).padStart(3, '0')}`,
+    )
+    const { records, report } = await run([], routes(repository('big', folders)), {
+      sources: [github('big')],
+    }).result
+    const listed = records.filter((record) => record.source === 'big/skills')
+    assert.lengthOf(listed, 100)
+    assert.notExists(listed.find((record) => record.registryId === 'big/skills/s-100'))
+    assert.include(report.warnings, 'big/skills: more than 100 skills, the first 100 kept')
+  })
+
+  test('trust outlives a run where its source failed', async ({ assert }) => {
+    const trusted = known({
+      slug: 'gone-skill',
+      registryId: 'gone/skills/gone-skill',
+      installs: 0,
+      audits: [],
+      trustedBy: [3],
+    })
+    const network = routes({ 'https://api.github.com/repos/gone/skills': down() })
+    const { records, sources } = await run([trusted], network, {
+      sources: [SKILLS_SH_SOURCE, github('gone')],
+      githubChecks: 0,
+    }).result
+    assert.deepInclude(sources[1], { sourceId: 3, ok: false })
+    assert.deepInclude(bySlug(records).get('gone-skill'), { trusted: true, eligible: true })
+  })
+
+  test('trusted skills are checked on GitHub first', async ({ assert }) => {
+    const { records } = await run([], routes(), { ...BOTH, githubChecks: 1 }).result
+    const checked = records.filter((record) => record.checked).map((record) => record.slug)
+    assert.lengthOf(checked, 1)
+    assert.isTrue(bySlug(records).get(checked[0] as string)?.trusted)
   })
 })
