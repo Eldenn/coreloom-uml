@@ -5,10 +5,12 @@ import { paginate } from '#app/shared/pagination/paginate'
 import { SKILLS_HISTORY_RUNS, SkillSort, SkillStatus } from '#app/skills/constants/skill'
 import CatalogSkill from '#app/skills/models/catalog-skill'
 import SkillSnapshot from '#app/skills/models/skill-snapshot'
+import SkillSource from '#app/skills/models/skill-source'
 import {
   serializeSkillDetail,
   serializeSkillSummary,
 } from '#app/skills/serializers/skill-serializer'
+import { sourceLabel } from '#app/skills/serializers/skill-source-serializer'
 import {
   installName,
   newestApproved,
@@ -54,7 +56,12 @@ export default class SkillsController {
       .where('skillId', skill.id)
       .orderBy('takenAt', 'desc')
       .limit(SKILLS_HISTORY_RUNS)
-    return response.ok({ skill: serializeSkillDetail(skill, history.reverse()) })
+    const sources = await SkillSource.query()
+      .whereHas('skills', (query) => query.where('skills.id', skill.id))
+      .orderBy('id')
+    return response.ok({
+      skill: serializeSkillDetail(skill, history.reverse(), sources.map(sourceLabel)),
+    })
   }
 
   /**

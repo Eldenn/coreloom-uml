@@ -1315,6 +1315,54 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skills-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'admin.skill_sources.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/admin/skill-sources'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-sources-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-sources-controller').default['index']>>>
+    }
+  }
+  'admin.skill_sources.store': {
+    methods: ["POST"]
+    pattern: '/admin/skill-sources'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/skills/validators/skill-sources-input').createSkillSourceInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/skills/validators/skill-sources-input').createSkillSourceInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-sources-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-sources-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'admin.skill_sources.update': {
+    methods: ["PATCH"]
+    pattern: '/admin/skill-sources/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/skills/validators/skill-sources-input').updateSkillSourceInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/skills/validators/skill-sources-input').updateSkillSourceInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-sources-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-sources-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'admin.skill_sources.destroy': {
+    methods: ["DELETE"]
+    pattern: '/admin/skill-sources/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-sources-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-sources-controller').default['destroy']>>>
+    }
+  }
   'admin.skills.topics': {
     methods: ["PATCH"]
     pattern: '/admin/skills/:slug/topics'

@@ -652,6 +652,24 @@ router
   .use([middleware.auth(), middleware.admin()])
 
 /*
+| Where the weekly search looks for skills: skills.sh (disabled, never deleted) and the GitHub
+| repositories the admin trusts. Writes rows only; the next run reads them. Other accounts get a 404.
+*/
+const adminSkillSourcesController = () =>
+  import('#app/skills/controllers/admin-skill-sources-controller')
+router
+  .group(() => {
+    router.get('/', [adminSkillSourcesController, 'index']).as('index')
+    router.post('/', [adminSkillSourcesController, 'store']).as('store')
+    router.patch('/:id', [adminSkillSourcesController, 'update']).as('update')
+    router.delete('/:id', [adminSkillSourcesController, 'destroy']).as('destroy')
+  })
+  .prefix('/admin/skill-sources')
+  .as('admin.skill_sources')
+  .where('id', /^[0-9]+$/)
+  .use([middleware.auth(), middleware.admin()])
+
+/*
 | The admin sets a skill's tags, which replace the tagger's and teach it at its next run
 | (`app/skills/services/skill-topics.ts`). Other accounts get a 404.
 */
