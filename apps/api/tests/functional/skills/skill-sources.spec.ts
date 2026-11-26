@@ -166,5 +166,7 @@ test.group('Skill sources', (group) => {
     const response = await client.get('/skills/lint-rules').headers(json).loginAs(user)
     response.assertStatus(200)
     assert.deepEqual(response.body().skill.foundBy, ['skills.sh', 'acme/skills'])
+    // skills.sh never returned it (no installs): it has no page there to link to.
+    assert.isNull(response.body().skill.registryUrl)
   })
 })

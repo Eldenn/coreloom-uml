@@ -59,6 +59,59 @@ export function useBlockSkill() {
   })
 }
 
+export type SkillSource = Awaited<
+  ReturnType<typeof client.api.admin.skillSources.index>
+>['data'][number]
+
+const sourceKeys = { all: ['skill-sources'] as const }
+
+/** The admin's: where the weekly search looks for skills, with how each last run went. */
+export function useSkillSources() {
+  return useQuery({
+    queryKey: sourceKeys.all,
+    queryFn: async () => (await client.api.admin.skillSources.index({})).data,
+  })
+}
+
+/** After a change to the sources: they, and what the catalog shows of them, read again. */
+function useSourcesChanged() {
+  const queryClient = useQueryClient()
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: sourceKeys.all }),
+      queryClient.invalidateQueries({ queryKey: skillKeys.all }),
+    ])
+}
+
+/** The admin's: trusts a GitHub repository, or one folder of it (409 when it is there already). */
+export function useAddSkillSource() {
+  const changed = useSourcesChanged()
+  return useMutation({
+    mutationFn: (body: { owner: string; repo: string; path?: string }) =>
+      client.api.admin.skillSources.store({ body }),
+    onSuccess: changed,
+  })
+}
+
+/** The admin's: the next run reads a source, or not. */
+export function useUpdateSkillSource() {
+  const changed = useSourcesChanged()
+  return useMutation({
+    mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) =>
+      client.api.admin.skillSources.update({ params: { id }, body: { enabled } }),
+    onSuccess: changed,
+  })
+}
+
+/** The admin's: forgets a repository (never skills.sh, which can only be disabled). */
+export function useDeleteSkillSource() {
+  const changed = useSourcesChanged()
+  return useMutation({
+    mutationFn: (id: number) => client.api.admin.skillSources.destroy({ params: { id } }),
+    onSuccess: changed,
+  })
+}
+
 export type LiveStatus = 'connecting' | 'live' | 'offline'
 
 /** Events `GET /skills/events` sends when the catalog changes. */

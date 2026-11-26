@@ -102,6 +102,10 @@ function SkillFacts({ skill }: { skill: SkillDetail }) {
       columns={2}
       items={[
         { term: t.sheet.source, value: skill.source ?? none },
+        {
+          term: t.sheet.foundBy,
+          value: skill.foundBy.length > 0 ? skill.foundBy.join(', ') : none,
+        },
         { term: t.sheet.origin, value: t.origins[skill.origin] },
         {
           term: t.sheet.installs,

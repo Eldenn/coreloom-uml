@@ -1177,7 +1177,7 @@ export const en = {
   skills: {
     title: 'Skills',
     description:
-      'Agent Skills catalogued from skills.sh every week, with their installs and security audits. Suggested ones can appear in your agent conventions.',
+      'Agent Skills catalogued every week from skills.sh and the GitHub repositories the administrator trusts, with their installs and security audits. Suggested ones can appear in your agent conventions.',
     live: 'Live',
     connecting: 'Connecting…',
     offline: 'Offline',
@@ -1188,7 +1188,7 @@ export const en = {
     tabs: { catalog: 'Catalog', overview: 'Trends' },
     emptyTitle: 'No skills yet',
     emptyText:
-      'The catalog fills up when the weekly search on skills.sh runs. An administrator can run it now from this page.',
+      'The catalog fills up when the weekly search runs. An administrator can run it now from this page.',
     admin: {
       refresh: 'Search now',
       refreshQueued: 'Search asked for. The catalog updates here when it ends.',
@@ -1207,6 +1207,39 @@ export const en = {
       blocked: 'This skill is no longer suggested.',
       unblocked: 'This skill can be suggested again.',
       blockFailed: 'The skill could not be changed.',
+    },
+    sources: {
+      open: 'Sources',
+      title: 'Where the catalog finds skills',
+      description:
+        'The weekly search reads every source switched on. A repository you add is trusted: its skills need no installs or audit to be suggested, but every copy is still scanned and approved by you before anyone installs it.',
+      loadFailed: 'The sources could not be loaded.',
+      trusted: 'Trusted repository',
+      registry: 'Registry',
+      skills: (count: number) => (count === 1 ? '1 skill' : `${count} skills`),
+      lastRun: 'last read',
+      neverRun: 'not read yet',
+      enabled: (label: string) => `Read ${label} at each search`,
+      updateFailed: 'The source could not be changed.',
+      deleteTitle: (label: string) => `Remove ${label}?`,
+      deleteText:
+        'Its skills stay in the catalog but are no longer trusted: at the next search they need installs and an audit again.',
+      delete: 'Remove',
+      deleted: 'Source removed.',
+      deleteFailed: 'The source could not be removed.',
+      addTitle: 'Trust a GitHub repository',
+      addHelp:
+        'Every folder holding a SKILL.md is listed, at most 100. Name a folder to read only what is under it. The next search reads it.',
+      owner: 'Owner',
+      repo: 'Repository',
+      path: 'Folder (optional)',
+      ownerInvalid: 'A GitHub user or organisation: letters, digits and hyphens.',
+      repoInvalid: 'A repository name: letters, digits, dots, hyphens and underscores.',
+      pathInvalid: 'A folder of the repository, such as skills or packages/skills.',
+      add: 'Add',
+      added: 'Source added. The next search reads it.',
+      exists: 'This source is listed already.',
+      addFailed: 'The source could not be added.',
     },
     stats: {
       skills: 'Skills catalogued',
@@ -1288,7 +1321,7 @@ export const en = {
     },
     origins: {
       manual: 'Hand-picked',
-      search: 'Found on skills.sh',
+      search: 'Found by the search',
     },
     tagging: {
       title: 'Tags',
@@ -1309,6 +1342,7 @@ export const en = {
       loading: 'Loading the skill…',
       notFound: 'This skill is not in the catalog.',
       source: 'Repository',
+      foundBy: 'Found by',
       origin: 'Added',
       installs: 'Installs',
       license: 'Licence',
@@ -2992,7 +3026,7 @@ export const fr: Messages = {
   skills: {
     title: 'Skills',
     description:
-      'Les Agent Skills catalogués chaque semaine depuis skills.sh, avec leurs installations et leurs audits de sécurité. Les skills suggérés peuvent apparaître dans vos conventions d’agents.',
+      'Les Agent Skills catalogués chaque semaine depuis skills.sh et les dépôts GitHub de confiance de l’administrateur, avec leurs installations et leurs audits de sécurité. Les skills suggérés peuvent apparaître dans vos conventions d’agents.',
     live: 'En direct',
     connecting: 'Connexion…',
     offline: 'Hors ligne',
@@ -3003,7 +3037,7 @@ export const fr: Messages = {
     tabs: { catalog: 'Catalogue', overview: 'Tendances' },
     emptyTitle: 'Aucun skill pour l’instant',
     emptyText:
-      'Le catalogue se remplit quand la recherche hebdomadaire sur skills.sh tourne. Un administrateur peut la lancer tout de suite depuis cette page.',
+      'Le catalogue se remplit quand la recherche hebdomadaire tourne. Un administrateur peut la lancer tout de suite depuis cette page.',
     admin: {
       refresh: 'Lancer la recherche',
       refreshQueued: 'Recherche demandée. Le catalogue se met à jour ici quand elle se termine.',
@@ -3022,6 +3056,39 @@ export const fr: Messages = {
       blocked: 'Ce skill n’est plus suggéré.',
       unblocked: 'Ce skill peut de nouveau être suggéré.',
       blockFailed: 'Le skill n’a pas pu être modifié.',
+    },
+    sources: {
+      open: 'Sources',
+      title: 'Où le catalogue trouve les skills',
+      description:
+        'La recherche hebdomadaire lit chaque source activée. Un dépôt que vous ajoutez est de confiance : ses skills n’ont besoin ni d’installations ni d’audit pour être suggérés, mais chaque copie reste analysée puis approuvée par vous avant toute installation.',
+      loadFailed: 'Les sources n’ont pas pu être chargées.',
+      trusted: 'Dépôt de confiance',
+      registry: 'Registre',
+      skills: (count: number) => (count <= 1 ? `${count} skill` : `${count} skills`),
+      lastRun: 'lu',
+      neverRun: 'pas encore lu',
+      enabled: (label: string) => `Lire ${label} à chaque recherche`,
+      updateFailed: 'La source n’a pas pu être modifiée.',
+      deleteTitle: (label: string) => `Retirer ${label} ?`,
+      deleteText:
+        'Ses skills restent au catalogue mais ne sont plus de confiance : à la prochaine recherche, il leur faut de nouveau des installations et un audit.',
+      delete: 'Retirer',
+      deleted: 'Source retirée.',
+      deleteFailed: 'La source n’a pas pu être retirée.',
+      addTitle: 'Faire confiance à un dépôt GitHub',
+      addHelp:
+        'Chaque dossier qui contient un SKILL.md est listé, 100 au plus. Indiquez un dossier pour ne lire que ce qu’il contient. La prochaine recherche le lit.',
+      owner: 'Propriétaire',
+      repo: 'Dépôt',
+      path: 'Dossier (facultatif)',
+      ownerInvalid: 'Un utilisateur ou une organisation GitHub : lettres, chiffres et tirets.',
+      repoInvalid: 'Un nom de dépôt : lettres, chiffres, points, tirets et soulignés.',
+      pathInvalid: 'Un dossier du dépôt, par exemple skills ou packages/skills.',
+      add: 'Ajouter',
+      added: 'Source ajoutée. La prochaine recherche la lit.',
+      exists: 'Cette source est déjà listée.',
+      addFailed: 'La source n’a pas pu être ajoutée.',
     },
     stats: {
       skills: 'Skills catalogués',
@@ -3103,7 +3170,7 @@ export const fr: Messages = {
     },
     origins: {
       manual: 'Choisi à la main',
-      search: 'Trouvé sur skills.sh',
+      search: 'Trouvé par la recherche',
     },
     tagging: {
       title: 'Tags',
@@ -3124,6 +3191,7 @@ export const fr: Messages = {
       loading: 'Chargement du skill…',
       notFound: 'Ce skill n’est pas dans le catalogue.',
       source: 'Dépôt',
+      foundBy: 'Trouvé par',
       origin: 'Ajout',
       installs: 'Installations',
       license: 'Licence',
