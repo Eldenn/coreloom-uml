@@ -26,6 +26,8 @@ import {
   AGENT_READY_RULES_PER_GROUP_MAX,
   AGENT_RULE_SOURCES,
   AGENT_RULE_TEXT_MAX_LENGTH,
+  AGENT_SKILL_SLUG_MAX_LENGTH,
+  AGENT_SKILLS_MAX,
   AgentProposalSource,
   TARGETS,
 } from '#app/agent-configs/constants/agent-config'
@@ -303,5 +305,18 @@ export const listAgentGenerationsInput = vine.create(
   vine.object({
     page: vine.number().withoutDecimals().min(1).optional(),
     perPage: vine.number().withoutDecimals().min(1).optional(),
+  }),
+)
+
+/**
+ * `PUT /agent-configs/:id/skills`: the slugs of every skill it holds (an empty list removes them
+ * all). A skill added must have an approved copy (`replaceAgentSkills`).
+ */
+export const updateAgentSkillsInput = vine.create(
+  vine.object({
+    skills: vine
+      .array(vine.string().trim().minLength(1).maxLength(AGENT_SKILL_SLUG_MAX_LENGTH))
+      .maxLength(AGENT_SKILLS_MAX)
+      .distinct(),
   }),
 )

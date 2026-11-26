@@ -9,6 +9,7 @@ import type AgentConfig from '#app/agent-configs/models/agent-config'
 import type AgentConfigGeneration from '#app/agent-configs/models/agent-config-generation'
 import type AgentConfigRole from '#app/agent-configs/models/agent-config-role'
 import type AgentConfigRule from '#app/agent-configs/models/agent-config-rule'
+import type AgentConfigSkill from '#app/agent-configs/models/agent-config-skill'
 import type {
   AgentConfigDetailOutput,
   AgentConfigOutput,
@@ -96,7 +97,8 @@ export function serializeAgentGeneration(generation: AgentConfigGeneration): Age
     ...serializeAgentGenerationSummary(generation),
     files: generation.files,
     recommendations: generation.recommendations,
-    skills: generation.skills,
+    skills: { ...generation.skills, held: generation.skills.held ?? [] },
+    targets: generation.inputs.targets,
     roles: generation.roles,
   }
 }
@@ -117,9 +119,16 @@ export function heldReadyRules(rows: readonly AgentReadyRuleOutput[]): AgentRead
   )
 }
 
+/** Held skills in name order, then slug order (`skill` preloaded). */
+export function byName(rows: AgentConfigSkill[]): AgentConfigSkill[] {
+  return [...rows].sort(
+    (a, b) => a.skill.name.localeCompare(b.skill.name) || a.skill.slug.localeCompare(b.skill.slug),
+  )
+}
+
 /**
  * Expects `readyRules`, `rules` and `roles` preloaded (`currentInputs` loads them), rules in
- * position order, roles in id order.
+ * position order, roles in id order, and `skills` with their `skill`.
  */
 export function serializeAgentConfigDetail(
   config: AgentConfig,
@@ -132,6 +141,12 @@ export function serializeAgentConfigDetail(
     readyRules: heldReadyRules(config.readyRules),
     rules: config.rules.map(serializeAgentRule),
     roles: config.roles.map(serializeAgentRole),
+    skills: byName(config.skills).map(({ skill }) => ({
+      slug: skill.slug,
+      name: skill.name,
+      description: skill.description,
+      url: skill.url,
+    })),
     latestGeneration: latest ? serializeAgentGenerationSummary(latest) : null,
     diagrams,
   }

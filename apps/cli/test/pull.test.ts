@@ -264,6 +264,45 @@ describe('pull', () => {
   })
 })
 
+describe('pull, held skills', () => {
+  const skill = (slug: string) => ({
+    slug,
+    name: slug,
+    repository: 'acme/skills',
+    commit: 'a'.repeat(40),
+    license: 'MIT',
+    files: [{ path: 'SKILL.md', executable: false, content: `---\nname: ${slug}\n---\n` }],
+  })
+
+  it('installs the approved copy of each held skill for the targets, and reports one not served', async () => {
+    const compatible = [
+      { id: 'tidy-tests', name: 'tidy-tests', url: 'https://example.com/tidy-tests' },
+    ]
+    api.current = {
+      ...first,
+      skills: { ...first.skills, compatible, held: ['tidy-tests', 'gone'] },
+    }
+    api.copies['tidy-tests'] = skill('tidy-tests')
+    const recorder = recordingIo()
+
+    expect(await run({}, recorder.io)).toBe(ExitCode.Error)
+
+    expect(await read('.claude/skills/tidy-tests/SKILL.md')).toBe('---\nname: tidy-tests\n---\n')
+    expect(await exists('.agents/skills/tidy-tests')).toBe(false)
+    expect(recorder.output()).toContain('gone not installed')
+    // A held skill is installed, not listed again as a link.
+    expect(recorder.output()).not.toContain('tidy-tests: https://example.com/tidy-tests')
+  })
+
+  it('writes no skill with --dry-run', async () => {
+    api.current = { ...first, skills: { ...first.skills, held: ['tidy-tests'] } }
+    api.copies['tidy-tests'] = skill('tidy-tests')
+
+    expect(await run({ dryRun: true })).toBe(ExitCode.Ok)
+    expect(await exists('.claude/skills/tidy-tests')).toBe(false)
+  })
+})
+
 describe('pull, settings files', () => {
   const SETTINGS = '.claude/settings.json'
   const TOML = '.codex/config.toml'

@@ -8,7 +8,11 @@ import {
   type SkillState,
   SkillStatus,
 } from '#app/skills/constants/skill'
-import { SKILL_COPY_NONE, type SkillCopyState } from '#app/skills/constants/skill-version'
+import {
+  SKILL_COPY_NONE,
+  type SkillCopyState,
+  SkillVersionStatus,
+} from '#app/skills/constants/skill-version'
 import CatalogSkill from '#app/skills/models/catalog-skill'
 
 /**
@@ -56,6 +60,11 @@ export const DELTA_SQL = `case when skills.last_seen_at = ${LAST_RUN_SQL}
 
 const COPIES_SQL = 'select 1 from skill_versions where skill_versions.skill_id = skills.id'
 
+/** What `GET /skills/:slug/copy` serves: an active skill, hand-picked or eligible, with an approved copy. */
+export const INSTALLABLE_SQL = `skills.status = '${SkillStatus.Active}'
+  and (skills.origin = '${SkillOrigin.Manual}' or skills.eligible)
+  and exists (${COPIES_SQL} and skill_versions.status = '${SkillVersionStatus.Approved}')`
+
 /** One row per status among a skill's copies, `none` without any. */
 const COPY_SQL = `unnest(coalesce(
   (select array_agg(distinct skill_versions.status::text) from skill_versions
@@ -69,9 +78,11 @@ export type SkillFilters = {
   state?: SkillState[]
   risk?: SkillRiskLevel[]
   copy?: SkillCopyState[]
+  /** Only the skills an approved copy can be installed from. */
+  installable?: boolean
 }
 
-export type SkillFacet = Exclude<keyof SkillFilters, 'search'>
+export type SkillFacet = Exclude<keyof SkillFilters, 'search' | 'installable'>
 
 type Fragment = { sql: string; bindings: string[] }
 
@@ -86,6 +97,7 @@ export function filtersSql(filters: SkillFilters, except?: SkillFacet): Fragment
       bindings: [pattern, pattern, pattern, pattern],
     })
   }
+  if (filters.installable) parts.push({ sql: INSTALLABLE_SQL, bindings: [] })
   if (filters.topic?.length && except !== 'topic') {
     parts.push(anyOf(filters.topic, (topic) => containsSql('skills.topics', [topic])))
   }

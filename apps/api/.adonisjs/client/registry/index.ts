@@ -402,6 +402,12 @@ const routes = {
     tokens: [{"old":"/agent-configs/:id/ready-rules/:slot","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/ready-rules/:slot","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/ready-rules/:slot","type":0,"val":"ready-rules","end":""},{"old":"/agent-configs/:id/ready-rules/:slot","type":1,"val":"slot","end":""}],
     types: placeholder as Registry['agent_configs.ready_rules.update']['types'],
   },
+  'agent_configs.skills.update': {
+    methods: ["PUT"],
+    pattern: '/agent-configs/:id/skills',
+    tokens: [{"old":"/agent-configs/:id/skills","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/skills","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/skills","type":0,"val":"skills","end":""}],
+    types: placeholder as Registry['agent_configs.skills.update']['types'],
+  },
   'agent_configs.rules.store': {
     methods: ["POST"],
     pattern: '/agent-configs/:id/rules',

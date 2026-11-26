@@ -52,7 +52,9 @@ export function generation(id: number, files: Generation['files']): Generation {
         { name: 'not-a-link', url: 'javascript:alert(1)' },
       ],
       conflicting: [{ name: 'loose-tests', url: 'https://example.com/loose-tests' }],
+      held: [],
     },
+    targets: ['claude-code'],
   }
 }
 

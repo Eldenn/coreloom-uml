@@ -25,7 +25,10 @@ export type Generation = {
   catalogVersion: string
   files: AgentContextFile[]
   recommendations: Recommendation[]
-  skills: { compatible: GenerationSkill[]; conflicting: GenerationSkill[] }
+  /** `held`: the slugs of the skills the configuration holds, which `pull` installs. */
+  skills: { compatible: GenerationSkill[]; conflicting: GenerationSkill[]; held: string[] }
+  /** The tools it was rendered for: where the held skills go. Older APIs send none. */
+  targets: string[]
 }
 
 export type FetchLike = typeof fetch
@@ -43,6 +46,11 @@ function latestGenerationUrl(apiUrl: string, source: Source): string {
 export function errorMessage(body: unknown): string | null {
   const message = (body as { error?: { message?: unknown } } | null)?.error?.message
   return typeof message === 'string' ? message : null
+}
+
+/** The strings of a list the API sent, nothing else. */
+function strings(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : []
 }
 
 function isGeneration(value: unknown): value is Generation {
@@ -99,7 +107,9 @@ export async function fetchLatestGeneration(options: {
         conflicting: Array.isArray(generation.skills?.conflicting)
           ? generation.skills.conflicting
           : [],
+        held: strings(generation.skills?.held),
       },
+      targets: strings(generation.targets),
     }
   }
 

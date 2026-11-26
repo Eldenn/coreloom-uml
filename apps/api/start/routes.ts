@@ -374,6 +374,12 @@ router
         'update',
       ])
       .as('agent_configs.ready_rules.update')
+    router
+      .put('/:id/skills', [
+        () => import('#app/agent-configs/controllers/agent-config-skills-controller'),
+        'update',
+      ])
+      .as('agent_configs.skills.update')
     router.post('/:id/rules', [agentRulesController, 'store']).as('agent_configs.rules.store')
     router
       .patch('/:id/rules/:ruleId', [agentRulesController, 'update'])

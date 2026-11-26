@@ -81,6 +81,14 @@ export type RolePresetOutput = {
   source: { repository: string; commit: string }
 }
 
+/** A skill a configuration holds. */
+export type AgentHeldSkillOutput = {
+  slug: string
+  name: string
+  description: { en: string; fr?: string }
+  url: string
+}
+
 /** A configuration's own fields. */
 export type AgentConfigOutput = {
   id: number
@@ -107,7 +115,9 @@ export type AgentGenerationSummaryOutput = {
 export type AgentGenerationOutput = AgentGenerationSummaryOutput & {
   files: AgentContextFile[]
   recommendations: Recommendation[]
-  skills: AgentGenerationSkills
+  skills: AgentGenerationSkills & { held: string[] }
+  /** The tools it was rendered for: where `pull` installs the held skills. */
+  targets: Target[]
   /** What each target does with each role. */
   roles: AgentContextRole[]
 }
@@ -156,6 +166,8 @@ export type AgentConfigDetailOutput = AgentConfigOutput & {
   rules: AgentRuleOutput[]
   /** In id order. */
   roles: AgentRoleOutput[]
+  /** The skills it holds (`pull` installs them), by name. */
+  skills: AgentHeldSkillOutput[]
   latestGeneration: AgentGenerationSummaryOutput | null
   /** Its diagrams with content, architecture by architecture. */
   diagrams: AgentDiagramOutput[]

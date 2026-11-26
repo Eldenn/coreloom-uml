@@ -18,6 +18,10 @@ export const AGENT_CATALOG_ID_MAX_LENGTH = 64
 export const AGENT_RULES_MAX = 50
 /** Roles one configuration can hold. */
 export const AGENT_ROLES_MAX = 20
+/** Skills one configuration can hold. */
+export const AGENT_SKILLS_MAX = 30
+/** Longest skill slug (the `skills.slug` column). */
+export const AGENT_SKILL_SLUG_MAX_LENGTH = 100
 /** Longest accepted rule (the `agent_config_rules.text` column). */
 export const AGENT_RULE_TEXT_MAX_LENGTH = 300
 /** Longest project notes. */

@@ -190,6 +190,20 @@ export function useUpdateAgentConfig(id: number) {
   })
 }
 
+/**
+ * Replaces the skills it holds (slugs), which `pull` installs: a skill added must have an
+ * approved copy (422 otherwise). Saves run one after the other, the last one winning.
+ */
+export function useSaveSkills(id: number) {
+  const setConfig = useSetConfig(id)
+  return useMutation({
+    scope: { id: `agent-config-skills/${id}` },
+    mutationFn: (skills: string[]) =>
+      client.api.agentConfigs.skills.update({ params: { id }, body: { skills } }),
+    onSuccess: setConfig,
+  })
+}
+
 /** Its rules and generations go with it. The page showing it moves on by itself. */
 export function useDeleteAgentConfig(id: number) {
   const invalidate = useInvalidateSets()

@@ -1,5 +1,6 @@
 import { chmod, mkdir, stat, unlink, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
+import { SKILL_FOLDERS } from '@coreloom-uml/catalog'
 import {
   describeSource,
   type FetchLike,
@@ -24,6 +25,7 @@ import {
   planPull,
 } from './plan.ts'
 import { API_KEY_ENV, resolveApiKey, resolveApiUrl } from './settings.ts'
+import { skillsAdd } from './skills-add.ts'
 
 export type PullOptions = {
   cwd: string
@@ -123,9 +125,10 @@ function printOutcome(io: Io, generation: Generation) {
       for (const line of item.body.split('\n')) io.log(`    ${line}`)
     }
   }
-  // Links only, and only https ones: `pull` never installs a skill, `skills add` does.
+  // Links only, and only https ones: of these, `pull` installs only the skills the configuration holds.
   const skills = generation.skills.compatible.filter(
     (skill) =>
+      !generation.skills.held.includes(skill.id as string) &&
       typeof skill.name === 'string' &&
       typeof skill.url === 'string' &&
       skill.url.startsWith('https://'),
@@ -140,6 +143,43 @@ function printOutcome(io: Io, generation: Generation) {
       'Install one the admin read and approved with "coreloom-uml skills add <id> --target <tools>".',
     )
   }
+}
+
+/**
+ * Installs the approved copy of each skill the configuration holds into the skills folders of the
+ * tools it was rendered for, as `skills add` does (asking before it replaces a file). A skill
+ * whose copy is no longer served is reported and the others still go in.
+ */
+async function installHeldSkills(
+  options: PullOptions,
+  apiUrl: string,
+  generation: Generation,
+): Promise<ExitCode> {
+  if (generation.skills.held.length === 0) return ExitCode.Ok
+  options.io.log('\nSkills this configuration holds:')
+  const targets = generation.targets.filter((target) => target in SKILL_FOLDERS)
+  let code: ExitCode = ExitCode.Ok
+  for (const slug of generation.skills.held) {
+    try {
+      const result = await skillsAdd({
+        cwd: options.cwd,
+        io: options.io,
+        slugs: [slug],
+        apiUrl,
+        targets,
+        ...(options.dryRun && { dryRun: true }),
+        ...(options.yes && { yes: true }),
+        ...(options.env && { env: options.env }),
+        ...(options.fetch && { fetch: options.fetch }),
+      })
+      if (result !== ExitCode.Ok) code = result
+    } catch (error) {
+      if (!(error instanceof CliError)) throw error
+      options.io.warn(`  ${slug} not installed: ${error.message}`)
+      code = ExitCode.Error
+    }
+  }
+  return code
 }
 
 /**
@@ -173,7 +213,7 @@ export async function pull(options: PullOptions): Promise<ExitCode> {
       if (change.action !== ChangeAction.Unchanged) showDiff(io, change)
     }
     io.log('\nDry run: nothing written.')
-    return ExitCode.Ok
+    return installHeldSkills(options, apiUrl, generation)
   }
 
   const edited = changes.filter((change) => change.edited)
@@ -252,7 +292,9 @@ export async function pull(options: PullOptions): Promise<ExitCode> {
   ).length
   io.log(`\n${written} file(s) written, ${skipped.size} left as they were.`)
   printOutcome(io, generation)
+  const skills = await installHeldSkills(options, apiUrl, generation)
 
   const keptEdited = [...skipped].some((change) => change.edited)
+  if (skills !== ExitCode.Ok) return skills
   return keptEdited ? ExitCode.EditedBlockKept : ExitCode.Ok
 }

@@ -6,6 +6,7 @@ import AgentConfigGeneration from '#app/agent-configs/models/agent-config-genera
 import AgentConfigReadyRule from '#app/agent-configs/models/agent-config-ready-rule'
 import AgentConfigRole from '#app/agent-configs/models/agent-config-role'
 import AgentConfigRule from '#app/agent-configs/models/agent-config-rule'
+import AgentConfigSkill from '#app/agent-configs/models/agent-config-skill'
 import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
 
@@ -36,7 +37,7 @@ export default class AgentConfig extends BaseModel {
   @column()
   declare notes: string | null
 
-  /** Goes up on every change to ready-made rules, rules, roles, notes or targets. */
+  /** Goes up on every change to ready-made rules, rules, roles, skills, notes or targets. */
   @column()
   declare revision: number
 
@@ -60,6 +61,10 @@ export default class AgentConfig extends BaseModel {
 
   @hasMany(() => AgentConfigRole)
   declare roles: HasMany<typeof AgentConfigRole>
+
+  /** The skills its owner chose, which `pull` installs. */
+  @hasMany(() => AgentConfigSkill)
+  declare skills: HasMany<typeof AgentConfigSkill>
 
   @hasMany(() => AgentConfigGeneration)
   declare generations: HasMany<typeof AgentConfigGeneration>
