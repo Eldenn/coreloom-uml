@@ -1,4 +1,3 @@
-import { PROVIDER_KINDS } from '@coreloom-uml/catalog'
 import vine from '@vinejs/vine'
 import { LLM_API_KEY_MAX_LENGTH, LLM_BASE_URL_MAX_LENGTH } from '#app/llm/constants/llm'
 
@@ -12,13 +11,6 @@ export const claudeCodeInput = vine.create(
       .string()
       .trim()
       .regex(/^[\x21-\x7E]{1,500}$/),
-  }),
-)
-
-/** The kind of a saved provider key, from the URL of `PUT /llm/api-keys/:kind`. */
-export const apiKeyKindInput = vine.create(
-  vine.object({
-    kind: vine.enum(PROVIDER_KINDS),
   }),
 )
 

@@ -1,15 +1,29 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import app from '@adonisjs/core/services/app'
 import logger from '@adonisjs/core/services/logger'
-import { MODEL_SUGGESTIONS, ProviderAuth, providerAuth } from '@coreloom-uml/catalog'
+import {
+  MODEL_SUGGESTIONS,
+  PROVIDER_KINDS,
+  ProviderAuth,
+  type ProviderKind,
+  providerAuth,
+} from '@coreloom-uml/catalog'
 import { testConnection } from '@coreloom-uml/llm'
 import LanguageModels, { llmFailure, providerProblem } from '#app/llm/services/language-models'
 import { deleteApiKey, saveApiKey } from '#app/llm-connections/services/llm-api-keys'
-import {
-  apiKeyKindInput,
-  saveApiKeyInput,
-} from '#app/llm-connections/validators/llm-connections-input'
+import { saveApiKeyInput } from '#app/llm-connections/validators/llm-connections-input'
 import type { LlmApiKeyOutput } from '#app/llm-connections/validators/llm-connections-output'
+
+/**
+ * The kind named by the URL, or `null` for one the catalog does not know. Checked here rather
+ * than with a Vine validator on `request.params()`: the Tuyau registry reads every validator a
+ * controller uses as its body, which left the typed client unable to send this one's.
+ */
+function kindParam(value: unknown): ProviderKind | null {
+  return PROVIDER_KINDS.find((kind) => kind === value) ?? null
+}
+
+const UNKNOWN_KIND = { error: { message: 'Unknown provider kind' } } as const
 
 /**
  * The provider keys an account saves, one per kind: `PUT /llm/api-keys/:kind` stores a key only
@@ -19,9 +33,10 @@ import type { LlmApiKeyOutput } from '#app/llm-connections/validators/llm-connec
  * answer is the hint, the origin and the date it was verified. Only the outcome is logged.
  */
 export default class LlmApiKeyController {
-  async save({ request, auth, response }: HttpContext) {
+  async save({ request, auth, params, response }: HttpContext) {
     const user = auth.getUserOrFail()
-    const { kind } = await request.validateUsing(apiKeyKindInput, { data: request.params() })
+    const kind = kindParam(params.kind)
+    if (!kind) return response.unprocessableEntity(UNKNOWN_KIND)
     const { apiKey, baseUrl } = await request.validateUsing(saveApiKeyInput)
     if (providerAuth(kind) !== ProviderAuth.ApiKey) {
       return response.unprocessableEntity({
@@ -62,9 +77,10 @@ export default class LlmApiKeyController {
     return response.ok(output)
   }
 
-  async destroy({ request, auth, response }: HttpContext) {
+  async destroy({ auth, params, response }: HttpContext) {
     const user = auth.getUserOrFail()
-    const { kind } = await request.validateUsing(apiKeyKindInput, { data: request.params() })
+    const kind = kindParam(params.kind)
+    if (!kind) return response.unprocessableEntity(UNKNOWN_KIND)
     await deleteApiKey(user, kind)
     logger.info({ userId: user.id, kind }, 'llm api key deleted')
     return response.noContent()

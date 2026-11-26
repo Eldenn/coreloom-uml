@@ -1103,10 +1103,10 @@ export interface Registry {
     methods: ["PUT"]
     pattern: '/llm/api-keys/:kind'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#app/llm-connections/validators/llm-connections-input').apiKeyKindInput)>|InferInput<(typeof import('#app/llm-connections/validators/llm-connections-input').saveApiKeyInput)>>
+      body: ExtractBody<InferInput<(typeof import('#app/llm-connections/validators/llm-connections-input').saveApiKeyInput)>>
       paramsTuple: [ParamValue]
       params: { kind: ParamValue }
-      query: ExtractQuery<InferInput<(typeof import('#app/llm-connections/validators/llm-connections-input').apiKeyKindInput)>|InferInput<(typeof import('#app/llm-connections/validators/llm-connections-input').saveApiKeyInput)>>
+      query: ExtractQuery<InferInput<(typeof import('#app/llm-connections/validators/llm-connections-input').saveApiKeyInput)>>
       response: ExtractResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/llm-api-key-controller').default['save']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/llm-api-key-controller').default['save']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
@@ -1115,12 +1115,12 @@ export interface Registry {
     methods: ["DELETE"]
     pattern: '/llm/api-keys/:kind'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#app/llm-connections/validators/llm-connections-input').apiKeyKindInput)>>
+      body: {}
       paramsTuple: [ParamValue]
       params: { kind: ParamValue }
-      query: ExtractQuery<InferInput<(typeof import('#app/llm-connections/validators/llm-connections-input').apiKeyKindInput)>>
+      query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/llm-api-key-controller').default['destroy']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/llm-api-key-controller').default['destroy']>>> | { status: 422; response: { errors: SimpleError[] } }
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/llm-api-key-controller').default['destroy']>>>
     }
   }
   'rule_packs.index': {
