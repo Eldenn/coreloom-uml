@@ -207,6 +207,7 @@ export interface ApiDefinition {
       index: typeof routes['agent_configs.generations.index']
       latest: typeof routes['agent_configs.generations.latest']
       show: typeof routes['agent_configs.generations.show']
+      skillFiles: typeof routes['agent_configs.generations.skill_files']
     }
     proposals: {
       store: typeof routes['agent_configs.proposals.store']

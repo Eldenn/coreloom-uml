@@ -474,6 +474,12 @@ const routes = {
     tokens: [{"old":"/agent-configs/:id/generations/:generationId","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/generations/:generationId","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/generations/:generationId","type":0,"val":"generations","end":""},{"old":"/agent-configs/:id/generations/:generationId","type":1,"val":"generationId","end":""}],
     types: placeholder as Registry['agent_configs.generations.show']['types'],
   },
+  'agent_configs.generations.skill_files': {
+    methods: ["GET","HEAD"],
+    pattern: '/agent-configs/:id/generations/:generationId/skill-files',
+    tokens: [{"old":"/agent-configs/:id/generations/:generationId/skill-files","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/generations/:generationId/skill-files","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/generations/:generationId/skill-files","type":0,"val":"generations","end":""},{"old":"/agent-configs/:id/generations/:generationId/skill-files","type":1,"val":"generationId","end":""},{"old":"/agent-configs/:id/generations/:generationId/skill-files","type":0,"val":"skill-files","end":""}],
+    types: placeholder as Registry['agent_configs.generations.skill_files']['types'],
+  },
   'agent_configs.proposals.store': {
     methods: ["POST"],
     pattern: '/agent-configs/:id/proposals',

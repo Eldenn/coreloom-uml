@@ -411,6 +411,9 @@ router
     router
       .get('/:id/generations/:generationId', [agentGenerationsController, 'show'])
       .as('agent_configs.generations.show')
+    router
+      .get('/:id/generations/:generationId/skill-files', [agentGenerationsController, 'skillFiles'])
+      .as('agent_configs.generations.skill_files')
   })
   .prefix('/agent-configs')
   .where('id', router.matchers.number())

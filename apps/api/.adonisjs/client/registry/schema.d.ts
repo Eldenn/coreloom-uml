@@ -943,6 +943,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-generations-controller').default['show']>>>
     }
   }
+  'agent_configs.generations.skill_files': {
+    methods: ["GET","HEAD"]
+    pattern: '/agent-configs/:id/generations/:generationId/skill-files'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; generationId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-generations-controller').default['skillFiles']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-generations-controller').default['skillFiles']>>>
+    }
+  }
   'agent_configs.proposals.store': {
     methods: ["POST"]
     pattern: '/agent-configs/:id/proposals'

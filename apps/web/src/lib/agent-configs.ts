@@ -61,6 +61,8 @@ export const agentConfigKeys = {
   generations: (id: number) => ['agent-configs', 'detail', id, 'generations'] as const,
   generation: (id: number, generationId: number) =>
     ['agent-configs', 'detail', id, 'generations', generationId] as const,
+  skillFiles: (id: number, generationId: number) =>
+    ['agent-configs', 'detail', id, 'generations', generationId, 'skill-files'] as const,
 }
 
 /** The whole catalog of ready-made rules: it only changes with a deployment. */
@@ -342,6 +344,20 @@ export function useGenerations(configId: number) {
 }
 
 /** A generation never changes once made. */
+/** The files of a generation's held skills, as `pull` installs them: a generation never changes. */
+export function useGenerationSkillFiles(configId: number, id: number) {
+  return useQuery({
+    queryKey: agentConfigKeys.skillFiles(configId, id),
+    queryFn: async () =>
+      (
+        await client.api.agentConfigs.generations.skillFiles({
+          params: { id: configId, generationId: id },
+        })
+      ).files,
+    staleTime: Infinity,
+  })
+}
+
 export function useGeneration(configId: number, id: number | null) {
   return useQuery({
     queryKey: agentConfigKeys.generation(configId, id ?? 0),

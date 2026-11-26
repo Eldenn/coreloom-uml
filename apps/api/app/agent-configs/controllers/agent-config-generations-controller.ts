@@ -6,6 +6,7 @@ import {
   serializeAgentGenerationSummary,
 } from '#app/agent-configs/serializers/agent-config-serializer'
 import { createGeneration } from '#app/agent-configs/services/agent-generations'
+import { heldSkillFiles } from '#app/agent-configs/services/agent-skills'
 import {
   AGENT_CONFIG_NOT_FOUND,
   AGENT_GENERATION_NOT_FOUND,
@@ -13,6 +14,7 @@ import {
   latestGeneration,
 } from '#app/agent-configs/services/owned-agent-config'
 import { listAgentGenerationsInput } from '#app/agent-configs/validators/agent-configs-input'
+import type { AgentGenerationSkillFilesOutput } from '#app/agent-configs/validators/agent-configs-output'
 import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
 import { assertOwner } from '#app/shared/authorization/assert-owner'
 import { paginate } from '#app/shared/pagination/paginate'
@@ -89,5 +91,23 @@ export default class AgentConfigGenerationsController {
     if (!generation) return response.notFound(AGENT_GENERATION_NOT_FOUND)
 
     return response.ok({ generation: serializeAgentGeneration(generation) })
+  }
+
+  /** The files of the generation's held skills, from the copies it recorded. */
+  async skillFiles({ params, auth, response }: HttpContext) {
+    const user = auth.getUserOrFail()
+    const config = await findOwnedAgentConfig(params.id, user)
+    if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
+
+    const generation = await AgentConfigGeneration.query()
+      .where('agentConfigId', config.id)
+      .where('id', params.generationId)
+      .first()
+    if (!generation) return response.notFound(AGENT_GENERATION_NOT_FOUND)
+
+    const output: AgentGenerationSkillFilesOutput = {
+      files: await heldSkillFiles(generation.skills.copies ?? [], generation.inputs.targets),
+    }
+    return response.ok(output)
   }
 }

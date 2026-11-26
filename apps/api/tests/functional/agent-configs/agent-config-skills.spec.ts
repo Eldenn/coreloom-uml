@@ -1,9 +1,12 @@
+import { gzipSync } from 'node:zlib'
+import drive from '@adonisjs/drive/services/main'
 import { TARGETS } from '@coreloom-uml/catalog'
 import { test } from '@japa/runner'
 import AgentConfig from '#app/agent-configs/models/agent-config'
 import type {
   AgentConfigDetailOutput,
   AgentGenerationOutput,
+  AgentGenerationSkillFilesOutput,
 } from '#app/agent-configs/validators/agent-configs-output'
 import { SkillStatus } from '#app/skills/constants/skill'
 import { SkillVersionStatus } from '#app/skills/constants/skill-version'
@@ -30,6 +33,20 @@ async function skill(slug: string, copy: SkillVersionStatus | null) {
     audits: [],
   })
   if (copy) {
+    const storageKey = `skill-versions/${slug}/b.json.gz`
+    await drive.use().put(
+      storageKey,
+      gzipSync(
+        JSON.stringify([
+          {
+            path: 'SKILL.md',
+            executable: false,
+            content: `---\nname: ${slug}-named\n---\nDo it.\n`,
+          },
+          { path: 'scripts/run.sh', executable: true, content: 'echo run\n' },
+        ]),
+      ),
+    )
     await SkillVersion.create({
       skillId: row.id,
       contentSha: 'b'.repeat(40),
@@ -39,7 +56,7 @@ async function skill(slug: string, copy: SkillVersionStatus | null) {
       license: 'MIT',
       files: [],
       bytes: 0,
-      storageKey: `skill-versions/${slug}/b.json.gz`,
+      storageKey,
       status: copy,
     })
   }
@@ -62,7 +79,11 @@ async function owner() {
 }
 
 test.group('Agent configs - held skills', (group) => {
-  group.each.setup(() => withEmptySkillsCatalog())
+  group.each.setup(() => {
+    drive.fake()
+    return withEmptySkillsCatalog()
+  })
+  group.each.teardown(() => drive.restore())
 
   test('holds any skill with an approved copy, suggested or not, and removes it', async ({
     client,
@@ -117,6 +138,26 @@ test.group('Agent configs - held skills', (group) => {
     const generation = (latest.body() as { generation: AgentGenerationOutput }).generation
     assert.deepEqual(generation.skills.held, ['browser-tests'])
     assert.deepEqual(generation.targets, ['claude-code'])
+
+    // Its files as `pull` lays them out, from the copy the generation recorded.
+    const files = await client
+      .get(`/agent-configs/${config.id}/generations/${generation.id}/skill-files`)
+      .headers(json)
+      .loginAs(user)
+    files.assertStatus(200)
+    assert.deepEqual(
+      (files.body() as AgentGenerationSkillFilesOutput).files.map((file) => file.path),
+      [
+        '.claude/skills/browser-tests-named/SKILL.md',
+        '.claude/skills/browser-tests-named/scripts/run.sh',
+      ],
+    )
+    const stranger = (await owner()).user
+    await client
+      .get(`/agent-configs/${config.id}/generations/${generation.id}/skill-files`)
+      .headers(json)
+      .loginAs(stranger)
+      .then((response) => response.assertStatus(404))
 
     // Saving the same set changes nothing; an empty one removes it.
     await client
