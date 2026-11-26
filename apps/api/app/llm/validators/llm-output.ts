@@ -8,7 +8,7 @@ export type LlmProvidersOutput = {
     kind: ProviderKind
     /** A key sent with each call, or a subscription the user connects once. */
     auth: ProviderAuth
-    /** Ready to call: always for a key kind; for a subscription, once connected. */
+    /** Ready to call: once the account saved a key for it; for a subscription, once connected. */
     connected: boolean
     /** A hosted provider needs the user's key; a local or private server may take none. */
     requiresApiKey: boolean
@@ -16,6 +16,12 @@ export type LlmProvidersOutput = {
     takesBaseUrl: boolean
     /** Model names to suggest; any other name is accepted. */
     models: string[]
+    /** The last four characters of the saved key (`…abcd`), or `null` when none is saved. */
+    keyHint: string | null
+    /** The origin the saved key was saved with; calls read it from the row, never the request. */
+    baseUrl: string | null
+    /** The date of the successful test call that saved the key, or `null` when none is saved. */
+    verifiedAt: string | null
   }[]
   /** Origins (`LLM_ALLOWED_BASE_URLS`) a base URL may point to; empty when none is allowed. */
   allowedBaseUrls: string[]

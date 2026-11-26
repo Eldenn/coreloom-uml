@@ -56,12 +56,22 @@ export async function userLanguageModel(
 ): Promise<
   { model: LanguageModel } | { problem: string } | { notFound: true } | { reason: LlmFailureReason }
 > {
-  const key = apiKey ?? ''
-  const problem = providerProblem(provider, key)
-  if (problem) return { problem }
-  const resolved = await resolveCredential(provider, key, user)
+  const resolved = await resolveCredential(provider, apiKey ?? '', user)
   if (!('credential' in resolved)) return resolved
-  return { model: (await app.container.make(LanguageModels)).create(provider, resolved.credential) }
+  // A saved key answers with the origin it was saved with: the request's base URL is ignored for
+  // it, so a stolen session cannot point the saved key at another origin. The transition (the
+  // browser still sending its key) keeps the request's own base URL.
+  const effective: ProviderSettings = resolved.baseUrl
+    ? { ...provider, baseUrl: resolved.baseUrl }
+    : provider
+  const problem = providerProblem(
+    effective,
+    typeof resolved.credential === 'string' ? resolved.credential : '',
+  )
+  if (problem) return { problem }
+  return {
+    model: (await app.container.make(LanguageModels)).create(effective, resolved.credential),
+  }
 }
 
 /** The 502 body of a failed provider call. */

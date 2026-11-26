@@ -4,6 +4,7 @@ import { isFeatureEnabled } from '#app/feature-flags/services/feature-flags'
 import { ProviderKind } from '#app/llm-connections/constants/llm-connections'
 import { claudeConnected } from '#app/llm-connections/services/claude-code-connections'
 import { codexConnected } from '#app/llm-connections/services/codex-connections'
+import { storedApiKey } from '#app/llm-connections/services/llm-api-keys'
 import type User from '#app/users/models/user'
 
 type Person = Pick<User, 'id' | 'email'>
@@ -28,9 +29,14 @@ export async function enabledKinds(user: Person): Promise<ProviderKind[]> {
   return PROVIDER_KINDS.filter((_kind, index) => enabled[index])
 }
 
-/** A key kind is always ready; a subscription once the user connected it. */
+/**
+ * A key kind is ready once the account saved a key for it (or, while the browser flow migrates,
+ * sends one with each call); a subscription once the user connected it.
+ */
 export async function kindConnected(kind: ProviderKind, user: Person): Promise<boolean> {
-  if (providerAuth(kind) === ProviderAuth.ApiKey) return true
+  if (providerAuth(kind) === ProviderAuth.ApiKey) {
+    return (await storedApiKey(user, kind)) !== null
+  }
   if (kind === ProviderKind.OpenAICodex) return codexConnected(user)
   return claudeConnected(user)
 }
