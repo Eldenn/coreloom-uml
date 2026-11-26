@@ -2,10 +2,13 @@ import testUtils from '@adonisjs/core/services/test_utils'
 import type { Role } from '@coreloom-uml/catalog'
 import { test } from '@japa/runner'
 import type { TestContext } from '@japa/runner/core'
-import { AGENT_RULES_MAX } from '#app/agent-configs/constants/agent-config'
+import { AGENT_RULES_MAX, AGENT_SKILLS_MAX } from '#app/agent-configs/constants/agent-config'
 import AgentConfig from '#app/agent-configs/models/agent-config'
 import AgentConfigRule from '#app/agent-configs/models/agent-config-rule'
+import AgentConfigSkill from '#app/agent-configs/models/agent-config-skill'
 import { type MergeSource, mergeSources } from '#app/agent-configs/services/agent-config-merge'
+import { SkillStatus } from '#app/skills/constants/skill'
+import CatalogSkill from '#app/skills/models/catalog-skill'
 import User from '#app/users/models/user'
 
 const json = { accept: 'application/json' }
@@ -195,6 +198,7 @@ test.group('Agent configs - merge', (group) => {
       readyRules: [],
       rules: [],
       roles: [role(name)],
+      skillIds: [],
     })
 
     const same = mergeSources([source(1, 'Reviewer'), source(2, 'Reviewer')])
@@ -217,5 +221,60 @@ test.group('Agent configs - merge', (group) => {
     })
     const chosen = mergeSources(sources, { roles: [{ slug: 'reviewer', sourceId: 2 }] })
     assert.equal('merged' in chosen && chosen.merged.roles[0]?.name, 'Strict reviewer')
+  })
+  test('adds up the held skills, each once, within the limit', async ({ client, assert }) => {
+    const user = await makeUser()
+    const first = await createConfig(client, user, { name: 'First', targets: ['cursor'] })
+    const second = await createConfig(client, user, { name: 'Second', targets: ['cursor'] })
+    const skills = await Promise.all(
+      ['merge-a', 'merge-b', 'merge-c'].map((slug) =>
+        CatalogSkill.create({
+          slug,
+          name: slug,
+          description: { en: `The ${slug} skill.` },
+          url: `https://github.com/acme/skills/tree/${'a'.repeat(40)}/skills/${slug}`,
+          targets: [],
+          affinities: [],
+          topics: [],
+          origin: 'search',
+          status: SkillStatus.Active,
+          eligible: true,
+          audits: [],
+        }),
+      ),
+    )
+    const [a, b, c] = skills.map((skill) => skill.id)
+    await AgentConfigSkill.createMany([
+      { agentConfigId: first, skillId: a },
+      { agentConfigId: first, skillId: b },
+      { agentConfigId: second, skillId: b },
+      { agentConfigId: second, skillId: c },
+    ])
+
+    const merged = await merge(client, user, { name: 'Merged', sourceIds: [first, second] })
+    merged.assertStatus(201)
+    assert.deepEqual(
+      merged.body().config.skills.map((skill: { slug: string }) => skill.slug),
+      ['merge-a', 'merge-b', 'merge-c'],
+    )
+
+    const source = (id: number, skillIds: number[]): MergeSource => ({
+      id,
+      targets: ['cursor'],
+      notes: null,
+      readyRules: [],
+      rules: [],
+      roles: [],
+      skillIds,
+    })
+    const half = Array.from({ length: AGENT_SKILLS_MAX }, (_, index) => index)
+    const tooMany = mergeSources([
+      source(1, half),
+      source(
+        2,
+        half.map((id) => id + 1),
+      ),
+    ])
+    assert.property(tooMany, 'refused')
   })
 })

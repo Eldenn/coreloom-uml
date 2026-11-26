@@ -4,6 +4,7 @@ import AgentConfig from '#app/agent-configs/models/agent-config'
 import AgentConfigReadyRule from '#app/agent-configs/models/agent-config-ready-rule'
 import AgentConfigRole from '#app/agent-configs/models/agent-config-role'
 import AgentConfigRule from '#app/agent-configs/models/agent-config-rule'
+import AgentConfigSkill from '#app/agent-configs/models/agent-config-skill'
 import { mergeSources } from '#app/agent-configs/services/agent-config-merge'
 import {
   AGENT_CONFIG_NOT_FOUND,
@@ -18,7 +19,7 @@ export default class AgentConfigMergesController {
   /**
    * `POST /agent-configs/merge`: 201 with the new configuration, outside any project and without
    * a generation. While a conflict has no choice, nothing is created: 200 with `conflicts`, to
-   * send again with `choices`. 422 when the result would pass a configuration's limits. Roles
+   * send again with `choices`. Held skills add up. 422 when the result would pass a configuration's limits. Roles
    * are merged only while the `agent-roles` flag is on for the caller.
    */
   async store({ request, auth, response }: HttpContext) {
@@ -32,6 +33,7 @@ export default class AgentConfigMergesController {
         .preload('readyRules', (query) => query.orderBy('id', 'asc'))
         .preload('rules', (query) => query.orderBy('position', 'asc').orderBy('id', 'asc'))
         .preload('roles', (query) => query.orderBy('id', 'asc'))
+        .preload('skills', (query) => query.orderBy('id', 'asc'))
       const sources = input.sourceIds.flatMap((id) => rows.filter((row) => row.id === id))
       if (
         sources.length < input.sourceIds.length ||
@@ -47,6 +49,7 @@ export default class AgentConfigMergesController {
           readyRules: source.readyRules,
           rules: source.rules,
           roles: withRoles ? source.roles.map((role) => role.toRole()) : [],
+          skillIds: source.skills.map((row) => row.skillId),
         })),
         input.choices,
       )
@@ -81,6 +84,10 @@ export default class AgentConfigMergesController {
       )
       await AgentConfigRole.createMany(
         merged.roles.map((role) => ({ ...role, agentConfigId })),
+        { client: trx },
+      )
+      await AgentConfigSkill.createMany(
+        merged.skillIds.map((skillId) => ({ skillId, agentConfigId })),
         { client: trx },
       )
       return { config }
