@@ -1,20 +1,5 @@
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import type { DateTime } from 'luxon'
-import { LlmSecretPurpose } from '#app/llm-connections/constants/llm-connections'
-import { openLlmSecret, sealLlmSecret } from '#app/llm-connections/services/llm-secrets'
-
-/**
- * Encrypted with the dedicated `llmKeys` encrypter on write; `null` for a kind that calls a
- * server without a key, and on read when the ciphertext cannot be decrypted (the key changed) —
- * which the services treat as "no key saved". Never serialized.
- */
-const secret = {
-  prepare: (value: string | null) =>
-    value === null ? null : sealLlmSecret(value, LlmSecretPurpose.ApiKey),
-  consume: (value: string | null): string | null =>
-    value === null ? null : openLlmSecret(value, LlmSecretPurpose.ApiKey),
-  serializeAs: null,
-}
 
 /** A provider API key the account saved (see the `llm_api_keys` migration). */
 export default class LlmApiKey extends BaseModel {
@@ -29,8 +14,13 @@ export default class LlmApiKey extends BaseModel {
   @column()
   declare kind: string
 
-  @column(secret)
-  declare apiKey: string | null
+  /**
+   * The key, sealed by `llmKeys` and bound to its owner (`llm-secrets.ts`); only
+   * `llm-api-keys.ts` seals or opens it. `null` for a kind that calls a server without a key.
+   * Never serialized.
+   */
+  @column({ columnName: 'api_key', serializeAs: null })
+  declare sealedKey: string | null
 
   /** The last four characters of the key, plain: what the settings screen shows. */
   @column()

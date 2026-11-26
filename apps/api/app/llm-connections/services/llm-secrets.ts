@@ -3,6 +3,9 @@ import type { LlmSecretPurpose } from '#app/llm-connections/constants/llm-connec
 import { llmKeysList } from '#config/encryption'
 import env from '#start/env'
 
+/** The account a stored LLM secret belongs to. */
+type Owner = { id: number }
+
 /**
  * Why no LLM secret can be sealed or opened here, or `null`: production has no fallback key, so
  * it needs `LLM_KEYS_ENCRYPTION_KEYS`. Pure, so it is tested without a production process.
@@ -20,23 +23,31 @@ function llmKeys() {
 }
 
 /**
- * Every stored LLM secret (saved keys, ChatGPT tokens, the Claude binary's state) is sealed by the
- * dedicated `llmKeys` encrypter (`LLM_KEYS_ENCRYPTION_KEYS`), bound to its purpose. This module
- * is the only code that uses that encrypter.
+ * What a secret is bound to: its kind and its owner's account. A ciphertext copied to another
+ * column, table or account's row never decrypts there.
  */
-export function sealLlmSecret(value: string, purpose: LlmSecretPurpose): string {
-  return llmKeys().encrypt(value, { purpose })
-}
-
-/** The secret, or `null` when the ciphertext cannot be read (another key, another purpose). */
-export function openLlmSecret(value: string, purpose: LlmSecretPurpose): string | null {
-  return llmKeys().decrypt<string>(value, purpose) ?? null
+export function ownedPurpose(purpose: LlmSecretPurpose, owner: Owner): string {
+  return `${purpose}:${owner.id}`
 }
 
 /**
- * A ChatGPT token sealed before they moved to `llmKeys`: encrypted with `APP_KEY` and no purpose.
- * Read only to move such a row, by its migration and by the model until it is rewritten.
+ * Every stored LLM secret (saved keys, ChatGPT tokens, the Claude binary's state) is sealed by the
+ * dedicated `llmKeys` encrypter (`LLM_KEYS_ENCRYPTION_KEYS`), bound to its kind and its owner
+ * (`ownedPurpose`). This module is the only code that uses that encrypter, but for the migrations
+ * that moved older ciphertexts to it.
  */
-export function openLegacyAppSecret(value: string): string | null {
-  return encryption.decrypt<string>(value) ?? null
+export function sealLlmSecret(value: string, purpose: LlmSecretPurpose, owner: Owner): string {
+  return llmKeys().encrypt(value, { purpose: ownedPurpose(purpose, owner) })
+}
+
+/**
+ * The secret, or `null` when the ciphertext cannot be read: another key, another kind, another
+ * account, or a ciphertext from before (`APP_KEY`, or no owner), which only its migration reads.
+ */
+export function openLlmSecret(
+  value: string,
+  purpose: LlmSecretPurpose,
+  owner: Owner,
+): string | null {
+  return llmKeys().decrypt<string>(value, ownedPurpose(purpose, owner)) ?? null
 }

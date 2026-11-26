@@ -12,11 +12,12 @@ import {
   CLAUDE_LOGIN_TIMEOUT_MS,
   CLAUDE_STATE_FILE_MAX_BYTES,
   CLAUDE_STATE_FILES,
+  LlmSecretPurpose,
 } from '#app/llm-connections/constants/llm-connections'
 import ClaudeCodeState, {
   type ClaudeStateFiles,
-  sealClaudeFiles,
 } from '#app/llm-connections/models/claude-code-state'
+import { openLlmSecret, sealLlmSecret } from '#app/llm-connections/services/llm-secrets'
 import User from '#app/users/models/user'
 import llmConfig from '#config/llm'
 
@@ -117,10 +118,32 @@ async function writeClaudeFolder(dir: string, files: ClaudeStateFiles): Promise<
   }
 }
 
+/** A state sealed for its owner, as the `files` column stores it. */
+function sealFiles(owner: Owner, files: ClaudeStateFiles): string {
+  return sealLlmSecret(JSON.stringify(files), LlmSecretPurpose.ClaudeState, owner)
+}
+
+/**
+ * A row's state, or `null` when it cannot be read (the keys changed, a row sealed for another
+ * account) or does not hold files by name.
+ */
+function filesOf(row: ClaudeCodeState): ClaudeStateFiles | null {
+  const plain = openLlmSecret(row.sealedFiles, LlmSecretPurpose.ClaudeState, { id: row.userId })
+  if (plain === null) return null
+  try {
+    const files = JSON.parse(plain) as unknown
+    if (!files || typeof files !== 'object' || Array.isArray(files)) return null
+    const values = Object.values(files)
+    return values.every((value) => typeof value === 'string') ? (files as ClaudeStateFiles) : null
+  } catch {
+    return null
+  }
+}
+
 /** The account's saved state, or `null` when it has none or it cannot be read. */
 export async function claudeState(owner: Owner): Promise<ClaudeStateFiles | null> {
   const row = await ClaudeCodeState.findBy('userId', owner.id)
-  return row?.files ?? null
+  return row === null ? null : filesOf(row)
 }
 
 export async function hasClaudeState(owner: Owner): Promise<boolean> {
@@ -131,10 +154,14 @@ export async function hasClaudeState(owner: Owner): Promise<boolean> {
 export async function saveClaudeState(owner: Owner, files: ClaudeStateFiles): Promise<void> {
   const row = await ClaudeCodeState.findBy('userId', owner.id)
   if (row) {
-    row.merge({ files, version: row.version + 1 })
+    row.merge({ sealedFiles: sealFiles(owner, files), version: row.version + 1 })
     await row.save()
   } else {
-    await ClaudeCodeState.create({ userId: owner.id, files, version: 1 })
+    await ClaudeCodeState.create({
+      userId: owner.id,
+      sealedFiles: sealFiles(owner, files),
+      version: 1,
+    })
   }
 }
 
@@ -148,7 +175,7 @@ async function writeBack(owner: Owner, version: number, files: ClaudeStateFiles)
     .from('claude_code_states')
     .where('user_id', owner.id)
     .where('version', version)
-    .update({ files: sealClaudeFiles(files), version: version + 1, updated_at: new Date() })
+    .update({ files: sealFiles(owner, files), version: version + 1, updated_at: new Date() })
   return Number(Array.isArray(updated) ? updated[0] : updated) > 0
 }
 
@@ -198,7 +225,7 @@ export async function withClaudeFolder<T>(
     owner,
     async () => {
       const row = await ClaudeCodeState.findBy('userId', owner.id)
-      const before = row?.files ?? null
+      const before = row === null ? null : filesOf(row)
       if (row === null || before === null) {
         throw new LlmCallError(LlmFailureReason.SubscriptionExpired)
       }

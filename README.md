@@ -702,7 +702,8 @@ proposals work exactly as with a key (same answers, same failure reasons, plus
   `POST /llm/connections/openai-codex/attempts` returns a code and OpenAI's page; the web app polls
   `GET …/attempts/:attemptId` (`pending`, `connected`, `expired`, `denied`). Attempts wait in Redis
   for 15 minutes, tied to their account (another account's attempt is a 404). The tokens are stored
-  in `llm_connections`, sealed by the `llmKeys` encrypter (`LLM_KEYS_ENCRYPTION_KEYS`), refreshed
+  in `llm_connections`, sealed by the `llmKeys` encrypter (`LLM_KEYS_ENCRYPTION_KEYS`) and bound to
+  their account like every stored LLM secret, so a ciphertext copied to another row never opens; refreshed
   under a row lock when they expire within a minute, and never returned, logged or traced. Changing
   those keys or a revoked grant disconnects the account. `DELETE /llm/connections/openai-codex` disconnects. The OAuth values come
   from Hermes Agent's source, which connects the same way (checked on 2026-11-09, see

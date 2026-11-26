@@ -6,6 +6,7 @@ import { test } from '@japa/runner'
 import { updateFlag } from '#app/feature-flags/services/feature-flags'
 import LlmConnection from '#app/llm-connections/models/llm-connection'
 import { attemptKey } from '#app/llm-connections/services/codex-attempts'
+import { saveCodexTokens } from '#app/llm-connections/services/codex-connections'
 import CodexOAuth from '#app/llm-connections/services/codex-oauth'
 import User from '#app/users/models/user'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
@@ -157,12 +158,10 @@ test.group('ChatGPT subscription - device code', (group) => {
   test('disconnecting removes the tokens', async ({ client, assert }) => {
     const user = await makeUser()
     await enableChatgpt(user)
-    await LlmConnection.create({
-      userId: user.id,
-      kind: 'openai-codex',
+    await saveCodexTokens(user, {
       accessToken: ACCESS,
       refreshToken: REFRESH,
-      expiresAt: (await import('luxon')).DateTime.now().plus({ hours: 1 }),
+      expiresAt: new Date(Date.now() + 3600_000),
       accountId: 'acct-1',
     })
     ;(

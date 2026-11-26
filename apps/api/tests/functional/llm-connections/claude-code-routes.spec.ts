@@ -474,6 +474,17 @@ function heldLaunch(user: User, play: (dir: string) => Promise<void>) {
 test.group('Claude subscription - a launch and the state around it', (group) => {
   group.each.setup(() => withDefaultFlags())
 
+  test("a state copied into another account's row is not read there", async ({ assert }) => {
+    const owner = await makeUser()
+    const other = await makeUser()
+    await saveClaudeState(owner, { '.credentials.json': CREDENTIALS })
+    await saveClaudeState(other, { '.credentials.json': REFRESHED })
+    const stolen = await db.from('claude_code_states').where('user_id', owner.id).firstOrFail()
+    await db.from('claude_code_states').where('user_id', other.id).update({ files: stolen.files })
+    assert.isNull(await claudeState(other))
+    assert.deepEqual(await claudeState(owner), { '.credentials.json': CREDENTIALS })
+  })
+
   test('a launch never brings back a state dropped while it ran', async ({ assert }) => {
     const user = await makeUser()
     await saveClaudeState(user, { '.credentials.json': CREDENTIALS })
