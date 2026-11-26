@@ -1,11 +1,12 @@
 import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
-import type { LanguageModel } from '@coreloom-uml/llm'
+import type { LanguageModel, LlmCredential, ProviderSettings } from '@coreloom-uml/llm'
 import { APICallError, answeringModel, failingModel } from '@coreloom-uml/llm/testing'
 import { test } from '@japa/runner'
 import LanguageModels from '#app/llm/services/language-models'
 import { storedApiKey } from '#app/llm-connections/services/llm-api-keys'
 import User from '#app/users/models/user'
+import llmConfig from '#config/llm'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
 
@@ -23,7 +24,7 @@ function makeUser() {
 
 /** Every model the API builds during a test is this one; records what it was built with. */
 function useModel(model: LanguageModel) {
-  const built: { provider: unknown; credential: unknown }[] = []
+  const built: { provider: ProviderSettings; credential: LlmCredential }[] = []
   app.container.swap(LanguageModels, () => {
     const fake = new LanguageModels()
     fake.create = (provider, credential) => {
@@ -183,7 +184,8 @@ test.group('LLM - saved api keys', (group) => {
     assert.isTrue(response.body().ok)
     assert.equal(built[0]?.credential, KEY)
 
-    // The saved key is nowhere: logs, responses, database.
+    // The saved key is nowhere in the database; the route's answer was checked above and the
+    // logs by the tests that capture them.
     assert.notInclude(await dumpDatabase(), KEY)
   })
 
@@ -211,14 +213,81 @@ test.group('LLM - saved api keys', (group) => {
       .where('user_id', user.id)
       .update({ api_key: 'sealed-with-another-key' })
 
-    assert.isNull(await storedApiKey(user, 'mistral'))
+    assert.equal((await storedApiKey(user, 'mistral'))?.apiKey, '')
 
+    // A hosted provider whose saved key cannot be read fails the settings check, like a kind
+    // no key is saved for: the request's key does not rescue it.
     const response = await client
       .post('/llm/test')
       .headers(json)
       .loginAs(user)
       .json({ provider: hosted, apiKey: KEY })
-    response.assertStatus(200)
+    response.assertStatus(422)
+  })
+
+  test('a keyless server saves its origin only, which the calls then use', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    const built = useModel(answeringModel('OK'))
+    const local = 'http://localhost:11434'
+    llmConfig.allowedOrigins.push(local)
+    try {
+      const response = await client
+        .put('/llm/api-keys/ollama')
+        .headers(json)
+        .loginAs(user)
+        .json({ baseUrl: local })
+      response.assertStatus(200)
+      assert.equal(response.body().keyHint, '')
+
+      const stored = await storedApiKey(user, 'ollama')
+      assert.equal(stored?.apiKey, '')
+      assert.equal(stored?.baseUrl, local)
+
+      const call = await client
+        .post('/llm/test')
+        .headers(json)
+        .loginAs(user)
+        .json({ provider: { kind: 'ollama', model: 'qwen3' } })
+      call.assertStatus(200)
+      assert.equal(built[0]?.provider.baseUrl, local)
+    } finally {
+      llmConfig.allowedOrigins.splice(0)
+    }
+  })
+
+  test("the origin a key was saved with wins over the request's", async ({ client, assert }) => {
+    const user = await makeUser()
+    const built = useModel(answeringModel('OK'))
+    const saved = 'http://localhost:11434'
+    const asked = 'http://localhost:11435'
+    llmConfig.allowedOrigins.push(saved, asked)
+    try {
+      const put = await client
+        .put('/llm/api-keys/openai-compatible')
+        .headers(json)
+        .loginAs(user)
+        .json({ apiKey: KEY, baseUrl: saved })
+      put.assertStatus(200)
+
+      const call = await client
+        .post('/llm/test')
+        .headers(json)
+        .loginAs(user)
+        .json({
+          provider: { kind: 'openai-compatible', model: 'x', baseUrl: asked },
+          apiKey: 'sk-request-key-not-used',
+        })
+      call.assertStatus(200)
+      // The saved key and the origin it was saved with: a stolen session cannot point it
+      // elsewhere, and a key changed in the browser does not reach a saved one.
+      assert.equal(built[0]?.credential, KEY)
+      assert.equal(built[0]?.provider.baseUrl, saved)
+    } finally {
+      llmConfig.allowedOrigins.splice(0)
+    }
   })
 
   test('GET /llm/providers answers the hint, origin and date of a saved key', async ({
@@ -243,8 +312,10 @@ test.group('LLM - saved api keys', (group) => {
       baseUrl: null,
     })
     assert.isNotNull(byKind.get('mistral')?.verifiedAt)
+    // While the browser flow migrates, every key kind stays "connected" (the request's key still
+    // works); what tells a saved key apart is the hint.
     assert.containsSubset(byKind.get('anthropic'), {
-      connected: false,
+      connected: true,
       keyHint: null,
       verifiedAt: null,
     })

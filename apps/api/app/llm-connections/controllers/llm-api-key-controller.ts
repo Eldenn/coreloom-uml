@@ -4,7 +4,7 @@ import logger from '@adonisjs/core/services/logger'
 import { MODEL_SUGGESTIONS, ProviderAuth, providerAuth } from '@coreloom-uml/catalog'
 import { testConnection } from '@coreloom-uml/llm'
 import LanguageModels, { llmFailure, providerProblem } from '#app/llm/services/language-models'
-import { deleteApiKey, keyHintOf, saveApiKey } from '#app/llm-connections/services/llm-api-keys'
+import { deleteApiKey, saveApiKey } from '#app/llm-connections/services/llm-api-keys'
 import {
   apiKeyKindInput,
   saveApiKeyInput,
@@ -45,18 +45,19 @@ export default class LlmApiKeyController {
         userId: user.id,
         kind,
         ok: result.ok,
+        saved: result.ok,
         ...(result.ok ? { latencyMs: result.latencyMs } : { reason: result.reason }),
       },
-      'llm api key saved',
+      'llm api key checked',
     )
     if (!result.ok) return response.badGateway(llmFailure(result.reason))
 
-    await saveApiKey(user, kind, { apiKey: key, baseUrl: baseUrl ?? null })
+    const saved = await saveApiKey(user, kind, { apiKey: key, baseUrl: baseUrl ?? null })
     const output: LlmApiKeyOutput = {
       kind,
-      keyHint: keyHintOf(key),
-      baseUrl: baseUrl ?? null,
-      verifiedAt: new Date().toISOString(),
+      keyHint: saved.keyHint,
+      baseUrl: saved.baseUrl,
+      verifiedAt: saved.verifiedAt.toISO() ?? new Date().toISOString(),
     }
     return response.ok(output)
   }

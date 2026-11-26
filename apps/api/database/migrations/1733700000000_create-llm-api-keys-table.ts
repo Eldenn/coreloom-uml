@@ -16,7 +16,8 @@ export default class extends BaseSchema {
       table.integer('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE')
       // Only the kinds that authenticate with a key (see PROVIDER_KINDS in @coreloom-uml/catalog).
       table.string('kind', 50).notNullable()
-      table.text('api_key').notNullable()
+      // `null` for a kind that calls a server without one, whose row then holds its origin.
+      table.text('api_key').nullable()
       table.string('key_hint', 8).notNullable()
       table.string('base_url', 2000).nullable()
       table.timestamp('verified_at', { useTz: true }).notNullable()

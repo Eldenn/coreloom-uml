@@ -676,7 +676,7 @@ export class LlmApiKeySchema extends BaseModel {
   static $columns = ['apiKey', 'baseUrl', 'createdAt', 'id', 'keyHint', 'kind', 'updatedAt', 'userId', 'verifiedAt'] as const
   $columns = LlmApiKeySchema.$columns
   @column()
-  declare apiKey: string
+  declare apiKey: string | null
   @column()
   declare baseUrl: string | null
   @column.dateTime({ autoCreate: true })

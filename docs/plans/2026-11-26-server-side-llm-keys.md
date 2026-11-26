@@ -40,3 +40,15 @@ f. First queued model call, `{ userId, provider }` only.
 - Rate-limited behind `llmThrottle`; session guard only.
 - `last_used_at` not implemented yet; audit events (`llm_key_events`) and notification emails are
   the next increment if the owner wants them.
+
+## Transition and deployment notes (from the code review)
+
+- `connected` stays `true` for key kinds until step e removes the request key: the current web
+  disables "Test" when `connected === false`, and accounts still call with the browser key.
+  What tells a saved key apart is `keyHint`.
+- A saved key wins silently over a key changed in the browser: intended (the account's key is the
+  source of truth once saved); the settings screen shows the hint so the state is visible.
+- Staging runs with `NODE_ENV=production`: without `LLM_KEYS_ENCRYPTION_KEYS` set (even empty),
+  `requiredInProduction` refuses to boot. Set it in the Coolify env before deploying.
+- The BullMQ worker's environment does not carry `LLM_KEYS_ENCRYPTION_KEYS` yet: no job calls a
+  model today. Add it to the `queue-worker` services when the first queued model call lands.

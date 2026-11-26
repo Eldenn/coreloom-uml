@@ -2,7 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { MODEL_SUGGESTIONS, providerAuth } from '@coreloom-uml/catalog'
 import { requiresApiKey, takesBaseUrl } from '@coreloom-uml/llm'
 import type { LlmProvidersOutput } from '#app/llm/validators/llm-output'
-import LlmApiKey from '#app/llm-connections/models/llm-api-key'
+import { savedKeySummaries } from '#app/llm-connections/services/llm-api-keys'
 import { enabledKinds, kindConnected } from '#app/llm-connections/services/subscriptions'
 import llmConfig from '#config/llm'
 
@@ -20,7 +20,7 @@ export default class LlmProvidersController {
     const kinds = await enabledKinds(user)
     const [connected, saved] = await Promise.all([
       Promise.all(kinds.map((kind) => kindConnected(kind, user))),
-      LlmApiKey.query().where('user_id', user.id),
+      savedKeySummaries(user),
     ])
     const byKind = new Map(saved.map((row) => [row.kind, row]))
     const output: LlmProvidersOutput = {
