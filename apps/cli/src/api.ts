@@ -25,8 +25,17 @@ export type Generation = {
   catalogVersion: string
   files: AgentContextFile[]
   recommendations: Recommendation[]
-  /** `held`: the slugs of the skills the configuration holds, which `pull` installs. */
-  skills: { compatible: GenerationSkill[]; conflicting: GenerationSkill[]; held: string[] }
+  /**
+   * `held`: the slugs of the skills the configuration holds, which `pull` installs. `copies`: the
+   * copy of each that was served when it was generated, the one installed; null from an API that
+   * records none, which then serves the newest.
+   */
+  skills: {
+    compatible: GenerationSkill[]
+    conflicting: GenerationSkill[]
+    held: string[]
+    copies: { slug: string; versionId: number }[] | null
+  }
   /** The tools it was rendered for: where the held skills go. Older APIs send none. */
   targets: string[]
 }
@@ -108,6 +117,14 @@ export async function fetchLatestGeneration(options: {
           ? generation.skills.conflicting
           : [],
         held: strings(generation.skills?.held),
+        copies: Array.isArray(generation.skills?.copies)
+          ? generation.skills.copies.filter(
+              (copy) =>
+                typeof copy?.slug === 'string' &&
+                Number.isSafeInteger(copy.versionId) &&
+                copy.versionId > 0,
+            )
+          : null,
       },
       targets: strings(generation.targets),
     }

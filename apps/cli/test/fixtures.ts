@@ -53,6 +53,7 @@ export function generation(id: number, files: Generation['files']): Generation {
       ],
       conflicting: [{ name: 'loose-tests', url: 'https://example.com/loose-tests' }],
       held: [],
+      copies: null,
     },
     targets: ['claude-code'],
   }
@@ -89,7 +90,7 @@ export class FixtureApi {
       if (request.headers.authorization !== `Bearer ${API_KEY}`) {
         return json(401, { error: { message: 'Unauthorized' } })
       }
-      const copy = /^\/skills\/([a-z0-9-]+)\/copy$/.exec(request.url ?? '')
+      const copy = /^\/skills\/([a-z0-9-]+)\/copy(?:\?version=\d+)?$/.exec(request.url ?? '')
       if (copy) {
         const found = this.copies[copy[1] ?? '']
         return found
