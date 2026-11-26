@@ -426,7 +426,7 @@ export const en = {
     historyOption: (id: number, revision: number) => `#${id}, revision ${revision}`,
     filesTitle: 'Files',
     filesHint:
-      'Each file holds only the block Coreloom manages, between its markers. In your repository, write freely outside it.',
+      'Each file holds only the block Coreloom manages, between its markers. In your repository, write freely outside it. A skill’s files are installed whole by coreloom-uml pull.',
     download: 'Download',
     downloadFile: (path: string) => `Download ${path}`,
     fileKinds: {
@@ -434,6 +434,7 @@ export const en = {
       settings: 'Settings',
       config: 'Configuration',
       role: 'Role',
+      skill: 'Skill',
     },
     changesTitle: 'Changes since the previous generation',
     noPrevious: 'This is the first generation.',
@@ -2176,7 +2177,7 @@ export const fr: Messages = {
     historyOption: (id: number, revision: number) => `n° ${id}, révision ${revision}`,
     filesTitle: 'Fichiers',
     filesHint:
-      'Chaque fichier ne contient que le bloc géré par Coreloom, entre ses marqueurs. Dans votre dépôt, écrivez librement en dehors.',
+      'Chaque fichier ne contient que le bloc géré par Coreloom, entre ses marqueurs. Dans votre dépôt, écrivez librement en dehors. Les fichiers d’un skill sont installés tels quels par coreloom-uml pull.',
     download: 'Télécharger',
     downloadFile: (path: string) => `Télécharger ${path}`,
     fileKinds: {
@@ -2184,6 +2185,7 @@ export const fr: Messages = {
       settings: 'Réglages',
       config: 'Configuration',
       role: 'Rôle',
+      skill: 'Skill',
     },
     changesTitle: 'Changements depuis la génération précédente',
     noPrevious: 'C’est la première génération.',

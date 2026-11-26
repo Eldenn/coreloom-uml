@@ -1,5 +1,6 @@
 import db from '@adonisjs/lucid/services/db'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
+import { SKILL_FOLDERS, type Target } from '@coreloom-uml/catalog'
 import type AgentConfig from '#app/agent-configs/models/agent-config'
 import AgentConfigSkill from '#app/agent-configs/models/agent-config-skill'
 import { byName } from '#app/agent-configs/serializers/agent-config-serializer'
@@ -9,6 +10,12 @@ import {
   findOwnedAgentConfig,
 } from '#app/agent-configs/services/owned-agent-config'
 import CatalogSkill from '#app/skills/models/catalog-skill'
+import SkillVersion from '#app/skills/models/skill-version'
+import {
+  installName,
+  newestApproved,
+  readSkillVersionFiles,
+} from '#app/skills/services/skill-versions'
 import { INSTALLABLE_SQL } from '#app/skills/services/skills-query'
 import type User from '#app/users/models/user'
 
@@ -69,13 +76,55 @@ export async function replaceAgentSkills(
   })
 }
 
-/** The slugs of the skills a configuration holds, by name: what a generation records. */
-export async function heldSkillSlugs(
+/**
+ * What a generation records of the skills a configuration holds: their slugs, by name, and the
+ * copy `GET /skills/:slug/copy` serves now of each one it still serves.
+ */
+export async function heldSkills(
   configId: number,
   client?: TransactionClientContract,
-): Promise<string[]> {
-  const rows = await AgentConfigSkill.query({ client })
-    .where('agentConfigId', configId)
-    .preload('skill')
-  return byName(rows).map((row) => row.skill.slug)
+): Promise<{ held: string[]; copies: { slug: string; versionId: number }[] }> {
+  const rows = byName(
+    await AgentConfigSkill.query({ client }).where('agentConfigId', configId).preload('skill'),
+  )
+  const served = rows.length
+    ? await CatalogSkill.query({ client })
+        .whereIn(
+          'id',
+          rows.map((row) => row.skillId),
+        )
+        .whereRaw(INSTALLABLE_SQL)
+    : []
+  const copies = []
+  for (const row of rows) {
+    if (!served.some((skill) => skill.id === row.skillId)) continue
+    const version = await newestApproved(row.skillId)
+    if (version) copies.push({ slug: row.skill.slug, versionId: version.id })
+  }
+  return { held: rows.map((row) => row.skill.slug), copies }
+}
+
+/**
+ * The files of a generation's held skills as `pull` lays them out: each copy whole, under
+ * `<SKILL_FOLDERS[target]>/<name>/` for each folder its targets use. Read from Drive, where a copy
+ * is never rewritten.
+ */
+export async function heldSkillFiles(
+  copies: { slug: string; versionId: number }[],
+  targets: Target[],
+): Promise<{ slug: string; path: string; content: string }[]> {
+  const folders = [...new Set(targets.map((target) => SKILL_FOLDERS[target]))]
+  const files = []
+  for (const { slug, versionId } of copies) {
+    const version = await SkillVersion.find(versionId)
+    if (!version) continue
+    const copy = await readSkillVersionFiles(version)
+    const name = installName(copy, slug)
+    for (const folder of folders) {
+      for (const file of copy) {
+        files.push({ slug, path: `${folder}/${name}/${file.path}`, content: file.content })
+      }
+    }
+  }
+  return files
 }

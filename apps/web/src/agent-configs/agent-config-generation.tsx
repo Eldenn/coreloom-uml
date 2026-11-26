@@ -1,4 +1,4 @@
-// One generation: its files (tree, read-only viewer, download), what changed since the previous
+// One generation: its files and those of its held skills (tree, read-only viewer, download), what changed since the previous
 // generation, the recommendations, the skills that fit or go against the rules held, and how to
 // install the files in a repository with the CLI.
 import { Link } from '@tanstack/react-router'
@@ -39,16 +39,21 @@ import {
   type AgentSkill,
   useGeneration,
   useGenerations,
+  useGenerationSkillFiles,
 } from '@/lib/agent-configs'
 import { apiBaseUrl } from '@/lib/client'
 import { downloadText } from '@/lib/download'
 import { useT } from '@/lib/locale'
 
+/** A file the page lists: a generated one, or one of a held skill, which `pull` installs. */
+interface ShownFile {
+  path: string
+  kind: AgentFile['kind'] | 'skill'
+  content: string
+}
+
 /** Files as a tree of folders, in the generation's order. */
-function fileTree(
-  files: AgentFile[],
-  kinds: Partial<Record<AgentFile['kind'], string>>,
-): TreeViewNode[] {
+function fileTree(files: ShownFile[], kinds: Partial<Record<string, string>>): TreeViewNode[] {
   const root: TreeViewNode[] = []
   for (const file of files) {
     const parts = file.path.split('/')
@@ -79,12 +84,14 @@ const MIME_TYPES: Partial<Record<string, string>> = {
   toml: 'application/toml',
   cjs: 'text/javascript',
   sh: 'text/x-shellscript',
+  py: 'text/x-python',
+  txt: 'text/plain',
   js: 'text/javascript',
   rules: 'text/plain',
   yml: 'application/yaml',
 }
 
-function download(file: AgentFile) {
+function download(file: ShownFile) {
   // A Git hook has no extension: it is a shell script.
   const type = file.path.startsWith('.githooks/')
     ? 'text/x-shellscript'
@@ -163,7 +170,7 @@ export function AgentConfigGeneration({
           </label>
         )}
       </div>
-      <FilesCard generation={current} />
+      <FilesCard configId={configId} generation={current} />
       <ChangesCard
         current={current}
         previous={previousId === null ? null : (previous.data ?? undefined)}
@@ -196,13 +203,21 @@ export function AgentConfigGeneration({
   )
 }
 
-function FilesCard({ generation }: { generation: AgentGeneration }) {
+function FilesCard({ configId, generation }: { configId: number; generation: AgentGeneration }) {
   const t = useT()
-  const [selected, setSelected] = React.useState(generation.files.at(0)?.path ?? null)
-  const file = generation.files.find((f) => f.path === selected) ?? generation.files.at(0)
+  const skillFiles = useGenerationSkillFiles(configId, generation.id)
+  const files = React.useMemo<ShownFile[]>(
+    () => [
+      ...generation.files,
+      ...(skillFiles.data ?? []).map((f) => ({ ...f, kind: 'skill' as const })),
+    ],
+    [generation.files, skillFiles.data],
+  )
+  const [selected, setSelected] = React.useState(files.at(0)?.path ?? null)
+  const file = files.find((f) => f.path === selected) ?? files.at(0)
   const nodes = React.useMemo(
-    () => fileTree(generation.files, t.agents.fileKinds),
-    [generation.files, t.agents.fileKinds],
+    () => fileTree(files, t.agents.fileKinds),
+    [files, t.agents.fileKinds],
   )
   const folders = nodes.filter((node) => node.children).map((node) => node.id)
 

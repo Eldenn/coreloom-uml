@@ -122,6 +122,11 @@ export type AgentGenerationOutput = AgentGenerationSummaryOutput & {
   roles: AgentContextRole[]
 }
 
+/** `GET /agent-configs/:id/generations/:generationId/skill-files`: what `pull` installs. */
+export type AgentGenerationSkillFilesOutput = {
+  files: { slug: string; path: string; content: string }[]
+}
+
 /** A diagram with content of the architectures it reads from, which rule proposals can read. */
 export type AgentDiagramOutput = {
   id: number
