@@ -4,6 +4,7 @@ import {
   AGENT_NOTES_MAX_LENGTH,
   AGENT_ROLES_MAX,
   AGENT_RULES_MAX,
+  AGENT_SKILLS_MAX,
   type AgentRuleSource,
   TARGETS,
   type Target,
@@ -17,7 +18,8 @@ import type {
  * Merging configurations into the content of a new one: a pure function, the sources are only
  * read. Everything adds up with duplicates dropped, except what cannot be held together: the
  * ready-made rules of a group (`acceptedProblem`) and two different roles with one slug. Those
- * are conflicts, each settled by naming the source whose version is kept.
+ * are conflicts, each settled by naming the source whose version is kept. Held skills add up
+ * and never conflict.
  */
 
 export type MergeSource = {
@@ -27,6 +29,7 @@ export type MergeSource = {
   readyRules: AgentReadyRuleOutput[]
   rules: { section: string; text: string; source: AgentRuleSource }[]
   roles: Role[]
+  skillIds: number[]
 }
 
 export type MergeChoices = {
@@ -128,6 +131,12 @@ export function mergeSources(sources: MergeSource[], choices: MergeChoices = {})
   if (roles.length + conflicts.roles.length > AGENT_ROLES_MAX) {
     return refused(`Together they hold more than ${AGENT_ROLES_MAX} roles.`)
   }
+  const skillIds = [...new Set(sources.flatMap((source) => source.skillIds))]
+  if (skillIds.length > AGENT_SKILLS_MAX) {
+    return refused(
+      `Together they hold ${skillIds.length} skills; a configuration holds at most ${AGENT_SKILLS_MAX}.`,
+    )
+  }
   if (notes.length > AGENT_NOTES_MAX_LENGTH) {
     return refused(`Together their notes exceed ${AGENT_NOTES_MAX_LENGTH} characters.`)
   }
@@ -142,6 +151,7 @@ export function mergeSources(sources: MergeSource[], choices: MergeChoices = {})
       readyRules,
       rules,
       roles,
+      skillIds,
     },
   }
 }
