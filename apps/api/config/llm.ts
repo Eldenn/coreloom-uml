@@ -10,8 +10,9 @@ const llmConfig = {
   /** Origins an `ollama` or `openai-compatible` provider may call. */
   allowedOrigins: parseAllowedOrigins(env.get('LLM_ALLOWED_BASE_URLS')),
   /**
-   * Where the `claude` binary keeps each account's Claude credentials, one folder per user id
-   * (`CLAUDE_CONFIG_DIR`). A persistent volume in production: losing it signs everyone out.
+   * Where the short-lived private folders a launch of the `claude` binary borrows are made
+   * (`withClaudeFolder`): the subscriptions themselves are in the database. `claude:import` also
+   * reads here the account folders from before (`<user id>`) to move them in.
    */
   claudeCodeHome: env.get('CLAUDE_CODE_HOME') ?? app.makePath('tmp/claude'),
 }

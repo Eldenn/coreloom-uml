@@ -702,21 +702,27 @@ proposals work exactly as with a key (same answers, same failure reasons, plus
   `POST /llm/connections/openai-codex/attempts` returns a code and OpenAI's page; the web app polls
   `GET …/attempts/:attemptId` (`pending`, `connected`, `expired`, `denied`). Attempts wait in Redis
   for 15 minutes, tied to their account (another account's attempt is a 404). The tokens are stored
-  in `llm_connections`, encrypted with `APP_KEY`, refreshed under a row lock when they expire within
-  a minute, and never returned, logged or traced. Changing `APP_KEY` or a revoked grant
-  disconnects the account. `DELETE /llm/connections/openai-codex` disconnects. The OAuth values come
+  in `llm_connections`, sealed by the `llmKeys` encrypter (`LLM_KEYS_ENCRYPTION_KEYS`), refreshed
+  under a row lock when they expire within a minute, and never returned, logged or traced. Changing
+  those keys or a revoked grant disconnects the account. `DELETE /llm/connections/openai-codex` disconnects. The OAuth values come
   from Hermes Agent's source, which connects the same way (checked on 2026-11-09, see
   `CODEX_OAUTH`); calls name this product (`originator: coreloom-uml`).
 - **Claude**: only the official, unmodified `claude` binary (Claude Code, pinned in the API image)
-  signs in and holds the credentials, in one folder per account (`CLAUDE_CODE_HOME/<user id>`,
-  mode 0700). `POST /llm/connections/claude-code/login` starts `claude auth login` and returns the
-  page it prints; the user pastes the code back to `POST …/login/code`, which hands it to the
-  binary's stdin as is. A sign-in stops after 10 minutes, one per account at a time.
-  `DELETE /llm/connections/claude-code` signs the binary out and removes the folder, as does
+  signs in and calls Claude. Its state (the credentials and settings files of its configuration
+  folder) is kept in the database, one row per account in `claude_code_states`, sealed by
+  `llmKeys`. Each launch of the binary gets those files in a short-lived private folder under
+  `CLAUDE_CODE_HOME` (mode 0700), writes back what it refreshed, and the folder is removed; the
+  launches of one account run one at a time. `POST /llm/connections/claude-code/login` starts
+  `claude auth login` in its own short-lived folder and returns the page it prints; the user pastes
+  the code back to `POST …/login/code`, which hands it to the binary's stdin as is and saves the
+  folder's files once the binary is signed in. A sign-in stops after 10 minutes, one per account at
+  a time. `DELETE /llm/connections/claude-code` signs the binary out and drops the state, as does
   deleting the account. Calls run `claude -p` with no tools and no shell. Usage counts against the
   plan's monthly Agent SDK credit, then extra usage.
-- `CLAUDE_CODE_HOME` must be a persistent volume (`/data/claude` in the Compose stacks). Sign-ins
-  run in the API process, so keep a single API replica while Claude subscriptions are on.
+- `node ace claude:import` (run at every start in the Compose stacks) moves the account folders
+  from before (`CLAUDE_CODE_HOME/<user id>`) into the database and removes them; keep the
+  `/data/claude` volume until it has run once. Sign-ins run in the API process, so keep a single
+  API replica while Claude subscriptions are on.
 
 ### Security headers
 

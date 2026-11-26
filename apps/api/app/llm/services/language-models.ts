@@ -11,6 +11,7 @@ import {
 import type { LlmFailureOutput } from '#app/llm/validators/llm-output'
 import { ProviderKind } from '#app/llm-connections/constants/llm-connections'
 import ClaudeCodeCli from '#app/llm-connections/services/claude-code-cli'
+import { withClaudeFolder } from '#app/llm-connections/services/claude-code-state'
 import { resolveCredential } from '#app/llm-connections/services/llm-credential'
 import type User from '#app/users/models/user'
 import llmConfig from '#config/llm'
@@ -20,14 +21,19 @@ const CLAUDE_MODEL = /^[A-Za-z0-9][A-Za-z0-9._:[\]-]*$/
 
 /**
  * Builds the model a request calls, with a key or a connected subscription
- * (`resolveCredential`). Resolved from the container, so tests swap it for the AI SDK's mock model
- * (`app.container.swap(LanguageModels, ...)`) and never reach a provider.
+ * (`resolveCredential`). A Claude subscription's launches each borrow a private folder holding the
+ * owner's saved state (`withClaudeFolder`). Resolved from the container, so tests swap it for the
+ * AI SDK's mock model (`app.container.swap(LanguageModels, ...)`) and never reach a provider.
  */
 export default class LanguageModels {
   create(provider: ProviderSettings, credential: LlmCredential): LanguageModel {
     return createLanguageModel(provider, credential, {
-      claudeRun: async (args, options) =>
-        (await app.container.make(ClaudeCodeCli)).run(args, options),
+      claudeRun: async (args, { owner, ...options }) => {
+        const cli = await app.container.make(ClaudeCodeCli)
+        return withClaudeFolder({ id: owner }, (configDir) =>
+          cli.run(args, { ...options, configDir }),
+        )
+      },
     })
   }
 }

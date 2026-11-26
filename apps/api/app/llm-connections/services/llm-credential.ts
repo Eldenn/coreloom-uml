@@ -5,7 +5,7 @@ import {
   type ProviderSettings,
 } from '@coreloom-uml/llm'
 import { ProviderKind } from '#app/llm-connections/constants/llm-connections'
-import { claudeConfigDir } from '#app/llm-connections/services/claude-code-connections'
+import { hasClaudeState } from '#app/llm-connections/services/claude-code-state'
 import { codexCredential } from '#app/llm-connections/services/codex-connections'
 import { storedApiKey } from '#app/llm-connections/services/llm-api-keys'
 import { kindEnabled } from '#app/llm-connections/services/subscriptions'
@@ -41,10 +41,10 @@ export async function resolveCredential(
     }
   }
   if (provider.kind === ProviderKind.ClaudeCode) {
-    return {
-      credential: { kind: provider.kind, configDir: await claudeConfigDir(user) },
-      baseUrl: null,
-    }
+    // The binary's state is lent for each launch by `LanguageModels` (`withClaudeFolder`).
+    return (await hasClaudeState(user))
+      ? { credential: { kind: provider.kind, owner: user.id }, baseUrl: null }
+      : { reason: LlmFailureReason.SubscriptionExpired }
   }
   const stored = await storedApiKey(user, provider.kind)
   return { credential: stored?.apiKey ?? '', baseUrl: stored?.baseUrl ?? null }
