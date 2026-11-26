@@ -19,12 +19,12 @@ import CatalogSkill from '#app/skills/models/catalog-skill'
 import SkillVersion from '#app/skills/models/skill-version'
 import User from '#app/users/models/user'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
+import { saveTestLlmKey } from '#tests/helpers/llm-key'
 
 const json = { accept: 'application/json' }
 const ON = { enabled: true, rollout: 100, rules: [] }
 const chat = {
   provider: { kind: 'mistral', model: 'mistral-small-latest' },
-  apiKey: 'sk-fixture-agent-actions',
   message: 'Change my conventions',
   locale: 'en',
   auto: true,
@@ -36,6 +36,7 @@ async function setup() {
     email: `agent-actions-${Math.random().toString(36).slice(2)}@example.com`,
     password: 'a-very-strong-passphrase',
   })
+  await saveTestLlmKey(user)
   await updateFlag(FeatureFlagKey.DiagramAssistant, ON, user)
   await updateFlag(FeatureFlagKey.AssistantActions, ON, user)
   const conversation = await AssistantConversation.create({ userId: user.id, title: '' })
