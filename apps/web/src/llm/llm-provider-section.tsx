@@ -1,9 +1,12 @@
 // Settings, "LLM provider": the user's own provider for proposed rules (bring your own key, or a
-// connected ChatGPT or Claude subscription). The settings stay in this browser
-// (`useStoredProvider`): the kind and the model as soon as they change (`autoSaved`), the key and
-// the base URL only on "Save"; "Test" sends the form's values to `POST /llm/test` without saving them,
-// and "Forget the key" removes the provider and its key. A subscription is connected on the
-// server (`SubscriptionConnection`), and its kinds show only while their flag is on.
+// connected ChatGPT or Claude subscription). The kind and the model stay in this browser
+// (`useStoredProvider`), kept as soon as they change once the account can call that kind
+// (`autoSaved`). A key, with the server URL of a kind that takes one, is saved to the account on
+// "Save" (`PUT /llm/api-keys/:kind`, which tests it first) and shown back as its last four
+// characters, its server and its date; it can be replaced (a new key, then "Save") or deleted.
+// "Test" calls `POST /llm/test` with the kind and the model: it tests the saved key. A
+// subscription is connected on the server (`SubscriptionConnection`), and its kinds show only
+// while their flag is on.
 import { useSelector } from '@tanstack/react-form'
 import { PlugZapIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
@@ -14,13 +17,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { useAppForm } from '@/components/ui/form'
-import { SecretValue } from '@/components/ui/secret-value'
+import { Popconfirm } from '@/components/ui/popconfirm'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
 import { Spinner } from '@/components/ui/spinner'
 import { useFeature } from '@/lib/feature-flags'
 import {
   LLM_API_KEY_MAX_LENGTH,
+  LLM_API_KEY_MIN_LENGTH,
   LLM_BASE_URL_MAX_LENGTH,
   LLM_MODEL_MAX_LENGTH,
   providerCallFailure,
@@ -28,7 +32,9 @@ import {
   type ProviderKind,
   type StoredProvider,
   storeProvider,
+  useDeleteApiKey,
   useLlmProviders,
+  useSaveApiKey,
   useStoredProvider,
   useTestProvider,
 } from '@/lib/llm-provider'
@@ -37,8 +43,10 @@ import { useProviderFailureText } from '@/llm/provider-failure'
 import {
   autoSaved,
   isSubscription,
+  keyToSave,
   type ProviderFields,
-  savedKey,
+  savedBaseUrl,
+  saveProblem,
   toProvider,
 } from '@/llm/provider-fields'
 import { SubscriptionConnection } from '@/llm/subscription-connection'
@@ -81,15 +89,16 @@ function emptyFields(providers: ProviderInfo[]): ProviderFields {
   return {
     kind: first?.kind ?? 'anthropic',
     model: first?.models.at(0) ?? '',
-    baseUrl: '',
+    baseUrl: savedBaseUrl(first),
     apiKey: '',
   }
 }
 
-/** The form as the saved provider left it (never with its key), or a fresh one. */
+/** The form as this browser's provider and the account's saved server URL left it. */
 function initialFields(stored: StoredProvider | null, providers: ProviderInfo[]): ProviderFields {
-  if (!stored) return emptyFields(providers)
-  return { kind: stored.kind, model: stored.model, baseUrl: stored.baseUrl ?? '', apiKey: '' }
+  const info = stored && providers.find((p) => p.kind === stored.kind)
+  if (!stored || !info) return emptyFields(providers)
+  return { kind: stored.kind, model: stored.model, baseUrl: savedBaseUrl(info), apiKey: '' }
 }
 
 /** The kind's suggestions, plus a typed model name so the field can show it. */
@@ -98,7 +107,7 @@ function modelNames(info: ProviderInfo | undefined, model: string): string[] {
   return model && !suggestions.includes(model) ? [...suggestions, model] : suggestions
 }
 
-function useProviderSchema(providers: ProviderInfo[], stored: StoredProvider | null) {
+function useProviderSchema(providers: ProviderInfo[]) {
   const t = useT()
   return z
     .object({
@@ -109,7 +118,10 @@ function useProviderSchema(providers: ProviderInfo[], stored: StoredProvider | n
         .min(1, t.llm.modelRequired)
         .max(LLM_MODEL_MAX_LENGTH, t.agents.textTooLong(LLM_MODEL_MAX_LENGTH)),
       baseUrl: z.string().trim().max(LLM_BASE_URL_MAX_LENGTH),
-      apiKey: z.string().trim().max(LLM_API_KEY_MAX_LENGTH),
+      apiKey: z
+        .string()
+        .trim()
+        .max(LLM_API_KEY_MAX_LENGTH, t.agents.textTooLong(LLM_API_KEY_MAX_LENGTH)),
     })
     .superRefine((fields, ctx) => {
       const info = providers.find((p) => p.kind === fields.kind)
@@ -117,35 +129,70 @@ function useProviderSchema(providers: ProviderInfo[], stored: StoredProvider | n
         ctx.addIssue({ code: 'custom', path: ['baseUrl'], message: t.llm.baseUrlRequired })
       else if (info?.takesBaseUrl && !/^https?:\/\/\S+$/i.test(fields.baseUrl))
         ctx.addIssue({ code: 'custom', path: ['baseUrl'], message: t.llm.baseUrlInvalid })
-      if (info?.requiresApiKey && !fields.apiKey && !savedKey(stored, fields.kind))
-        ctx.addIssue({ code: 'custom', path: ['apiKey'], message: t.llm.apiKeyRequired })
+      if (fields.apiKey && fields.apiKey.length < LLM_API_KEY_MIN_LENGTH)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['apiKey'],
+          message: t.llm.apiKeyTooShort(LLM_API_KEY_MIN_LENGTH),
+        })
+      const problem = saveProblem(fields, info)
+      if (problem) ctx.addIssue({ code: 'custom', path: ['apiKey'], message: t.llm[problem] })
     })
 }
 
-/** "Test" with the form's values (checked as for Save, not saved), and its outcome. */
-function useConnectionTest() {
+interface Outcome {
+  ok: boolean
+  text: string
+}
+
+/** "Test" with the saved key and the form's model; its outcome goes to `report`. */
+function useConnectionTest(report: (outcome: Outcome | null) => void) {
   const t = useT()
   const { locale } = useLocale()
   const test = useTestProvider()
   const failureText = useProviderFailureText()
-  const [outcome, setOutcome] = React.useState<{ ok: boolean; text: string } | null>(null)
   const run = async (provider: StoredProvider) => {
-    setOutcome(null)
+    report(null)
     try {
       const result = await test.mutateAsync(provider)
-      setOutcome(
+      report(
         result.ok
           ? { ok: true, text: t.llm.testOk(new Intl.NumberFormat(locale).format(result.latencyMs)) }
           : { ok: false, text: failureText({ kind: 'provider', reason: result.reason }) },
       )
     } catch (error) {
-      setOutcome({ ok: false, text: failureText(providerCallFailure(error)) })
+      report({ ok: false, text: failureText(providerCallFailure(error)) })
     }
   }
-  const clear = () => {
-    setOutcome(null)
+  return { run, pending: test.isPending }
+}
+
+/**
+ * "Save": the key or server URL first, to the account (`keyToSave`; a refusal is reported and
+ * nothing else is kept), then the kind and the model in this browser.
+ */
+function useSaveProvider(providers: ProviderInfo[], report: (outcome: Outcome | null) => void) {
+  const t = useT()
+  const saveKey = useSaveApiKey()
+  const failureText = useProviderFailureText()
+  return async (value: ProviderFields): Promise<boolean> => {
+    report(null)
+    const body = keyToSave(
+      value,
+      providers.find((p) => p.kind === value.kind),
+    )
+    if (body) {
+      try {
+        await saveKey.mutateAsync(body)
+      } catch (error) {
+        report({ ok: false, text: failureText(providerCallFailure(error)) })
+        return false
+      }
+    }
+    storeProvider(toProvider(value))
+    toast.success(body ? t.llm.keySaved : t.llm.saved)
+    return true
   }
-  return { run, pending: test.isPending, outcome, clear }
 }
 
 function ProviderForm({
@@ -157,29 +204,33 @@ function ProviderForm({
 }) {
   const t = useT()
   const stored = useStoredProvider()
-  const schema = useProviderSchema(providers, stored)
-  const test = useConnectionTest()
+  const schema = useProviderSchema(providers)
+  // The outcome of "Test", or why "Save" could not save the key, announced under the form.
+  const [outcome, setOutcome] = React.useState<Outcome | null>(null)
+  const test = useConnectionTest(setOutcome)
+  const save = useSaveProvider(providers, setOutcome)
+  const keyFieldRef = React.useRef<HTMLDivElement>(null)
 
   const form = useAppForm({
     defaultValues: initialFields(stored, providers),
     validators: { onSubmit: schema },
-    onSubmit: ({ value, formApi }) => {
-      storeProvider(toProvider(value, providers, stored))
-      formApi.setFieldValue('apiKey', '')
-      toast.success(t.llm.saved)
+    onSubmit: async ({ value, formApi }) => {
+      if (await save(value)) formApi.setFieldValue('apiKey', '')
     },
   })
   const kind = useSelector(form.store, (s) => s.values.kind)
   const model = useSelector(form.store, (s) => s.values.model)
   const info = providers.find((p) => p.kind === kind)
-  const saved = savedKey(stored, kind)
   const models = modelNames(info, model)
   const subscription = isSubscription(info)
-  // A key kind is always "connected"; a subscription once the user connected it.
+  // Testable once the account holds a key for the kind, or the subscription is connected.
   const untestable = info?.connected === false
   const autoSave = () => {
-    const next = autoSaved(form.state.values, providers, stored)
+    const next = autoSaved(form.state.values, providers)
     if (next) storeProvider(next)
+  }
+  const focusKeyField = () => {
+    keyFieldRef.current?.querySelector('input')?.focus()
   }
 
   const footer = (
@@ -187,27 +238,18 @@ function ProviderForm({
       <TestButton
         pending={test.pending}
         untestable={untestable}
+        hint={subscription ? t.llm.subscription.connectFirst : t.llm.saveKeyFirst}
         onClick={() => {
-          void (async () => {
-            await form.validate('submit')
-            if (form.state.isValid) await test.run(toProvider(form.state.values, providers, stored))
-          })()
+          void test.run(toProvider(form.state.values))
         }}
       />
       {stored && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            storeProvider(null)
-            test.clear()
+        <ForgetButton
+          onForget={() => {
+            setOutcome(null)
             form.reset(emptyFields(providers))
-            toast.success(t.llm.forgotten)
           }}
-        >
-          <Trash2Icon /> {t.llm.forget}
-        </Button>
+        />
       )}
     </span>
   )
@@ -223,11 +265,12 @@ function ProviderForm({
         name="kind"
         listeners={{
           onChange: ({ value }) => {
-            // A new kind starts from its first suggestion; a base URL only fits some kinds.
+            // A new kind starts from its first suggestion and from its own saved server URL.
             const next = providers.find((p) => p.kind === value)
             form.setFieldValue('model', next?.models.at(0) ?? '')
-            if (!next?.takesBaseUrl) form.setFieldValue('baseUrl', '')
-            test.clear()
+            form.setFieldValue('baseUrl', savedBaseUrl(next))
+            form.setFieldValue('apiKey', '')
+            setOutcome(null)
             autoSave()
           },
         }}
@@ -269,23 +312,33 @@ function ProviderForm({
         <SubscriptionConnection provider={info} />
       ) : (
         <>
-          {saved && <SavedKey value={saved} />}
-          <form.AppField name="apiKey">
-            {(field) => (
-              <field.PasswordField
-                label={t.llm.apiKey}
-                autoComplete="off"
-                description={<KeyHint saved={!!saved} optional={info?.requiresApiKey === false} />}
-              />
-            )}
-          </form.AppField>
+          {info?.connected && (
+            <SavedKey
+              provider={info}
+              onDeleted={() => {
+                setOutcome(null)
+                focusKeyField()
+              }}
+            />
+          )}
+          <div ref={keyFieldRef}>
+            <form.AppField name="apiKey">
+              {(field) => (
+                <field.PasswordField
+                  label={t.llm.apiKey}
+                  autoComplete="off"
+                  description={<KeyHint provider={info} />}
+                />
+              )}
+            </form.AppField>
+          </div>
         </>
       )}
       {/* Mounted empty, so the outcome is announced when it appears. */}
       <div role="status">
-        {test.outcome && (
-          <Alert variant={test.outcome.ok ? 'success' : 'destructive'} role="none">
-            <AlertDescription>{test.outcome.text}</AlertDescription>
+        {outcome && (
+          <Alert variant={outcome.ok ? 'success' : 'destructive'} role="none">
+            <AlertDescription>{outcome.text}</AlertDescription>
           </Alert>
         )}
       </div>
@@ -297,10 +350,12 @@ function ProviderForm({
 function TestButton({
   pending,
   untestable,
+  hint,
   onClick,
 }: {
   pending: boolean
   untestable: boolean
+  hint: string
   onClick: () => void
 }) {
   const t = useT()
@@ -319,8 +374,27 @@ function TestButton({
         {pending ? <Spinner className="text-current" /> : <PlugZapIcon />}
         {pending ? t.llm.testing : t.llm.test}
       </Button>
-      {untestable && <span id={hintId}>{t.llm.subscription.connectFirst}</span>}
+      {untestable && <span id={hintId}>{hint}</span>}
     </>
+  )
+}
+
+/** Forgets the provider kept in this browser; the account's saved keys stay. */
+function ForgetButton({ onForget }: { onForget: () => void }) {
+  const t = useT()
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      onClick={() => {
+        storeProvider(null)
+        onForget()
+        toast.success(t.llm.forgotten)
+      }}
+    >
+      <Trash2Icon /> {t.llm.forget}
+    </Button>
   )
 }
 
@@ -329,25 +403,61 @@ function BaseUrlHint({ allowed }: { allowed: string[] }) {
   return allowed.length > 0 ? t.llm.baseUrlAllowed(allowed.join(', ')) : t.llm.baseUrlNoneAllowed
 }
 
-function KeyHint({ saved, optional }: { saved: boolean; optional: boolean }) {
+function KeyHint({ provider }: { provider: ProviderInfo | undefined }) {
   const t = useT()
-  if (saved) return t.llm.apiKeyKeep
-  return optional ? t.llm.apiKeyOptional : t.llm.apiKeyRequiredHint
+  if (provider?.keyHint) return t.llm.apiKeyReplace
+  return provider?.requiresApiKey === false ? t.llm.apiKeyOptional : t.llm.apiKeyRequiredHint
 }
 
-/** The key saved in this browser, masked, so the user can tell which one it is. */
-function SavedKey({ value }: { value: string }) {
+/**
+ * The key the account saved for this kind, as the API answers it (its last four characters,
+ * its server, the date it was checked: never the key), and its deletion.
+ */
+function SavedKey({ provider, onDeleted }: { provider: ProviderInfo; onDeleted: () => void }) {
   const t = useT()
+  const { locale } = useLocale()
+  const remove = useDeleteApiKey()
+  const label = t.llm.kinds[provider.kind]
+  const verified = provider.verifiedAt
+    ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(provider.verifiedAt))
+    : null
+  const deleteKey = async () => {
+    try {
+      await remove.mutateAsync(provider.kind)
+      toast.success(t.llm.keyDeleted)
+      onDeleted()
+    } catch {
+      toast.error(t.llm.keyDeleteFailed)
+    }
+  }
   return (
     <Field>
-      <FieldLabel>{t.llm.savedKey}</FieldLabel>
-      <SecretValue
-        value={value}
-        label={t.llm.savedKey}
-        visibleStart={3}
-        visibleEnd={4}
-        copy={false}
-      />
+      <FieldLabel asChild>
+        <span>{t.llm.savedKey}</span>
+      </FieldLabel>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+        <span className="font-mono text-foreground">
+          {provider.keyHint ? t.llm.savedKeyHint(provider.keyHint) : t.llm.savedKeyNone}
+        </span>
+        {provider.baseUrl && (
+          <span className="text-muted-foreground">{t.llm.savedKeyServer(provider.baseUrl)}</span>
+        )}
+        {verified && (
+          <span className="text-muted-foreground">{t.llm.savedKeyVerified(verified)}</span>
+        )}
+        <Popconfirm
+          title={t.llm.deleteKeyConfirm(label)}
+          description={t.llm.deleteKeyText}
+          confirmLabel={t.llm.deleteKey}
+          destructive
+          align="start"
+          onConfirm={deleteKey}
+        >
+          <Button type="button" variant="ghost" size="sm">
+            <Trash2Icon /> {t.llm.deleteKey}
+          </Button>
+        </Popconfirm>
+      </div>
     </Field>
   )
 }

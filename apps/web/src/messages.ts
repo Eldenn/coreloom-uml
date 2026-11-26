@@ -1591,7 +1591,7 @@ export const en = {
   llm: {
     providerTitle: 'LLM provider',
     providerHint:
-      'Your own model proposes rules for the agent conventions from your diagrams or review feedback. Stored only in this browser: the server never keeps the settings or the key.',
+      'Your own model proposes rules for the agent conventions from your diagrams or review feedback. The provider and the model are kept in this browser; a key is saved to your account, encrypted, and never shown again.',
     kind: 'Provider',
     kinds: {
       anthropic: 'Anthropic',
@@ -1604,7 +1604,7 @@ export const en = {
     },
     model: 'Model',
     modelHint:
-      'Pick a suggestion or type any model name. The provider and model are kept as soon as you choose them; a new key or server URL waits for Save.',
+      'Pick a suggestion or type any model name. The provider and model are kept as soon as you choose them, once your account can call that provider; a new key or server URL waits for Save.',
     modelPlaceholder: 'Choose or type a model',
     modelSearch: 'Search or type a model',
     modelRequired: 'Choose a model.',
@@ -1616,16 +1616,44 @@ export const en = {
     baseUrlInvalid: 'Enter an http(s) URL.',
     apiKey: 'API key',
     apiKeyRequired: 'Enter the provider’s API key.',
-    apiKeyOptional: 'Only if the server asks for one.',
-    apiKeyRequiredHint: 'Kept in this browser and sent with each call, never stored by the server.',
-    apiKeyKeep: 'Leave empty to keep the saved key.',
+    apiKeyTooShort: (min: number) => `A key has at least ${min} characters.`,
+    apiKeyAgain: 'Enter the key again to save it with the new server URL.',
+    apiKeyOptional: 'Only if the server asks for one. Saved to your account with the server URL.',
+    apiKeyRequiredHint:
+      'Saved to your account, encrypted, once a test call with it succeeds. It is never shown again, only its last four characters.',
+    apiKeyReplace: 'Type a new key to replace the saved one, or leave empty to keep it.',
     savedKey: 'Saved key',
-    saved: 'Provider saved in this browser.',
+    savedKeyHint: (hint: string) => `…${hint}`,
+    savedKeyNone: 'No key: calls go to the server without one.',
+    savedKeyServer: (origin: string) => `Server: ${origin}`,
+    savedKeyVerified: (date: string) => `Checked on ${date}`,
+    deleteKey: 'Delete the key',
+    deleteKeyConfirm: (provider: string) => `Delete the ${provider} key from your account?`,
+    deleteKeyText: 'Calls with this provider stop working until you save a key again.',
+    keyDeleted: 'Key deleted from your account.',
+    keyDeleteFailed: 'The key could not be deleted.',
+    saveKeyFirst: 'Save a key to test it.',
+    saved: 'Provider saved.',
+    keySaved: 'Key checked and saved to your account.',
     test: 'Test',
     testing: 'Testing…',
     testOk: (ms: string) => `Connected: the model answered in ${ms} ms.`,
-    forget: 'Forget the key',
-    forgotten: 'Provider and key removed from this browser.',
+    forget: 'Forget the provider',
+    forgotten: 'Provider removed from this browser. Saved keys stay on your account.',
+    legacy: {
+      title: 'Your API key now lives on your account.',
+      text: (provider: string, hint: string) =>
+        `This browser still holds your ${provider} key (…${hint}). Save it to your account, encrypted, so calls keep working? It is removed from this browser either way.`,
+      textServer: (provider: string, origin: string) =>
+        `This browser still holds your ${provider} server (${origin}). Save it to your account so calls keep working? It is removed from this browser either way.`,
+      save: 'Save to my account',
+      saving: 'Checking the key…',
+      decline: 'Remove it',
+      saved: 'Key saved to your account and removed from this browser.',
+      declined: 'Key removed from this browser.',
+      failed: (reason: string) =>
+        `${reason} The key was removed from this browser: enter it again in Settings.`,
+    },
     loadFailed: 'The provider list could not be loaded.',
     reasons: {
       unauthorized: 'The provider refused the key.',
@@ -3377,7 +3405,7 @@ export const fr: Messages = {
   llm: {
     providerTitle: 'Fournisseur LLM',
     providerHint:
-      'Votre propre modèle propose des règles pour les conventions d’agents à partir de vos diagrammes ou de vos retours de revue. Stocké uniquement dans ce navigateur : le serveur ne garde ni les réglages ni la clé.',
+      'Votre propre modèle propose des règles pour les conventions d’agents à partir de vos diagrammes ou de vos retours de revue. Le fournisseur et le modèle sont gardés dans ce navigateur ; une clé est enregistrée sur votre compte, chiffrée, et n’est plus jamais affichée.',
     kind: 'Fournisseur',
     kinds: {
       anthropic: 'Anthropic',
@@ -3390,7 +3418,7 @@ export const fr: Messages = {
     },
     model: 'Modèle',
     modelHint:
-      'Choisissez une suggestion ou tapez le nom d’un modèle. Fournisseur et modèle sont gardés dès que vous les choisissez ; une nouvelle clé ou URL de serveur attend « Enregistrer ».',
+      'Choisissez une suggestion ou tapez le nom d’un modèle. Fournisseur et modèle sont gardés dès que vous les choisissez, une fois que votre compte peut appeler ce fournisseur ; une nouvelle clé ou URL de serveur attend « Enregistrer ».',
     modelPlaceholder: 'Choisir ou taper un modèle',
     modelSearch: 'Chercher ou taper un modèle',
     modelRequired: 'Choisissez un modèle.',
@@ -3402,17 +3430,48 @@ export const fr: Messages = {
     baseUrlInvalid: 'Saisissez une URL http(s).',
     apiKey: 'Clé d’API',
     apiKeyRequired: 'Saisissez la clé d’API du fournisseur.',
-    apiKeyOptional: 'Seulement si le serveur en demande une.',
+    apiKeyTooShort: (min: number) => `Une clé compte au moins ${min} caractères.`,
+    apiKeyAgain: 'Saisissez la clé à nouveau pour l’enregistrer avec la nouvelle URL du serveur.',
+    apiKeyOptional:
+      'Seulement si le serveur en demande une. Enregistrée sur votre compte avec l’URL du serveur.',
     apiKeyRequiredHint:
-      'Gardée dans ce navigateur et envoyée à chaque appel, jamais stockée par le serveur.',
-    apiKeyKeep: 'Laissez vide pour garder la clé enregistrée.',
+      'Enregistrée sur votre compte, chiffrée, une fois qu’un appel de test avec elle a réussi. Elle n’est plus jamais affichée, seuls ses quatre derniers caractères.',
+    apiKeyReplace:
+      'Saisissez une nouvelle clé pour remplacer celle enregistrée, ou laissez vide pour la garder.',
     savedKey: 'Clé enregistrée',
-    saved: 'Fournisseur enregistré dans ce navigateur.',
+    savedKeyHint: (hint: string) => `…${hint}`,
+    savedKeyNone: 'Aucune clé : les appels vont au serveur sans clé.',
+    savedKeyServer: (origin: string) => `Serveur : ${origin}`,
+    savedKeyVerified: (date: string) => `Vérifiée le ${date}`,
+    deleteKey: 'Supprimer la clé',
+    deleteKeyConfirm: (provider: string) => `Supprimer la clé ${provider} de votre compte ?`,
+    deleteKeyText:
+      'Les appels à ce fournisseur ne fonctionnent plus tant qu’aucune clé n’est enregistrée à nouveau.',
+    keyDeleted: 'Clé supprimée de votre compte.',
+    keyDeleteFailed: 'La clé n’a pas pu être supprimée.',
+    saveKeyFirst: 'Enregistrez une clé pour la tester.',
+    saved: 'Fournisseur enregistré.',
+    keySaved: 'Clé vérifiée et enregistrée sur votre compte.',
     test: 'Tester',
     testing: 'Test en cours…',
     testOk: (ms: string) => `Connecté : le modèle a répondu en ${ms} ms.`,
-    forget: 'Oublier la clé',
-    forgotten: 'Fournisseur et clé retirés de ce navigateur.',
+    forget: 'Oublier le fournisseur',
+    forgotten:
+      'Fournisseur retiré de ce navigateur. Les clés enregistrées restent sur votre compte.',
+    legacy: {
+      title: 'Votre clé d’API est désormais sur votre compte.',
+      text: (provider: string, hint: string) =>
+        `Ce navigateur garde encore votre clé ${provider} (…${hint}). L’enregistrer sur votre compte, chiffrée, pour que les appels continuent de fonctionner ? Elle est retirée de ce navigateur dans tous les cas.`,
+      textServer: (provider: string, origin: string) =>
+        `Ce navigateur garde encore votre serveur ${provider} (${origin}). L’enregistrer sur votre compte pour que les appels continuent de fonctionner ? Il est retiré de ce navigateur dans tous les cas.`,
+      save: 'Enregistrer sur mon compte',
+      saving: 'Vérification de la clé…',
+      decline: 'Retirer',
+      saved: 'Clé enregistrée sur votre compte et retirée de ce navigateur.',
+      declined: 'Clé retirée de ce navigateur.',
+      failed: (reason: string) =>
+        `${reason} La clé a été retirée de ce navigateur : saisissez-la à nouveau dans les réglages.`,
+    },
     loadFailed: 'La liste des fournisseurs n’a pas pu être chargée.',
     reasons: {
       unauthorized: 'Le fournisseur a refusé la clé.',

@@ -38,6 +38,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { AssistantProvider } from '@/lib/assistant-context'
 import { apiBaseUrl } from '@/lib/client'
 import { type Locale, useLocale, useT } from '@/lib/locale'
+import { LegacyKeyOffer } from '@/llm/legacy-key-offer'
 
 export const Route = createFileRoute('/_authed')({
   // Runs before any page under it loads or renders, so a signed-out visitor never reaches one.
@@ -274,6 +275,7 @@ function AuthedLayout() {
         }
         fullWidth={fullWidth}
       >
+        <LegacyKeyOffer />
         <Outlet />
         <AssistantWidget />
       </AppShell>
