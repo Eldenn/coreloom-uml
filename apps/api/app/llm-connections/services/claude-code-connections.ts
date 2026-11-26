@@ -31,7 +31,10 @@ type Person = Pick<User, 'id'>
 const statuses = new Map<number, { connected: boolean; at: number }>()
 // ponytail: sign-ins live in this API process; route a user to one instance (or move them to a
 // shared runner) before running several API replicas.
-const logins = new Map<number, { login: ClaudeLogin; timer: NodeJS.Timeout; dir: string }>()
+const logins = new Map<
+  number,
+  { login: ClaudeLogin; timer: NodeJS.Timeout; dir: string; submitting: boolean }
+>()
 
 /** Stops the user's sign-in and removes its folder; with `only`, only if it is still current. */
 function stopLogin(user: Person, only?: ClaudeLogin): void {
@@ -79,13 +82,19 @@ export async function startClaudeLogin(
   // No await between stopping the previous sign-in and recording this one: two requests at once
   // cannot both pass the stop and leave a process running.
   stopLogin(user)
-  const login = cli.login(dir)
+  let login: ClaudeLogin
+  try {
+    login = cli.login(dir)
+  } catch (error) {
+    await removeClaudeFolder(dir)
+    throw error
+  }
   const timer = setTimeout(
     () => stopLogin(user, login),
     options.timeoutMs ?? CLAUDE_LOGIN_TIMEOUT_MS,
   )
   timer.unref()
-  logins.set(user.id, { login, timer, dir })
+  logins.set(user.id, { login, timer, dir, submitting: false })
   let urlTimer: NodeJS.Timeout | undefined
   const late = new Promise<never>((_resolve, reject) => {
     urlTimer = setTimeout(
@@ -104,36 +113,47 @@ export async function startClaudeLogin(
 }
 
 /**
- * Hands the pasted code to the running sign-in; `null` when none is running. Once the binary says
- * it is signed in, its folder's files replace the account's saved state, and the folder goes.
+ * Hands the pasted code to the running sign-in; `null` when none is running or a code is already
+ * being handed to it. Once the binary says it is signed in, its folder's files replace the
+ * account's saved state; the sign-in and its folder go whatever happens.
  */
 export async function submitClaudeCode(user: Person, code: string): Promise<boolean | null> {
   const running = logins.get(user.id)
-  if (!running) return null
-  let connected = await running.login.submit(code)
-  if (connected) {
-    const files = await readClaudeFolder(running.dir)
-    if (files === null) connected = false
-    else await withClaudeLock(user, () => saveClaudeState(user, files))
+  if (!running || running.submitting) return null
+  running.submitting = true
+  try {
+    let connected = await running.login.submit(code)
+    if (connected) {
+      const files = await readClaudeFolder(running.dir)
+      if (files === null) connected = false
+      else await withClaudeLock(user, () => saveClaudeState(user, files))
+    }
+    statuses.set(user.id, { connected, at: Date.now() })
+    return connected
+  } finally {
+    stopLogin(user, running.login)
   }
-  stopLogin(user, running.login)
-  statuses.set(user.id, { connected, at: Date.now() })
-  return connected
 }
 
-/** Drops the account's saved state, without asking the binary. */
+/**
+ * Drops the account's saved state, without asking the binary. A launch running meanwhile never
+ * brings it back: it writes its files back only over the row it read.
+ */
 export async function forgetClaude(user: Person): Promise<void> {
   stopLogin(user)
   statuses.delete(user.id)
   await deleteClaudeState(user)
 }
 
-/** Signs the binary out for this account (best effort), then drops its saved state. */
+/**
+ * Signs the binary out for this account (best effort) and drops its saved state in the same
+ * launch slot, then drops it again in case the slot stayed busy.
+ */
 export async function disconnectClaude(user: Person): Promise<void> {
   stopLogin(user)
   if (await hasClaudeState(user)) {
     const cli = await app.container.make(ClaudeCodeCli)
-    await withClaudeFolder(user, (dir) => cli.logout(dir), { keep: false }).catch((error) => {
+    await withClaudeFolder(user, (dir) => cli.logout(dir), { drop: true }).catch((error) => {
       if (!(error instanceof LlmCallError)) throw error
     })
   }

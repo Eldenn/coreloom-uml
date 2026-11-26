@@ -1,3 +1,5 @@
+import { CLAUDE_CODE_TIMEOUT_MS } from '@coreloom-uml/llm'
+
 export { ProviderKind } from '@coreloom-uml/catalog'
 
 /** An access token is refreshed when it expires within this margin. */
@@ -46,8 +48,12 @@ export const CLAUDE_STATE_FILE_MAX_BYTES = 512_000
  * A launch waits this long for the one before it, then fails as a timeout.
  */
 export const CLAUDE_LOCK_WAIT_MS = 150_000
-/** The lock ends by itself after this, so a process that dies mid-launch never locks an account. */
-export const CLAUDE_LOCK_TTL_MS = 180_000
+/**
+ * The lock ends by itself after this, so a process that dies mid-launch never locks an account:
+ * the binary's own limit plus a margin for the files around it. A launch that outlives it still
+ * never overwrites a newer state (the row's `version`).
+ */
+export const CLAUDE_LOCK_TTL_MS = CLAUDE_CODE_TIMEOUT_MS + 60_000
 /** How often a launch waiting for the lock asks for it again. */
 export const CLAUDE_LOCK_RETRY_MS = 100
 

@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, stat, utimes, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
@@ -10,8 +10,13 @@ import ClaudeCodeCli, { type ClaudeLogin } from '#app/llm-connections/services/c
 import { startClaudeLogin } from '#app/llm-connections/services/claude-code-connections'
 import {
   claudeState,
+  deleteClaudeState,
+  hasClaudeState,
   importClaudeFolders,
+  removeClaudeFolder,
   saveClaudeState,
+  withClaudeFolder,
+  withClaudeLock,
 } from '#app/llm-connections/services/claude-code-state'
 import User from '#app/users/models/user'
 import llmConfig from '#config/llm'
@@ -445,5 +450,136 @@ test.group('Claude subscription - import of account folders', (group) => {
     await importClaudeFolders()
     assert.deepEqual(await claudeState(user), { '.credentials.json': REFRESHED })
     assert.isNull(await exists(old))
+  })
+})
+
+/** A launch held open until `release`: `started` resolves once it holds the account's folder. */
+function heldLaunch(user: User, play: (dir: string) => Promise<void>) {
+  let release!: () => void
+  let started!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const running = new Promise<void>((resolve) => {
+    started = resolve
+  })
+  const done = withClaudeFolder(user, async (dir) => {
+    await play(dir)
+    started()
+    await gate
+  })
+  return { running, release, done }
+}
+
+test.group('Claude subscription - a launch and the state around it', (group) => {
+  group.each.setup(() => withDefaultFlags())
+
+  test('a launch never brings back a state dropped while it ran', async ({ assert }) => {
+    const user = await makeUser()
+    await saveClaudeState(user, { '.credentials.json': CREDENTIALS })
+    const launch = heldLaunch(user, (dir) => writeFile(join(dir, '.credentials.json'), REFRESHED))
+    await launch.running
+    await deleteClaudeState(user)
+    launch.release()
+    await launch.done
+    assert.isFalse(await hasClaudeState(user))
+  })
+
+  test('a launch never overwrites a state saved again while it ran', async ({ assert }) => {
+    const user = await makeUser()
+    await saveClaudeState(user, { '.credentials.json': CREDENTIALS })
+    const launch = heldLaunch(user, (dir) => writeFile(join(dir, '.credentials.json'), REFRESHED))
+    await launch.running
+    await saveClaudeState(user, { '.credentials.json': '{"newer":true}' })
+    launch.release()
+    await launch.done
+    assert.deepEqual(await claudeState(user), { '.credentials.json': '{"newer":true}' })
+  })
+
+  test('a file the binary was cut off writing keeps its saved content', async ({ assert }) => {
+    const user = await makeUser()
+    await saveClaudeState(user, { '.credentials.json': CREDENTIALS, '.claude.json': '{}' })
+    await withClaudeFolder(user, async (dir) => {
+      await writeFile(join(dir, '.credentials.json'), '{"claudeAiOauth":{"acc')
+      await writeFile(join(dir, '.claude.json'), '{"numStartups":4}')
+    })
+    assert.deepEqual(await claudeState(user), {
+      '.credentials.json': CREDENTIALS,
+      '.claude.json': '{"numStartups":4}',
+    })
+  })
+
+  test('a request gone while it waits for the account never launches', async ({ assert }) => {
+    const user = await makeUser()
+    await saveClaudeState(user, { '.credentials.json': CREDENTIALS })
+    let release!: () => void
+    const held = withClaudeLock(
+      user,
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve
+        }),
+    )
+    const controller = new AbortController()
+    let launched = false
+    const waiting = withClaudeFolder(
+      user,
+      async () => {
+        launched = true
+      },
+      { signal: controller.signal },
+    )
+    setTimeout(() => controller.abort(), 50)
+    await assert.rejects(() => waiting)
+    release()
+    await held
+    assert.isFalse(launched)
+  })
+})
+
+test.group('Claude subscription - import, edge cases', (group) => {
+  group.each.setup(() => withDefaultFlags())
+
+  test('leaves a folder whose credentials cannot be read whole in place', async ({ assert }) => {
+    const user = await makeUser()
+    const cut = join(llmConfig.claudeCodeHome, String(user.id))
+    await mkdir(cut, { recursive: true, mode: 0o700 })
+    await writeFile(join(cut, '.credentials.json'), '{"claudeAiOauth":{"acc')
+    const result = await importClaudeFolders()
+    assert.isAtLeast(result.kept, 1)
+    assert.isNotNull(await exists(cut))
+    assert.isNull(await claudeState(user))
+    await removeClaudeFolder(cut)
+  })
+
+  test('imports over a saved state that can no longer be read', async ({ assert }) => {
+    const user = await makeUser()
+    await saveClaudeState(user, { '.credentials.json': REFRESHED })
+    await db
+      .from('claude_code_states')
+      .where('user_id', user.id)
+      .update({ files: 'sealed-elsewhere' })
+    const old = join(llmConfig.claudeCodeHome, String(user.id))
+    await mkdir(old, { recursive: true, mode: 0o700 })
+    await writeFile(join(old, '.credentials.json'), CREDENTIALS)
+    await importClaudeFolders()
+    assert.deepEqual(await claudeState(user), { '.credentials.json': CREDENTIALS })
+    assert.isNull(await exists(old))
+  })
+
+  test('purges the launch folders a dead process left, never a recent one', async ({ assert }) => {
+    const stale = join(llmConfig.claudeCodeHome, 'run-stale-fixture')
+    const fresh = join(llmConfig.claudeCodeHome, 'run-fresh-fixture')
+    for (const dir of [stale, fresh]) {
+      await mkdir(dir, { recursive: true, mode: 0o700 })
+      await writeFile(join(dir, '.credentials.json'), CREDENTIALS)
+    }
+    const old = new Date(Date.now() - 24 * 3600_000)
+    await utimes(stale, old, old)
+    const result = await importClaudeFolders()
+    assert.isAtLeast(result.purged, 1)
+    assert.isNull(await exists(stale))
+    assert.isNotNull(await exists(fresh))
+    await removeClaudeFolder(fresh)
   })
 })

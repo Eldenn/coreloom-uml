@@ -303,7 +303,7 @@ export class AuthAccessTokenSchema extends BaseModel {
 }
 
 export class ClaudeCodeStateSchema extends BaseModel {
-  static $columns = ['createdAt', 'files', 'id', 'updatedAt', 'userId'] as const
+  static $columns = ['createdAt', 'files', 'id', 'updatedAt', 'userId', 'version'] as const
   $columns = ClaudeCodeStateSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -315,6 +315,8 @@ export class ClaudeCodeStateSchema extends BaseModel {
   declare updatedAt: DateTime
   @column()
   declare userId: number
+  @column()
+  declare version: number
 }
 
 export class CodeMapSuggestionSchema extends BaseModel {

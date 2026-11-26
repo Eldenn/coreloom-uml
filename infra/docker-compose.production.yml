@@ -131,9 +131,10 @@ services:
       GITHUB_APP_WEBHOOK_SECRET: '${GITHUB_APP_WEBHOOK_SECRET:-}'
       OTEL_SERVICE_NAME: coreloom-uml-api-production
       OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
-    volumes:
-      # The `claude` binary's per-account credentials: losing it signs every Claude subscription out.
-      - claude-config:/data/claude
+    # The short-lived folders of the `claude` binary's launches live in memory, so a launch cut off
+    # by a crash leaves nothing on a disk (uid 1000 is the image's `node`).
+    tmpfs:
+      - /data/claude:mode=0700,uid=1000,gid=1000
     depends_on:
       redis:
         condition: service_healthy
@@ -529,6 +530,8 @@ services:
         condition: service_completed_successfully
 
 volumes:
+  # The Claude account folders from before `claude_code_states`, read once by `claude:import`
+  # (service `migrate`). Can be removed once that has run.
   claude-config:
   redis-data:
   skill-tagger-models:

@@ -6,6 +6,9 @@ import { BaseSchema } from '@adonisjs/lucid/schema'
  * `CLAUDE_STATE_FILES`), as one JSON object encrypted with the dedicated `llmKeys` encrypter.
  * A launch of the binary gets them in a short-lived private folder and they are written back
  * when it ends, since the binary refreshes its own tokens. One row per account.
+ *
+ * `down` drops every saved subscription, and `claude:import` has removed the folders they came
+ * from: rolling back signs every account out of Claude.
  */
 export default class extends BaseSchema {
   protected tableName = 'claude_code_states'
@@ -21,6 +24,9 @@ export default class extends BaseSchema {
         .inTable('users')
         .onDelete('CASCADE')
       table.text('files').notNullable()
+      // Raised by every write: a launch writes its files back only over the version it read, so
+      // one whose lock ran out never overwrites a newer state, and a deleted row stays deleted.
+      table.integer('version').notNullable().defaultTo(1)
       table.timestamp('created_at', { useTz: true }).notNullable()
       table.timestamp('updated_at', { useTz: true }).notNullable()
     })

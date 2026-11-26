@@ -719,10 +719,16 @@ proposals work exactly as with a key (same answers, same failure reasons, plus
   a time. `DELETE /llm/connections/claude-code` signs the binary out and drops the state, as does
   deleting the account. Calls run `claude -p` with no tools and no shell. Usage counts against the
   plan's monthly Agent SDK credit, then extra usage.
-- `node ace claude:import` (run at every start in the Compose stacks) moves the account folders
-  from before (`CLAUDE_CODE_HOME/<user id>`) into the database and removes them; keep the
-  `/data/claude` volume until it has run once. Sign-ins run in the API process, so keep a single
-  API replica while Claude subscriptions are on.
+- A launch writes its files back only over the version of the row it read (`version`), so one that
+  outlived its lock never overwrites a newer state and a subscription dropped meanwhile stays
+  dropped; a file the binary was cut off writing (not JSON any more) keeps its saved content. The
+  API keeps its launch folders in memory (`tmpfs` on `/data/claude`), so a crash leaves nothing on
+  a disk.
+- `node ace claude:import` (run at every start by `migrate` in the Compose stacks) moves the account
+  folders from before (`CLAUDE_CODE_HOME/<user id>`) into the database and removes them, and purges
+  the launch folders a dead process left. Run it with the API stopped (see the changeset for the
+  deploy that introduces it). Sign-ins run in the API process, so keep a single API replica while
+  Claude subscriptions are on.
 
 ### Security headers
 

@@ -30,8 +30,10 @@ export default class LanguageModels {
     return createLanguageModel(provider, credential, {
       claudeRun: async (args, { owner, ...options }) => {
         const cli = await app.container.make(ClaudeCodeCli)
-        return withClaudeFolder({ id: owner }, (configDir) =>
-          cli.run(args, { ...options, configDir }),
+        return withClaudeFolder(
+          { id: owner },
+          (configDir) => cli.run(args, { ...options, configDir }),
+          { signal: options.signal },
         )
       },
     })

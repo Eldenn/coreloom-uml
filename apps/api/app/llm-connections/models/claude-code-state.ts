@@ -11,15 +11,21 @@ export type ClaudeStateFiles = Record<string, string>
  * be decrypted or parsed (a key changed), which the services treat as "not connected". Never
  * serialized.
  */
+/** The sealed text of a state, as the `files` column stores it. */
+export function sealClaudeFiles(files: ClaudeStateFiles): string {
+  return sealLlmSecret(JSON.stringify(files), LlmSecretPurpose.ClaudeState)
+}
+
 const sealed = {
-  prepare: (files: ClaudeStateFiles) =>
-    sealLlmSecret(JSON.stringify(files), LlmSecretPurpose.ClaudeState),
+  prepare: sealClaudeFiles,
   consume: (value: string): ClaudeStateFiles | null => {
     const plain = openLlmSecret(value, LlmSecretPurpose.ClaudeState)
     if (plain === null) return null
     try {
       const files = JSON.parse(plain) as unknown
-      return files && typeof files === 'object' ? (files as ClaudeStateFiles) : null
+      if (!files || typeof files !== 'object' || Array.isArray(files)) return null
+      const values = Object.values(files)
+      return values.every((value) => typeof value === 'string') ? (files as ClaudeStateFiles) : null
     } catch {
       return null
     }
@@ -39,6 +45,10 @@ export default class ClaudeCodeState extends BaseModel {
 
   @column(sealed)
   declare files: ClaudeStateFiles | null
+
+  /** Raised by every write (see the migration). */
+  @column()
+  declare version: number
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

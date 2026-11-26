@@ -12,9 +12,10 @@ export default class ClaudeImport extends BaseCommand {
 
   async run() {
     const { importClaudeFolders } = await import('#app/llm-connections/services/claude-code-state')
-    const { imported, removed } = await importClaudeFolders()
+    const { imported, removed, kept, purged } = await importClaudeFolders()
     this.logger.success(
-      `claude subscriptions: ${imported} moved to the database, ${removed} folder(s) removed`,
+      `claude subscriptions: ${imported} moved to the database, ${removed} folder(s) removed, ` +
+        `${kept} unreadable folder(s) left in place, ${purged} leftover launch folder(s) purged`,
     )
   }
 }
