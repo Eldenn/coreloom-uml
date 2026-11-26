@@ -72,7 +72,7 @@ export default class CodeMapProcessProposalsController {
       return response.conflict({ error: { message: 'This code map is not ready' } })
     }
 
-    const { provider, apiKey, entry, architectureId, kind, locale } =
+    const { provider, entry, architectureId, kind, locale } =
       await request.validateUsing(proposeProcessInput)
     const architecture = await findOwnedArchitecture(architectureId, user, { withDiagrams: true })
     if (!architecture || architecture.projectId !== codeMap.projectId) {
@@ -82,7 +82,7 @@ export default class CodeMapProcessProposalsController {
     const slice = processSlice(map, entry)
     if (!slice) return response.notFound(PROCESS_NOT_FOUND)
 
-    const built = await userLanguageModel(provider, apiKey, user)
+    const built = await userLanguageModel(provider, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
     if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)

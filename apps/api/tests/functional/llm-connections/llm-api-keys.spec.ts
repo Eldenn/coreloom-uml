@@ -290,6 +290,21 @@ test.group('LLM - saved api keys', (group) => {
     }
   })
 
+  test('an origin the allowlist refuses is never saved', async ({ client, assert }) => {
+    const user = await makeUser()
+    const built = useModel(answeringModel('OK'))
+
+    const response = await client
+      .put('/llm/api-keys/openai-compatible')
+      .headers(json)
+      .loginAs(user)
+      .json({ apiKey: KEY, baseUrl: 'http://169.254.169.254' })
+    response.assertStatus(422)
+    assert.match(response.body().error.message, /allowlist/)
+    assert.lengthOf(built, 0)
+    assert.isNull(await storedApiKey(user, 'openai-compatible'))
+  })
+
   test('GET /llm/providers answers the hint, origin and date of a saved key', async ({
     client,
     assert,
@@ -312,10 +327,8 @@ test.group('LLM - saved api keys', (group) => {
       baseUrl: null,
     })
     assert.isNotNull(byKind.get('mistral')?.verifiedAt)
-    // While the browser flow migrates, every key kind stays "connected" (the request's key still
-    // works); what tells a saved key apart is the hint.
     assert.containsSubset(byKind.get('anthropic'), {
-      connected: true,
+      connected: false,
       keyHint: null,
       verifiedAt: null,
     })

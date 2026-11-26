@@ -5,6 +5,7 @@ import { test } from '@japa/runner'
 import type { TestContext } from '@japa/runner/core'
 import { LLM_REQUESTS_PER_MINUTE } from '#app/llm/constants/llm'
 import LanguageModels from '#app/llm/services/language-models'
+import { saveApiKey } from '#app/llm-connections/services/llm-api-keys'
 import User from '#app/users/models/user'
 import llmConfig from '#config/llm'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
@@ -17,11 +18,13 @@ const OLLAMA = 'http://localhost:11434'
 
 type Client = TestContext['client']
 
-function makeUser() {
-  return User.create({
+async function makeUser() {
+  const user = await User.create({
     email: `llm-${Math.random().toString(36).slice(2)}@example.com`,
     password: 'a-very-strong-passphrase',
   })
+  await saveApiKey(user, 'mistral', { apiKey: KEY, baseUrl: null })
+  return user
 }
 
 /** Every model the API builds during a test is this one; records what it was built with. */
@@ -191,7 +194,7 @@ test.group('LLM - connection test', (group) => {
       .post('/llm/test')
       .headers(json)
       .loginAs(user)
-      .json({ provider: hosted, apiKey: KEY })
+      .json({ provider: hosted })
 
     response.assertStatus(200)
     assert.isTrue(response.body().ok)
@@ -208,7 +211,7 @@ test.group('LLM - connection test', (group) => {
       .post('/llm/test')
       .headers(json)
       .loginAs(user)
-      .json({ provider: hosted, apiKey: KEY })
+      .json({ provider: hosted })
     logs.restore()
 
     response.assertStatus(200)
@@ -217,58 +220,40 @@ test.group('LLM - connection test', (group) => {
     assert.isNotEmpty(logs.lines)
   })
 
-  test('refuses a base URL outside the allowlist, or on a provider with a fixed URL', async ({
+  test('a kind that calls a server the user names needs its saved origin', async ({
     client,
     assert,
   }) => {
     const user = await makeUser()
     const built = useModel(answeringModel('OK'))
     const send = (provider: Record<string, unknown>) =>
-      client.post('/llm/test').headers(json).loginAs(user).json({ provider, apiKey: KEY })
+      client.post('/llm/test').headers(json).loginAs(user).json({ provider })
 
-    const empty = await send({ kind: 'ollama', model: 'qwen3', baseUrl: OLLAMA })
-    empty.assertStatus(422)
-    assert.match(empty.body().error.message, /allowlist/)
-
-    const fixed = await send({ ...hosted, baseUrl: 'https://api.mistral.ai' })
-    fixed.assertStatus(422)
-    assert.match(fixed.body().error.message, /takes no base URL/)
+    // No origin saved for `ollama`: a call cannot know where to go.
+    ;(await send({ kind: 'ollama', model: 'qwen3' })).assertStatus(422)
 
     llmConfig.allowedOrigins.push(OLLAMA)
     try {
-      ;(await send({ kind: 'ollama', model: 'qwen3', baseUrl: `${OLLAMA}/` })).assertStatus(200)
-      ;(
-        await send({ kind: 'ollama', model: 'qwen3', baseUrl: 'http://169.254.169.254' })
-      ).assertStatus(422)
-      ;(await send({ kind: 'openai-compatible', model: 'x' })).assertStatus(422)
+      await saveApiKey(user, 'ollama', { apiKey: '', baseUrl: `${OLLAMA}/` })
+      ;(await send({ kind: 'ollama', model: 'qwen3' })).assertStatus(200)
+      assert.equal(built[0]?.provider.baseUrl, `${OLLAMA}/`)
     } finally {
       llmConfig.allowedOrigins.splice(0)
     }
     assert.lengthOf(built, 1)
   })
 
-  test('a hosted provider needs a key; a local server does not', async ({ client }) => {
+  test('a kind whose key was never saved cannot be called', async ({ client }) => {
     const user = await makeUser()
     useModel(answeringModel('OK'))
 
+    // `mistral` is saved (makeUser); `anthropic` is not: the settings check refuses it.
     const withoutKey = await client
       .post('/llm/test')
       .headers(json)
       .loginAs(user)
-      .json({ provider: hosted })
+      .json({ provider: { kind: 'anthropic', model: 'claude-sonnet-4-5' } })
     withoutKey.assertStatus(422)
-
-    llmConfig.allowedOrigins.push(OLLAMA)
-    try {
-      const local = await client
-        .post('/llm/test')
-        .headers(json)
-        .loginAs(user)
-        .json({ provider: { kind: 'ollama', model: 'qwen3', baseUrl: OLLAMA } })
-      local.assertStatus(200)
-    } finally {
-      llmConfig.allowedOrigins.splice(0)
-    }
   })
 
   test('validates the provider', async ({ client }) => {
@@ -277,7 +262,7 @@ test.group('LLM - connection test', (group) => {
       .post('/llm/test')
       .headers(json)
       .loginAs(user)
-      .json({ provider: { kind: 'gemini', model: '' }, apiKey: KEY })
+      .json({ provider: { kind: 'gemini', model: '' } })
     response.assertStatus(422)
   })
 
@@ -289,13 +274,10 @@ test.group('LLM - connection test', (group) => {
     const withToken = await client
       .post('/llm/test')
       .headers({ ...json, authorization: `Bearer ${secret}` })
-      .json({ provider: hosted, apiKey: KEY })
+      .json({ provider: hosted })
     withToken.assertStatus(401)
 
-    const anonymous = await client
-      .post('/llm/test')
-      .headers(json)
-      .json({ provider: hosted, apiKey: KEY })
+    const anonymous = await client.post('/llm/test').headers(json).json({ provider: hosted })
     anonymous.assertStatus(401)
   })
 
@@ -304,27 +286,19 @@ test.group('LLM - connection test', (group) => {
     useModel(answeringModel('OK'))
     for (let call = 0; call < LLM_REQUESTS_PER_MINUTE; call++) {
       ;(
-        await client
-          .post('/llm/test')
-          .headers(json)
-          .loginAs(user)
-          .json({ provider: hosted, apiKey: KEY })
+        await client.post('/llm/test').headers(json).loginAs(user).json({ provider: hosted })
       ).assertStatus(200)
     }
     const over = await client
       .post('/llm/test')
       .headers(json)
       .loginAs(user)
-      .json({ provider: hosted, apiKey: KEY })
+      .json({ provider: hosted })
     over.assertStatus(429)
 
     const other = await makeUser()
     ;(
-      await client
-        .post('/llm/test')
-        .headers(json)
-        .loginAs(other)
-        .json({ provider: hosted, apiKey: KEY })
+      await client.post('/llm/test').headers(json).loginAs(other).json({ provider: hosted })
     ).assertStatus(200)
   })
 })
@@ -344,7 +318,7 @@ test.group('LLM - rule proposals', (group) => {
         .post(`/agent-configs/${project.configId}/proposals`)
         .headers(json)
         .loginAs(user)
-        .json({ provider: hosted, apiKey: KEY, from, feedback: 'Anything.' })
+        .json({ provider: hosted, from, feedback: 'Anything.' })
       response.assertStatus(422)
     }
     assert.lengthOf(model.doGenerateCalls, 0)
@@ -365,7 +339,6 @@ test.group('LLM - rule proposals', (group) => {
       const logs = captureLogs()
       const response = await propose(client, user, project.configId, {
         provider: hosted,
-        apiKey: KEY,
       })
       logs.restore()
 
@@ -388,7 +361,6 @@ test.group('LLM - rule proposals', (group) => {
 
     const response = await propose(client, stranger, project.configId, {
       provider: hosted,
-      apiKey: KEY,
     })
     response.assertStatus(404)
   })
@@ -396,7 +368,7 @@ test.group('LLM - rule proposals', (group) => {
   test('answers 404 for an unknown configuration', async ({ client }) => {
     const user = await makeUser()
     useModel(answeringModel(THREE_PROPOSALS))
-    const response = await propose(client, user, 999_999, { provider: hosted, apiKey: KEY })
+    const response = await propose(client, user, 999_999, { provider: hosted })
     response.assertStatus(404)
   })
 
@@ -409,7 +381,7 @@ test.group('LLM - rule proposals', (group) => {
     const response = await client
       .post(`/agent-configs/${project.configId}/proposals`)
       .headers({ ...json, authorization: `Bearer ${secret}` })
-      .json({ provider: hosted, apiKey: KEY, from: 'feedback', feedback: 'Anything.' })
+      .json({ provider: hosted, from: 'feedback', feedback: 'Anything.' })
     response.assertStatus(401)
   })
 
@@ -451,7 +423,6 @@ test.group('LLM - rule proposals from diagrams', (group) => {
 
     const response = await propose(client, user, project.configId, {
       provider: hosted,
-      apiKey: KEY,
       from: 'diagrams',
     })
     response.assertStatus(200)
@@ -490,7 +461,6 @@ test.group('LLM - rule proposals from diagrams', (group) => {
 
     const response = await propose(client, user, project.configId, {
       provider: hosted,
-      apiKey: KEY,
       from: 'diagrams',
     })
     response.assertStatus(200)
@@ -507,7 +477,6 @@ test.group('LLM - rule proposals from diagrams', (group) => {
 
     const response = await propose(client, user, project.configId, {
       provider: hosted,
-      apiKey: KEY,
       from: 'diagrams',
       diagramIds: [elsewhere.id],
     })
@@ -553,7 +522,6 @@ test.group('LLM - rule proposals from review feedback', (group) => {
 
     const response = await propose(client, user, project.configId, {
       provider: hosted,
-      apiKey: KEY,
       from: 'feedback',
       feedback: FEEDBACK,
     })
@@ -599,7 +567,6 @@ test.group('LLM - rule proposals from review feedback', (group) => {
     for (const feedback of [undefined, '   ']) {
       const response = await propose(client, user, project.configId, {
         provider: hosted,
-        apiKey: KEY,
         from: 'feedback',
         feedback,
       })
@@ -614,7 +581,7 @@ function importFile(client: Client, user: User, configId: number, content: strin
     .post(`/agent-configs/${configId}/imports`)
     .headers(json)
     .loginAs(user)
-    .json({ provider: hosted, apiKey: KEY, content })
+    .json({ provider: hosted, content })
 }
 
 const picked = (slot: string, rule: string, value: string | null, evidence: string) => ({
@@ -759,7 +726,7 @@ test.group('LLM - conventions file import', (group) => {
       .post(`/agent-configs/${project.configId}/imports`)
       .headers(json)
       .loginAs(user)
-      .json({ provider: hosted, apiKey: KEY, content: 'Use pnpm (a.example).', origin: 'research' })
+      .json({ provider: hosted, content: 'Use pnpm (a.example).', origin: 'research' })
 
     response.assertStatus(200)
     assert.properties(response.body(), ['ready', 'rules', 'truncated'])
@@ -777,7 +744,7 @@ test.group('LLM - conventions file import', (group) => {
       .post(`/agent-configs/${project.configId}/imports`)
       .headers(json)
       .loginAs(user)
-      .json({ provider: hosted, apiKey: KEY, content: 'Anything.', origin: 'other' })
+      .json({ provider: hosted, content: 'Anything.', origin: 'other' })
     response.assertStatus(422)
   })
 

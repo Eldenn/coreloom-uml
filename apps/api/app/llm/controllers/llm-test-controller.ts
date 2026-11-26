@@ -8,14 +8,13 @@ import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-conne
 
 /**
  * `POST /llm/test`: one tiny call with the user's provider — the key the account saved for it, or
- * the one of the request while the browser flow migrates, or a connected subscription — to check
- * it before use. Session only. Only the outcome is logged.
+ * a connected subscription — to check it before use. Session only. Only the outcome is logged.
  */
 export default class LlmTestController {
   async handle({ request, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
-    const { provider, apiKey } = await request.validateUsing(llmCallInput)
-    const built = await userLanguageModel(provider, apiKey, user)
+    const { provider } = await request.validateUsing(llmCallInput)
+    const built = await userLanguageModel(provider, user)
     if ('problem' in built) {
       return response.unprocessableEntity({ error: { message: built.problem } })
     }

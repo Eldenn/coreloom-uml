@@ -10,6 +10,7 @@ import LanguageModels from '#app/llm/services/language-models'
 import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
+import { saveTestLlmKey } from '#tests/helpers/llm-key'
 
 const json = { accept: 'application/json' }
 const ON = { enabled: true, rollout: 100, rules: [] }
@@ -24,6 +25,7 @@ const STEPS_LINE = DESIGN_BRIEF_INSTRUCTIONS.split('\n')[0] ?? ''
 
 async function setup(email: string, { design = true, actions = true } = {}) {
   const user = await User.create({ email, password: 'a-very-strong-passphrase' })
+  await saveTestLlmKey(user)
   await updateFlag(FeatureFlagKey.DiagramAssistant, ON, user)
   if (actions) await updateFlag(FeatureFlagKey.AssistantActions, ON, user)
   if (design) await updateFlag(FeatureFlagKey.DesignRecords, ON, user)

@@ -37,6 +37,7 @@ import User from '#app/users/models/user'
 import env from '#start/env'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
+import { saveTestLlmKey } from '#tests/helpers/llm-key'
 
 const json = { accept: 'application/json' }
 const ON = { enabled: true, rollout: 100, rules: [] }
@@ -67,6 +68,7 @@ function useModel(model: LanguageModel) {
 
 async function makeUser(email: string, { actions = true } = {}) {
   const user = await User.create({ email, password: 'a-very-strong-passphrase' })
+  await saveTestLlmKey(user)
   await updateFlag(FeatureFlagKey.DiagramAssistant, ON, user)
   if (actions) await updateFlag(FeatureFlagKey.AssistantActions, ON, user)
   return user

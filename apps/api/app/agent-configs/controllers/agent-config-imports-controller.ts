@@ -45,7 +45,7 @@ export default class AgentConfigImportsController {
     const config = await findOwnedAgentConfig(params.id, user)
     if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
 
-    const { provider, apiKey, content, origin, conversation } =
+    const { provider, content, origin, conversation } =
       await request.validateUsing(agentImportInput)
     // Checked before any model call: a foreign conversation costs the caller nothing.
     let target: AssistantConversation | null = null
@@ -61,7 +61,7 @@ export default class AgentConfigImportsController {
       target = await findOwnedConversation(conversation.id, user)
       if (!target) return response.notFound(CONVERSATION_NOT_FOUND)
     }
-    const built = await userLanguageModel(provider, apiKey, user)
+    const built = await userLanguageModel(provider, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
     if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)

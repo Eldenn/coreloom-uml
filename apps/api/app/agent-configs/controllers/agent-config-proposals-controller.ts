@@ -40,13 +40,13 @@ export default class AgentConfigProposalsController {
     const config = await findOwnedAgentConfig(params.id, user)
     if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
 
-    const { provider, apiKey, from, diagramIds, feedback } =
+    const { provider, from, diagramIds, feedback } =
       await request.validateUsing(agentProposalsInput)
     const diagrams =
       from === AgentProposalSource.Diagrams ? await readConfigDiagrams(config, diagramIds) : null
     if (diagrams === 'notFound') return response.notFound(DIAGRAM_NOT_FOUND)
 
-    const built = await userLanguageModel(provider, apiKey, user)
+    const built = await userLanguageModel(provider, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
     if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)

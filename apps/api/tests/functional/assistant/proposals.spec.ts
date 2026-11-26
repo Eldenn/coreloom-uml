@@ -13,6 +13,7 @@ import LanguageModels from '#app/llm/services/language-models'
 import User from '#app/users/models/user'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { dumpDatabase } from '#tests/helpers/leaks'
+import { saveTestLlmKey } from '#tests/helpers/llm-key'
 
 const json = { accept: 'application/json' }
 const ON = { enabled: true, rollout: 100, rules: [] }
@@ -49,6 +50,7 @@ function useModel(model: LanguageModel) {
 
 async function setup(email: string, client: Client) {
   const user = await User.create({ email, password: 'a-very-strong-passphrase' })
+  await saveTestLlmKey(user)
   await updateFlag(FeatureFlagKey.DiagramAssistant, ON, user)
   await updateFlag(FeatureFlagKey.WebResearch, ON, user)
   const created = await client
@@ -257,6 +259,7 @@ test.group('Assistant - proposals of a web research', (group) => {
       email: 'prop-history@example.com',
       password: 'a-very-strong-passphrase',
     })
+    await saveTestLlmKey(user)
     const conversation = await AssistantConversation.create({ userId: user.id, title: 'Web' })
     const proposals: StoredProposals = {
       agentConfigId: 7,

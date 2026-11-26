@@ -46,21 +46,20 @@ export function providerProblem(provider: ProviderSettings, apiKey: string): str
 
 /**
  * The model a request calls with the user's provider: `problem` (422) when the settings cannot be
- * called, `notFound` (404) for a subscription kind behind an off flag, `reason` (502) for a
- * subscription that is not connected or whose grant died.
+ * called — a kind whose key was never saved among them —, `notFound` (404) for a subscription kind
+ * behind an off flag, `reason` (502) for a subscription that is not connected or whose grant
+ * died.
  */
 export async function userLanguageModel(
   provider: ProviderSettings,
-  apiKey: string | null | undefined,
   user: Pick<User, 'id' | 'email'>,
 ): Promise<
   { model: LanguageModel } | { problem: string } | { notFound: true } | { reason: LlmFailureReason }
 > {
-  const resolved = await resolveCredential(provider, apiKey ?? '', user)
+  const resolved = await resolveCredential(provider, user)
   if (!('credential' in resolved)) return resolved
   // A saved key answers with the origin it was saved with: the request's base URL is ignored for
-  // it, so a stolen session cannot point the saved key at another origin. The transition (the
-  // browser still sending its key) keeps the request's own base URL.
+  // it, so a stolen session cannot point the saved key at another origin.
   const effective: ProviderSettings = resolved.baseUrl
     ? { ...provider, baseUrl: resolved.baseUrl }
     : provider

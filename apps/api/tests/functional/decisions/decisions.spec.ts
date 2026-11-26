@@ -13,6 +13,7 @@ import Project from '#app/projects/models/project'
 import Requirement from '#app/requirements/models/requirement'
 import User from '#app/users/models/user'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
+import { saveTestLlmKey } from '#tests/helpers/llm-key'
 
 type Client = TestContext['client']
 
@@ -22,6 +23,7 @@ const OFF = { enabled: false, rollout: 0, rules: [] }
 
 async function setup(email: string, enabled = true) {
   const user = await User.create({ email, password: 'a-very-strong-passphrase' })
+  await saveTestLlmKey(user)
   if (enabled) await updateFlag(FeatureFlagKey.DesignRecords, ON, user)
   const project = await Project.create({ userId: user.id, name: 'Shop', description: null })
   const architecture = await Architecture.create({

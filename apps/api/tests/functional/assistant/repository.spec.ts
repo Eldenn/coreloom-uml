@@ -34,6 +34,7 @@ import User from '#app/users/models/user'
 import env from '#start/env'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
+import { saveTestLlmKey } from '#tests/helpers/llm-key'
 
 /**
  * The assistant reads a project's repository in a sandbox. E2B and GitHub are never reached:
@@ -228,6 +229,7 @@ function useModel(model: LanguageModel) {
 
 async function setup(email: string) {
   const user = await User.create({ email, password: 'a-very-strong-passphrase' })
+  await saveTestLlmKey(user)
   for (const key of [
     FeatureFlagKey.DiagramAssistant,
     FeatureFlagKey.AssistantActions,

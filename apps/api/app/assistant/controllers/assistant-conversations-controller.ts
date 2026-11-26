@@ -90,11 +90,11 @@ export default class AssistantConversationsController {
     const conversation = await findOwnedConversation(params.conversationId, user)
     if (!conversation) return response.notFound(CONVERSATION_NOT_FOUND)
 
-    const { provider, apiKey, locale } = await request.validateUsing(continueConversationInput)
+    const { provider, locale } = await request.validateUsing(continueConversationInput)
     const history = await conversationHistory(conversation)
     // Nothing to summarize: a new conversation would be just as full.
     if (history.length === 0) return response.conflict(NOTHING_TO_SUMMARIZE)
-    const built = await userLanguageModel(provider, apiKey, user)
+    const built = await userLanguageModel(provider, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
     if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)

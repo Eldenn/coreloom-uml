@@ -16,6 +16,7 @@ import LanguageModels from '#app/llm/services/language-models'
 import User from '#app/users/models/user'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
+import { saveTestLlmKey } from '#tests/helpers/llm-key'
 
 const json = { accept: 'application/json' }
 const ON = { enabled: true, rollout: 100, rules: [] }
@@ -51,6 +52,7 @@ const NO_CHANGE = JSON.stringify({ reply: 'Read.', changes: [] })
 
 async function setup(email: string) {
   const user = await User.create({ email, password: PASSWORD })
+  await saveTestLlmKey(user)
   await updateFlag(FeatureFlagKey.DiagramAssistant, ON, user)
   const conversation = await AssistantConversation.create({ userId: user.id, title: '' })
   const architecture = await Architecture.create({

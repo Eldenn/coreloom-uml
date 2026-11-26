@@ -99,8 +99,8 @@ export default class AdminSkillVersionsController {
   async modelReview({ params, request, auth, response }: HttpContext) {
     const version = await find(params.id)
     if (!version) return response.notFound(VERSION_NOT_FOUND)
-    const { provider, apiKey, locale } = await request.validateUsing(modelReviewSkillVersionInput)
-    const built = await userLanguageModel(provider, apiKey, auth.getUserOrFail())
+    const { provider, locale } = await request.validateUsing(modelReviewSkillVersionInput)
+    const built = await userLanguageModel(provider, auth.getUserOrFail())
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
     if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)
