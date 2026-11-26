@@ -95,3 +95,28 @@ export const SKILLS_SEARCH_MAX_LENGTH = 100
  */
 export const SKILLS_EVENTS_CHANNEL = 'skills:catalog'
 export const SKILLS_EVENTS_HEARTBEAT_MS = 25_000
+
+/**
+ * Where the weekly search looks for skills (`skill_sources`): skills.sh, searched with the
+ * catalog's plan, or a GitHub repository of a trusted publisher, listed whole. A skill a GitHub
+ * source lists needs no installs and no audit to be suggested; its copy is still scanned and
+ * approved by the admin.
+ */
+export const SkillSourceKind = {
+  SkillsSh: 'skills-sh',
+  Github: 'github',
+} as const
+
+export type SkillSourceKind = (typeof SkillSourceKind)[keyof typeof SkillSourceKind]
+
+export const SKILL_SOURCE_KINDS = Object.values(SkillSourceKind) as readonly SkillSourceKind[]
+
+/**
+ * A GitHub source contributes at most `skillsPerSource` skills a run (in path order); its folder
+ * is at most `pathMaxLength` characters, and a run's error is kept to `errorMaxLength`.
+ */
+export const SKILL_SOURCE_LIMITS = {
+  skillsPerSource: 100,
+  pathMaxLength: 200,
+  errorMaxLength: 300,
+} as const
