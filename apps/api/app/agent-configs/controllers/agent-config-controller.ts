@@ -1,12 +1,10 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import db from '@adonisjs/lucid/services/db'
 import AgentConfig from '#app/agent-configs/models/agent-config'
 import { serializeAgentConfig } from '#app/agent-configs/serializers/agent-config-serializer'
 import {
-  cleanNotes,
   createAgentConfig,
   deleteAgentConfig,
-  lockProjectHasConfig,
+  updateAgentConfig,
 } from '#app/agent-configs/services/agent-config-writes'
 import {
   AGENT_CONFIG_NOT_FOUND,
@@ -19,7 +17,7 @@ import {
   listAgentConfigsInput,
   updateAgentConfigInput,
 } from '#app/agent-configs/validators/agent-configs-input'
-import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
+import { PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
 import { likePattern } from '#app/shared/database/like-pattern'
 import { paginate } from '#app/shared/pagination/paginate'
 
@@ -65,41 +63,10 @@ export default class AgentConfigController {
    * configuration), null takes it out of its project.
    */
   async update({ params, request, auth, response }: HttpContext) {
-    const user = auth.getUserOrFail()
     const input = await request.validateUsing(updateAgentConfigInput)
+    const result = await updateAgentConfig(params.id, auth.getUserOrFail(), input)
 
-    if (input.projectId && !(await findOwnedProject(input.projectId, user)))
-      return response.notFound(PROJECT_NOT_FOUND)
-    const notes = cleanNotes(input.notes)
-
-    const result = await db.transaction(async (trx) => {
-      const config = await findOwnedAgentConfig(params.id, user, trx)
-      if (!config) return { notFound: true as const }
-      config.useTransaction(trx)
-
-      if (input.projectId !== undefined && input.projectId !== config.projectId) {
-        if (
-          input.projectId !== null &&
-          (await lockProjectHasConfig(input.projectId, config.id, trx))
-        )
-          return { conflict: true as const }
-        config.projectId = input.projectId
-      }
-      if (input.name !== undefined) config.name = input.name
-
-      const targets = input.targets ?? config.targets
-      const changed =
-        JSON.stringify(config.targets) !== JSON.stringify(targets) ||
-        (notes !== undefined && notes !== config.notes)
-      if (changed) {
-        config.targets = targets
-        if (notes !== undefined) config.notes = notes
-        config.revision += 1
-      }
-      await config.save()
-      return { config }
-    })
-
+    if ('projectNotFound' in result) return response.notFound(PROJECT_NOT_FOUND)
     if ('notFound' in result) return response.notFound(AGENT_CONFIG_NOT_FOUND)
     if ('conflict' in result) return response.conflict(PROJECT_HAS_AGENT_CONFIG)
     return response.ok(await describeAgentConfig(result.config))
