@@ -1,6 +1,7 @@
 import db from '@adonisjs/lucid/services/db'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import { SKILL_FOLDERS, type Target } from '@coreloom-uml/catalog'
+import { AGENT_SKILLS_MAX } from '#app/agent-configs/constants/agent-config'
 import type AgentConfig from '#app/agent-configs/models/agent-config'
 import AgentConfigSkill from '#app/agent-configs/models/agent-config-skill'
 import { byName } from '#app/agent-configs/serializers/agent-config-serializer'
@@ -25,17 +26,19 @@ export type SkillsOutcome =
   | { config: AgentConfig }
 
 /**
- * Replaces the skills a configuration holds, in one transaction with the configuration locked.
- * A skill it already holds may stay even if its copy is no longer served; one it does not hold
+ * Replaces the skills a configuration holds, in one transaction with the configuration locked
+ * (`PUT …/skills`, `change_skills`). `choose` gets the slugs held now and answers the slugs it
+ * should hold, at most `AGENT_SKILLS_MAX`. A skill it already holds may stay even if its copy is no longer served; one it does not hold
  * yet must have an approved copy (`INSTALLABLE_SQL`), else nothing is saved. The revision goes up
  * only when the set changed.
  */
 export async function replaceAgentSkills(
   configId: number,
   user: User,
-  slugs: string[],
+  choose: (held: string[]) => string[],
+  client?: TransactionClientContract,
 ): Promise<SkillsOutcome> {
-  return db.transaction(async (trx) => {
+  return (client ?? db).transaction(async (trx) => {
     const config = await findOwnedAgentConfig(configId, user, trx)
     if (!config) return { notFound: AGENT_CONFIG_NOT_FOUND }
 
@@ -43,6 +46,17 @@ export async function replaceAgentSkills(
       .where('agentConfigId', config.id)
       .preload('skill')
     const heldSlugs = new Set(held.map((row) => row.skill.slug))
+    const slugs = [...new Set(choose([...heldSlugs]))]
+    if (slugs.length > AGENT_SKILLS_MAX) {
+      return {
+        refused: {
+          error: {
+            message: `A configuration holds at most ${AGENT_SKILLS_MAX} skills`,
+            problems: [],
+          },
+        },
+      }
+    }
     const added = slugs.filter((slug) => !heldSlugs.has(slug))
     const removed = held.filter((row) => !slugs.includes(row.skill.slug))
 

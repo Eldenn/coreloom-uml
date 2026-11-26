@@ -154,6 +154,7 @@ export const ActionImpact = {
   Rules: 'rules',
   ReadyRules: 'readyRules',
   Roles: 'roles',
+  Skills: 'skills',
   Generations: 'generations',
   /** The oldest generations a new one drops, past `AGENT_GENERATIONS_KEPT`. */
   DroppedGenerations: 'droppedGenerations',

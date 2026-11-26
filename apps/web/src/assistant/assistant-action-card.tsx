@@ -89,6 +89,8 @@ function useShownValue(action: AssistantAction) {
   const empty: Partial<Record<ActionRowLabel, string>> = {
     scope: t.assistant.actionWholeRepository,
     branch: t.assistant.actionDefaultBranch,
+    project: t.assistant.actionOutsideProject,
+    readyRule: t.assistant.actionWholeSlot,
   }
   const rights: Record<string, string> = t.roles.rightNames
   const presets = useRolePresets(action.name === 'add_role_from_preset').data

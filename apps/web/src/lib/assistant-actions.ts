@@ -66,6 +66,12 @@ export type ActionRowLabel =
   | 'linkedRequirements'
   | 'linkedDiagrams'
   | 'linkedPart'
+  | 'notes'
+  | 'project'
+  | 'skillAdded'
+  | 'skillRemoved'
+  | 'sources'
+  | 'keptFrom'
 
 /**
  * One line of a card; with `from`, the value replaces it. A list is one text, comma-separated;
@@ -185,6 +191,61 @@ function readyRuleRows(value: unknown): Draft[] {
   }))
 }
 
+/** `before` read as JSON: an object, or none when it is not one. */
+function parsed(before: string | null): Record<string, unknown> {
+  try {
+    const value = JSON.parse(before ?? '') as unknown
+    return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
+  } catch {
+    return {}
+  }
+}
+
+/** A changed field of agent conventions, as it becomes and as it was; none when left out. */
+function changed(
+  input: Record<string, unknown>,
+  was: Record<string, unknown>,
+  key: string,
+  label: ActionRowLabel,
+): Draft[] {
+  if (!Object.hasOwn(input, key)) return []
+  const from = list(was[key] ?? '')
+  return [
+    {
+      label,
+      value: list(input[key] ?? ''),
+      from: typeof from === 'string' ? from : null,
+      given: true,
+    },
+  ]
+}
+
+/** The slugs of a list, one row each. */
+function slugRows(value: unknown, label: ActionRowLabel): Draft[] {
+  return Array.isArray(value) ? (value as unknown[]).map((slug) => ({ label, value: slug })) : []
+}
+
+/** The source a merge keeps for each conflict, by the name the source had when proposed. */
+function choiceRows(choices: unknown, before: string | null): Draft[] {
+  if (typeof choices !== 'object' || choices === null) return []
+  const names = parsed(before)
+  const nameOf = (id: unknown) => {
+    const source = names[String(id)]
+    return typeof source === 'object' && source !== null && 'name' in source
+      ? String(source.name)
+      : `#${String(id)}`
+  }
+  const { readyRules, roles } = choices as { readyRules?: unknown; roles?: unknown }
+  const rows = (items: unknown, key: 'slot' | 'slug'): Draft[] =>
+    Array.isArray(items)
+      ? (items as Record<string, unknown>[]).map((item) => ({
+          label: 'keptFrom',
+          value: `${String(item[key])}: ${nameOf(item.sourceId)}`,
+        }))
+      : []
+  return [...rows(readyRules, 'slot'), ...rows(roles, 'slug')]
+}
+
 /** The ids of a list, as `#3, #5`. */
 const idList = (value: unknown): unknown =>
   Array.isArray(value) ? value.map((id) => `#${String(id)}`).join(', ') : undefined
@@ -257,6 +318,38 @@ const ROWS: Record<
     { label: 'readyRule', value: input.rule },
     { label: 'value', value: input.value },
     { label: 'in', value: subject },
+  ],
+  // `before` holds what the conventions are now: every field changed shows what it was.
+  update_agent_config: (input, subject, before) => {
+    const was = parsed(before)
+    return [
+      ...(Object.hasOwn(input, 'name')
+        ? changed(input, was, 'name', 'name')
+        : [{ label: 'name', value: subject } satisfies Draft]),
+      ...changed(input, was, 'targets', 'targets'),
+      ...changed(input, was, 'notes', 'notes'),
+      // `movesTo` is the name of the project they move to; none takes them out of any project.
+      ...(Object.hasOwn(input, 'projectId')
+        ? changed({ project: was.movesTo }, was, 'project', 'project')
+        : []),
+    ]
+  },
+  // Left out, the rule is every rule of the slot.
+  remove_ready_rule: (input, subject) => [
+    { label: 'slot', value: input.slot },
+    { label: 'readyRule', value: input.rule ?? '', given: true },
+    { label: 'in', value: subject },
+  ],
+  // `before` is a fingerprint of the skills held: never shown.
+  change_skills: (input, subject) => [
+    ...slugRows(input.add, 'skillAdded'),
+    ...slugRows(input.remove, 'skillRemoved'),
+    { label: 'in', value: subject },
+  ],
+  merge_agent_configs: (input, subject, before) => [
+    { label: 'name', value: input.name },
+    { label: 'sources', value: subject },
+    ...choiceRows(input.choices, before),
   ],
   delete_project: (_input, subject) => [{ label: 'name', value: subject }],
   delete_architecture: (_input, subject) => [{ label: 'title', value: subject }],
@@ -357,6 +450,10 @@ const DOMAINS: Record<string, ActionDomain> = {
   edit_rule: 'agent-config',
   remove_rule: 'agent-config',
   set_ready_rule: 'agent-config',
+  update_agent_config: 'agent-config',
+  remove_ready_rule: 'agent-config',
+  change_skills: 'agent-config',
+  merge_agent_configs: 'agent-config',
   delete_project: 'project',
   delete_architecture: 'architecture',
   set_architecture_sharing: 'architecture',
@@ -394,6 +491,7 @@ const IMPACT_KINDS = [
   'rules',
   'readyRules',
   'roles',
+  'skills',
   'generations',
   'droppedGenerations',
   'droppedCodeMaps',

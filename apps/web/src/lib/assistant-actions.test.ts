@@ -60,6 +60,65 @@ describe('actionRows of a decision', () => {
   })
 })
 
+describe('actionRows of agent conventions', () => {
+  it('shows what changing agent conventions changes, field by field', () => {
+    const before = JSON.stringify({
+      name: 'Shop rules',
+      notes: null,
+      targets: ['generic'],
+      project: 'Shop',
+      movesTo: null,
+    })
+    expect(
+      actionRows({
+        name: 'update_agent_config',
+        input: { agentConfigId: 1, targets: ['generic', 'cursor'], notes: null, projectId: null },
+        subject: 'Shop rules',
+        before,
+      }),
+    ).toEqual([
+      { label: 'name', value: 'Shop rules' },
+      { label: 'targets', value: 'generic, cursor', from: 'generic' },
+      { label: 'notes', value: '', from: '' },
+      { label: 'project', value: '', from: 'Shop' },
+    ])
+  })
+
+  it('shows the skills a change adds and removes, and a slot emptied whole', () => {
+    expect(
+      rows('change_skills', { agentConfigId: 1, add: ['tidy-tests'], remove: ['old'] }, 'API'),
+    ).toEqual([
+      { label: 'skillAdded', value: 'tidy-tests' },
+      { label: 'skillRemoved', value: 'old' },
+      { label: 'in', value: 'API' },
+    ])
+    expect(rows('remove_ready_rule', { agentConfigId: 1, slot: 'git.branch' }, 'API')).toEqual([
+      { label: 'slot', value: 'git.branch' },
+      { label: 'readyRule', value: '' },
+      { label: 'in', value: 'API' },
+    ])
+  })
+
+  it('shows the sources of a merge and which one each conflict keeps', () => {
+    expect(
+      actionRows({
+        name: 'merge_agent_configs',
+        input: {
+          name: 'Merged',
+          sourceIds: [1, 2],
+          choices: { readyRules: [{ slot: 'tooling.package-manager', sourceId: 2 }] },
+        },
+        subject: 'API, Front',
+        before: JSON.stringify({ 1: { name: 'API' }, 2: { name: 'Front' } }),
+      }),
+    ).toEqual([
+      { label: 'name', value: 'Merged' },
+      { label: 'sources', value: 'API, Front' },
+      { label: 'keptFrom', value: 'tooling.package-manager: Front' },
+    ])
+  })
+})
+
 describe('actionRows', () => {
   it('shows the name of a project, and the one it replaces', () => {
     expect(rows('create_project', { name: 'Shop' })).toEqual([{ label: 'name', value: 'Shop' }])

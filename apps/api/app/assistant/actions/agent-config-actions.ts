@@ -27,18 +27,29 @@ import {
   AGENT_CATALOG_ID_MAX_LENGTH,
   AGENT_CONFIG_NAME_MAX_LENGTH,
   AGENT_GENERATIONS_KEPT,
+  AGENT_MERGE_CHOICES_MAX,
+  AGENT_MERGE_SOURCES_MAX,
+  AGENT_NOTES_MAX_LENGTH,
   AGENT_ROLES_MAX,
   AGENT_RULE_TEXT_MAX_LENGTH,
+  AGENT_SKILL_SLUG_MAX_LENGTH,
+  AGENT_SKILLS_MAX,
   AgentRuleSource,
 } from '#app/agent-configs/constants/agent-config'
 import AgentConfig from '#app/agent-configs/models/agent-config'
 import AgentConfigGeneration from '#app/agent-configs/models/agent-config-generation'
 import AgentConfigReadyRule from '#app/agent-configs/models/agent-config-ready-rule'
 import AgentConfigRole from '#app/agent-configs/models/agent-config-role'
+import AgentConfigSkill from '#app/agent-configs/models/agent-config-skill'
+import { type MergeChoices, mergeSources } from '#app/agent-configs/services/agent-config-merge'
 import {
   createAgentConfig,
   deleteAgentConfig,
+  mergeAgentConfigs,
+  mergeSourcesOf,
+  updateAgentConfig,
 } from '#app/agent-configs/services/agent-config-writes'
+import { suggestConfigRoles } from '#app/agent-configs/services/agent-context'
 import { createGeneration } from '#app/agent-configs/services/agent-generations'
 import {
   checkRole,
@@ -61,6 +72,7 @@ import {
   unknownSection,
   updateRule,
 } from '#app/agent-configs/services/agent-rules'
+import { heldSkills, replaceAgentSkills } from '#app/agent-configs/services/agent-skills'
 import {
   AGENT_ROLE_SLUG_TAKEN,
   findOwnedAgentConfig,
@@ -85,7 +97,10 @@ import {
   ActionImpact,
   AssistantTargetKind,
 } from '#app/assistant/constants/assistant'
-import { findOwnedProject } from '#app/projects/services/owned-project'
+import { findOwnedProject, PROJECT_NOT_FOUND } from '#app/projects/services/owned-project'
+import CatalogSkill from '#app/skills/models/catalog-skill'
+import { suggestableSkills } from '#app/skills/services/skills-catalog'
+import { INSTALLABLE_SQL } from '#app/skills/services/skills-query'
 import type User from '#app/users/models/user'
 
 /** Ready-made rule groups one search answers. */
@@ -103,6 +118,8 @@ const catalogId = () => z.string().trim().min(1).max(AGENT_CATALOG_ID_MAX_LENGTH
 const ruleText = () => withoutMarkers(z.string().trim().min(1).max(AGENT_RULE_TEXT_MAX_LENGTH))
 
 const configId = { agentConfigId: idInput() }
+/** As the skills route's slugs. */
+const skillSlug = () => z.string().trim().min(1).max(AGENT_SKILL_SLUG_MAX_LENGTH)
 /** A ready-made rule to hold: `value` only for a rule that takes a text. */
 const readyRule = {
   slot: catalogId(),
@@ -178,7 +195,7 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
   readAction({
     name: 'read_agent_config',
     description:
-      "Reads one of the owner's agent conventions: its revision, its own rules (id, section, text), the ready-made rules it holds (slot, rule, text), the sections an own rule may go to, its roles when roles are available, and its generated files' newest generation (revision rendered, date).",
+      "Reads one of the owner's agent conventions: its revision, the coding tools its files are made for (targets), its notes, the skills it holds (installed by the CLI's pull), its own rules (id, section, text), the ready-made rules it holds (slot, rule, text), the sections an own rule may go to, its roles when roles are available, and its generated files' newest generation (revision rendered, date).",
     input: z.object(configId),
     kind: AssistantToolKind.Read,
     async read({ agentConfigId }, user) {
@@ -195,6 +212,8 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
         name: config.name,
         projectId: config.projectId,
         revision: config.revision,
+        targets: config.targets,
+        skills: (await heldSkills(config.id)).held,
         ...((await agentRolesEnabled(user)) && {
           roles: held.map((role) => ({
             id: role.id,
@@ -212,7 +231,8 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
             createdAt: newest.createdAt.toISO(),
           },
         },
-        // Last: the longest part, so a result cut short still carries the roles above.
+        // Last: the longest parts, so a result cut short still carries the roles above.
+        notes: config.notes,
         rules: rules.map((rule) => ({ id: rule.id, section: rule.section, text: rule.text })),
         readyRules: ready.map((row) => ({ slot: row.slot, rule: row.rule, value: row.value })),
         sections: ruleSections(RULE_PACKS),
@@ -280,6 +300,75 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
             takesText: rule.input === true,
           })),
         }))
+    },
+  }),
+  readAction({
+    name: 'suggest_roles',
+    description:
+      'Suggests ready-made roles for agent conventions from the ready-made rules they hold: each with the tags it shares with them and the skills that fit it. Add one with add_role_from_preset.',
+    input: z.object(configId),
+    kind: AssistantToolKind.Read,
+    ...roles,
+    async read({ agentConfigId }, user) {
+      const config = await findOwnedAgentConfig(agentConfigId, user)
+      if (!config) return { error: NOT_FOUND_SENTENCE }
+      return (await suggestConfigRoles(config, await suggestableSkills()))
+        .slice(0, ROLE_PRESET_MATCHES_MAX)
+        .map((suggestion) => ({
+          preset: suggestion.preset,
+          topics: suggestion.topics,
+          skills: suggestion.skills.map((skill) => skill.name),
+        }))
+    },
+  }),
+  writeAction({
+    name: 'update_agent_config',
+    description:
+      'Proposes to change agent conventions: their name, their notes (null removes them), the coding tools their files are made for (targets, the whole list), or their project (projectId, null takes them out of any project; a project holds at most one). Fields left out stay as they are.',
+    input: z
+      .object({
+        ...configId,
+        name: withoutMarkers(z.string().trim().min(1).max(AGENT_CONFIG_NAME_MAX_LENGTH)).optional(),
+        notes: withoutMarkers(z.string().max(AGENT_NOTES_MAX_LENGTH)).nullable().optional(),
+        targets: z.array(z.enum(TARGETS)).min(1).max(TARGETS.length).optional(),
+        projectId: idInput().nullable().optional(),
+      })
+      .refine(({ agentConfigId: _id, ...fields }) => Object.keys(fields).length > 0, {
+        message: 'Give at least one field to change',
+      })
+      .refine(({ targets }) => !targets || new Set(targets).size === targets.length, {
+        message: 'A target is listed twice',
+      }),
+    kind: AssistantToolKind.Write,
+    subject: ({ agentConfigId }, user) => configName(agentConfigId, user),
+    async currentProblem({ agentConfigId, projectId }, user) {
+      if (!projectId) return null
+      if (!(await findOwnedProject(projectId, user))) return PROJECT_NOT_FOUND.error.message
+      if (await projectHasAgentConfig(projectId, agentConfigId))
+        return PROJECT_HAS_AGENT_CONFIG.error.message
+      return null
+    },
+    // What the card shows before → after, and the project they move to: a change since is stale.
+    async before({ agentConfigId, projectId }, user) {
+      const config = await findOwnedAgentConfig(agentConfigId, user)
+      if (!config) return null
+      const projectName = async (id: number | null | undefined) =>
+        id ? ((await findOwnedProject(id, user))?.name ?? null) : null
+      return JSON.stringify({
+        name: config.name,
+        notes: config.notes,
+        targets: config.targets,
+        project: await projectName(config.projectId),
+        ...(projectId !== undefined && { movesTo: await projectName(projectId) }),
+      })
+    },
+    async apply({ agentConfigId, ...fields }, user, client) {
+      const result = await updateAgentConfig(agentConfigId, user, fields, client)
+      if ('notFound' in result || 'projectNotFound' in result)
+        return { failure: ActionFailure.NotFound }
+      if ('conflict' in result)
+        return { failure: ActionFailure.Conflict, message: PROJECT_HAS_AGENT_CONFIG.error.message }
+      return { kind: AssistantTargetKind.AgentConfig, id: result.config.id }
     },
   }),
   writeAction({
@@ -412,6 +501,143 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
     },
   }),
   writeAction({
+    name: 'remove_ready_rule',
+    description:
+      'Proposes that agent conventions stop holding a ready-made rule (slot and rule from read_agent_config), or every rule of a slot when rule is left out.',
+    input: z.object({ ...configId, slot: catalogId(), rule: catalogId().optional() }),
+    kind: AssistantToolKind.Write,
+    destructive: true,
+    problem: ({ slot }) =>
+      findRuleGroup(RULE_PACKS, slot)
+        ? null
+        : `Unknown slot: ${slot}. Read it with read_agent_config.`,
+    subject: ({ agentConfigId }, user) => configName(agentConfigId, user),
+    async currentProblem({ agentConfigId, slot, rule }) {
+      const held = AgentConfigReadyRule.query().where({ agentConfigId, slot })
+      if (rule !== undefined) held.where('rule', rule)
+      return (await countOf(held)) > 0 ? null : 'They do not hold that ready-made rule.'
+    },
+    async apply({ agentConfigId, slot, rule }, user, client) {
+      const result = await replaceReadyRules(
+        agentConfigId,
+        user,
+        slot,
+        (held) => (rule === undefined ? [] : held.filter((item) => item.rule !== rule)),
+        client,
+      )
+      if ('notFound' in result) return { failure: ActionFailure.NotFound }
+      if ('refused' in result)
+        return { failure: ActionFailure.Invalid, message: result.refused.error.message }
+      return { kind: AssistantTargetKind.AgentConfig, id: result.id }
+    },
+  }),
+  writeAction({
+    name: 'change_skills',
+    description:
+      "Proposes to add skills to agent conventions or remove skills from them (slugs from find_skills or read_agent_config). Only a skill find_skills marks holdable can be added; the CLI's pull then installs the skills held into the repository.",
+    input: z
+      .object({
+        ...configId,
+        add: z.array(skillSlug()).max(AGENT_SKILLS_MAX).optional(),
+        remove: z.array(skillSlug()).max(AGENT_SKILLS_MAX).optional(),
+      })
+      .refine(({ add = [], remove = [] }) => add.length + remove.length > 0, {
+        message: 'Give skills to add or to remove',
+      })
+      .refine(
+        ({ add = [], remove = [] }) =>
+          new Set([...add, ...remove]).size === add.length + remove.length,
+        { message: 'A skill is listed twice' },
+      ),
+    kind: AssistantToolKind.Write,
+    subject: ({ agentConfigId }, user) => configName(agentConfigId, user),
+    async currentProblem({ agentConfigId, add = [], remove = [] }) {
+      const held = (await heldSkills(agentConfigId)).held
+      const already = add.filter((slug) => held.includes(slug))
+      if (already.length) return `They already hold: ${already.join(', ')}.`
+      const absent = remove.filter((slug) => !held.includes(slug))
+      if (absent.length) return `They do not hold: ${absent.join(', ')}.`
+      const holdable = await installableSlugs(add)
+      const refused = add.filter((slug) => !holdable.has(slug))
+      if (refused.length)
+        return `Only a skill with an approved copy can be added; not: ${refused.join(', ')}.`
+      if (held.length + add.length - remove.length > AGENT_SKILLS_MAX)
+        return `Agent conventions hold at most ${AGENT_SKILLS_MAX} skills.`
+      return null
+    },
+    // The set as it is: changed by hand since, the card is stale.
+    async before({ agentConfigId }) {
+      return fingerprint((await heldSkills(agentConfigId)).held)
+    },
+    async apply({ agentConfigId, add = [], remove = [] }, user, client) {
+      const result = await replaceAgentSkills(
+        agentConfigId,
+        user,
+        (held) => [...held.filter((slug) => !remove.includes(slug)), ...add],
+        client,
+      )
+      if ('notFound' in result) return { failure: ActionFailure.NotFound }
+      if ('refused' in result)
+        return { failure: ActionFailure.Invalid, message: refusalText(result.refused) }
+      return { kind: AssistantTargetKind.AgentConfig, id: result.config.id }
+    },
+  }),
+  writeAction({
+    name: 'merge_agent_configs',
+    description:
+      "Proposes to make new agent conventions, outside any project, from several of the owner's (sourceIds, in order), which stay as they are: their rules, ready-made rules, roles, skills, targets and notes add up. Where two cannot be held together (ready-made rules of one group, two roles with one slug), you are told the options: ask the owner which source to keep each time and propose again with choices.",
+    input: z.object({
+      name: withoutMarkers(z.string().trim().min(1).max(AGENT_CONFIG_NAME_MAX_LENGTH)),
+      sourceIds: z
+        .array(idInput())
+        .min(2)
+        .max(AGENT_MERGE_SOURCES_MAX)
+        .refine((ids) => new Set(ids).size === ids.length, { message: 'A source is listed twice' }),
+      choices: z
+        .object({
+          readyRules: z
+            .array(z.object({ slot: catalogId(), sourceId: idInput() }))
+            .max(AGENT_MERGE_CHOICES_MAX)
+            .optional(),
+          roles: z
+            .array(z.object({ slug: catalogId(), sourceId: idInput() }))
+            .max(AGENT_MERGE_CHOICES_MAX)
+            .optional(),
+        })
+        .optional(),
+    }),
+    kind: AssistantToolKind.Write,
+    async subject({ sourceIds }, user) {
+      const sources = await mergeSourcesOf(user, sourceIds)
+      if (!sources) return TARGET_NOT_FOUND
+      return (await namesOf(sourceIds)).join(', ')
+    },
+    async currentProblem({ sourceIds, choices }, user) {
+      const sources = await mergeSourcesOf(user, sourceIds)
+      if (!sources) return null
+      return mergeProblem(mergeSources(sources, choices as MergeChoices | undefined))
+    },
+    // The sources as they are (names for the card, revisions): a change since is stale.
+    async before({ sourceIds }, user) {
+      if (!(await mergeSourcesOf(user, sourceIds))) return null
+      const rows = await AgentConfig.query().whereIn('id', sourceIds)
+      return JSON.stringify(
+        Object.fromEntries(
+          sourceIds.flatMap((id) => {
+            const row = rows.find((item) => item.id === id)
+            return row ? [[id, { name: row.name, revision: row.revision }]] : []
+          }),
+        ),
+      )
+    },
+    async apply(input, user, client) {
+      const result = await mergeAgentConfigs(user, input, client)
+      if ('notFound' in result) return { failure: ActionFailure.NotFound }
+      if ('config' in result) return { kind: AssistantTargetKind.AgentConfig, id: result.config.id }
+      return { failure: ActionFailure.Conflict, message: mergeProblem(result) ?? '' }
+    },
+  }),
+  writeAction({
     name: 'add_role_from_preset',
     description:
       'Proposes to add a ready-made role (preset from find_role_presets) to agent conventions: a mission for a coding agent, the folders it works in and its rights.',
@@ -508,7 +734,7 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
   writeAction({
     name: 'delete_agent_config',
     description:
-      "Proposes to delete one of the owner's agent conventions with all their rules, ready-made rules, roles and generated files. It cannot be undone: propose it only when the owner clearly asked for this deletion.",
+      "Proposes to delete one of the owner's agent conventions with all their rules, ready-made rules, roles, skills held and generated files. It cannot be undone: propose it only when the owner clearly asked for this deletion.",
     input: z.object(configId),
     kind: AssistantToolKind.Write,
     destructive: true,
@@ -521,6 +747,7 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
         [ActionImpact.Rules]: (await rulesOf(config)).length,
         [ActionImpact.ReadyRules]: await countOf(AgentConfigReadyRule.query().where(held)),
         [ActionImpact.Roles]: await countOf(AgentConfigRole.query().where(held)),
+        [ActionImpact.Skills]: await countOf(AgentConfigSkill.query().where(held)),
         [ActionImpact.Generations]: await countOf(AgentConfigGeneration.query().where(held)),
       }
     },
@@ -625,5 +852,48 @@ async function findRole(agentConfigId: number, roleId: number, user: User) {
 async function roleFingerprint(agentConfigId: number, roleId: number, user: User) {
   const role = await findRole(agentConfigId, roleId, user)
   if (!role) return null
-  return createHash('sha256').update(JSON.stringify(role.toRole())).digest('hex').slice(0, 16)
+  return fingerprint(role.toRole())
+}
+
+/** A short digest of a value, so a card on a state changed since is stale. */
+function fingerprint(value: unknown) {
+  return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16)
+}
+
+/** The slugs among these that agent conventions may add: those with an approved copy. */
+async function installableSlugs(slugs: string[]): Promise<Set<string>> {
+  if (slugs.length === 0) return new Set()
+  const rows = await CatalogSkill.query().whereIn('slug', slugs).whereRaw(INSTALLABLE_SQL)
+  return new Set(rows.map((row) => row.slug))
+}
+
+/** The names of configurations, in the order of their ids. */
+async function namesOf(ids: number[]) {
+  const rows = await AgentConfig.query().whereIn('id', ids)
+  return ids.flatMap((id) => rows.filter((row) => row.id === id).map((row) => row.name))
+}
+
+/** Why a merge cannot be created as asked: its conflicts with their options, or a limit. */
+function mergeProblem(outcome: ReturnType<typeof mergeSources>): string | null {
+  if ('merged' in outcome) return null
+  if ('refused' in outcome) return outcome.refused.error.message
+  const { readyRules, roles: clashes } = outcome.conflicts
+  const lines = [
+    ...readyRules.map(
+      (conflict) =>
+        `ready-made rules of slot ${conflict.slot}: ${conflict.options
+          .map(
+            (option) =>
+              `source ${option.sourceId} holds ${option.rules.map((rule) => rule.rule).join(' + ')}`,
+          )
+          .join('; ')}`,
+    ),
+    ...clashes.map(
+      (conflict) =>
+        `role ${conflict.slug}: ${conflict.options
+          .map((option) => `source ${option.sourceId} has "${option.name}"`)
+          .join('; ')}`,
+    ),
+  ]
+  return `They cannot be held together without a choice. Ask the owner which source to keep for each, then propose again with choices: ${lines.join('. ')}.`
 }

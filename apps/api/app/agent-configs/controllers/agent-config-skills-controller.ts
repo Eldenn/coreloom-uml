@@ -7,7 +7,7 @@ import { updateAgentSkillsInput } from '#app/agent-configs/validators/agent-conf
 export default class AgentConfigSkillsController {
   async update({ params, request, auth, response }: HttpContext) {
     const { skills } = await request.validateUsing(updateAgentSkillsInput)
-    const result = await replaceAgentSkills(Number(params.id), auth.getUserOrFail(), skills)
+    const result = await replaceAgentSkills(Number(params.id), auth.getUserOrFail(), () => skills)
     if ('notFound' in result) return response.notFound(result.notFound)
     if ('refused' in result) return response.unprocessableEntity(result.refused)
     return response.ok(await describeAgentConfig(result.config))
