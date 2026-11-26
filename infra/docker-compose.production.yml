@@ -73,6 +73,8 @@ services:
       SKILLS_GITHUB_TOKEN: '${SKILLS_GITHUB_TOKEN:-}'
       # Origins an `ollama` / `openai-compatible` LLM provider may call (comma-separated).
       LLM_ALLOWED_BASE_URLS: '${LLM_ALLOWED_BASE_URLS:-}'
+      # Keys of the encrypter that seals saved provider API keys (`llm_api_keys`).
+      LLM_KEYS_ENCRYPTION_KEYS: '${LLM_KEYS_ENCRYPTION_KEYS:-}'
       # Each account's Claude subscription lives in its own `claude` config folder here.
       CLAUDE_CODE_HOME: /data/claude
       FRONTEND_URL: '${SERVICE_URL_WEB}'
