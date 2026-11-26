@@ -68,13 +68,13 @@ export default class CodeReviewDiagramsController {
       return response.notFound(DIAGRAM_NOT_FOUND)
     }
 
-    const { provider, apiKey } = await request.validateUsing(reviewDiagramInput)
+    const { provider } = await request.validateUsing(reviewDiagramInput)
     const codeMap = review.codeMapId ? await CodeMap.find(review.codeMapId) : null
     if (!codeMap || codeMap.status !== CodeMapStatus.Ready || !codeMap.storageKey) {
       return response.conflict(MAP_GONE)
     }
 
-    const built = await userLanguageModel(provider, apiKey, user)
+    const built = await userLanguageModel(provider, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
     if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)

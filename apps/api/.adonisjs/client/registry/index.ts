@@ -552,6 +552,18 @@ const routes = {
     tokens: [{"old":"/llm/connections/claude-code","type":0,"val":"llm","end":""},{"old":"/llm/connections/claude-code","type":0,"val":"connections","end":""},{"old":"/llm/connections/claude-code","type":0,"val":"claude-code","end":""}],
     types: placeholder as Registry['llm.connections.claude_code.destroy']['types'],
   },
+  'llm.api_keys.save': {
+    methods: ["PUT"],
+    pattern: '/llm/api-keys/:kind',
+    tokens: [{"old":"/llm/api-keys/:kind","type":0,"val":"llm","end":""},{"old":"/llm/api-keys/:kind","type":0,"val":"api-keys","end":""},{"old":"/llm/api-keys/:kind","type":1,"val":"kind","end":""}],
+    types: placeholder as Registry['llm.api_keys.save']['types'],
+  },
+  'llm.api_keys.destroy': {
+    methods: ["DELETE"],
+    pattern: '/llm/api-keys/:kind',
+    tokens: [{"old":"/llm/api-keys/:kind","type":0,"val":"llm","end":""},{"old":"/llm/api-keys/:kind","type":0,"val":"api-keys","end":""},{"old":"/llm/api-keys/:kind","type":1,"val":"kind","end":""}],
+    types: placeholder as Registry['llm.api_keys.destroy']['types'],
+  },
   'rule_packs.index': {
     methods: ["GET","HEAD"],
     pattern: '/rule-packs',

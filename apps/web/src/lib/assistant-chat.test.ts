@@ -45,11 +45,18 @@ describe('sendChat', () => {
     )
     const chat = createAssistantChat<{ messages: number[] }>(URL)
 
-    const output = await sendChat(chat, 'hi', { locale: 'en', apiKey: 'k' })
+    const output = await sendChat(chat, 'hi', {
+      locale: 'en',
+      provider: { kind: 'anthropic', model: 'm' },
+    })
 
     expect(output).toEqual({ messages: [1, 2], handoff: null, unfinished: false })
     expect(calls[0]?.url).toBe(URL)
-    expect(calls[0]?.body).toEqual({ locale: 'en', apiKey: 'k', message: 'hi' })
+    expect(calls[0]?.body).toEqual({
+      locale: 'en',
+      provider: { kind: 'anthropic', model: 'm' },
+      message: 'hi',
+    })
     expect(calls[0]?.headers.get('accept')).toBe('text/event-stream')
     expect(chat.messages).toEqual([])
   })

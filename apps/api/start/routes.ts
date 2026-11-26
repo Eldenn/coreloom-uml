@@ -536,6 +536,29 @@ router
   .use(middleware.auth())
 
 /*
+| Saved provider keys (`app/llm-connections/`): one key per kind, stored encrypted, used by every
+| model call of the account (request handlers and workers alike). Saved only after a successful
+| test call with it; the answer is the hint and the origin, never the key. The kind is in the URL
+| and the account in the session, so no route takes a row id. Session only, the LLM limit.
+*/
+router
+  .put('/llm/api-keys/:kind', [
+    () => import('#app/llm-connections/controllers/llm-api-key-controller'),
+    'save',
+  ])
+  .as('llm.api_keys.save')
+  .where('kind', /^[a-z0-9-]+$/)
+  .use([middleware.auth(), llmThrottle])
+router
+  .delete('/llm/api-keys/:kind', [
+    () => import('#app/llm-connections/controllers/llm-api-key-controller'),
+    'destroy',
+  ])
+  .as('llm.api_keys.destroy')
+  .where('kind', /^[a-z0-9-]+$/)
+  .use([middleware.auth(), llmThrottle])
+
+/*
 |--------------------------------------------------------------------------
 | Rule packs of the agent conventions catalog (`@coreloom-uml/catalog`)
 |--------------------------------------------------------------------------

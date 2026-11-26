@@ -36,11 +36,11 @@ export default class AssistantFilesController {
     const conversation = await findOwnedConversation(params.conversationId, user)
     if (!conversation) return response.notFound(CONVERSATION_NOT_FOUND)
 
-    const { provider, apiKey, file } = await request.validateUsing(attachFileInput)
+    const { provider, file } = await request.validateUsing(attachFileInput)
     const held = await countOf(AssistantFile.query().where('conversationId', conversation.id))
     if (held >= CONVERSATION_FILES_MAX) return response.conflict(FILES_FULL)
 
-    const built = await userLanguageModel(provider, apiKey, user)
+    const built = await userLanguageModel(provider, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
     if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)

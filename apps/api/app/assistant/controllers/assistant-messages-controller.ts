@@ -101,7 +101,7 @@ export default class AssistantMessagesController {
     if (!found) return response.notFound(CONVERSATION_NOT_FOUND)
     const { architecture, conversation } = found
 
-    const { provider, apiKey, codeMapId, fileId, afterReading, pointed, ...asked } =
+    const { provider, codeMapId, fileId, afterReading, pointed, ...asked } =
       await request.validateUsing(askAssistantInput)
     if (!selectsOwnViews(architecture, asked)) return response.notFound(DIAGRAM_NOT_FOUND)
     // A part pointed at in a view that is not this architecture's is left out.
@@ -110,7 +110,7 @@ export default class AssistantMessagesController {
       fileId === undefined ? null : await findConversationFile(conversation.id, fileId)
     if (fileId !== undefined && !attached) return response.notFound(FILE_NOT_FOUND)
 
-    const built = await userLanguageModel(provider, apiKey, user)
+    const built = await userLanguageModel(provider, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
     if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)
@@ -256,15 +256,14 @@ export default class AssistantMessagesController {
     if (!found) return response.notFound(CONVERSATION_NOT_FOUND)
     const { architecture, conversation } = found
 
-    const { provider, apiKey, message, locale, fileId, pointed } =
-      await request.validateUsing(readingInput)
+    const { provider, message, locale, fileId, pointed } = await request.validateUsing(readingInput)
     const attached =
       fileId === undefined ? null : await findConversationFile(conversation.id, fileId)
     if (fileId !== undefined && !attached) return response.notFound(FILE_NOT_FOUND)
     // The ChatGPT subscription is not known to carry a tool call from one step to the next.
     if (provider.kind === ProviderKind.OpenAICodex)
       return response.ok({ messages: [], unfinished: false } satisfies ReadingOutput)
-    const built = await userLanguageModel(provider, apiKey, user)
+    const built = await userLanguageModel(provider, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
     if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)
@@ -382,7 +381,7 @@ export default class AssistantMessagesController {
     const conversation = await findOwnedConversation(params.conversationId, user)
     if (!conversation) return response.notFound(CONVERSATION_NOT_FOUND)
 
-    const { provider, apiKey, message, locale, page, context, pointed, auto, fileId, brief } =
+    const { provider, message, locale, page, context, pointed, auto, fileId, brief } =
       await request.validateUsing(chatInput)
     if (brief) {
       if (!(await assistantActionsEnabled(user)) || !(await designRecordsEnabled(user)))
@@ -393,7 +392,7 @@ export default class AssistantMessagesController {
     const attached =
       fileId === undefined ? null : await findConversationFile(conversation.id, fileId)
     if (fileId !== undefined && !attached) return response.notFound(FILE_NOT_FOUND)
-    const built = await userLanguageModel(provider, apiKey, user)
+    const built = await userLanguageModel(provider, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
     if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)

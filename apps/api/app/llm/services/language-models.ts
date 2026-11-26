@@ -46,22 +46,31 @@ export function providerProblem(provider: ProviderSettings, apiKey: string): str
 
 /**
  * The model a request calls with the user's provider: `problem` (422) when the settings cannot be
- * called, `notFound` (404) for a subscription kind behind an off flag, `reason` (502) for a
- * subscription that is not connected or whose grant died.
+ * called — a kind whose key was never saved among them —, `notFound` (404) for a subscription kind
+ * behind an off flag, `reason` (502) for a subscription that is not connected or whose grant
+ * died.
  */
 export async function userLanguageModel(
   provider: ProviderSettings,
-  apiKey: string | null | undefined,
   user: Pick<User, 'id' | 'email'>,
 ): Promise<
   { model: LanguageModel } | { problem: string } | { notFound: true } | { reason: LlmFailureReason }
 > {
-  const key = apiKey ?? ''
-  const problem = providerProblem(provider, key)
-  if (problem) return { problem }
-  const resolved = await resolveCredential(provider, key, user)
+  const resolved = await resolveCredential(provider, user)
   if (!('credential' in resolved)) return resolved
-  return { model: (await app.container.make(LanguageModels)).create(provider, resolved.credential) }
+  // A saved key answers with the origin it was saved with: the request's base URL is ignored for
+  // it, so a stolen session cannot point the saved key at another origin.
+  const effective: ProviderSettings = resolved.baseUrl
+    ? { ...provider, baseUrl: resolved.baseUrl }
+    : provider
+  const problem = providerProblem(
+    effective,
+    typeof resolved.credential === 'string' ? resolved.credential : '',
+  )
+  if (problem) return { problem }
+  return {
+    model: (await app.container.make(LanguageModels)).create(effective, resolved.credential),
+  }
 }
 
 /** The 502 body of a failed provider call. */

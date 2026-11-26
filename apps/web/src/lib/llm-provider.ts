@@ -1,15 +1,20 @@
 // The user's own LLM provider: a key (bring your own key) or a connected subscription (ChatGPT,
-// Claude). The settings live in this browser only, under `llm-provider` in localStorage: the server
-// keeps no copy and receives the key in the body of each call (`POST /llm/test`,
-// `POST /projects/:id/agent-config/proposals`), then drops it. A subscription is connected once,
-// on the server; this browser only keeps its kind and model.
+// Claude). This browser keeps only the kind and the model, under `llm-provider` in localStorage.
+// A key, and the server URL of a kind that takes one, is saved to the account
+// (`PUT /llm/api-keys/:kind`, after a test call), encrypted, and never comes back: the API reads
+// it for every call, whose body names the kind and the model only (`callBody`). A subscription is
+// connected once, on the server. A key an older version left in the entry is offered for saving
+// once (`useLegacyCredential`), then dropped from the entry whatever the answer.
 import { useMutation, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 
 import { client, TuyauError } from '@/lib/client'
 import {
   callBody,
+  type LegacyCredential,
+  legacyCredential,
   LLM_API_KEY_MAX_LENGTH,
+  LLM_API_KEY_MIN_LENGTH,
   LLM_BASE_URL_MAX_LENGTH,
   LLM_MODEL_MAX_LENGTH,
   parseStoredProvider,
@@ -18,8 +23,13 @@ import {
 } from '@/lib/llm-provider-body'
 import { queryClient } from '@/lib/query'
 
-export type { ProviderKind, StoredProvider }
-export { LLM_API_KEY_MAX_LENGTH, LLM_BASE_URL_MAX_LENGTH, LLM_MODEL_MAX_LENGTH }
+export type { LegacyCredential, ProviderKind, StoredProvider }
+export {
+  LLM_API_KEY_MAX_LENGTH,
+  LLM_API_KEY_MIN_LENGTH,
+  LLM_BASE_URL_MAX_LENGTH,
+  LLM_MODEL_MAX_LENGTH,
+}
 
 type ProvidersBody = Awaited<ReturnType<typeof client.api.llm.providers>>
 
@@ -44,12 +54,25 @@ function readRaw(): string | null {
   }
 }
 
-let cache: { raw: string | null; value: StoredProvider | null } = { raw: null, value: null }
+let cache: {
+  raw: string | null
+  value: StoredProvider | null
+  legacy: LegacyCredential | null
+} = { raw: null, value: null, legacy: null }
+
+function read() {
+  const raw = readRaw()
+  if (raw !== cache.raw)
+    cache = { raw, value: parseStoredProvider(raw), legacy: legacyCredential(raw) }
+  return cache
+}
 
 function snapshot(): StoredProvider | null {
-  const raw = readRaw()
-  if (raw !== cache.raw) cache = { raw, value: parseStoredProvider(raw) }
-  return cache.value
+  return read().value
+}
+
+function legacySnapshot(): LegacyCredential | null {
+  return read().legacy
 }
 
 function subscribe(onChange: () => void) {
@@ -64,29 +87,47 @@ function subscribe(onChange: () => void) {
   }
 }
 
-/** Saves the provider in this browser; `null` forgets it, key included. */
+/**
+ * Keeps the provider in this browser, its kind and model only; `null` forgets it. Writing the
+ * entry also drops a key an older version left in it.
+ */
 export function storeProvider(provider: StoredProvider | null) {
   try {
-    if (provider) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(provider))
+    if (provider)
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ kind: provider.kind, model: provider.model }),
+      )
     else window.localStorage.removeItem(STORAGE_KEY)
   } finally {
     window.dispatchEvent(new Event(CHANGE_EVENT))
   }
 }
 
-/** The provider saved in this browser, or `null`; follows changes made in other tabs. */
+/** Rewrites the entry without the key or server URL an older version left in it. */
+export function dropLegacyCredential() {
+  storeProvider(parseStoredProvider(readRaw()))
+}
+
+/** The provider kept in this browser, or `null`; follows changes made in other tabs. */
 export function useStoredProvider(): StoredProvider | null {
   return React.useSyncExternalStore(subscribe, snapshot, () => null)
+}
+
+/** The key or server URL an older entry still holds, until it is saved or dropped. */
+export function useLegacyCredential(): LegacyCredential | null {
+  return React.useSyncExternalStore(subscribe, legacySnapshot, () => null)
 }
 
 /** The kinds this server can call, with model suggestions and the allowed base URLs. */
 const PROVIDERS_KEY = ['llm', 'providers'] as const
 
-export function useLlmProviders() {
+export function useLlmProviders({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: PROVIDERS_KEY,
     queryFn: () => client.api.llm.providers({}),
     staleTime: Infinity,
+    enabled,
   })
 }
 
@@ -96,11 +137,40 @@ export function useLlmProviders() {
  */
 export const MODEL_CALL = { timeout: false } as const
 
-/** `POST /llm/test`: `{ ok, latencyMs }` or `{ ok: false, reason }`. */
+/** `POST /llm/test` with the account's saved key: `{ ok, latencyMs }` or `{ ok: false, reason }`. */
 export function useTestProvider() {
   return useMutation({
     mutationFn: (provider: StoredProvider) =>
       client.api.llm.test({ body: callBody(provider), ...MODEL_CALL }),
+  })
+}
+
+/**
+ * `PUT /llm/api-keys/:kind`: saves (or replaces) the account's key for a kind, with the server
+ * URL of a kind that takes one, once a test call with it succeeded (502 `{ reason }` otherwise,
+ * nothing saved). Answers the hint, the origin and the date, never the key.
+ */
+export function useSaveApiKey() {
+  return useMutation({
+    mutationFn: ({
+      kind,
+      apiKey,
+      baseUrl,
+    }: {
+      kind: ProviderKind
+      apiKey: string | null
+      baseUrl: string | null
+    }) =>
+      client.api.llm.apiKeys.save({ params: { kind }, body: { apiKey, baseUrl }, ...MODEL_CALL }),
+    onSuccess: () => refreshProviders(),
+  })
+}
+
+/** `DELETE /llm/api-keys/:kind`: the account forgets its key for a kind. */
+export function useDeleteApiKey() {
+  return useMutation({
+    mutationFn: (kind: ProviderKind) => client.api.llm.apiKeys.destroy({ params: { kind } }),
+    onSuccess: () => refreshProviders(),
   })
 }
 

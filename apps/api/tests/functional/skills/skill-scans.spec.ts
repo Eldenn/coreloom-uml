@@ -30,6 +30,7 @@ import {
 import User from '#app/users/models/user'
 import env from '#start/env'
 import { captureLogs } from '#tests/helpers/leaks'
+import { saveTestLlmKey } from '#tests/helpers/llm-key'
 import { CLEAN_SCAN, withEmptySkillsCatalog } from '#tests/helpers/skills'
 
 const json = { accept: 'application/json' }
@@ -269,6 +270,7 @@ test.group('Skill scans', (group) => {
     assert.equal(seen.files[1]?.content, '#!/bin/sh\necho run\n')
 
     const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
+    await saveTestLlmKey(admin)
     const detail = await client
       .get(`/admin/skill-versions/${version.id}`)
       .headers(json)
@@ -314,6 +316,7 @@ test.group('Skill scans', (group) => {
     fakeScanner(await readFile(REPORT, 'utf8'), { exitCode: 1 })
     await scanSkillVersion(version)
     const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
+    await saveTestLlmKey(admin)
     const approved = await client
       .patch(`/admin/skill-versions/${version.id}`)
       .headers(json)
@@ -328,6 +331,7 @@ test.group('Skill scans', (group) => {
 
   test('takes no reason to approve a copy scanned clean', async ({ client }) => {
     const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
+    await saveTestLlmKey(admin)
     const version = await pendingCopy()
     await version.merge({ scan: CLEAN_SCAN }).save()
     ;(
@@ -344,6 +348,7 @@ test.group('Skill scans', (group) => {
     fakeScanner(await cleanReport(), { exitCode: 0 })
     await scanSkillVersion(version)
     const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
+    await saveTestLlmKey(admin)
     const approved = await client
       .patch(`/admin/skill-versions/${version.id}`)
       .headers(json)
@@ -380,6 +385,7 @@ test.group('Skill scans', (group) => {
     assert,
   }) => {
     const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
+    await saveTestLlmKey(admin)
     const cases: [SkillScan | null, SkillApprovalProblem][] = [
       [null, SkillApprovalProblem.NotScanned],
       [{ ...CLEAN_SCAN, complete: false } as SkillScan, SkillApprovalProblem.ScanIncomplete],
@@ -475,6 +481,7 @@ test.group('Skill scans: the model reads a copy', (group) => {
     assert,
   }) => {
     const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
+    await saveTestLlmKey(admin)
     const version = await pendingCopy()
     fakeScanner(await partialReport([{ ...LEDGER_EXCEPTION, path: 'scripts/run.sh' }]), {
       exitCode: 0,
@@ -535,6 +542,7 @@ test.group('Skill scans: the model reads a copy', (group) => {
     assert,
   }) => {
     const admin = await User.create({ email: ADMIN, password: 'a-very-strong-passphrase' })
+    await saveTestLlmKey(admin)
     const version = await pendingCopy()
     const ask = (user: User) =>
       client
@@ -562,6 +570,7 @@ test.group('Skill scans: the model reads a copy', (group) => {
       email: 'someone@example.com',
       password: 'a-strong-passphrase',
     })
+    await saveTestLlmKey(other)
     ;(await ask(other)).assertStatus(404)
   })
 })

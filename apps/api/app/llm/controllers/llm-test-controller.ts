@@ -1,33 +1,26 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import app from '@adonisjs/core/services/app'
 import logger from '@adonisjs/core/services/logger'
 import { testConnection } from '@coreloom-uml/llm'
-import LanguageModels, { providerProblem } from '#app/llm/services/language-models'
+import { userLanguageModel } from '#app/llm/services/language-models'
 import { llmCallInput } from '#app/llm/validators/llm-input'
 import type { LlmTestOutput } from '#app/llm/validators/llm-output'
 import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
-import { resolveCredential } from '#app/llm-connections/services/llm-credential'
 
 /**
- * `POST /llm/test`: one tiny call with the user's provider and key (or connected subscription), to
- * check them before use. Session only. The key is used for this call and dropped; only the outcome
- * is logged.
+ * `POST /llm/test`: one tiny call with the user's provider — the key the account saved for it, or
+ * a connected subscription — to check it before use. Session only. Only the outcome is logged.
  */
 export default class LlmTestController {
   async handle({ request, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
-    const { provider, apiKey } = await request.validateUsing(llmCallInput)
-    const key = apiKey ?? ''
-    const problem = providerProblem(provider, key)
-    if (problem) return response.unprocessableEntity({ error: { message: problem } })
-
-    const resolved = await resolveCredential(provider, key, user)
-    if ('notFound' in resolved) return response.notFound(SUBSCRIPTION_NOT_FOUND)
-    const models = await app.container.make(LanguageModels)
+    const { provider } = await request.validateUsing(llmCallInput)
+    const built = await userLanguageModel(provider, user)
+    if ('problem' in built) {
+      return response.unprocessableEntity({ error: { message: built.problem } })
+    }
+    if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)
     const result: LlmTestOutput =
-      'reason' in resolved
-        ? { ok: false, reason: resolved.reason }
-        : await testConnection(models.create(provider, resolved.credential))
+      'reason' in built ? { ok: false, reason: built.reason } : await testConnection(built.model)
     logger.info(
       {
         userId: user.id,

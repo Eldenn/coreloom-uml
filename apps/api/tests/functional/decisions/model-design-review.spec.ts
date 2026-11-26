@@ -15,6 +15,7 @@ import Requirement from '#app/requirements/models/requirement'
 import User from '#app/users/models/user'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs } from '#tests/helpers/leaks'
+import { saveTestLlmKey } from '#tests/helpers/llm-key'
 
 const json = { accept: 'application/json' }
 const ON = { enabled: true, rollout: 100, rules: [] }
@@ -37,6 +38,7 @@ function useModel(model: LanguageModel) {
 /** An account with a project: one drawn view, one requirement and one accepted decision. */
 async function setup(email: string) {
   const user = await User.create({ email, password: 'a-very-strong-passphrase' })
+  await saveTestLlmKey(user)
   await updateFlag(FeatureFlagKey.DesignRecords, ON, user)
   const project = await Project.create({ userId: user.id, name: 'Shop', description: null })
   const architecture = await Architecture.create({

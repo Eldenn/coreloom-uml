@@ -28,6 +28,7 @@ import User from '#app/users/models/user'
 import { useFakeSourceSandbox } from '#tests/helpers/fake-source-sandbox'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
+import { saveTestLlmKey } from '#tests/helpers/llm-key'
 
 type Client = TestContext['client']
 
@@ -80,6 +81,7 @@ async function setup(flag = true) {
     email: `code-reviews-${Math.random().toString(36).slice(2)}@example.com`,
     password: 'a-very-strong-passphrase',
   })
+  await saveTestLlmKey(user)
   if (flag) await updateFlag(FeatureFlagKey.CodeMaps, ON, user)
   const project = await Project.create({ userId: user.id, name: 'Shop', description: null })
   const architecture = await Architecture.create({
@@ -411,13 +413,13 @@ test.group('Code reviews', (group) => {
     useModel(answeringModel(answer([])))
     // A diagram the review was not started with.
     ;(await reviewDiagram(client, user, review.id, states.id)).assertStatus(404)
-    // A hosted provider needs a key.
+    // A hosted provider whose key was never saved.
     ;(
       await client
         .post(`/code-reviews/${review.id}/diagrams/${diagram.id}`)
         .headers(json)
         .loginAs(user)
-        .json({ provider })
+        .json({ provider: { kind: 'anthropic', model: 'claude-sonnet-4-5' } })
     ).assertStatus(422)
 
     // The map is gone: the review can't go on, its findings stay.

@@ -25,6 +25,7 @@ import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
+import { saveTestLlmKey } from '#tests/helpers/llm-key'
 
 type Client = TestContext['client']
 
@@ -106,6 +107,7 @@ async function setup({ codeMaps = true, inProject = true } = {}) {
     email: `code-messages-${Math.random().toString(36).slice(2)}@example.com`,
     password: 'a-very-strong-passphrase',
   })
+  await saveTestLlmKey(user)
   if (codeMaps) await updateFlag(FeatureFlagKey.CodeMaps, ON, user)
   await updateFlag(FeatureFlagKey.DiagramAssistant, ON, user)
   const project = await Project.create({ userId: user.id, name: 'Shop', description: null })

@@ -65,9 +65,9 @@ export default class CodeMapSuggestionsController {
     if (codeMap.status !== CodeMapStatus.Ready || !codeMap.storageKey) {
       return response.conflict(NOT_READY)
     }
-    const { provider, apiKey, locale } = await request.validateUsing(suggestDiagramsInput)
+    const { provider, locale } = await request.validateUsing(suggestDiagramsInput)
 
-    const built = await userLanguageModel(provider, apiKey, user)
+    const built = await userLanguageModel(provider, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
     if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)

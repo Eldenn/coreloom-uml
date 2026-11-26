@@ -58,13 +58,13 @@ export default class AgentConfigResearchController {
     const config = await findOwnedAgentConfig(params.id, user)
     if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
 
-    const { provider, apiKey, request: asked } = await request.validateUsing(agentResearchInput)
+    const { provider, request: asked } = await request.validateUsing(agentResearchInput)
     // The ChatGPT subscription is not known to carry a tool call from one step to the next. The
     // Claude one works: its binary has no tool, and names ours one step at a time.
     if (provider.kind === ProviderKind.OpenAICodex) {
       return response.unprocessableEntity(RESEARCH_NEEDS_TOOLS)
     }
-    const built = await userLanguageModel(provider, apiKey, user)
+    const built = await userLanguageModel(provider, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
     if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)

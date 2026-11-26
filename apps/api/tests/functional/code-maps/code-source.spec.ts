@@ -32,6 +32,7 @@ import {
 } from '#tests/helpers/fake-source-sandbox'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
+import { saveTestLlmKey } from '#tests/helpers/llm-key'
 
 /**
  * The source code read for a diagram drawn from a code map, in a sandbox that fetches the map's
@@ -222,6 +223,7 @@ async function setup(
     email: `code-source-${Math.random().toString(36).slice(2)}@example.com`,
     password: 'a-very-strong-passphrase',
   })
+  await saveTestLlmKey(user)
   await updateFlag(FeatureFlagKey.CodeMaps, ON, user)
   await updateFlag(FeatureFlagKey.DiagramAssistant, ON, user)
   const project = await Project.create({ userId: user.id, name: 'Shop', description: null })

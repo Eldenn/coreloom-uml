@@ -12,6 +12,7 @@ import { updateFlag } from '#app/feature-flags/services/feature-flags'
 import LanguageModels from '#app/llm/services/language-models'
 import User from '#app/users/models/user'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
+import { saveTestLlmKey } from '#tests/helpers/llm-key'
 
 const json = { accept: 'application/json' }
 const ON = { enabled: true, rollout: 100, rules: [] }
@@ -74,8 +75,10 @@ async function longConversation(email: string) {
   return { user, architecture, diagram, conversation, base, about }
 }
 
-function makeUser(email: string) {
-  return User.create({ email, password: 'a-very-strong-passphrase' })
+async function makeUser(email: string) {
+  const user = await User.create({ email, password: 'a-very-strong-passphrase' })
+  await saveTestLlmKey(user)
+  return user
 }
 
 async function setup(email: string) {

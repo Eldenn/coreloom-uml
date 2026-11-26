@@ -167,6 +167,14 @@ export default await Env.create(new URL('../', import.meta.url), {
   | Example: LLM_ALLOWED_BASE_URLS=http://localhost:11434,https://llm.internal
   */
   LLM_ALLOWED_BASE_URLS: Env.schema.string.optional(),
+  /*
+  | The keys of the dedicated encrypter that seals the provider keys an account
+  | saved (`llm_api_keys`), comma-separated: the first encrypts, all decrypt, so
+  | a key is rotated by prepending the new one. Separate from APP_KEY so one
+  | rotating never breaks the other. Required in production; development and
+  | test fall back to APP_KEY (see `config/encryption.ts`).
+  */
+  LLM_KEYS_ENCRYPTION_KEYS: requiredInProduction,
 
   /*
   | Claude subscriptions run the `claude` binary (Claude Code) with one config

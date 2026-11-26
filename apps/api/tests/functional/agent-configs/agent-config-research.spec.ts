@@ -19,6 +19,7 @@ import User from '#app/users/models/user'
 import env from '#start/env'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
+import { saveTestLlmKey } from '#tests/helpers/llm-key'
 
 const json = { accept: 'application/json' }
 /** Fixture secrets: neither may show up in a response, a log line or the database. */
@@ -30,11 +31,13 @@ const PAGE: ResearchPage = { title: 'Conventions', text: 'Codename Zephyr: use p
 
 type Client = TestContext['client']
 
-function makeUser() {
-  return User.create({
+async function makeUser() {
+  const user = await User.create({
     email: `research-${Math.random().toString(36).slice(2)}@example.com`,
     password: 'a-very-strong-passphrase',
   })
+  await saveTestLlmKey(user)
+  return user
 }
 
 function useModel(model: LanguageModel) {

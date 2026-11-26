@@ -1,6 +1,6 @@
 // Conformance reviews: diagrams of a project checked against a code map by the user's own model.
 // Starting one calls no model; this browser then asks for each diagram in turn, with the provider
-// it keeps (`callBody`), and the findings come back stored. The key is sent with each call only.
+// it keeps (`callBody`), and the findings come back stored. The API reads the account's saved key.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 

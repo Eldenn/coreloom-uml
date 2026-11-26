@@ -672,6 +672,29 @@ export class GithubRepositoryGrantSchema extends BaseModel {
   declare userId: number
 }
 
+export class LlmApiKeySchema extends BaseModel {
+  static $columns = ['apiKey', 'baseUrl', 'createdAt', 'id', 'keyHint', 'kind', 'updatedAt', 'userId', 'verifiedAt'] as const
+  $columns = LlmApiKeySchema.$columns
+  @column()
+  declare apiKey: string | null
+  @column()
+  declare baseUrl: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare keyHint: string
+  @column()
+  declare kind: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
+  @column.dateTime()
+  declare verifiedAt: DateTime
+}
+
 export class LlmConnectionSchema extends BaseModel {
   static $columns = ['accessToken', 'accountId', 'createdAt', 'expiresAt', 'id', 'kind', 'refreshToken', 'updatedAt', 'userId'] as const
   $columns = LlmConnectionSchema.$columns

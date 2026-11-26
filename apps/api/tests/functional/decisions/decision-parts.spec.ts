@@ -15,6 +15,7 @@ import { McpTool } from '#app/mcp/constants/mcp'
 import Project from '#app/projects/models/project'
 import User from '#app/users/models/user'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
+import { saveTestLlmKey } from '#tests/helpers/llm-key'
 
 type Client = TestContext['client']
 
@@ -23,6 +24,7 @@ const ON = { enabled: true, rollout: 100, rules: [] }
 
 async function setup(email: string) {
   const user = await User.create({ email, password: 'a-very-strong-passphrase' })
+  await saveTestLlmKey(user)
   await updateFlag(FeatureFlagKey.DesignRecords, ON, user)
   const project = await Project.create({ userId: user.id, name: 'Shop', description: null })
   const architecture = await Architecture.create({

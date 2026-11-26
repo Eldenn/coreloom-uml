@@ -79,8 +79,7 @@ export default class CodeMapSuggestionDraftsController {
       return response.conflict({ error: { message: 'This code map is not ready' } })
     }
 
-    const { provider, apiKey, architectureId, locale } =
-      await request.validateUsing(draftSuggestionInput)
+    const { provider, architectureId, locale } = await request.validateUsing(draftSuggestionInput)
     const architecture = await findOwnedArchitecture(architectureId, user, { withDiagrams: true })
     if (!architecture || architecture.projectId !== codeMap.projectId) {
       return response.notFound(ARCHITECTURE_NOT_FOUND)
@@ -89,7 +88,7 @@ export default class CodeMapSuggestionDraftsController {
     const source = drawingSource(map, suggestion, architecture, locale)
     if (!source) return response.notFound(PART_NOT_FOUND)
 
-    const built = await userLanguageModel(provider, apiKey, user)
+    const built = await userLanguageModel(provider, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
     if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)

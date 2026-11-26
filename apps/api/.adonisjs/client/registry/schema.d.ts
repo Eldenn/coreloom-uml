@@ -1099,6 +1099,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/claude-code-connection-controller').default['destroy']>>>
     }
   }
+  'llm.api_keys.save': {
+    methods: ["PUT"]
+    pattern: '/llm/api-keys/:kind'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/llm-connections/validators/llm-connections-input').saveApiKeyInput)>>
+      paramsTuple: [ParamValue]
+      params: { kind: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/llm-connections/validators/llm-connections-input').saveApiKeyInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/llm-api-key-controller').default['save']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/llm-api-key-controller').default['save']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'llm.api_keys.destroy': {
+    methods: ["DELETE"]
+    pattern: '/llm/api-keys/:kind'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { kind: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/llm-api-key-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/llm-connections/controllers/llm-api-key-controller').default['destroy']>>>
+    }
+  }
   'rule_packs.index': {
     methods: ["GET","HEAD"]
     pattern: '/rule-packs'

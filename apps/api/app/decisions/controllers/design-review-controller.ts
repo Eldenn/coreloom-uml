@@ -53,7 +53,7 @@ export default class DesignReviewController {
   async store({ params, request, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
     if (!(await designRecordsEnabled(user))) return response.notFound(DESIGN_RECORDS_NOT_FOUND)
-    const { provider, apiKey, locale } = await request.validateUsing(reviewDesignInput)
+    const { provider, locale } = await request.validateUsing(reviewDesignInput)
     const architecture = await findOwnedArchitecture(params.id, user)
     if (!architecture) return response.notFound(ARCHITECTURE_NOT_FOUND)
     const { projectId } = architecture
@@ -63,7 +63,7 @@ export default class DesignReviewController {
     if ('problem' in source)
       return response.unprocessableEntity({ error: { message: source.problem } })
 
-    const built = await userLanguageModel(provider, apiKey, user)
+    const built = await userLanguageModel(provider, user)
     if ('problem' in built)
       return response.unprocessableEntity({ error: { message: built.problem } })
     if ('notFound' in built) return response.notFound(SUBSCRIPTION_NOT_FOUND)
