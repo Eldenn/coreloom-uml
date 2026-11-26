@@ -60,7 +60,7 @@ describe('actionRows of a decision', () => {
   })
 })
 
-describe('actionRows', () => {
+describe('actionRows of agent conventions', () => {
   it('shows what changing agent conventions changes, field by field', () => {
     const before = JSON.stringify({
       name: 'Shop rules',
@@ -117,7 +117,9 @@ describe('actionRows', () => {
       { label: 'keptFrom', value: 'tooling.package-manager: Front' },
     ])
   })
+})
 
+describe('actionRows', () => {
   it('shows the name of a project, and the one it replaces', () => {
     expect(rows('create_project', { name: 'Shop' })).toEqual([{ label: 'name', value: 'Shop' }])
     expect(rows('rename_project', { projectId: 1, name: 'Storefront' }, 'Shop')).toEqual([

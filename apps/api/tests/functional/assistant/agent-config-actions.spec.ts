@@ -8,7 +8,7 @@ import { test } from '@japa/runner'
 import AgentConfig from '#app/agent-configs/models/agent-config'
 import AgentConfigReadyRule from '#app/agent-configs/models/agent-config-ready-rule'
 import AgentConfigSkill from '#app/agent-configs/models/agent-config-skill'
-import { heldSkillSlugs } from '#app/agent-configs/services/agent-skills'
+import { heldSkills } from '#app/agent-configs/services/agent-skills'
 import AssistantConversation from '#app/assistant/models/assistant-conversation'
 import { updateFlag } from '#app/feature-flags/services/feature-flags'
 import LanguageModels from '#app/llm/services/language-models'
@@ -246,7 +246,7 @@ test.group('Assistant actions - agent conventions', (group) => {
     })
     assert.isString(action.before)
     ;(await answer('accept')).assertStatus(200)
-    assert.deepEqual(await heldSkillSlugs(f.config.id), ['new-one'])
+    assert.deepEqual((await heldSkills(f.config.id)).held, ['new-one'])
     await f.config.refresh()
     assert.equal(f.config.revision, 2)
   })
@@ -265,7 +265,7 @@ test.group('Assistant actions - agent conventions', (group) => {
     await AgentConfigSkill.create({ agentConfigId: f.config.id, skillId: other.id })
     const accepted = await answer('accept')
     accepted.assertStatus(409)
-    assert.deepEqual(await heldSkillSlugs(f.config.id), ['other'])
+    assert.deepEqual((await heldSkills(f.config.id)).held, ['other'])
   })
 
   test('merge_agent_configs: the conflicts are told, then a merge with choices is made', async ({

@@ -72,7 +72,7 @@ import {
   unknownSection,
   updateRule,
 } from '#app/agent-configs/services/agent-rules'
-import { heldSkillSlugs, replaceAgentSkills } from '#app/agent-configs/services/agent-skills'
+import { heldSkills, replaceAgentSkills } from '#app/agent-configs/services/agent-skills'
 import {
   AGENT_ROLE_SLUG_TAKEN,
   findOwnedAgentConfig,
@@ -213,7 +213,7 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
         projectId: config.projectId,
         revision: config.revision,
         targets: config.targets,
-        skills: await heldSkillSlugs(config.id),
+        skills: (await heldSkills(config.id)).held,
         ...((await agentRolesEnabled(user)) && {
           roles: held.map((role) => ({
             id: role.id,
@@ -552,7 +552,7 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
     kind: AssistantToolKind.Write,
     subject: ({ agentConfigId }, user) => configName(agentConfigId, user),
     async currentProblem({ agentConfigId, add = [], remove = [] }) {
-      const held = await heldSkillSlugs(agentConfigId)
+      const held = (await heldSkills(agentConfigId)).held
       const already = add.filter((slug) => held.includes(slug))
       if (already.length) return `They already hold: ${already.join(', ')}.`
       const absent = remove.filter((slug) => !held.includes(slug))
@@ -567,7 +567,7 @@ export const AGENT_CONFIG_ACTIONS: readonly AssistantAction[] = [
     },
     // The set as it is: changed by hand since, the card is stale.
     async before({ agentConfigId }) {
-      return fingerprint(await heldSkillSlugs(agentConfigId))
+      return fingerprint((await heldSkills(agentConfigId)).held)
     },
     async apply({ agentConfigId, add = [], remove = [] }, user, client) {
       const result = await replaceAgentSkills(
