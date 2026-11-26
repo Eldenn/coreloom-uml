@@ -1,9 +1,10 @@
 import { SKILLS } from '@coreloom-uml/catalog'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { SkillStatus } from '#app/skills/constants/skill'
+import { SkillSourceKind, SkillStatus } from '#app/skills/constants/skill'
 import CatalogSkill from '#app/skills/models/catalog-skill'
 import SkillSnapshot from '#app/skills/models/skill-snapshot'
+import SkillSource from '#app/skills/models/skill-source'
 import {
   refreshCatalog,
   setSkillBlocked,
@@ -125,8 +126,118 @@ test.group('Skills catalog', (group) => {
     const failing = fakeFetch({ 'https://skills.sh/api/search*': { status: 503, body: {} } })
     await assert.rejects(
       () => refreshCatalog({ fetch: failing.fn, githubToken: 'token', now: MONDAY }),
-      'Every skills.sh search failed: nothing was changed',
+      'Every source failed: nothing was changed',
     )
     assert.equal((await CatalogSkill.query().where('origin', 'search')).length, 0)
+  })
+})
+
+/** A GitHub source the admin trusts: `acme/skills` (or one folder of it). */
+function trustedSource(values: Partial<SkillSource> = {}) {
+  return SkillSource.create({
+    kind: SkillSourceKind.Github,
+    owner: 'acme',
+    repo: 'skills',
+    ...values,
+  })
+}
+
+async function listedBy(source: SkillSource) {
+  await source.load('skills')
+  return source.skills.map((skill) => skill.slug).sort()
+}
+
+test.group('Skills catalog with sources', (group) => {
+  group.each.setup(() => withEmptySkillsCatalog())
+
+  test('a run writes which source found which skill and how each source answered', async ({
+    assert,
+  }) => {
+    const acme = await trustedSource()
+    await refreshCatalog({ fetch: network().fn, githubToken: 'token', now: MONDAY })
+    assert.deepEqual(await listedBy(acme), ['browser-tests', 'c4-docs', 'lint-rules'])
+    const skillsSh = await SkillSource.findByOrFail('kind', SkillSourceKind.SkillsSh)
+    for (const source of [acme, skillsSh]) {
+      await source.refresh()
+      assert.equal(source.lastRunAt?.toISO(), MONDAY.toISO())
+      assert.isNull(source.lastError)
+    }
+    const lint = await CatalogSkill.findByOrFail('slug', 'lint-rules')
+    assert.deepInclude(lint.serialize(), { eligible: true, installs: 0, source: 'acme/skills' })
+  })
+
+  test('a source that fails keeps what it listed and says why', async ({ assert }) => {
+    const gone = await trustedSource({ owner: 'gone' })
+    const skill = await CatalogSkill.create({
+      slug: 'gone-skill',
+      name: 'gone-skill (gone)',
+      description: { en: '' },
+      url: 'https://github.com/gone/skills',
+      registryId: 'gone/skills/gone-skill',
+      source: 'gone/skills',
+      installs: 0,
+      targets: [],
+      affinities: [],
+      topics: [],
+      searchTopics: [],
+      origin: 'search',
+      status: SkillStatus.Active,
+      eligible: false,
+      ineligibleReason: 'not checked yet',
+      audits: [],
+    })
+    await gone.related('skills').attach([skill.id])
+    const failing = fakeFetch(
+      routes({
+        'https://skills.sh/api/search*': { body: { skills: [] } },
+        'https://api.github.com/repos/gone/skills': { status: 500, body: {} },
+      }),
+    )
+    await refreshCatalog({ fetch: failing.fn, githubToken: 'token', now: MONDAY })
+    assert.deepEqual(await listedBy(gone), ['gone-skill'])
+    await gone.refresh()
+    assert.equal(gone.lastError, '500 from api.github.com')
+    assert.equal(gone.lastRunAt?.toISO(), MONDAY.toISO())
+  })
+
+  test('a disabled GitHub source no longer vouches for its skills', async ({ assert }) => {
+    const acme = await trustedSource()
+    await refreshCatalog({ fetch: network().fn, githubToken: 'token', now: MONDAY })
+    await acme.merge({ enabled: false }).save()
+    await refreshCatalog({
+      fetch: network().fn,
+      githubToken: 'token',
+      now: MONDAY.plus({ weeks: 1 }),
+    })
+    const lint = await CatalogSkill.findByOrFail('slug', 'lint-rules')
+    assert.deepInclude(lint.serialize(), {
+      eligible: false,
+      ineligibleReason: 'fewer than 500 installs',
+    })
+  })
+
+  test('a trusted skill is copied before more installed ones', async ({ assert }) => {
+    await trustedSource({ path: 'skills/lint-rules' })
+    const report = await refreshCatalog({
+      fetch: fakeFetch(routes()).fn,
+      githubToken: 'token',
+      now: MONDAY,
+    })
+    // The fixtures hold no licence file, so every copy is refused, in the order they are tried.
+    const tried = report.warnings.filter((line) => line.includes(': not copied, '))
+    assert.isTrue(tried[0]?.startsWith('lint-rules:'), tried.join(' | '))
+    assert.include(tried.join(' | '), 'browser-tests:')
+  })
+
+  test('a skill only a GitHub source vouches for is suggested with a github provenance', async ({
+    assert,
+  }) => {
+    await trustedSource()
+    await refreshCatalog({ fetch: network().fn, githubToken: 'token', now: MONDAY })
+    await CatalogSkill.query()
+      .where('slug', 'lint-rules')
+      .update({ topics: JSON.stringify(['testing']) })
+    const lint = (await suggestableSkills()).find((skill) => skill.id === 'lint-rules')
+    assert.deepInclude(lint?.provenance, { registry: 'github', installs: 0, audits: [] })
   })
 })

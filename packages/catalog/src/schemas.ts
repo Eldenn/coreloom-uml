@@ -201,27 +201,34 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/
 
 export const skillProvenanceSchema = z
   .object({
-    registry: z.literal('skills.sh'),
-    /** The skill's id in the registry (`owner/repo/slug`). */
+    /**
+     * `skills.sh` when skills.sh's audits vouch for it; `github` when only a GitHub repository the
+     * admin trusts listed it (no audit, installs 0 when skills.sh never returned it).
+     */
+    registry: z.enum(['skills.sh', 'github']),
+    /** The skill's id (`owner/repo/slug`), the same whichever source found it. */
     id: z.string().min(1),
     installs: z.number().int().min(0),
-    audits: z
-      .array(
-        z
-          .object({
-            provider: z.string().min(1),
-            risk: z.enum(AuditRisk),
-            analyzedAt: z.string().min(1),
-          })
-          .strict(),
-      )
-      .min(1),
+    audits: z.array(
+      z
+        .object({
+          provider: z.string().min(1),
+          risk: z.enum(AuditRisk),
+          analyzedAt: z.string().min(1),
+        })
+        .strict(),
+    ),
     /** The day the search last changed the entry (pin, audits). */
     checkedOn: z.string().regex(DATE),
     /** Git tree SHA of the skill's folder at the pinned commit: it is re-pinned only when this moves. */
     contentSha: z.string().regex(/^[0-9a-f]{40}$/),
   })
   .strict()
+  .superRefine((value, ctx) => {
+    if (value.registry === 'skills.sh' && value.audits.length === 0) {
+      ctx.addIssue({ code: 'custom', path: ['audits'], message: 'skills.sh vouches with an audit' })
+    }
+  })
 
 export type SkillProvenance = z.infer<typeof skillProvenanceSchema>
 

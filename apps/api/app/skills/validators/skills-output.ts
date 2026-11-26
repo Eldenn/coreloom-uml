@@ -10,7 +10,7 @@ export type SkillSummaryOutput = {
   slug: string
   name: string
   description: { en: string; fr?: string }
-  /** skills.sh's `owner/repo`, `null` for a hand-picked skill not matched yet. */
+  /** Its GitHub `owner/repo`, `null` for a hand-picked skill not matched yet. */
   source: string | null
   origin: SkillOrigin
   state: SkillState
@@ -37,6 +37,8 @@ export type SkillDetailOutput = SkillSummaryOutput & {
   /** skills.sh's page for it, when it was found there. */
   registryUrl: string | null
   license: string | null
+  /** The sources that listed it at their last run that answered (`skills.sh`, `owner/repo`). */
+  foundBy: string[]
   /** Why it is not suggested: a failed check, or the reason it was blocked. */
   reason: string | null
   affinities: SkillAffinity[]

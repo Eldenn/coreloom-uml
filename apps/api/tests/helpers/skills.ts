@@ -24,5 +24,11 @@ export async function withEmptySkillsCatalog() {
   const rollback = await testUtils.db().withGlobalTransaction()
   await db.from('skill_snapshots').delete()
   await db.from('skills').delete()
+  // Back to its one default source, skills.sh, as it was when created.
+  await db.from('skill_sources').whereNot('kind', 'skills-sh').delete()
+  await db
+    .from('skill_sources')
+    .where('kind', 'skills-sh')
+    .update({ enabled: true, last_run_at: null, last_error: null })
   return rollback
 }

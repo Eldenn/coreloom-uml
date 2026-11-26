@@ -1,7 +1,8 @@
-// The weekly search behind the skills catalog. Every skill the catalog's search plan finds on
-// skills.sh is kept; one is eligible to be suggested when it has enough installs, security audits
-// that pass, a GitHub repository with an open licence and a `SKILL.md`, which is then pinned to a
-// commit. Pure apart from the `fetch` it is given, so tests run it against fixtures;
+// The weekly search behind the skills catalog. Every skill a source lists is kept: skills.sh,
+// searched with the catalog's plan, and the GitHub repositories the admin trusts, listed whole.
+// One is eligible to be suggested when it has enough installs and security audits that pass (a
+// skill a trusted repository lists needs neither, but a bad audit still counts), a GitHub
+// repository with an open licence and a `SKILL.md`, which is then pinned to a commit. Pure apart from the `fetch` it is given, so tests run it against fixtures;
 // `skills-catalog.ts` writes its result to the database.
 import {
   ACCEPTED_AUDIT_RISKS,
@@ -12,6 +13,7 @@ import {
   SkillOrigin,
   type SkillSearchQuery,
 } from '@coreloom-uml/catalog'
+import { SKILL_SOURCE_LIMITS, SkillSourceKind } from '#app/skills/constants/skill'
 
 export const SKILLS_SH = 'https://skills.sh'
 export const SKILLS_SH_AUDITS = 'https://www.skills.sh/tele/audit'
@@ -53,11 +55,36 @@ export type KnownSkill = {
   contentSha: string | null
   eligible: boolean
   ineligibleReason: string | null
+  /** The enabled GitHub sources that listed it at their last run that answered. */
+  trustedBy: number[]
+}
+
+/** An enabled row of `skill_sources`, as the search reads it. */
+export type SearchSource = {
+  id: number
+  kind: SkillSourceKind
+  owner: string | null
+  repo: string | null
+  path: string | null
+}
+
+/**
+ * How one source answered. `ok`: it answered (a repository that is archived or not openly
+ * licensed answers, with nothing listed and `error` saying why). `complete`: every query of it
+ * answered, so what it listed may replace what it listed before.
+ */
+export type SourceOutcome = {
+  sourceId: number
+  ok: boolean
+  complete: boolean
+  error: string | null
 }
 
 export type SearchOptions = {
   known: readonly KnownSkill[]
   plan: readonly SkillSearchQuery[]
+  /** The enabled sources; without a skills.sh one, nothing is asked of skills.sh at all. */
+  sources: readonly SearchSource[]
   fetch: typeof fetch
   githubToken?: string
   /** Fewest installs a found skill needs to be suggested. */
@@ -98,6 +125,10 @@ export type SkillRecord = {
   contentSha: string | null
   eligible: boolean
   ineligibleReason: string | null
+  /** The sources that listed it this run. */
+  foundBy: number[]
+  /** A trusted GitHub source lists it: no installs or audit needed. */
+  trusted: boolean
 }
 
 export type SearchReport = {
@@ -110,7 +141,11 @@ export type SearchReport = {
   warnings: string[]
 }
 
-export type SearchResult = { records: SkillRecord[]; report: SearchReport }
+export type SearchResult = {
+  records: SkillRecord[]
+  report: SearchReport
+  sources: SourceOutcome[]
+}
 
 type SearchHit = { id: string; name: string; installs: number; source: string }
 
@@ -124,6 +159,10 @@ type Candidate = {
   topics: string[]
   seen: boolean
   known?: KnownSkill
+  foundBy: number[]
+  /** Its folder, when a GitHub source listed it. */
+  folder?: string
+  trusted?: boolean
 }
 
 /** A skill that cannot be used as it is: recorded with a reason, the run goes on. */
@@ -154,7 +193,20 @@ export async function searchSkills(options: SearchOptions): Promise<SearchResult
       report.warnings.push(`${skill.slug}: SKILL.md not found at its pin (${status})`)
   }
 
-  const candidates = await collectCandidates(options, http, report)
+  const { candidates, outcomes } = await collectCandidates(options, http, github, report)
+  const kindOf = new Map(options.sources.map((source) => [source.id, source]))
+  // skills.sh is asked for audits only when it answered this run: down, its skills stay frozen.
+  const skillsSh = outcomes.some(
+    (outcome) => outcome.ok && kindOf.get(outcome.sourceId)?.kind === SkillSourceKind.SkillsSh,
+  )
+  // A trusted repository that did not answer: its skills keep their pin until it does.
+  const unreachable = new Set(
+    outcomes
+      .filter((outcome) => !outcome.ok)
+      .map((outcome) => kindOf.get(outcome.sourceId))
+      .filter((source) => source?.kind === SkillSourceKind.Github)
+      .map((source) => `${source?.owner}/${source?.repo}`.toLowerCase()),
+  )
   options.onProgress?.(`${candidates.length} candidates, checking audits and GitHub`)
   const usedSlugs = new Set(options.known.map((skill) => skill.slug))
   const auditCache = new Map<string, Record<string, Record<string, unknown>> | null>()
@@ -185,10 +237,12 @@ export async function searchSkills(options: SearchOptions): Promise<SearchResult
       contentSha: known?.contentSha ?? null,
       eligible: known?.eligible ?? false,
       ineligibleReason: known?.ineligibleReason ?? 'not checked yet',
+      foundBy: candidate.foundBy,
+      trusted: candidate.trusted ?? false,
     }
     records.push(record)
     if (!known) report.added.push(slug)
-    if (record.description.en === '' && pages > 0) {
+    if (skillsSh && record.description.en === '' && pages > 0) {
       // Not read on GitHub yet: its skills.sh page says what it is about, for the tagger to tag it.
       pages -= 1
       const description = await pageDescription(http, candidate.registryId).catch(() => '')
@@ -197,15 +251,28 @@ export async function searchSkills(options: SearchOptions): Promise<SearchResult
 
     if (record.origin === SkillOrigin.Manual || known?.blocked) {
       // Only the registry's figures: their entry and whether they are suggested stay as they are.
-      record.audits = await auditsOf(http, auditCache, candidate).catch(() => record.audits)
+      if (skillsSh) {
+        record.audits = await auditsOf(http, auditCache, candidate).catch(() => record.audits)
+      }
       continue
     }
-    if (candidate.installs < options.minInstalls) {
+    if (!record.trusted && candidate.installs < options.minInstalls) {
       ineligible(record, `fewer than ${options.minInstalls} installs`)
       continue
     }
-    record.audits = await auditsOf(http, auditCache, candidate)
-    if (record.audits.length === 0) {
+    // Without skills.sh, a skill keeps the audits it had (frozen); a trusted one whose audits
+    // cannot be read keeps them too, since its source answered.
+    if (skillsSh) {
+      try {
+        record.audits = await auditsOf(http, auditCache, candidate)
+      } catch (error) {
+        if (!record.trusted) throw error
+        report.warnings.push(
+          `${record.slug}: audits not read (${(error as Error).message}), the last ones kept`,
+        )
+      }
+    }
+    if (!record.trusted && record.audits.length === 0) {
       ineligible(record, 'no security audit yet')
       continue
     }
@@ -214,7 +281,7 @@ export async function searchSkills(options: SearchOptions): Promise<SearchResult
       ineligible(record, `audit ${risky.provider}: ${risky.risk}`)
       continue
     }
-    if (budget <= 0) {
+    if (budget <= 0 || unreachable.has(candidate.source.toLowerCase())) {
       // Checked again in a later run; a skill already pinned keeps its pin until then.
       if (!record.contentSha) ineligible(record, 'not checked on GitHub yet')
       continue
@@ -240,7 +307,7 @@ export async function searchSkills(options: SearchOptions): Promise<SearchResult
   report.eligible = records.filter(
     (record) => record.origin === SkillOrigin.Search && record.eligible,
   ).length
-  return { records, report }
+  return { records, report, sources: outcomes }
 }
 
 /**
@@ -274,14 +341,16 @@ function ownerOf(source: string): string {
 }
 
 /**
- * Every search result, merged by registry id, plus the eligible skills no search returned this
- * time (re-checked with their previous figures). Most installed first.
+ * What every source listed, merged by registry id, plus the eligible skills none listed this
+ * time (re-checked with their previous figures). Trusted first, then most installed. Throws when
+ * every source failed: nothing may change then.
  */
 async function collectCandidates(
   options: SearchOptions,
   http: Http,
+  github: GithubReader,
   report: SearchReport,
-): Promise<Candidate[]> {
+): Promise<{ candidates: Candidate[]; outcomes: SourceOutcome[] }> {
   const knownByRegistryId = new Map<string, KnownSkill>()
   for (const skill of options.known) {
     if (skill.registryId) knownByRegistryId.set(skill.registryId, skill)
@@ -294,36 +363,16 @@ async function collectCandidates(
   }
 
   const byId = new Map<string, Candidate>()
-  let failed = 0
-  for (const [index, item] of options.plan.entries()) {
-    options.onProgress?.(`search ${index + 1}/${options.plan.length}: "${item.query}"`)
-    let hits: SearchHit[]
-    try {
-      hits = await searchSkillsSh(http, item.query)
-    } catch (error) {
-      failed += 1
-      report.warnings.push(`search "${item.query}" failed: ${(error as Error).message}`)
-      continue
-    }
-    for (const hit of hits) {
-      const candidate = byId.get(hit.id) ?? {
-        registryId: hit.id,
-        source: hit.source,
-        slug: hit.id.split('/').at(-1) ?? hit.id,
-        name: hit.name,
-        installs: hit.installs,
-        affinities: [],
-        topics: [],
-        seen: true,
-        known: knownByRegistryId.get(hit.id),
-      }
-      if (item.affinity) candidate.affinities = mergeAffinities(candidate.affinities, item.affinity)
-      if (!candidate.topics.includes(item.topic)) candidate.topics.push(item.topic)
-      byId.set(hit.id, candidate)
+  const outcomes: SourceOutcome[] = []
+  for (const source of options.sources) {
+    if (source.kind === SkillSourceKind.SkillsSh) {
+      outcomes.push(await searchSkillsSh(options, http, report, source, byId, knownByRegistryId))
+    } else if (!options.recheck) {
+      outcomes.push(await listRepository(github, report, source, byId, knownByRegistryId))
     }
   }
-  if (options.plan.length > 0 && failed === options.plan.length) {
-    throw new Error('Every skills.sh search failed: nothing was changed')
+  if (outcomes.length > 0 && outcomes.every((outcome) => !outcome.ok)) {
+    throw new Error('Every source failed: nothing was changed')
   }
   for (const skill of options.known) {
     if (!skill.registryId || byId.has(skill.registryId)) continue
@@ -341,9 +390,141 @@ async function collectCandidates(
       topics: [...skill.topics],
       seen: false,
       known: skill,
+      foundBy: [],
     })
   }
-  return [...byId.values()].sort((a, b) => b.installs - a.installs)
+  const githubIds = new Set(
+    options.sources
+      .filter((source) => source.kind === SkillSourceKind.Github)
+      .map((source) => source.id),
+  )
+  const answered = new Set(outcomes.filter((outcome) => outcome.ok).map((item) => item.sourceId))
+  for (const candidate of byId.values()) {
+    // A source that did not answer this run still vouches for what it listed before.
+    candidate.trusted =
+      candidate.foundBy.some((id) => githubIds.has(id)) ||
+      (candidate.known?.trustedBy ?? []).some((id) => githubIds.has(id) && !answered.has(id))
+  }
+  const candidates = [...byId.values()].sort(
+    (a, b) => Number(b.trusted) - Number(a.trusted) || b.installs - a.installs,
+  )
+  return { candidates, outcomes }
+}
+
+/** The plan's queries on skills.sh; it failed only when every query failed. */
+async function searchSkillsSh(
+  options: SearchOptions,
+  http: Http,
+  report: SearchReport,
+  source: SearchSource,
+  byId: Map<string, Candidate>,
+  knownByRegistryId: Map<string, KnownSkill>,
+): Promise<SourceOutcome> {
+  let failed = 0
+  for (const [index, item] of options.plan.entries()) {
+    options.onProgress?.(`search ${index + 1}/${options.plan.length}: "${item.query}"`)
+    let hits: SearchHit[]
+    try {
+      hits = await querySkillsSh(http, item.query)
+    } catch (error) {
+      failed += 1
+      report.warnings.push(`search "${item.query}" failed: ${(error as Error).message}`)
+      continue
+    }
+    for (const hit of hits) {
+      const candidate = byId.get(hit.id) ?? {
+        registryId: hit.id,
+        source: hit.source,
+        slug: hit.id.split('/').at(-1) ?? hit.id,
+        name: hit.name,
+        installs: hit.installs,
+        affinities: [],
+        topics: [],
+        seen: true,
+        known: knownByRegistryId.get(hit.id),
+        foundBy: [],
+      }
+      if (item.affinity) candidate.affinities = mergeAffinities(candidate.affinities, item.affinity)
+      if (!candidate.topics.includes(item.topic)) candidate.topics.push(item.topic)
+      if (!candidate.foundBy.includes(source.id)) candidate.foundBy.push(source.id)
+      byId.set(hit.id, candidate)
+    }
+  }
+  const all = options.plan.length > 0 && failed === options.plan.length
+  return {
+    sourceId: source.id,
+    ok: !all,
+    complete: failed === 0,
+    error: all ? 'every search failed' : failed > 0 ? `${failed} searches failed` : null,
+  }
+}
+
+/**
+ * Every `SKILL.md` folder of a trusted repository under its `path`, in path order, at most
+ * `SKILL_SOURCE_LIMITS.skillsPerSource`. A repository that is archived or not openly licensed
+ * answers with nothing listed; any other failure is the source failing.
+ */
+async function listRepository(
+  github: GithubReader,
+  report: SearchReport,
+  source: SearchSource,
+  byId: Map<string, Candidate>,
+  knownByRegistryId: Map<string, KnownSkill>,
+): Promise<SourceOutcome> {
+  let snapshot: RepoSnapshot
+  try {
+    snapshot = await github.repo(source.owner ?? '', source.repo ?? '')
+  } catch (error) {
+    const message = (error as Error).message
+    report.warnings.push(`source ${source.owner}/${source.repo}: ${message}`)
+    return { sourceId: source.id, ok: error instanceof SkipError, complete: true, error: message }
+  }
+  // Ids use the repository's own name, as skills.sh does: `ACME/Skills` is `acme/skills`.
+  const name = snapshot.fullName
+  const prefix = source.path ? `${source.path}/` : ''
+  const folders = snapshot.entries
+    .filter(
+      (entry) =>
+        entry.type === 'blob' && entry.path.startsWith(prefix) && entry.path.endsWith('/SKILL.md'),
+    )
+    .map((entry) => entry.path.slice(0, -'/SKILL.md'.length))
+    .sort()
+  const max = SKILL_SOURCE_LIMITS.skillsPerSource
+  const slugs = new Set<string>()
+  for (const folder of folders) {
+    const slug = folder.split('/').at(-1) as string
+    if (slugs.has(slug)) {
+      report.warnings.push(`${name}: two folders named ${slug}, ${folder} left out`)
+      continue
+    }
+    if (slugs.size >= max) {
+      report.warnings.push(`${name}: more than ${max} skills, the first ${max} kept`)
+      break
+    }
+    slugs.add(slug)
+    const registryId = `${name}/${slug}`
+    const found = byId.get(registryId)
+    if (found) {
+      found.foundBy.push(source.id)
+      found.folder = folder
+      continue
+    }
+    const known = knownByRegistryId.get(registryId)
+    byId.set(registryId, {
+      registryId,
+      source: name,
+      slug,
+      name: slug,
+      installs: known?.installs ?? 0,
+      affinities: [...(known?.affinities ?? [])],
+      topics: [...(known?.topics ?? [])],
+      seen: true,
+      known,
+      foundBy: [source.id],
+      folder,
+    })
+  }
+  return { sourceId: source.id, ok: true, complete: true, error: null }
 }
 
 /** A slot or diagram affinity is added once; values and kinds of the same one are merged. */
@@ -375,6 +556,8 @@ export function mergeAffinities(
 }
 
 type RepoSnapshot = {
+  /** The repository's own `owner/repo`, whatever case it was asked in. */
+  fullName: string
   license: string
   commit: string
   entries: { path: string; type: string; sha: string }[]
@@ -402,6 +585,7 @@ class GithubReader {
   private async read(owner: string, repo: string): Promise<RepoSnapshot> {
     const info = (await this.http.json(`${GITHUB_API}/repos/${owner}/${repo}`)) as {
       archived?: boolean
+      full_name?: string
       default_branch?: string
       license?: { spdx_id?: string } | null
     }
@@ -418,7 +602,8 @@ class GithubReader {
     const tree = (await this.http.json(
       `${GITHUB_API}/repos/${owner}/${repo}/git/trees/${commit.sha}?recursive=1`,
     )) as { tree?: { path: string; type: string; sha: string }[] }
-    return { license, commit: commit.sha, entries: tree.tree ?? [] }
+    const fullName = info.full_name ?? `${owner}/${repo}`
+    return { license, commit: commit.sha, entries: tree.tree ?? [], fullName }
   }
 }
 
@@ -438,8 +623,10 @@ async function checkOnGithub(
   const skillFile = snapshot.entries.find(
     (entry) =>
       entry.type === 'blob' &&
-      (entry.path === `${candidate.slug}/SKILL.md` ||
-        entry.path.endsWith(`/${candidate.slug}/SKILL.md`)),
+      (candidate.folder
+        ? entry.path === `${candidate.folder}/SKILL.md`
+        : entry.path === `${candidate.slug}/SKILL.md` ||
+          entry.path.endsWith(`/${candidate.slug}/SKILL.md`)),
   )
   if (!skillFile) throw new SkipError(`no ${candidate.slug}/SKILL.md in the repository`)
   const folder = skillFile.path.slice(0, -'/SKILL.md'.length)
@@ -499,7 +686,7 @@ async function auditsOf(
 
 const KNOWN_RISKS = new Set<AuditRisk>(['safe', 'low', 'medium', 'high', 'critical', 'unknown'])
 
-async function searchSkillsSh(http: Http, query: string): Promise<SearchHit[]> {
+async function querySkillsSh(http: Http, query: string): Promise<SearchHit[]> {
   const body = (await http.json(
     `${SKILLS_SH}/api/search?${new URLSearchParams({ q: query })}`,
   )) as {

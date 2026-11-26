@@ -660,6 +660,30 @@ const routes = {
     tokens: [{"old":"/admin/skills/:slug","type":0,"val":"admin","end":""},{"old":"/admin/skills/:slug","type":0,"val":"skills","end":""},{"old":"/admin/skills/:slug","type":1,"val":"slug","end":""}],
     types: placeholder as Registry['admin.skills.update']['types'],
   },
+  'admin.skill_sources.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/admin/skill-sources',
+    tokens: [{"old":"/admin/skill-sources","type":0,"val":"admin","end":""},{"old":"/admin/skill-sources","type":0,"val":"skill-sources","end":""}],
+    types: placeholder as Registry['admin.skill_sources.index']['types'],
+  },
+  'admin.skill_sources.store': {
+    methods: ["POST"],
+    pattern: '/admin/skill-sources',
+    tokens: [{"old":"/admin/skill-sources","type":0,"val":"admin","end":""},{"old":"/admin/skill-sources","type":0,"val":"skill-sources","end":""}],
+    types: placeholder as Registry['admin.skill_sources.store']['types'],
+  },
+  'admin.skill_sources.update': {
+    methods: ["PATCH"],
+    pattern: '/admin/skill-sources/:id',
+    tokens: [{"old":"/admin/skill-sources/:id","type":0,"val":"admin","end":""},{"old":"/admin/skill-sources/:id","type":0,"val":"skill-sources","end":""},{"old":"/admin/skill-sources/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['admin.skill_sources.update']['types'],
+  },
+  'admin.skill_sources.destroy': {
+    methods: ["DELETE"],
+    pattern: '/admin/skill-sources/:id',
+    tokens: [{"old":"/admin/skill-sources/:id","type":0,"val":"admin","end":""},{"old":"/admin/skill-sources/:id","type":0,"val":"skill-sources","end":""},{"old":"/admin/skill-sources/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['admin.skill_sources.destroy']['types'],
+  },
   'admin.skills.topics': {
     methods: ["PATCH"],
     pattern: '/admin/skills/:slug/topics',

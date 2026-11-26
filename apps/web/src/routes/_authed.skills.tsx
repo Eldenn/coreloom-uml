@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useT } from '@/lib/locale'
 import { type LiveStatus, useSkillsLiveUpdates, useSkillsStats } from '@/lib/skills'
 import { SkillSheet } from '@/skills/skill-sheet'
+import { SkillSourcesButton } from '@/skills/skill-sources'
 import { SkillsAdminActions } from '@/skills/skills-admin'
 import { SkillsCatalog } from '@/skills/skills-catalog'
 import { SkillsFigures, SkillsTrends } from '@/skills/skills-overview'
@@ -97,7 +98,12 @@ function SkillsPage() {
         actions={
           <div className="flex flex-wrap items-center gap-3">
             <LiveBadge status={live} lastRunAt={stats.data?.lastRunAt ?? null} />
-            {user?.isAdmin && <SkillsAdminActions />}
+            {user?.isAdmin && (
+              <>
+                <SkillSourcesButton />
+                <SkillsAdminActions />
+              </>
+            )}
           </div>
         }
       />

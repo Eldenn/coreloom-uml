@@ -637,7 +637,7 @@ router
   .use([middleware.auth(), middleware.admin()])
 
 /*
-| What the admin does to the catalog itself: run the skills.sh search now, and stop suggesting a
+| What the admin does to the catalog itself: run the search of every source now, and stop suggesting a
 | skill or suggest it again. Other accounts get a 404. `refresh` comes before `/:slug`.
 */
 const adminSkillsController = () => import('#app/skills/controllers/admin-skills-controller')
@@ -649,6 +649,24 @@ router
   .prefix('/admin/skills')
   .as('admin.skills')
   .where('slug', /^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  .use([middleware.auth(), middleware.admin()])
+
+/*
+| Where the weekly search looks for skills: skills.sh (disabled, never deleted) and the GitHub
+| repositories the admin trusts. Writes rows only; the next run reads them. Other accounts get a 404.
+*/
+const adminSkillSourcesController = () =>
+  import('#app/skills/controllers/admin-skill-sources-controller')
+router
+  .group(() => {
+    router.get('/', [adminSkillSourcesController, 'index']).as('index')
+    router.post('/', [adminSkillSourcesController, 'store']).as('store')
+    router.patch('/:id', [adminSkillSourcesController, 'update']).as('update')
+    router.delete('/:id', [adminSkillSourcesController, 'destroy']).as('destroy')
+  })
+  .prefix('/admin/skill-sources')
+  .as('admin.skill_sources')
+  .where('id', /^[0-9]+$/)
   .use([middleware.auth(), middleware.admin()])
 
 /*

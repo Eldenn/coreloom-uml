@@ -4,7 +4,7 @@ import type { CommandOptions } from '@adonisjs/core/types/ace'
 export default class SkillsSetup extends BaseCommand {
   static commandName = 'skills:setup'
   static description =
-    'Copy the hand-picked skills into the catalog and schedule the weekly skills.sh search'
+    'Copy the hand-picked skills into the catalog and schedule the weekly skills search'
 
   static options: CommandOptions = {
     startApp: true,
@@ -27,11 +27,11 @@ export default class SkillsSetup extends BaseCommand {
         job: RefreshSkillsJob,
         data: {},
       })
-      this.logger.success(`skills.sh search scheduled (${SKILLS_REFRESH_SCHEDULE.pattern} UTC)`)
+      this.logger.success(`skills search scheduled (${SKILLS_REFRESH_SCHEDULE.pattern} UTC)`)
     } else if (await JobScheduler.remove(SKILLS_REFRESH_SCHEDULE.key)) {
-      this.logger.info('SKILLS_REFRESH_ENABLED is off: the skills.sh search is no longer scheduled')
+      this.logger.info('SKILLS_REFRESH_ENABLED is off: the skills search is no longer scheduled')
     } else {
-      this.logger.info('SKILLS_REFRESH_ENABLED is off: the skills.sh search is not scheduled')
+      this.logger.info('SKILLS_REFRESH_ENABLED is off: the skills search is not scheduled')
     }
   }
 }

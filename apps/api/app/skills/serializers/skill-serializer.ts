@@ -39,13 +39,16 @@ export function serializeSkillSummary(skill: CatalogSkill): SkillSummaryOutput {
 export function serializeSkillDetail(
   skill: CatalogSkill,
   history: SkillSnapshot[],
+  foundBy: string[],
 ): SkillDetailOutput {
   const summary = serializeSkillSummary(skill)
   return {
     ...summary,
     url: skill.url,
-    registryUrl: skill.registryId ? `${REGISTRY_PAGE}${skill.registryId}` : null,
+    // A skill only a trusted repository listed (no installs) has no skills.sh page.
+    registryUrl: skill.registryId && skill.installs ? `${REGISTRY_PAGE}${skill.registryId}` : null,
     license: skill.license,
+    foundBy,
     reason: summary.state === 'blocked' ? skill.statusReason : skill.ineligibleReason,
     affinities: skill.affinities,
     topicsSource: topicsSource(skill),

@@ -111,7 +111,8 @@ export default class CatalogSkill extends BaseModel {
     const provenance: SkillProvenance | undefined =
       this.registryId && this.installs !== null && this.contentSha && this.checkedAt
         ? {
-            registry: 'skills.sh',
+            // Audited on skills.sh, or vouched for by a trusted GitHub source alone.
+            registry: this.audits.length > 0 ? 'skills.sh' : 'github',
             id: this.registryId,
             installs: this.installs,
             audits: this.audits,

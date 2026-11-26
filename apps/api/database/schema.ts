@@ -807,6 +807,40 @@ export class SkillSnapshotSchema extends BaseModel {
   declare takenAt: DateTime
 }
 
+export class SkillSourceSkillSchema extends BaseModel {
+  static $columns = ['skillId', 'skillSourceId'] as const
+  $columns = SkillSourceSkillSchema.$columns
+  @column()
+  declare skillId: number
+  @column({ isPrimary: true })
+  declare skillSourceId: number
+}
+
+export class SkillSourceSchema extends BaseModel {
+  static $columns = ['createdAt', 'enabled', 'id', 'kind', 'lastError', 'lastRunAt', 'owner', 'path', 'repo', 'updatedAt'] as const
+  $columns = SkillSourceSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare enabled: boolean
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare kind: string
+  @column()
+  declare lastError: string | null
+  @column.dateTime()
+  declare lastRunAt: DateTime | null
+  @column()
+  declare owner: string | null
+  @column()
+  declare path: string | null
+  @column()
+  declare repo: string | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class SkillVersionSchema extends BaseModel {
   static $columns = ['bytes', 'commit', 'contentSha', 'createdAt', 'files', 'folder', 'id', 'license', 'modelReview', 'overrideReason', 'repository', 'reviewedAt', 'reviewedBy', 'scan', 'skillId', 'status', 'storageKey'] as const
   $columns = SkillVersionSchema.$columns

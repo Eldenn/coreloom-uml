@@ -3,7 +3,7 @@ import type { CommandOptions } from '@adonisjs/core/types/ace'
 
 export default class SkillsRefresh extends BaseCommand {
   static commandName = 'skills:refresh'
-  static description = 'Run the skills.sh search now and update the skills catalog'
+  static description = 'Read every enabled skill source now and update the skills catalog'
 
   static options: CommandOptions = {
     startApp: true,
