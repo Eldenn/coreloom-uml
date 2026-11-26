@@ -24,7 +24,7 @@ export default class AdminSkillsController {
   }
 
   /**
-   * Runs the skills.sh search now instead of at the next weekly run. The job does it (no request
+   * Reads every enabled source now instead of at the next weekly run. The job does it (no request
    * handler calls skills.sh or GitHub); one asked search at a time.
    */
   async refresh({ response }: HttpContext) {

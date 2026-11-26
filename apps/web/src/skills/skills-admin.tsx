@@ -1,5 +1,5 @@
 // What only the admin does to the catalog from the Skills screen (the API refuses everyone else):
-// run the skills.sh search now, scan the copies waiting for a verdict, and stop suggesting a skill
+// run the search of every source now, scan the copies waiting for a verdict, and stop suggesting a skill
 // or suggest it again. Each asks the queue: what changed arrives through the live updates.
 import { RefreshCwIcon, ScanSearchIcon } from 'lucide-react'
 import * as React from 'react'

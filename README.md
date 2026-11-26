@@ -549,7 +549,11 @@ keeps showing what was suggested then. The screen and the end of `coreloom-uml p
 links only, never as a command to run, marked as third-party resources not checked by Coreloom.
 
 The catalog grows on its own and keeps everything it finds. Every Monday at 06:00 UTC the
-`RefreshSkillsJob` (BullMQ, run by the `queue:work` worker) searches [skills.sh](https://skills.sh)
+`RefreshSkillsJob` (BullMQ, run by the `queue:work` worker) reads every source the administrator
+keeps switched on in the Skills screen's **Sources**: [skills.sh](https://skills.sh) by default,
+and any GitHub repository of a trusted publisher, whose folders holding a `SKILL.md` are listed
+whole (at most 100 per source) and need no installs or audit to be suggested (a bad skills.sh audit
+still counts; the copy is scanned and approved like any other). skills.sh is searched
 for each query of `packages/catalog/src/skill-search-plan.ts`, each with a topic and, for the ones
 that fit a question or a diagram kind, the affinity its results get. Every skill found is kept in
 the `skills` table, with its installs, audits, licence, topics and when it was first and last seen,

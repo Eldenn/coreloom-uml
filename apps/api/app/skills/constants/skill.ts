@@ -21,7 +21,7 @@ export const SKILL_BLOCK_REASON_MAX_LENGTH = 300
  */
 export const SKILLS_REFRESH_LOCK_SECONDS = 30 * 60
 
-/** The weekly search on skills.sh: its scheduler key and when it runs (Monday, 06:00 UTC). */
+/** The weekly search of every enabled source: its scheduler key and when it runs (Monday, 06:00 UTC). */
 export const SKILLS_REFRESH_SCHEDULE = { key: 'skills-refresh', pattern: '0 6 * * 1' } as const
 
 /**
