@@ -193,8 +193,20 @@ export async function searchSkills(options: SearchOptions): Promise<SearchResult
       report.warnings.push(`${skill.slug}: SKILL.md not found at its pin (${status})`)
   }
 
-  const skillsSh = options.sources.some((source) => source.kind === SkillSourceKind.SkillsSh)
   const { candidates, outcomes } = await collectCandidates(options, http, github, report)
+  const kindOf = new Map(options.sources.map((source) => [source.id, source]))
+  // skills.sh is asked for audits only when it answered this run: down, its skills stay frozen.
+  const skillsSh = outcomes.some(
+    (outcome) => outcome.ok && kindOf.get(outcome.sourceId)?.kind === SkillSourceKind.SkillsSh,
+  )
+  // A trusted repository that did not answer: its skills keep their pin until it does.
+  const unreachable = new Set(
+    outcomes
+      .filter((outcome) => !outcome.ok)
+      .map((outcome) => kindOf.get(outcome.sourceId))
+      .filter((source) => source?.kind === SkillSourceKind.Github)
+      .map((source) => `${source?.owner}/${source?.repo}`.toLowerCase()),
+  )
   options.onProgress?.(`${candidates.length} candidates, checking audits and GitHub`)
   const usedSlugs = new Set(options.known.map((skill) => skill.slug))
   const auditCache = new Map<string, Record<string, Record<string, unknown>> | null>()
@@ -269,7 +281,7 @@ export async function searchSkills(options: SearchOptions): Promise<SearchResult
       ineligible(record, `audit ${risky.provider}: ${risky.risk}`)
       continue
     }
-    if (budget <= 0) {
+    if (budget <= 0 || unreachable.has(candidate.source.toLowerCase())) {
       // Checked again in a later run; a skill already pinned keeps its pin until then.
       if (!record.contentSha) ineligible(record, 'not checked on GitHub yet')
       continue
@@ -459,15 +471,16 @@ async function listRepository(
   byId: Map<string, Candidate>,
   knownByRegistryId: Map<string, KnownSkill>,
 ): Promise<SourceOutcome> {
-  const name = `${source.owner}/${source.repo}`
   let snapshot: RepoSnapshot
   try {
     snapshot = await github.repo(source.owner ?? '', source.repo ?? '')
   } catch (error) {
     const message = (error as Error).message
-    report.warnings.push(`source ${name}: ${message}`)
+    report.warnings.push(`source ${source.owner}/${source.repo}: ${message}`)
     return { sourceId: source.id, ok: error instanceof SkipError, complete: true, error: message }
   }
+  // Ids use the repository's own name, as skills.sh does: `ACME/Skills` is `acme/skills`.
+  const name = snapshot.fullName
   const prefix = source.path ? `${source.path}/` : ''
   const folders = snapshot.entries
     .filter(
@@ -543,6 +556,8 @@ export function mergeAffinities(
 }
 
 type RepoSnapshot = {
+  /** The repository's own `owner/repo`, whatever case it was asked in. */
+  fullName: string
   license: string
   commit: string
   entries: { path: string; type: string; sha: string }[]
@@ -570,6 +585,7 @@ class GithubReader {
   private async read(owner: string, repo: string): Promise<RepoSnapshot> {
     const info = (await this.http.json(`${GITHUB_API}/repos/${owner}/${repo}`)) as {
       archived?: boolean
+      full_name?: string
       default_branch?: string
       license?: { spdx_id?: string } | null
     }
@@ -586,7 +602,8 @@ class GithubReader {
     const tree = (await this.http.json(
       `${GITHUB_API}/repos/${owner}/${repo}/git/trees/${commit.sha}?recursive=1`,
     )) as { tree?: { path: string; type: string; sha: string }[] }
-    return { license, commit: commit.sha, entries: tree.tree ?? [] }
+    const fullName = info.full_name ?? `${owner}/${repo}`
+    return { license, commit: commit.sha, entries: tree.tree ?? [], fullName }
   }
 }
 

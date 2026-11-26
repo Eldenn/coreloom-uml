@@ -466,6 +466,19 @@ test.group('searchSkills with sources', () => {
       eligible: true,
       audits: known().audits,
     })
+    // Down, skills.sh is not asked for audits at all.
+    assert.notExists(report.warnings.find((line) => line.includes('audits not read')))
+  })
+
+  test('a trusted skill whose audits cannot be read keeps the last ones', async ({ assert }) => {
+    const network = routes({
+      'https://www.skills.sh/tele/audit?source=acme%2Fskills&skills=browser-tests': down(),
+    })
+    const { records, report } = await run([known()], network, BOTH).result
+    assert.deepInclude(bySlug(records).get('browser-tests'), {
+      eligible: true,
+      audits: known().audits,
+    })
     assert.include(
       report.warnings,
       'browser-tests: audits not read (500 from www.skills.sh), the last ones kept',
@@ -568,5 +581,73 @@ test.group('searchSkills with sources', () => {
     const checked = records.filter((record) => record.checked).map((record) => record.slug)
     assert.lengthOf(checked, 1)
     assert.isTrue(bySlug(records).get(checked[0] as string)?.trusted)
+  })
+})
+
+test.group('searchSkills when a source is down', () => {
+  test('skills.sh fully down freezes its skills instead of stopping the run', async ({
+    assert,
+  }) => {
+    const frozen = known({
+      slug: 'old-skill',
+      registryId: 'other/skills/old-skill',
+      url: `https://github.com/other/skills/tree/${SHA}/skills/old-skill`,
+      contentSha: '0'.repeat(40),
+      description: { en: 'An old skill.' },
+    })
+    const network = routes({
+      ...allSearches(down()),
+      'https://www.skills.sh/tele/audit*': down(),
+      ...repository('other', ['skills/old-skill']),
+    })
+    const { records, sources } = await run([frozen], network, BOTH).result
+    assert.deepInclude(sources[0], { sourceId: 1, ok: false })
+    assert.deepInclude(bySlug(records).get('old-skill'), { eligible: true, audits: frozen.audits })
+    assert.deepInclude(bySlug(records).get('lint-rules'), { eligible: true })
+  })
+
+  test('a trusted repository that fails leaves its skills as they are', async ({ assert }) => {
+    const trusted = known({
+      slug: 'gone-skill',
+      registryId: 'gone/skills/gone-skill',
+      url: `https://github.com/gone/skills/tree/${SHA}/skills/gone-skill`,
+      installs: 0,
+      audits: [],
+      trustedBy: [3],
+    })
+    const network = routes({ 'https://api.github.com/repos/gone/skills': down() })
+    const { records, sources } = await run([trusted], network, {
+      sources: [SKILLS_SH_SOURCE, github('gone')],
+    }).result
+    assert.deepInclude(sources[1], { sourceId: 3, ok: false })
+    assert.deepInclude(bySlug(records).get('gone-skill'), {
+      trusted: true,
+      eligible: true,
+      checked: false,
+      contentSha: FOLDER,
+    })
+  })
+
+  test('a repository typed in another case is the same repository', async ({ assert }) => {
+    const acmeTree =
+      routes()[`https://api.github.com/repos/acme/skills/git/trees/${SHA}?recursive=1`]
+    const network = routes({
+      'https://api.github.com/repos/ACME/Skills': {
+        body: { full_name: 'acme/skills', default_branch: 'main', license: { spdx_id: 'MIT' } },
+      },
+      'https://api.github.com/repos/ACME/Skills/commits/main': { body: { sha: SHA } },
+      [`https://api.github.com/repos/ACME/Skills/git/trees/${SHA}?recursive=1`]: acmeTree as Route,
+    })
+    const { records } = await run([], network, {
+      sources: [SKILLS_SH_SOURCE, { ...ACME_SOURCE, owner: 'ACME', repo: 'Skills' }],
+    }).result
+    assert.lengthOf(
+      records.filter((record) => record.slug.startsWith('browser-tests')),
+      1,
+    )
+    assert.deepInclude(bySlug(records).get('browser-tests'), {
+      registryId: 'acme/skills/browser-tests',
+      foundBy: [1, 2],
+    })
   })
 })

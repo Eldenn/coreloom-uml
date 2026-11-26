@@ -88,6 +88,13 @@ test.group('Skill sources', (group) => {
         .loginAs(admin)
     ;(await add()).assertStatus(201)
     ;(await add()).assertStatus(409)
+    // GitHub names are case-insensitive: the same repository in another case is no new source.
+    const shouted = await client
+      .post('/admin/skill-sources')
+      .headers(json)
+      .json({ owner: 'ACME', repo: 'Skills' })
+      .loginAs(admin)
+    shouted.assertStatus(409)
   })
 
   test('skills.sh can be disabled but never deleted', async ({ client, assert }) => {

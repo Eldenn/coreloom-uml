@@ -28,11 +28,12 @@ export default class AdminSkillSourcesController {
     const identity = { kind: SkillSourceKind.Github, owner, repo, path: path || null }
     const existing = await SkillSource.query()
       .where('kind', identity.kind)
-      .where('owner', owner)
-      .where('repo', repo)
+      // GitHub names are case-insensitive.
+      .whereRaw('lower(owner) = lower(?)', [owner])
+      .whereRaw('lower(repo) = lower(?)', [repo])
       .if(
         identity.path,
-        (query) => query.where('path', identity.path as string),
+        (query) => query.whereRaw('lower(path) = lower(?)', [identity.path as string]),
         (query) => query.whereNull('path'),
       )
       .first()
