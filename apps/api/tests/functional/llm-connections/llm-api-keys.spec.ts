@@ -4,7 +4,7 @@ import type { LanguageModel, LlmCredential, ProviderSettings } from '@coreloom-u
 import { APICallError, answeringModel, failingModel } from '@coreloom-uml/llm/testing'
 import { test } from '@japa/runner'
 import LanguageModels from '#app/llm/services/language-models'
-import { storedApiKey } from '#app/llm-connections/services/llm-api-keys'
+import { saveApiKey, storedApiKey } from '#app/llm-connections/services/llm-api-keys'
 import User from '#app/users/models/user'
 import llmConfig from '#config/llm'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
@@ -71,6 +71,17 @@ test.group('LLM - saved api keys', (group) => {
     const stored = await storedApiKey(user, 'mistral')
     assert.equal(stored?.apiKey, KEY)
     assert.isNull(stored?.baseUrl)
+  })
+
+  test("a key copied into another account's row is not read there", async ({ assert }) => {
+    const owner = await makeUser()
+    const other = await makeUser()
+    await saveApiKey(owner, 'mistral', { apiKey: KEY, baseUrl: null })
+    await saveApiKey(other, 'mistral', { apiKey: 'other-account-key-fixture', baseUrl: null })
+    const stolen = await db.from('llm_api_keys').where('user_id', owner.id).firstOrFail()
+    await db.from('llm_api_keys').where('user_id', other.id).update({ api_key: stolen.api_key })
+    assert.equal((await storedApiKey(other, 'mistral'))?.apiKey, '')
+    assert.equal((await storedApiKey(owner, 'mistral'))?.apiKey, KEY)
   })
 
   test('a key the provider refuses is not saved', async ({ client, assert }) => {

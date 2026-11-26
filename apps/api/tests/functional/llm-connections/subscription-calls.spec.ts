@@ -5,6 +5,7 @@ import { answeringModel } from '@coreloom-uml/llm/testing'
 import { test } from '@japa/runner'
 import { updateFlag } from '#app/feature-flags/services/feature-flags'
 import LanguageModels from '#app/llm/services/language-models'
+import { saveClaudeState } from '#app/llm-connections/services/claude-code-state'
 import { saveCodexTokens } from '#app/llm-connections/services/codex-connections'
 import CodexOAuth from '#app/llm-connections/services/codex-oauth'
 import User from '#app/users/models/user'
@@ -118,6 +119,7 @@ test.group('LLM calls with a subscription', (group) => {
   test('refuses a claude-code model name that could read as a flag', async ({ client }) => {
     const user = await makeUser()
     await updateFlag(FeatureFlagKey.LlmSubscriptionClaude, ON, user)
+    await saveClaudeState(user, { '.credentials.json': '{}' })
     useModel(answeringModel('OK'))
     const response = await client
       .post('/llm/test')

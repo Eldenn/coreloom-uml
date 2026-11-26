@@ -297,6 +297,20 @@ test.group('Skill versions', (group) => {
       ],
     )
 
+    // `version` serves that copy, the one a generation recorded, once it is approved.
+    const newer = await SkillVersion.query().where('id', '!=', first.id).firstOrFail()
+    ;(await client.get(url).qs({ version: newer.id }).headers(json).loginAs(user)).assertStatus(404)
+    await newer.merge({ status: 'approved' }).save()
+    const latest = await client.get(url).headers(json).loginAs(user)
+    assert.equal((latest.body() as { copy: SkillCopyOutput }).copy.commit, NEW_SHA)
+    const pinned = await client.get(url).qs({ version: first.id }).headers(json).loginAs(user)
+    pinned.assertStatus(200)
+    assert.equal((pinned.body() as { copy: SkillCopyOutput }).copy.commit, SHA)
+    // Only a copy of this skill.
+    ;(
+      await client.get('/skills/other/copy').qs({ version: first.id }).headers(json).loginAs(user)
+    ).assertStatus(404)
+
     // A blocked skill is not served any more.
     await skill.merge({ status: SkillStatus.Blocked }).save()
     ;(await client.get(url).headers(json).loginAs(user)).assertStatus(404)

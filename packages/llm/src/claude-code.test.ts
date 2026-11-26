@@ -7,7 +7,7 @@ import { createLanguageModel } from './provider.ts'
 
 type Outcome = Awaited<ReturnType<ClaudeRun>>
 
-const CREDENTIAL = { kind: 'claude-code', configDir: '/data/claude/42' } as const
+const CREDENTIAL = { kind: 'claude-code', owner: 42 } as const
 
 function fakeRun(outcome: Partial<Outcome> & { json?: unknown }) {
   const calls: Parameters<ClaudeRun>[] = []
@@ -67,7 +67,7 @@ describe('createClaudeCodeModel', () => {
       'Be brief.',
     ])
     expect(options?.stdin).toBe('Reply with OK.')
-    expect(options?.configDir).toBe('/data/claude/42')
+    expect(options?.owner).toBe(42)
   })
 
   it('keeps a model name that looks like a flag in its own argument', async () => {
