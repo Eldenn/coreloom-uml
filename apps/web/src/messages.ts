@@ -442,6 +442,14 @@ export const en = {
     skillsTitle: 'Skills',
     skillsThirdParty:
       'Third-party resources. Install one the admin approved with “coreloom-uml skills add <id>”.',
+    heldSkillsTitle: 'Installed skills',
+    heldSkillsHint:
+      'Any skill with a copy the admin read and approved, suggested or not. “coreloom-uml pull” installs them into the skills folders of the coding tools.',
+    heldSkillsPick: 'Add or remove skills',
+    heldSkillsSearch: 'Search skills…',
+    heldSkillsEmpty: 'No skill has an approved copy yet.',
+    heldSkillsNone: 'No skill installed with these conventions.',
+    heldSkillRemove: (name: string) => `Remove ${name}`,
     skillsCompatible: 'Fit your rules',
     skillsConflicting: 'Go against your rules',
     skillReason: (group: string, held: string, expects: string) =>
@@ -2182,6 +2190,14 @@ export const fr: Messages = {
     noChanges: 'Même contenu que la génération précédente.',
     recommendationsTitle: 'Recommandations',
     skillsTitle: 'Skills',
+    heldSkillsTitle: 'Skills installés',
+    heldSkillsHint:
+      'Tout skill dont l’admin a lu et approuvé une copie, recommandé ou non. « coreloom-uml pull » les installe dans les dossiers de skills des outils de code.',
+    heldSkillsPick: 'Ajouter ou retirer des skills',
+    heldSkillsSearch: 'Rechercher un skill…',
+    heldSkillsEmpty: 'Aucun skill n’a encore de copie approuvée.',
+    heldSkillsNone: 'Aucun skill installé avec ces conventions.',
+    heldSkillRemove: (name: string) => `Retirer ${name}`,
     skillsThirdParty:
       'Ressources tierces. Installez-en une copie approuvée par l’admin avec « coreloom-uml skills add <id> ».',
     skillsCompatible: 'Compatibles avec vos règles',

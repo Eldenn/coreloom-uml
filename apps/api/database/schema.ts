@@ -107,6 +107,19 @@ export class AgentConfigRuleSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
+export class AgentConfigSkillSchema extends BaseModel {
+  static $columns = ['agentConfigId', 'createdAt', 'id', 'skillId'] as const
+  $columns = AgentConfigSkillSchema.$columns
+  @column()
+  declare agentConfigId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare skillId: number
+}
+
 export class AgentConfigSchema extends BaseModel {
   static $columns = ['createdAt', 'id', 'name', 'notes', 'projectId', 'revision', 'targets', 'updatedAt', 'userId'] as const
   $columns = AgentConfigSchema.$columns

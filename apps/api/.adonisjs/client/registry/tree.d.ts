@@ -188,6 +188,9 @@ export interface ApiDefinition {
     readyRules: {
       update: typeof routes['agent_configs.ready_rules.update']
     }
+    skills: {
+      update: typeof routes['agent_configs.skills.update']
+    }
     rules: {
       store: typeof routes['agent_configs.rules.store']
       update: typeof routes['agent_configs.rules.update']

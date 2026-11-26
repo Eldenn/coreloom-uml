@@ -70,6 +70,7 @@ export async function agentConfigImpact(config: AgentConfig) {
 /** The body most endpoints answer with: the configuration in full and its impact. */
 export async function describeAgentConfig(config: AgentConfig) {
   const inputs = await currentInputs(config)
+  await config.load('skills', (query) => query.preload('skill'))
   const latest = await latestGeneration(config)
   return {
     config: serializeAgentConfigDetail(config, latest, await listConfigDiagrams(config)),

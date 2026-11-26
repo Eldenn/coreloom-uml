@@ -1,11 +1,12 @@
-// A configuration: where its files stand (impact), the rules it holds, the project notes and the
-// coding tools, with "Generate" as the main action.
+// A configuration: where its files stand (impact), the rules, roles and skills it holds, the
+// project notes and the coding tools, with "Generate" as the main action.
 import { FileTextIcon, SparklesIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
 import { AgentConfigRoles } from '@/agent-configs/agent-config-roles'
 import { AgentConfigRules } from '@/agent-configs/agent-config-rules'
+import { AgentConfigSkills } from '@/agent-configs/agent-config-skills'
 import { useTargetOptions } from '@/agent-configs/catalog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
@@ -66,6 +67,7 @@ export function AgentConfigSummary({
       />
       <AgentConfigRules configId={configId} config={config} packs={packs} onBrowse={onBrowse} />
       {roles && <AgentConfigRoles configId={configId} config={config} />}
+      <AgentConfigSkills configId={configId} config={config} />
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <NotesCard configId={configId} config={config} />
         <TargetsCard configId={configId} config={config} />

@@ -9,10 +9,11 @@ import type { DateTime } from 'luxon'
 import type { StoredAgentConfigInputs } from '#app/agent-configs/services/agent-context'
 
 /**
- * Skill suggestions of a generation, copied from the catalog when it was rendered. Generations
- * made before the skills catalog existed hold two empty lists.
+ * Skill suggestions of a generation, copied from the catalog when it was rendered, and `held`, the
+ * slugs of the skills the configuration held then, which `pull` installs. Generations made before
+ * the skills catalog existed hold two empty lists, those made before held skills no `held`.
  */
-export type AgentGenerationSkills = SkillSuggestions
+export type AgentGenerationSkills = SkillSuggestions & { held?: string[] }
 
 const json = { prepare: (value: unknown) => JSON.stringify(value) }
 

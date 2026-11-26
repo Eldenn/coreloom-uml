@@ -799,6 +799,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-ready-rules-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'agent_configs.skills.update': {
+    methods: ["PUT"]
+    pattern: '/agent-configs/:id/skills'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').updateAgentSkillsInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/agent-configs/validators/agent-configs-input').updateAgentSkillsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-skills-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-skills-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'agent_configs.rules.store': {
     methods: ["POST"]
     pattern: '/agent-configs/:id/rules'

@@ -25,6 +25,8 @@ export const listSkillsInput = vine.create(
     risk: vine.array(vine.enum(SKILL_RISK_LEVELS)).parse(toArray).optional(),
     /** Read for the admin only (see `SkillsController.index`). */
     copy: vine.array(vine.enum(SKILL_COPY_STATES)).parse(toArray).optional(),
+    /** Only the skills a configuration can hold: those with an approved copy. */
+    installable: vine.boolean().optional(),
     sort: vine.enum(SKILL_SORTS).optional(),
   }),
 )

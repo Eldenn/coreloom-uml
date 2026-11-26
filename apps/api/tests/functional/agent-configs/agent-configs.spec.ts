@@ -820,7 +820,7 @@ test.group('Agent configs - generations', (group) => {
     const { config } = await createConfig(client, user, project.id)
 
     const empty = await generate(client, user, config.id)
-    assert.deepEqual(empty.skills, { compatible: [], conflicting: [] })
+    assert.deepEqual(empty.skills, { compatible: [], conflicting: [], held: [] })
 
     await acceptAll(client, user, config.id)
     const fitting = await generate(client, user, config.id)

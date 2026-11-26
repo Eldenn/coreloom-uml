@@ -128,8 +128,10 @@ Every path the server sends must be relative, normalized and inside the current 
 symbolic link on the way; anything else is refused before any write.
 
 The recommendations of the generation (settings to change by hand, for instance) and the
-compatible skills are printed at the end, links only: `pull` never installs a skill (see
-`skills add`).
+compatible skills are printed at the end, links only. The skills the configuration holds (chosen
+on its page) are then installed as `skills add` does, into the skills folders of the
+configuration's tools: only their newest approved copy, asking before a file is replaced. A skill
+whose copy is no longer served is reported and the exit code is 1; the files are written anyway.
 
 ### `status [--api-url <url>]`
 
