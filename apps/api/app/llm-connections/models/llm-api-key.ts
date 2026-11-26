@@ -1,12 +1,7 @@
-import encryption from '@adonisjs/core/services/encryption'
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import type { DateTime } from 'luxon'
-
-/**
- * Binds a stored provider key to this table: a ciphertext copied anywhere else (another row,
- * another column, another flow) fails to decrypt.
- */
-export const LLM_API_KEY_PURPOSE = 'llm-api-key'
+import { LlmSecretPurpose } from '#app/llm-connections/constants/llm-connections'
+import { openLlmSecret, sealLlmSecret } from '#app/llm-connections/services/llm-secrets'
 
 /**
  * Encrypted with the dedicated `llmKeys` encrypter on write; `null` for a kind that calls a
@@ -15,13 +10,9 @@ export const LLM_API_KEY_PURPOSE = 'llm-api-key'
  */
 const secret = {
   prepare: (value: string | null) =>
-    value === null
-      ? null
-      : encryption.use('llmKeys').encrypt(value, { purpose: LLM_API_KEY_PURPOSE }),
+    value === null ? null : sealLlmSecret(value, LlmSecretPurpose.ApiKey),
   consume: (value: string | null): string | null =>
-    value === null
-      ? null
-      : (encryption.use('llmKeys').decrypt<string>(value, LLM_API_KEY_PURPOSE) ?? null),
+    value === null ? null : openLlmSecret(value, LlmSecretPurpose.ApiKey),
   serializeAs: null,
 }
 

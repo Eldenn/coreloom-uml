@@ -1,18 +1,21 @@
 import { defineConfig, drivers } from '@adonisjs/core/encryption'
 import env from '#start/env'
 
-/**
- * The dedicated encrypter for the provider keys an account saved (`llm_api_keys`): separate from
- * `APP_KEY` so rotating one never breaks the other. `LLM_KEYS_ENCRYPTION_KEYS` lists keys
- * comma-separated; the first encrypts, all decrypt (rotate by prepending the new key, then
- * re-saving). It falls back to `APP_KEY` in development and test only: production must set its
- * own (`requiredInProduction` in `start/env.ts`).
- */
-const llmKeys = (env.get('LLM_KEYS_ENCRYPTION_KEYS') ?? '')
+/** The keys of `LLM_KEYS_ENCRYPTION_KEYS`, comma-separated; empty when it is not set. */
+export const llmKeysList = (env.get('LLM_KEYS_ENCRYPTION_KEYS') ?? '')
   .split(',')
   .map((key) => key.trim())
   .filter(Boolean)
 
+/**
+ * The dedicated encrypter for every stored LLM secret (saved keys, ChatGPT tokens, Claude
+ * subscriptions): separate from `APP_KEY` so rotating one never breaks the other. The first key
+ * encrypts, all decrypt (rotate by prepending the new key, then re-saving). It falls back to
+ * `APP_KEY` in development and test only. In production without its keys it has none, so it seals
+ * and opens nothing: the API refuses to start (`start/llm-keys.ts`) and any other process fails
+ * the moment it touches an LLM secret (`llmKeysProblem`), while a worker that never does (the
+ * skill scanner) runs without them.
+ */
 const encryptionConfig = defineConfig({
   default: 'app',
   list: {
@@ -22,7 +25,12 @@ const encryptionConfig = defineConfig({
     }),
     llmKeys: drivers.aes256gcm({
       id: 'llmk',
-      keys: llmKeys.length > 0 ? llmKeys : [env.get('APP_KEY')],
+      keys:
+        llmKeysList.length > 0
+          ? llmKeysList
+          : env.get('NODE_ENV') === 'production'
+            ? []
+            : [env.get('APP_KEY')],
     }),
   },
 })

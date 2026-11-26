@@ -1,8 +1,10 @@
 import app from '@adonisjs/core/services/app'
+import encryption from '@adonisjs/core/services/encryption'
 import testUtils from '@adonisjs/core/services/test_utils'
 import db from '@adonisjs/lucid/services/db'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
+import { LlmSecretPurpose } from '#app/llm-connections/constants/llm-connections'
 import LlmConnection from '#app/llm-connections/models/llm-connection'
 import {
   codexCredential,
@@ -10,6 +12,7 @@ import {
   saveCodexTokens,
 } from '#app/llm-connections/services/codex-connections'
 import CodexOAuth from '#app/llm-connections/services/codex-oauth'
+import { openLegacyAppSecret, openLlmSecret } from '#app/llm-connections/services/llm-secrets'
 import User from '#app/users/models/user'
 import { codexJwt, fakeCodexOAuth } from './fakes.js'
 
@@ -48,6 +51,31 @@ test.group('ChatGPT subscription tokens', (group) => {
       accessToken: ACCESS,
       accountId: 'acct-1',
     })
+  })
+
+  test('seals the tokens with llmKeys, bound to their purpose, never APP_KEY', async ({
+    assert,
+  }) => {
+    const user = await makeUser()
+    await saveCodexTokens(user, tokens(3600_000))
+    const raw = await db.from('llm_connections').where('user_id', user.id).firstOrFail()
+    assert.equal(openLlmSecret(raw.refresh_token, LlmSecretPurpose.Connection), REFRESH)
+    assert.isNull(openLegacyAppSecret(raw.refresh_token))
+    // Another purpose (a saved key's, the Claude state's) cannot open it.
+    assert.isNull(openLlmSecret(raw.refresh_token, LlmSecretPurpose.ApiKey))
+  })
+
+  test('still reads tokens sealed with APP_KEY before the move', async ({ assert }) => {
+    const user = await makeUser()
+    await saveCodexTokens(user, tokens(3600_000))
+    await db
+      .from('llm_connections')
+      .where('user_id', user.id)
+      .update({
+        access_token: encryption.encrypt(ACCESS),
+        refresh_token: encryption.encrypt(REFRESH),
+      })
+    assert.equal((await codexCredential(user))?.accessToken, ACCESS)
   })
 
   test('refreshes a token about to expire', async ({ assert }) => {

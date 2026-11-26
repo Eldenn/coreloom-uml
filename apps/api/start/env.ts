@@ -168,18 +168,21 @@ export default await Env.create(new URL('../', import.meta.url), {
   */
   LLM_ALLOWED_BASE_URLS: Env.schema.string.optional(),
   /*
-  | The keys of the dedicated encrypter that seals the provider keys an account
-  | saved (`llm_api_keys`), comma-separated: the first encrypts, all decrypt, so
-  | a key is rotated by prepending the new one. Separate from APP_KEY so one
-  | rotating never breaks the other. Required in production; development and
-  | test fall back to APP_KEY (see `config/encryption.ts`).
+  | The keys of the dedicated encrypter that seals every stored LLM secret (saved
+  | keys, ChatGPT tokens, Claude subscriptions), comma-separated: the first
+  | encrypts, all decrypt, so a key is rotated by prepending the new one.
+  | Separate from APP_KEY so one rotating never breaks the other. Development
+  | and test fall back to APP_KEY. In production the API refuses to start
+  | without it (`start/llm-keys.ts`), and any other process that seals or opens
+  | an LLM secret fails at that point: a worker that never does (the skill
+  | scanner) is not given it (see `config/encryption.ts`).
   */
-  LLM_KEYS_ENCRYPTION_KEYS: requiredInProduction,
+  LLM_KEYS_ENCRYPTION_KEYS: Env.schema.string.optional(),
 
   /*
-  | Claude subscriptions run the `claude` binary (Claude Code) with one config
-  | folder per account under this path. Mount a persistent volume there in
-  | production. Defaults to `tmp/claude` inside the app.
+  | Claude subscriptions are kept in the database; the `claude` binary (Claude
+  | Code) runs each launch in a short-lived private folder made under this
+  | path, removed when it ends. Defaults to `tmp/claude` inside the app.
   */
   CLAUDE_CODE_HOME: Env.schema.string.optional(),
 
