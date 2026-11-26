@@ -11,17 +11,22 @@ import {
 import { DateTime } from 'luxon'
 import {
   SKILL_BLOCK_REASON_MAX_LENGTH,
+  SKILL_SOURCE_LIMITS,
   SKILLS_SEARCH_LIMITS,
+  SkillSourceKind,
   SkillStatus,
 } from '#app/skills/constants/skill'
 import CatalogSkill from '#app/skills/models/catalog-skill'
 import SkillSnapshot from '#app/skills/models/skill-snapshot'
+import SkillSource from '#app/skills/models/skill-source'
 import { effectiveTopics } from '#app/skills/services/skill-topics'
 import { captureSkillVersions } from '#app/skills/services/skill-versions'
 import {
   type KnownSkill,
   type SearchReport,
+  type SearchSource,
   type SkillRecord,
+  type SourceOutcome,
   searchSkills,
 } from '#app/skills/services/skills-search'
 
@@ -78,17 +83,25 @@ export type RefreshCatalogOptions = {
 }
 
 /**
- * Runs the search plan on skills.sh, writes what it learnt to the `skills` table, and keeps a
- * snapshot of every skill a search returned.
+ * Reads every enabled source (skills.sh with the search plan, the trusted GitHub repositories),
+ * writes what it learnt to the `skills` table, which source listed which skill and how each one
+ * answered, and keeps a snapshot of every skill a source listed.
  */
 export async function refreshCatalog(options: RefreshCatalogOptions = {}): Promise<SearchReport> {
   const now = options.now ?? DateTime.now()
   const rows = await CatalogSkill.all()
-  const known = rows.map(toKnown)
+  const sources = await enabledSources()
+  const trust = await trustedBy()
+  const known = rows.map((row) => toKnown(row, trust))
 
-  const { records, report } = await searchSkills({
+  const {
+    records,
+    report,
+    sources: outcomes,
+  } = await searchSkills({
     known,
     plan: SKILL_SEARCH_PLAN,
+    sources: sources.map(toSearchSource),
     fetch: options.fetch ?? fetch,
     githubToken: options.githubToken,
     onProgress: options.onProgress,
@@ -101,8 +114,10 @@ export async function refreshCatalog(options: RefreshCatalogOptions = {}): Promi
 
   const bySlug = new Map(rows.map((row) => [row.slug, row]))
   await db.transaction(async (trx) => {
+    const ids = new Map<string, number>()
     for (const record of records) {
       const row = await saveRecord(record, bySlug.get(record.slug), now, trx)
+      ids.set(record.slug, row.id)
       if (record.seen) {
         await SkillSnapshot.create(
           {
@@ -117,6 +132,7 @@ export async function refreshCatalog(options: RefreshCatalogOptions = {}): Promi
         )
       }
     }
+    for (const outcome of outcomes) await saveOutcome(outcome, records, ids, now, trx)
   })
   // After the rows are written: a skill checked this run is copied at its new pin.
   const versions = await captureSkillVersions({
@@ -129,7 +145,69 @@ export async function refreshCatalog(options: RefreshCatalogOptions = {}): Promi
   return report
 }
 
-function toKnown(row: CatalogSkill): KnownSkill {
+/** The enabled sources, skills.sh first. */
+function enabledSources() {
+  return SkillSource.query().where('enabled', true).orderBy('id')
+}
+
+function toSearchSource(source: SkillSource): SearchSource {
+  return {
+    id: source.id,
+    kind: source.kind,
+    owner: source.owner,
+    repo: source.repo,
+    path: source.path,
+  }
+}
+
+/** For each skill, the enabled GitHub sources that listed it at their last run that answered. */
+async function trustedBy(): Promise<Map<number, number[]>> {
+  const pairs: { skill_id: number; skill_source_id: number }[] = await db
+    .from('skill_source_skills')
+    .join('skill_sources', 'skill_sources.id', 'skill_source_skills.skill_source_id')
+    .where('skill_sources.enabled', true)
+    .where('skill_sources.kind', SkillSourceKind.Github)
+    .select('skill_source_skills.skill_id', 'skill_source_skills.skill_source_id')
+  const trust = new Map<number, number[]>()
+  for (const pair of pairs) {
+    trust.set(pair.skill_id, [...(trust.get(pair.skill_id) ?? []), pair.skill_source_id])
+  }
+  return trust
+}
+
+/**
+ * What a source listed replaces what it listed before when every query of it answered, is added
+ * to it when only some did, and changes nothing when it did not answer; its run is recorded.
+ */
+async function saveOutcome(
+  outcome: SourceOutcome,
+  records: readonly SkillRecord[],
+  ids: ReadonlyMap<string, number>,
+  now: DateTime,
+  trx: TransactionClientContract,
+) {
+  if (outcome.ok) {
+    const listed = records
+      .filter((record) => record.foundBy.includes(outcome.sourceId))
+      .map((record) => ({ skill_source_id: outcome.sourceId, skill_id: ids.get(record.slug) }))
+    if (outcome.complete) {
+      await trx.from('skill_source_skills').where('skill_source_id', outcome.sourceId).delete()
+    }
+    if (listed.length > 0) {
+      await trx.table('skill_source_skills').insert(listed).onConflict().ignore()
+    }
+  }
+  await trx
+    .from('skill_sources')
+    .where('id', outcome.sourceId)
+    .update({
+      last_run_at: now.toJSDate(),
+      last_error: outcome.error?.slice(0, SKILL_SOURCE_LIMITS.errorMaxLength) ?? null,
+      updated_at: now.toJSDate(),
+    })
+}
+
+function toKnown(row: CatalogSkill, trust: ReadonlyMap<number, number[]>): KnownSkill {
   return {
     slug: row.slug,
     origin: row.origin,
@@ -147,6 +225,7 @@ function toKnown(row: CatalogSkill): KnownSkill {
     contentSha: row.contentSha,
     eligible: row.eligible,
     ineligibleReason: row.ineligibleReason,
+    trustedBy: trust.get(row.id) ?? [],
   }
 }
 
@@ -163,9 +242,11 @@ export async function syncSkill(
 ): Promise<SearchReport | null> {
   const row = await CatalogSkill.findBy('slug', slug)
   if (!row) return null
+  // No search and no listing: what each source listed stays as its last run wrote it.
   const { records, report } = await searchSkills({
-    known: [toKnown(row)],
+    known: [toKnown(row, await trustedBy())],
     plan: [],
+    sources: (await enabledSources()).map(toSearchSource),
     recheck: true,
     fetch: options.fetch ?? fetch,
     githubToken: options.githubToken,
