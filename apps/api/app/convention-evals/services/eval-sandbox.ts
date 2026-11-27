@@ -62,10 +62,10 @@ export default class EvalSandboxes {
    * Builds the template on this E2B install unless it holds it already (`assistant:setup`).
    * Throws when E2B cannot build it; null without `E2B_API_KEY`.
    */
-  async ensureTemplate(): Promise<'ready' | 'built' | null> {
+  async ensureTemplate(onLog?: (line: string) => void): Promise<'ready' | 'built' | null> {
     const config = researchConfig()
     if (!config) return null
-    if (await Template.exists(EVAL_TEMPLATE_NAME, connection(config))) return 'ready'
+    if (await hasDefaultBuild(EVAL_TEMPLATE_NAME, config)) return 'ready'
     const template = Template()
       .fromTemplate(EVAL_TEMPLATE.from)
       .runCmd(evalTemplateCommands(), { user: 'root' })
@@ -74,6 +74,7 @@ export default class EvalSandboxes {
       ...connection(config),
       cpuCount: EVAL_TEMPLATE.cpuCount,
       memoryMB: EVAL_TEMPLATE.memoryMB,
+      ...(onLog ? { onBuildLogs: (entry) => onLog(`${entry.level} ${entry.message}`) } : {}),
     })
     return 'built'
   }
@@ -101,14 +102,16 @@ export default class EvalSandboxes {
     }
   }
 
-  /** Every sandbox E2B lists, running or paused, that carries all of `metadata`. */
+  /** Every sandbox E2B lists, running or paused, that carries all of `metadata` (any when empty). */
   async list(metadata: Record<string, string>): Promise<ListedSandbox[]> {
     const config = researchConfig()
     if (!config) return []
+    // An empty metadata filter is refused by the API (400 "Error parsing metadata"): left out.
+    const filter = Object.keys(metadata).length > 0 ? { metadata } : {}
     const paginator = Sandbox.list({
       ...connection(config),
       requestTimeoutMs: CONVENTION_EVAL_LIMITS.sandboxRequestTimeoutMs,
-      query: { metadata, state: ['running', 'paused'] },
+      query: { ...filter, state: ['running', 'paused'] },
     })
     const listed: ListedSandbox[] = []
     while (paginator.hasNext) {
@@ -132,6 +135,23 @@ export default class EvalSandboxes {
       requestTimeoutMs: CONVENTION_EVAL_LIMITS.sandboxRequestTimeoutMs,
     }).catch(() => false)
   }
+}
+
+/**
+ * Whether the template has a build a sandbox can start from. A failed build leaves its name
+ * behind, `default` tag included (`Template.exists` is then true and every create answers 404),
+ * so the name alone is not enough: only a `ready` build is, and the next setup builds it again.
+ */
+async function hasDefaultBuild(name: string, config: ResearchConfig): Promise<boolean> {
+  if (!(await Template.exists(name, connection(config)))) return false
+  const templates = Template.list(connection(config))
+  while (templates.hasNext) {
+    for (const template of await templates.nextItems()) {
+      const named = template.names.some((item) => item === name || item.endsWith(`/${name}`))
+      if (named) return template.buildStatus === 'ready'
+    }
+  }
+  return false
 }
 
 function connection(config: ResearchConfig) {
