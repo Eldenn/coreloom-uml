@@ -161,7 +161,7 @@ class AgentsTest(unittest.TestCase):
         self.assertEqual(name, "ANTHROPIC_API_KEY")
         # Harbor's other variables may stay envs of the command.
         self.assertEqual(env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"], "1")
-        self.assertEqual(env["CLAUDE_CODE_SUBPROCESS_ENV_SCRUB"], "1")  # security I4
+        self.assertNotIn("CLAUDE_CODE_SUBPROCESS_ENV_SCRUB", env)  # needs bubblewrap: not set
         self.assertEqual(env["ANTHROPIC_MODEL"], "claude-sonnet-5-5")
         for command, _, _, _ in environment.commands:
             self.assertNotIn("credentials", command)

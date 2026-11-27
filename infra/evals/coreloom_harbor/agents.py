@@ -104,9 +104,10 @@ class ConventionEvalsClaudeCode(ClaudeCode):
         _pin(self, CLAUDE_CODE_VERSION)
         # Merged last into the command's environment, whatever Harbor's own run sets.
         self._resolved_env_vars["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1"
-        # Security I4: Claude Code 2.1.322 strips its credentials from the environment of the
-        # commands it starts (its Bash tool, hooks) when this is set; the CLI itself keeps it.
-        self._resolved_env_vars["CLAUDE_CODE_SUBPROCESS_ENV_SCRUB"] = "1"
+        # Security I4: Claude Code 2.1.322 can strip its credentials from the commands it starts
+        # (`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1`), but then refuses to start without bubblewrap,
+        # which the template does not hold (live check, record section 13): not set. The key's
+        # value is treated as being in every output and in the returned workspace instead.
         self._agent_commands = 0
 
     @override
