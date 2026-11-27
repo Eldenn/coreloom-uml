@@ -1,8 +1,10 @@
 // The weekly search behind the skills catalog. Every skill a source lists is kept: skills.sh,
-// searched with the catalog's plan, and the GitHub repositories the admin trusts, listed whole.
-// One is eligible to be suggested when it has enough installs and security audits that pass (a
-// skill a trusted repository lists needs neither, but a bad audit still counts), a GitHub
-// repository with an open licence and a `SKILL.md`, which is then pinned to a commit. Pure apart from the `fetch` it is given, so tests run it against fixtures;
+// searched with the catalog's plan; Smithery's top verified skills; and the GitHub repositories
+// the admin trusts, listed whole or as their `marketplace.json` says (plugins of other
+// repositories included). One is eligible to be suggested when it has enough installs and
+// security audits that pass (a skill a trusting source lists needs neither, but a bad audit
+// still counts), a GitHub repository with an open licence and a `SKILL.md`, which is then pinned
+// to a commit. Pure apart from the `fetch` it is given, so tests run it against fixtures;
 // `skills-catalog.ts` writes its result to the database.
 import {
   ACCEPTED_AUDIT_RISKS,
@@ -13,9 +15,17 @@ import {
   SkillOrigin,
   type SkillSearchQuery,
 } from '@coreloom-uml/catalog'
-import { SKILL_SOURCE_LIMITS, SkillSourceKind } from '#app/skills/constants/skill'
+import {
+  SKILL_SOURCE_LIMITS,
+  SkillSourceKind,
+  SMITHERY_GATE,
+  TRUSTING_SOURCE_KINDS,
+} from '#app/skills/constants/skill'
 
 export const SKILLS_SH = 'https://skills.sh'
+export const SMITHERY_API = 'https://api.smithery.ai'
+/** Where a repository lists its plugins (Claude Code's plugin marketplace format). */
+export const MARKETPLACE_FILE = '.claude-plugin/marketplace.json'
 export const SKILLS_SH_AUDITS = 'https://www.skills.sh/tele/audit'
 /** A skill's page (`<SKILLS_SH_PAGES>/<registry id>`); `skills.sh` redirects there. */
 export const SKILLS_SH_PAGES = 'https://www.skills.sh'
@@ -55,7 +65,7 @@ export type KnownSkill = {
   contentSha: string | null
   eligible: boolean
   ineligibleReason: string | null
-  /** The enabled GitHub sources that listed it at their last run that answered. */
+  /** The enabled trusting sources (GitHub, Smithery) that listed it at their last run that answered. */
   trustedBy: number[]
 }
 
@@ -127,7 +137,7 @@ export type SkillRecord = {
   ineligibleReason: string | null
   /** The sources that listed it this run. */
   foundBy: number[]
-  /** A trusted GitHub source lists it: no installs or audit needed. */
+  /** A trusting source (GitHub, Smithery) lists it: no installs or audit needed. */
   trusted: boolean
 }
 
@@ -193,20 +203,27 @@ export async function searchSkills(options: SearchOptions): Promise<SearchResult
       report.warnings.push(`${skill.slug}: SKILL.md not found at its pin (${status})`)
   }
 
-  const { candidates, outcomes } = await collectCandidates(options, http, github, report)
+  // A trusted repository that did not answer (a source, or a plugin a marketplace lists): its
+  // skills keep their pin until it does.
+  const unreachable = new Set<string>()
+  const { candidates, outcomes } = await collectCandidates(
+    options,
+    http,
+    github,
+    report,
+    unreachable,
+  )
   const kindOf = new Map(options.sources.map((source) => [source.id, source]))
   // skills.sh is asked for audits only when it answered this run: down, its skills stay frozen.
   const skillsSh = outcomes.some(
     (outcome) => outcome.ok && kindOf.get(outcome.sourceId)?.kind === SkillSourceKind.SkillsSh,
   )
-  // A trusted repository that did not answer: its skills keep their pin until it does.
-  const unreachable = new Set(
-    outcomes
-      .filter((outcome) => !outcome.ok)
-      .map((outcome) => kindOf.get(outcome.sourceId))
-      .filter((source) => source?.kind === SkillSourceKind.Github)
-      .map((source) => `${source?.owner}/${source?.repo}`.toLowerCase()),
-  )
+  for (const outcome of outcomes) {
+    const source = kindOf.get(outcome.sourceId)
+    if (!outcome.ok && source?.kind === SkillSourceKind.Github) {
+      unreachable.add(`${source.owner}/${source.repo}`.toLowerCase())
+    }
+  }
   options.onProgress?.(`${candidates.length} candidates, checking audits and GitHub`)
   const usedSlugs = new Set(options.known.map((skill) => skill.slug))
   const auditCache = new Map<string, Record<string, Record<string, unknown>> | null>()
@@ -296,7 +313,15 @@ export async function searchSkills(options: SearchOptions): Promise<SearchResult
       record.eligible = true
       record.ineligibleReason = null
     } catch (error) {
-      if (!(error instanceof SkipError)) throw error
+      if (!(error instanceof SkipError)) {
+        // An untrusted skill still stops the run: a GitHub outage must never unlist it. A
+        // trusted one comes from a list of other publishers' repositories (Smithery, a
+        // marketplace): one that GitHub refuses must not stop every run.
+        if (!record.trusted) throw error
+        report.warnings.push(`${record.slug}: not checked on GitHub (${(error as Error).message})`)
+        if (!record.contentSha) ineligible(record, 'not checked on GitHub yet')
+        continue
+      }
       record.checked = true
       ineligible(record, error.message)
     }
@@ -350,15 +375,19 @@ async function collectCandidates(
   http: Http,
   github: GithubReader,
   report: SearchReport,
+  unreachable: Set<string>,
 ): Promise<{ candidates: Candidate[]; outcomes: SourceOutcome[] }> {
+  // Keyed in lower case: GitHub names are case-insensitive, and sources do not agree on case.
   const knownByRegistryId = new Map<string, KnownSkill>()
   for (const skill of options.known) {
-    if (skill.registryId) knownByRegistryId.set(skill.registryId, skill)
+    if (skill.registryId) knownByRegistryId.set(skill.registryId.toLowerCase(), skill)
     else if (skill.origin === SkillOrigin.Manual) {
       // A manual skill is matched to its registry entry by its GitHub folder.
       const pin = parseGithubTreeUrl(skill.url)
       const folder = pin?.path.split('/').at(-1)
-      if (pin && folder) knownByRegistryId.set(`${pin.owner}/${pin.repo}/${folder}`, skill)
+      if (pin && folder) {
+        knownByRegistryId.set(`${pin.owner}/${pin.repo}/${folder}`.toLowerCase(), skill)
+      }
     }
   }
 
@@ -367,20 +396,26 @@ async function collectCandidates(
   for (const source of options.sources) {
     if (source.kind === SkillSourceKind.SkillsSh) {
       outcomes.push(await searchSkillsSh(options, http, report, source, byId, knownByRegistryId))
-    } else if (!options.recheck) {
-      outcomes.push(await listRepository(github, report, source, byId, knownByRegistryId))
+      continue
     }
+    if (options.recheck) continue
+    const listing: Listing = { source, byId, knownByRegistryId, report, kept: new Set() }
+    outcomes.push(
+      source.kind === SkillSourceKind.Smithery
+        ? await listSmithery(http, listing)
+        : await listRepository(github, http, listing, unreachable),
+    )
   }
   if (outcomes.length > 0 && outcomes.every((outcome) => !outcome.ok)) {
     throw new Error('Every source failed: nothing was changed')
   }
   for (const skill of options.known) {
-    if (!skill.registryId || byId.has(skill.registryId)) continue
+    if (!skill.registryId || byId.has(skill.registryId.toLowerCase())) continue
     if (!options.recheck) {
       if (skill.origin !== SkillOrigin.Search || !skill.eligible || skill.blocked) continue
     }
     const [owner, repo, ...rest] = skill.registryId.split('/')
-    byId.set(skill.registryId, {
+    byId.set(skill.registryId.toLowerCase(), {
       registryId: skill.registryId,
       source: `${owner}/${repo}`,
       slug: rest.at(-1) ?? skill.slug,
@@ -393,17 +428,19 @@ async function collectCandidates(
       foundBy: [],
     })
   }
-  const githubIds = new Set(
+  const trusting = new Set(
     options.sources
-      .filter((source) => source.kind === SkillSourceKind.Github)
+      .filter((source) => (TRUSTING_SOURCE_KINDS as readonly string[]).includes(source.kind))
       .map((source) => source.id),
   )
-  const answered = new Set(outcomes.filter((outcome) => outcome.ok).map((item) => item.sourceId))
+  const whole = new Set(
+    outcomes.filter((outcome) => outcome.ok && outcome.complete).map((item) => item.sourceId),
+  )
   for (const candidate of byId.values()) {
-    // A source that did not answer this run still vouches for what it listed before.
+    // A source that did not answer whole this run still vouches for what it listed before.
     candidate.trusted =
-      candidate.foundBy.some((id) => githubIds.has(id)) ||
-      (candidate.known?.trustedBy ?? []).some((id) => githubIds.has(id) && !answered.has(id))
+      candidate.foundBy.some((id) => trusting.has(id)) ||
+      (candidate.known?.trustedBy ?? []).some((id) => trusting.has(id) && !whole.has(id))
   }
   const candidates = [...byId.values()].sort(
     (a, b) => Number(b.trusted) - Number(a.trusted) || b.installs - a.installs,
@@ -432,7 +469,8 @@ async function searchSkillsSh(
       continue
     }
     for (const hit of hits) {
-      const candidate = byId.get(hit.id) ?? {
+      const key = hit.id.toLowerCase()
+      const candidate = byId.get(key) ?? {
         registryId: hit.id,
         source: hit.source,
         slug: hit.id.split('/').at(-1) ?? hit.id,
@@ -441,13 +479,13 @@ async function searchSkillsSh(
         affinities: [],
         topics: [],
         seen: true,
-        known: knownByRegistryId.get(hit.id),
+        known: knownByRegistryId.get(key),
         foundBy: [],
       }
       if (item.affinity) candidate.affinities = mergeAffinities(candidate.affinities, item.affinity)
       if (!candidate.topics.includes(item.topic)) candidate.topics.push(item.topic)
       if (!candidate.foundBy.includes(source.id)) candidate.foundBy.push(source.id)
-      byId.set(hit.id, candidate)
+      byId.set(key, candidate)
     }
   }
   const all = options.plan.length > 0 && failed === options.plan.length
@@ -459,72 +497,271 @@ async function searchSkillsSh(
   }
 }
 
+/** What one listing source (a repository, Smithery) has listed so far this run. */
+type Listing = {
+  source: SearchSource
+  byId: Map<string, Candidate>
+  knownByRegistryId: Map<string, KnownSkill>
+  report: SearchReport
+  /** Lower-case registry ids listed, at most `SKILL_SOURCE_LIMITS.skillsPerSource`. */
+  kept: Set<string>
+  full?: boolean
+}
+
+/** Lists one `SKILL.md` folder of `repository`; false once the source holds all it may. */
+function listFolder(listing: Listing, repository: string, folder: string): boolean {
+  const max = SKILL_SOURCE_LIMITS.skillsPerSource
+  const slug = folder.split('/').at(-1) as string
+  const registryId = `${repository}/${slug}`
+  const key = registryId.toLowerCase()
+  if (listing.kept.has(key)) {
+    listing.report.warnings.push(`${repository}: two folders named ${slug}, ${folder} left out`)
+    return true
+  }
+  if (listing.kept.size >= max) {
+    if (!listing.full) {
+      listing.report.warnings.push(
+        `${sourceName(listing.source)}: more than ${max} skills, the first ${max} kept`,
+      )
+    }
+    listing.full = true
+    return false
+  }
+  listing.kept.add(key)
+  const id = listing.source.id
+  const found = listing.byId.get(key)
+  if (found) {
+    if (!found.foundBy.includes(id)) found.foundBy.push(id)
+    found.folder = folder
+    return true
+  }
+  const known = listing.knownByRegistryId.get(key)
+  listing.byId.set(key, {
+    registryId,
+    source: repository,
+    slug,
+    name: slug,
+    installs: known?.installs ?? 0,
+    affinities: [...(known?.affinities ?? [])],
+    topics: [...(known?.topics ?? [])],
+    seen: true,
+    known,
+    foundBy: [id],
+    folder,
+  })
+  return true
+}
+
+function sourceName(source: SearchSource): string {
+  return source.kind === SkillSourceKind.Smithery ? 'smithery.ai' : `${source.owner}/${source.repo}`
+}
+
 /**
- * Every `SKILL.md` folder of a trusted repository under its `path`, in path order, at most
+ * Every `SKILL.md` folder of a trusted repository under its `path`, in path order, or, at its root
+ * with a `marketplace.json`, the skills of the plugins it lists. At most
  * `SKILL_SOURCE_LIMITS.skillsPerSource`. A repository that is archived or not openly licensed
  * answers with nothing listed; any other failure is the source failing.
  */
 async function listRepository(
   github: GithubReader,
-  report: SearchReport,
-  source: SearchSource,
-  byId: Map<string, Candidate>,
-  knownByRegistryId: Map<string, KnownSkill>,
+  http: Http,
+  listing: Listing,
+  unreachable: Set<string>,
 ): Promise<SourceOutcome> {
+  const { source, report } = listing
   let snapshot: RepoSnapshot
+  let complete = true
   try {
     snapshot = await github.repo(source.owner ?? '', source.repo ?? '')
+    const hasMarketplace = snapshot.entries.some(
+      (entry) => entry.type === 'blob' && entry.path === MARKETPLACE_FILE,
+    )
+    if (!source.path && hasMarketplace) {
+      complete = await listMarketplace(github, http, listing, snapshot, unreachable)
+      const error = complete ? null : 'some listed repositories were not read'
+      return { sourceId: source.id, ok: true, complete, error }
+    }
   } catch (error) {
     const message = (error as Error).message
     report.warnings.push(`source ${source.owner}/${source.repo}: ${message}`)
     return { sourceId: source.id, ok: error instanceof SkipError, complete: true, error: message }
   }
   // Ids use the repository's own name, as skills.sh does: `ACME/Skills` is `acme/skills`.
-  const name = snapshot.fullName
-  const prefix = source.path ? `${source.path}/` : ''
-  const folders = snapshot.entries
-    .filter(
-      (entry) =>
-        entry.type === 'blob' && entry.path.startsWith(prefix) && entry.path.endsWith('/SKILL.md'),
-    )
-    .map((entry) => entry.path.slice(0, -'/SKILL.md'.length))
-    .sort()
-  const max = SKILL_SOURCE_LIMITS.skillsPerSource
-  const slugs = new Set<string>()
-  for (const folder of folders) {
-    const slug = folder.split('/').at(-1) as string
-    if (slugs.has(slug)) {
-      report.warnings.push(`${name}: two folders named ${slug}, ${folder} left out`)
-      continue
-    }
-    if (slugs.size >= max) {
-      report.warnings.push(`${name}: more than ${max} skills, the first ${max} kept`)
-      break
-    }
-    slugs.add(slug)
-    const registryId = `${name}/${slug}`
-    const found = byId.get(registryId)
-    if (found) {
-      found.foundBy.push(source.id)
-      found.folder = folder
-      continue
-    }
-    const known = knownByRegistryId.get(registryId)
-    byId.set(registryId, {
-      registryId,
-      source: name,
-      slug,
-      name: slug,
-      installs: known?.installs ?? 0,
-      affinities: [...(known?.affinities ?? [])],
-      topics: [...(known?.topics ?? [])],
-      seen: true,
-      known,
-      foundBy: [source.id],
-      folder,
-    })
+  for (const folder of skillFolders(snapshot.entries, [source.path ?? ''], true)) {
+    if (!listFolder(listing, snapshot.fullName, folder)) break
   }
   return { sourceId: source.id, ok: true, complete: true, error: null }
+}
+
+/**
+ * The `SKILL.md` folders under `roots`, in path order: at any depth with `deep`, else a root that
+ * is a skill itself or holds skills one level down (how a plugin's `skills` are laid out).
+ */
+function skillFolders(entries: RepoSnapshot['entries'], roots: string[], deep = false): string[] {
+  const folders = new Set<string>()
+  for (const entry of entries) {
+    if (entry.type !== 'blob' || !entry.path.endsWith('/SKILL.md')) continue
+    const folder = entry.path.slice(0, -'/SKILL.md'.length)
+    const parent = folder.includes('/') ? folder.slice(0, folder.lastIndexOf('/')) : ''
+    const listed = roots.some((root) =>
+      deep
+        ? root === '' || folder === root || folder.startsWith(`${root}/`)
+        : folder === root || parent === root,
+    )
+    if (listed) folders.add(folder)
+  }
+  return [...folders].sort()
+}
+
+/** `a/./b/` as `a/b`; null when it leaves its root (`..`). */
+function joinPath(...parts: string[]): string | null {
+  const segments = parts
+    .join('/')
+    .split('/')
+    .filter((segment) => segment !== '' && segment !== '.')
+  return segments.includes('..') ? null : segments.join('/')
+}
+
+type MarketplacePlugin = { name?: unknown; source?: unknown; skills?: unknown }
+
+/**
+ * Lists the skills of the plugins a trusted marketplace lists: a plugin of the repository itself,
+ * or of another GitHub repository (at most `SKILL_SOURCE_LIMITS.marketplaceRepos`), whose
+ * publisher the marketplace vouches for. A plugin's skills are its `skills` entries, else its
+ * `skills/` folder. Answers whether every listed repository could be read.
+ */
+async function listMarketplace(
+  github: GithubReader,
+  http: Http,
+  listing: Listing,
+  snapshot: RepoSnapshot,
+  unreachable: Set<string>,
+): Promise<boolean> {
+  const { report } = listing
+  const label = snapshot.fullName
+  const body = (await http.json(
+    `${GITHUB_RAW}/${snapshot.fullName}/${snapshot.commit}/${MARKETPLACE_FILE}`,
+  )) as { plugins?: unknown; metadata?: { pluginRoot?: unknown } }
+  const plugins = (Array.isArray(body.plugins) ? body.plugins : []) as MarketplacePlugin[]
+  const pluginRoot = typeof body.metadata?.pluginRoot === 'string' ? body.metadata.pluginRoot : ''
+  let complete = true
+  const elsewhere = new Set<string>()
+  let skipped = 0
+  for (const plugin of plugins) {
+    const where = pluginLocation(plugin.source, pluginRoot, snapshot.fullName)
+    if (!where) {
+      skipped += 1
+      continue
+    }
+    let tree = snapshot
+    if (where.repository) {
+      // Repositories, not plugins: a monorepo of many plugins counts once.
+      const key = where.repository.toLowerCase()
+      if (!elsewhere.has(key) && elsewhere.size >= SKILL_SOURCE_LIMITS.marketplaceRepos) {
+        report.warnings.push(
+          `${label}: more than ${SKILL_SOURCE_LIMITS.marketplaceRepos} other repositories, the rest left out`,
+        )
+        complete = false
+        break
+      }
+      elsewhere.add(key)
+      const [owner, repo] = where.repository.split('/') as [string, string]
+      try {
+        tree = await github.repo(owner, repo)
+      } catch (error) {
+        report.warnings.push(`${label}: plugin ${String(plugin.name)}: ${(error as Error).message}`)
+        if (!(error instanceof SkipError)) {
+          complete = false
+          unreachable.add(where.repository.toLowerCase())
+        }
+        continue
+      }
+    }
+    const entries = Array.isArray(plugin.skills)
+      ? plugin.skills
+      : typeof plugin.skills === 'string'
+        ? [plugin.skills]
+        : ['skills']
+    const roots = entries.flatMap((entry) => {
+      const root = typeof entry === 'string' ? joinPath(where.dir, entry) : null
+      return root === null ? [] : [root]
+    })
+    for (const folder of skillFolders(tree.entries, roots)) {
+      if (!listFolder(listing, tree.fullName, folder)) return complete
+    }
+  }
+  if (skipped > 0) report.warnings.push(`${label}: ${skipped} plugins not on GitHub left out`)
+  return complete
+}
+
+/**
+ * Where a plugin entry's `source` is: a folder of the marketplace's repository (`repository`
+ * null), or of another GitHub repository. Null for any other kind (npm, an archive, a command).
+ */
+function pluginLocation(
+  source: unknown,
+  pluginRoot: string,
+  marketplace: string,
+): { repository: string | null; dir: string } | null {
+  const local = (dir: string | null) => (dir === null ? null : { repository: null, dir })
+  if (typeof source === 'string') {
+    if (source === '.' || source.startsWith('./')) return local(joinPath(source))
+    return pluginRoot && !source.includes('/') ? local(joinPath(pluginRoot, source)) : null
+  }
+  if (!source || typeof source !== 'object') return null
+  const { source: kind, repo, url, path } = source as Record<string, unknown>
+  const address = kind === 'github' ? repo : kind === 'url' || kind === 'git-subdir' ? url : null
+  const match =
+    typeof address === 'string'
+      ? /^(?:https:\/\/github\.com\/)?([A-Za-z0-9-]+)\/([A-Za-z0-9._-]+?)(?:\.git)?\/?$/.exec(
+          address,
+        )
+      : null
+  if (!match) return null
+  const repository = `${match[1]}/${match[2]}`
+  const dir = kind === 'git-subdir' ? joinPath(typeof path === 'string' ? path : '') : ''
+  if (dir === null) return null
+  return {
+    repository: repository.toLowerCase() === marketplace.toLowerCase() ? null : repository,
+    dir,
+  }
+}
+
+/**
+ * Smithery's top skills, in its own order (at most `SKILL_SOURCE_LIMITS.smitheryPages` pages):
+ * only those of a verified publisher scoring at least `SMITHERY_GATE.minQualityScore`, in a
+ * GitHub folder. Its search cannot be relied on, so it is listed, not searched.
+ */
+async function listSmithery(http: Http, listing: Listing): Promise<SourceOutcome> {
+  const sourceId = listing.source.id
+  for (let page = 1; page <= SKILL_SOURCE_LIMITS.smitheryPages; page++) {
+    let body: { skills?: unknown; pagination?: { totalPages?: unknown } }
+    try {
+      body = (await http.json(`${SMITHERY_API}/skills?pageSize=100&page=${page}`)) as typeof body
+      if (!Array.isArray(body.skills)) throw new Error('unexpected response')
+    } catch (error) {
+      const message = (error as Error).message
+      listing.report.warnings.push(`source smithery.ai, page ${page}: ${message}`)
+      return page === 1
+        ? { sourceId, ok: false, complete: true, error: message }
+        : { sourceId, ok: true, complete: false, error: `page ${page} failed` }
+    }
+    const skills = body.skills as Record<string, unknown>[]
+    for (const skill of skills) {
+      const score = skill.qualityScore
+      if (skill.verified !== true) continue
+      if (typeof score !== 'number' || score < SMITHERY_GATE.minQualityScore) continue
+      const pin = parseGithubTreeUrl(typeof skill.gitUrl === 'string' ? skill.gitUrl : '')
+      const folder = pin ? joinPath(pin.path) : null
+      if (!pin || !folder) continue
+      if (!listFolder(listing, `${pin.owner}/${pin.repo}`, folder)) {
+        return { sourceId, ok: true, complete: true, error: null }
+      }
+    }
+    const pages = body.pagination?.totalPages
+    if (skills.length === 0 || (typeof pages === 'number' && page >= pages)) break
+  }
+  return { sourceId, ok: true, complete: true, error: null }
 }
 
 /** A slot or diagram affinity is added once; values and kinds of the same one are merged. */
@@ -880,6 +1117,11 @@ export class Http {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     })
     if (response.status === 404) throw new SkipError(`not found: ${new URL(url).pathname}`)
+    // A renamed or moved repository: its registry entry is out of date, not GitHub down. Only
+    // GitHub's API: elsewhere (skills.sh's audits) a redirect is a failure, never "not found".
+    if (url.startsWith(GITHUB_API) && response.status >= 300 && response.status < 400) {
+      throw new SkipError(`moved: ${new URL(url).pathname}`)
+    }
     if (!response.ok) throw new Error(`${response.status} from ${new URL(url).host}`)
     return response.json()
   }

@@ -1212,7 +1212,7 @@ export const en = {
       open: 'Sources',
       title: 'Where the catalog finds skills',
       description:
-        'The weekly search reads every source switched on. A repository you add is trusted: its skills need no installs or audit to be suggested, but every copy is still scanned and approved by you before anyone installs it.',
+        'The weekly search reads every source switched on. A repository you add is trusted, and so is what Smithery lists (only verified publishers with a good quality score): their skills need no installs or audit to be suggested, but every copy is still scanned and approved by you before anyone installs it.',
       loadFailed: 'The sources could not be loaded.',
       trusted: 'Trusted repository',
       registry: 'Registry',
@@ -1229,7 +1229,7 @@ export const en = {
       deleteFailed: 'The source could not be removed.',
       addTitle: 'Trust a GitHub repository',
       addHelp:
-        'Every folder holding a SKILL.md is listed, at most 100. Name a folder to read only what is under it. The next search reads it.',
+        'Every folder holding a SKILL.md is listed, at most 100. A repository with a .claude-plugin/marketplace.json is read as that marketplace says, the plugins it lists from other repositories included. Name a folder to read only what is under it. The next search reads it.',
       owner: 'Owner',
       repo: 'Repository',
       path: 'Folder (optional)',
@@ -3061,7 +3061,7 @@ export const fr: Messages = {
       open: 'Sources',
       title: 'Où le catalogue trouve les skills',
       description:
-        'La recherche hebdomadaire lit chaque source activée. Un dépôt que vous ajoutez est de confiance : ses skills n’ont besoin ni d’installations ni d’audit pour être suggérés, mais chaque copie reste analysée puis approuvée par vous avant toute installation.',
+        'La recherche hebdomadaire lit chaque source activée. Un dépôt que vous ajoutez est de confiance, tout comme ce que liste Smithery (seulement des éditeurs vérifiés avec une bonne note de qualité) : leurs skills n’ont besoin ni d’installations ni d’audit pour être suggérés, mais chaque copie reste analysée puis approuvée par vous avant toute installation.',
       loadFailed: 'Les sources n’ont pas pu être chargées.',
       trusted: 'Dépôt de confiance',
       registry: 'Registre',
@@ -3078,7 +3078,7 @@ export const fr: Messages = {
       deleteFailed: 'La source n’a pas pu être retirée.',
       addTitle: 'Faire confiance à un dépôt GitHub',
       addHelp:
-        'Chaque dossier qui contient un SKILL.md est listé, 100 au plus. Indiquez un dossier pour ne lire que ce qu’il contient. La prochaine recherche le lit.',
+        'Chaque dossier qui contient un SKILL.md est listé, 100 au plus. Un dépôt qui a un .claude-plugin/marketplace.json est lu comme ce marketplace l’indique, y compris les plugins qu’il cite dans d’autres dépôts. Indiquez un dossier pour ne lire que ce qu’il contient. La prochaine recherche le lit.',
       owner: 'Propriétaire',
       repo: 'Dépôt',
       path: 'Dossier (facultatif)',
