@@ -28,9 +28,10 @@ export type HarborProcess = {
  * Harbor or reach E2B or a provider. The child is started without a shell, in a process group of
  * its own (so a kill reaches every process it started), with exactly the environment it is given:
  * the caller adds the E2B settings and the credential there, under `credentialEnvName`, and
- * nowhere else. Harbor's own classes then hand the key to the agent's command on its standard
- * input only (record, section 5, fix g). Its output is not read: what Harbor writes is read from
- * its job folder, filtered.
+ * nowhere else. Our Harbor classes then write the key to a file the agent's command reads and
+ * removes first thing (`exec_with_secret`, record, section 5, fix g): never a command line, an
+ * environment or a standard input. Its output is not read: what Harbor writes is read from its
+ * job folder, filtered.
  */
 export default class HarborRunner {
   async load(): Promise<HarborModule> {
