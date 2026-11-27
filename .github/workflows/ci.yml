@@ -99,3 +99,22 @@ jobs:
         env:
           E2B_API_KEY: ci-placeholder
         run: docker compose -f infra/docker-compose.production.yml config --quiet
+
+  # Our Harbor classes (infra/evals/coreloom_harbor): their tests are the only offline proof that
+  # the key reaches the agent's command through a file only (never a command line, an env or a
+  # standard input), that the agent's user cannot become root and that each phase's
+  # network is read back. Built from the worker's own `harbor` stage (Harbor from its hash-locked
+  # lock, no API build, no Claude Code), run as `node`. About 45 s (31 s build, 12 s tests).
+  harbor-classes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Harbor and our classes, as the worker installs them
+        run: docker build --file apps/api/Dockerfile --target harbor --tag coreloom-harbor-tests .
+
+      - name: Run the classes' tests as node
+        run: >-
+          docker run --rm --volume "$PWD/infra/evals:/src:ro" --workdir /src
+          --env PYTHONDONTWRITEBYTECODE=1 --entrypoint /opt/harbor/bin/python
+          coreloom-harbor-tests -m unittest discover -s coreloom_harbor/tests -t .

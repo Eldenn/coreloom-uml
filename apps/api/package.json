@@ -14,6 +14,7 @@
     "queue:work": "node ace queue:work --queues=default --queues=code-maps",
     "queue:scan": "QUEUE_PORT=9010 node ace queue:work --queues=skill-scans",
     "queue:tag": "QUEUE_PORT=9011 node ace queue:work --queues=skill-topics",
+    "queue:evals": "QUEUE_PORT=9012 node ace queue:work --queues=convention-evals",
     "migration:run": "node ace migration:run",
     "migration:rollback": "node ace migration:rollback",
     "db:seed": "node ace db:seed"

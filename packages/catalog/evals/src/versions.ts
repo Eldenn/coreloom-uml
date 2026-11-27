@@ -1,8 +1,9 @@
 /**
  * The exact versions a trial runs with. Harbor is not a dependency of the workspace: it is a
- * Python tool pinned at `HARBOR_VERSION` in the evals image (`infra/evals/Dockerfile`), which runs
- * the trials. Each agent's CLI is installed in the trial's image at the version below (Harbor's
- * `--ak version=<version>`), the same one CI loads the rendered files into; a test keeps them equal.
+ * Python tool pinned at `HARBOR_VERSION` in the `convention-evals` worker's image (a stage of
+ * `apps/api/Dockerfile`, from `infra/evals/requirements.lock`), which runs the trials. Each agent's
+ * CLI is in that agent's E2B template (`infra/evals/templates/<agent>/`) at the version below, the
+ * same one CI loads the rendered files into; a test keeps them equal.
  */
 export const HARBOR_VERSION = '0.27.0'
 

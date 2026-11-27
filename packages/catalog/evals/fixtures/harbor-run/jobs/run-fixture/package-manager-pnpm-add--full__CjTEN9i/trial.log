@@ -1,0 +1,11 @@
+Using E2B template harbor-621dd25ac5a4ad3fae0877041c564d31:4284f08f-66b2-4feb-abf7-06a67f6fc25f
+Allowlisting inference host 'api.anthropic.com' for agent 'claude-code' from a best guess; the agent/SDK still selects its default endpoint.
+agent phase network checked: allow_out=['api.anthropic.com'] deny_out=['0.0.0.0/0', '10.0.0.0/8', '100.64.0.0/10', '169.254.0.0/16', '172.16.0.0/12', '192.0.2.0/24', '192.168.0.0/16']
+Agent 'claude-code': automatically applied disable_web_search=True because the rollout network policy is restricted.
+Running command: mkdir -p $CLAUDE_CONFIG_DIR/debug $CLAUDE_CONFIG_DIR/projects/-app $CLAUDE_CONFIG_DIR/shell-snapshots $CLAUDE_CONFIG_DIR/statsig $CLAUDE_CONFIG_DIR/todos $CLAUDE_CONFIG_DIR/skills && if [ -d ~/.claude/skills ]; then cp -r ~/.claude/skills/. $CLAUDE_CONFIG_DIR/skills/ 2>/dev/null || true; fi
+Command outputs captured
+Running command: export PATH="$HOME/.local/bin:$PATH"; claude_code_instruction_0a1dc4d1b0ce471f96805d8d83644d67="$CLAUDE_CODE_INSTRUCTION_0A1DC4D1B0CE471F96805D8D83644D67"; unset CLAUDE_CODE_INSTRUCTION_0A1DC4D1B0CE471F96805D8D83644D67; printf "%s" "$claude_code_instruction_0a1dc4d1b0ce471f96805d8d83644d67" | claude --verbose --output-format=stream-json --max-turns 30 --disallowedTools WebSearch,WebFetch --permission-mode=bypassPermissions --print 2>&1 | tee /logs/agent/claude-code.txt
+Command failed
+Classified failed command as AgentAuthenticationError (pattern: '\\binvalid_api_key\\b|Invalid API key\\b|API key is invalid\\b|Incorrect API key provided\\b|unexpected status 401 Unauthorized\\b')
+Wrote Claude Code trajectory to /runs/fixture/jobs/run-fixture/package-manager-pnpm-add--full__CjTEN9i/agent/trajectory.json
+Collecting main service artifacts

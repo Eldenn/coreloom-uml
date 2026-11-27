@@ -1,0 +1,119 @@
+{
+    "schema_version": 1,
+    "id": "7df7e23a-b4a2-4256-8b84-ba6be0a86e5b",
+    "task_name": "package-manager-pnpm-add--none",
+    "trial_name": "package-manager-pnpm-add--none__Hwi8J7z",
+    "trial_uri": "file:///runs/fixture/jobs/run-fixture/package-manager-pnpm-add--none__Hwi8J7z",
+    "task_id": {
+        "path": "/runs/fixture/tasks/package-manager-pnpm-add--none"
+    },
+    "source": "tasks",
+    "task_checksum": "e60af21385a4b25c222b4905b98ef0e524e84abaa0685c4cb3ec8822bd32bf8c",
+    "config": {
+        "schema_version": 1,
+        "task": {
+            "path": "/runs/fixture/tasks/package-manager-pnpm-add--none",
+            "git_url": null,
+            "git_commit_id": null,
+            "name": null,
+            "ref": null,
+            "overwrite": false,
+            "download_dir": null,
+            "source": "tasks"
+        },
+        "trial_name": "package-manager-pnpm-add--none__Hwi8J7z",
+        "trials_dir": "/runs/fixture/jobs/run-fixture",
+        "install_only": false,
+        "timeout_multiplier": 1.0,
+        "agent_timeout_multiplier": null,
+        "verifier_timeout_multiplier": null,
+        "agent_setup_timeout_multiplier": null,
+        "environment_build_timeout_multiplier": null,
+        "agent": {
+            "name": "oracle",
+            "import_path": null,
+            "model_name": null,
+            "base_url": null,
+            "model_api_key_name": null,
+            "model_api_format": null,
+            "skip_model_parsing": false,
+            "n_concurrent": null,
+            "concurrency_group": null,
+            "skills": [],
+            "override_timeout_sec": null,
+            "override_setup_timeout_sec": null,
+            "max_timeout_sec": null,
+            "resume_trajectory": false,
+            "load_trajectory": null,
+            "extra_allowed_hosts": [],
+            "kwargs": {},
+            "mcp_servers": []
+        },
+        "user_agent": null,
+        "environment": {
+            "type": null,
+            "import_path": "coreloom_harbor.environment:ConventionEvalsE2BEnvironment",
+            "force_build": false,
+            "delete": true,
+            "stream": false,
+            "cpu_enforcement_policy": "auto",
+            "memory_enforcement_policy": "auto",
+            "override_cpus": null,
+            "override_memory_mb": null,
+            "override_storage_mb": null,
+            "override_gpus": null,
+            "override_tpu": null,
+            "mounts": null,
+            "extra_docker_compose": [],
+            "kwargs": {
+                "sandbox_timeout_sec": 300,
+                "renew_interval_sec": 60,
+                "provider_host": "api.anthropic.com",
+                "coreloom_run": "live-1795759277539",
+                "coreloom_account": 1
+            },
+            "extra_allowed_hosts": []
+        },
+        "verifier": {
+            "override_timeout_sec": null,
+            "max_timeout_sec": null,
+            "disable": true
+        },
+        "override_error_policy": {},
+        "artifacts": [],
+        "extra_instruction_paths": [],
+        "extra_instructions": [],
+        "job_id": "e5d049af-ce82-4368-985b-5db26ad7a1ef",
+        "source_trial": null
+    },
+    "agent_info": {
+        "name": "oracle",
+        "version": "1.0.0",
+        "model_info": null
+    },
+    "agent_result": null,
+    "verifier_result": null,
+    "verifier_environment_mode": "shared",
+    "exception_info": {
+        "exception_type": "SandboxException",
+        "exception_message": "500: Failed to place sandbox: this node cannot allocate 1024 MiB of guest memory in hugepages",
+        "exception_traceback": "Traceback (most recent call last):\n  File \"/opt/harbor/lib/python3.12/site-packages/harbor/trial/trial.py\", line 613, in run\n    await self._prepare()\n  File \"/opt/harbor/lib/python3.12/site-packages/harbor/trial/trial.py\", line 656, in _prepare\n    await self._setup_agent_environment()\n  File \"/opt/harbor/lib/python3.12/site-packages/harbor/trial/trial.py\", line 1879, in _setup_agent_environment\n    await self._start_agent_environment()\n  File \"/opt/harbor/lib/python3.12/site-packages/harbor/trial/trial.py\", line 1885, in _start_agent_environment\n    await asyncio.wait_for(\n  File \"/opt/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/tasks.py\", line 520, in wait_for\n    return await fut\n           ^^^^^^^^^\n  File \"/opt/harbor/lib/python3.12/site-packages/harbor/environments/e2b.py\", line 1630, in start\n    await self._launch_from_built_template(force_build)\n  File \"/opt/harbor/lib/python3.12/site-packages/harbor/environments/e2b.py\", line 1517, in _launch_from_built_template\n    await self._create_sandbox()\n  File \"/opt/harbor/lib/python3.12/site-packages/tenacity/asyncio/__init__.py\", line 232, in async_wrapped\n    return await copy(fn, *args, **kwargs)  # type: ignore[type-var]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/harbor/lib/python3.12/site-packages/tenacity/asyncio/__init__.py\", line 126, in __call__\n    do = await self.iter(retry_state=retry_state)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/harbor/lib/python3.12/site-packages/tenacity/asyncio/__init__.py\", line 171, in iter\n    result = await action(retry_state)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/harbor/lib/python3.12/site-packages/tenacity/_utils.py\", line 130, in inner\n    return call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/harbor/lib/python3.12/site-packages/tenacity/__init__.py\", line 462, in <lambda>\n    self._add_action_func(lambda rs: rs.outcome.result())\n                                     ^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/concurrent/futures/_base.py\", line 449, in result\n    return self.__get_result()\n           ^^^^^^^^^^^^^^^^^^^\n  File \"/opt/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/concurrent/futures/_base.py\", line 401, in __get_result\n    raise self._exception\n  File \"/opt/harbor/lib/python3.12/site-packages/tenacity/asyncio/__init__.py\", line 130, in __call__\n    result = await fn(*args, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/coreloom-pkg/coreloom_harbor/environment.py\", line 134, in _create_sandbox\n    self._sandbox = await harbor_e2b.AsyncSandbox.create(\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/harbor/lib/python3.12/site-packages/e2b/sandbox_async/main.py\", line 235, in create\n    sandbox = await cls._create(\n              ^^^^^^^^^^^^^^^^^^\n  File \"/opt/harbor/lib/python3.12/site-packages/e2b/sandbox_async/main.py\", line 1251, in _create\n    response = await SandboxApi._create_sandbox(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/harbor/lib/python3.12/site-packages/e2b/sandbox_async/sandbox_api.py\", line 267, in _create_sandbox\n    raise handle_api_exception(res)\ne2b.exceptions.SandboxException: 500: Failed to place sandbox: this node cannot allocate 1024 MiB of guest memory in hugepages\n",
+        "occurred_at": "2026-11-27T06:01:51.300416Z",
+        "policy": {
+            "should_retry": true,
+            "should_grade": true,
+            "has_valid_reward": true
+        }
+    },
+    "started_at": "2026-11-27T06:01:51.154624Z",
+    "finished_at": "2026-11-27T06:01:54.336788Z",
+    "environment_setup": {
+        "started_at": "2026-11-27T06:01:51.229692Z",
+        "finished_at": "2026-11-27T06:01:51.296578Z"
+    },
+    "agent_setup": null,
+    "agent_execution": null,
+    "verifier": null,
+    "step_results": null,
+    "reward_valid": false
+}

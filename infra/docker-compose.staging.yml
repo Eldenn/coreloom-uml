@@ -197,8 +197,8 @@ services:
       - './instrumentation.js'
       - 'bin/console.js'
       - 'queue:work'
-      # Every queue but `skill-scans` and `skill-topics`, which only the skill-scanner and the
-      # skill-tagger below can run.
+      # Every queue but `skill-scans`, `skill-topics` and `convention-evals`, which only the
+      # skill-scanner, the skill-tagger and the convention-evals worker below can run.
       - '--queues=default'
       - '--queues=code-maps'
     environment:
@@ -347,6 +347,67 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
     volumes:
       - 'skill-tagger-models:/models'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Convention evals worker — the API's worker in its own image (stage
+  # `convention-evals` of apps/api/Dockerfile: Debian, Harbor with its E2B extra
+  # from a hash-locked lock, our Harbor classes, Claude Code), listening to the
+  # `convention-evals` queue only. It runs `harbor run -e e2b` for a run of an
+  # account's conventions: each trial in an E2B sandbox, with the account's
+  # saved key or subscription, which it resolves itself (hence the LLM keys'
+  # encrypter). Its own APP_KEY, and none of the GitHub, Drive or mail settings
+  # it never uses. A run's folder (/runs) is a tmpfs and the container may not
+  # swap (memswap_limit equal to mem_limit), since a key sits in Harbor's
+  # process while it runs: the host must not give the container swap another
+  # way either. See infra/evals/README.md.
+  convention-evals:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: convention-evals
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3333'
+      APP_NAME: coreloom-uml-convention-evals-staging
+      LOG_LEVEL: info
+      APP_KEY: '${SERVICE_PASSWORD_64_CONVENTIONEVALSKEY}'
+      FRONTEND_URL: '${SERVICE_URL_WEB}'
+      LLM_KEYS_ENCRYPTION_KEYS: '${LLM_KEYS_ENCRYPTION_KEYS:-}'
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_USER: '${DB_USER:-coreloom_uml}'
+      DB_PASSWORD: '${SERVICE_PASSWORD_POSTGRES}'
+      DB_DATABASE: '${DB_DATABASE:-coreloom_uml_staging}'
+      DB_SSL: 'false'
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      # Required by the API's settings, never used by the worker.
+      SMTP_HOST: mailpit
+      SMTP_PORT: '1025'
+      MAIL_FROM_ADDRESS: no-reply@coreloom-uml.staging
+      E2B_API_KEY: '${E2B_API_KEY:?set E2B_API_KEY (E2B Cloud, or a self-hosted install with E2B_API_URL and E2B_SANDBOX_URL)}'
+      E2B_API_URL: '${E2B_API_URL:-}'
+      E2B_SANDBOX_URL: '${E2B_SANDBOX_URL:-}'
+      CONVENTION_EVALS_DIR: /runs
+      CLAUDE_CODE_HOME: /data/claude
+      OTEL_SERVICE_NAME: coreloom-uml-convention-evals-staging
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
+    # No core dump of Harbor or Claude Code (they hold a key) lands on a disk.
+    ulimits:
+      core: 0
+    tmpfs:
+      - /runs:mode=0700,uid=1000,gid=1000,size=1g,noexec,nosuid,nodev
+      - /data/claude:mode=0700,uid=1000,gid=1000,size=64m,nosuid,nodev
+    mem_limit: 4g
+    memswap_limit: 4g
     depends_on:
       postgres:
         condition: service_healthy

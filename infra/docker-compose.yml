@@ -146,25 +146,71 @@ services:
         condition: service_healthy
 
   # -----------------------------------------------
-  # Agent convention evals — the runner of packages/catalog/evals/ (Harbor, the
-  # agents' CLIs, the Docker client and the catalog, all pinned; see
-  # infra/evals/README.md). Behind a profile; started on its own, it runs the
-  # offline grader tests and checks its own tools, then exits:
-  #   docker compose -f infra/docker-compose.yml --profile evals run --build --rm evals
-  # It gets no env file, no credential and no Docker socket: how it reaches a
-  # Docker daemon and how a trial is paid are the owner's decisions (decision
-  # record, packages/catalog/evals/decision-record.md).
+  # Convention evals worker — the API's worker on the `convention-evals` queue,
+  # in its own image (stage `convention-evals` of apps/api/Dockerfile: Debian,
+  # Harbor and its E2B extra from a hash-locked lock, our Harbor classes, Claude
+  # Code). Each trial runs in a sandbox of the self-hosted E2B install
+  # (infra/e2b/), which it reaches on the host: its URLs are the host's, seen
+  # from the container. Behind a profile:
+  #   docker compose -f infra/docker-compose.yml --env-file apps/api/.env \
+  #     --profile evals up -d convention-evals
+  # A run's folder is a tmpfs, and the container may not swap (memswap_limit
+  # equal to mem_limit): a saved key may be in that folder while Harbor runs.
+  # See infra/evals/README.md.
   # -----------------------------------------------
-  evals:
+  convention-evals:
     profiles: ["evals"]
     build:
       context: ..
-      dockerfile: infra/evals/Dockerfile
-      target: runner
-    image: coreloom-uml-evals:local
-    # Not on the project's network: it has nothing to reach among the other services.
-    network_mode: bridge
-    restart: "no"
+      dockerfile: apps/api/Dockerfile
+      target: convention-evals
+    restart: unless-stopped
+    # Only what the worker needs (security review I6), read from the API's own settings when
+    # Compose is started with them: `--env-file apps/api/.env`. No GitHub, Drive, mail or
+    # default account secret.
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3333'
+      APP_NAME: coreloom-uml-convention-evals
+      LOG_LEVEL: info
+      APP_KEY: '${APP_KEY:?start with --env-file apps/api/.env}'
+      FRONTEND_URL: '${FRONTEND_URL:-http://localhost:5173}'
+      LLM_KEYS_ENCRYPTION_KEYS: '${LLM_KEYS_ENCRYPTION_KEYS:-}'
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_USER: '${DB_USER:?start with --env-file apps/api/.env}'
+      DB_PASSWORD: '${DB_PASSWORD:?start with --env-file apps/api/.env}'
+      DB_DATABASE: '${DB_DATABASE:?start with --env-file apps/api/.env}'
+      # NODE_ENV=production turns TLS on, which the local Postgres does not speak.
+      DB_SSL: 'false'
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      REDIS_PASSWORD: '${REDIS_PASSWORD:-}'
+      # Required by the API's settings, never used by the worker.
+      SMTP_HOST: mailpit
+      SMTP_PORT: '1025'
+      MAIL_FROM_ADDRESS: no-reply@localhost
+      E2B_API_KEY: '${E2B_API_KEY:?start with --env-file apps/api/.env}'
+      E2B_API_URL: http://host.docker.internal:3000
+      E2B_SANDBOX_URL: http://host.docker.internal:3002
+      CONVENTION_EVALS_DIR: /runs
+      CLAUDE_CODE_HOME: /data/claude
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # No core dump of Harbor or Claude Code (they hold a key) lands on a disk (security S2).
+    ulimits:
+      core: 0
+    tmpfs:
+      - /runs:mode=0700,uid=1000,gid=1000,size=1g,noexec,nosuid,nodev
+      - /data/claude:mode=0700,uid=1000,gid=1000,size=64m,nosuid,nodev
+    mem_limit: 4g
+    memswap_limit: 4g
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   # -----------------------------------------------
   # Mailpit — local SMTP catch-all (dev only). Password reset and email

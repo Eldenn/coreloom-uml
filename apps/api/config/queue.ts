@@ -1,6 +1,7 @@
 import { RedisCheck, RedisMemoryUsageCheck } from '@adonisjs/redis'
 import { defineConfig } from '@nemoventures/adonis-jobs'
 import { CODE_MAPS_QUEUE } from '#app/code-maps/constants/code-map'
+import { CONVENTION_EVALS_QUEUE } from '#app/convention-evals/constants/convention-evals'
 import { SKILL_SCANS_QUEUE } from '#app/skills/constants/skill-scan'
 import { SKILL_TOPICS_QUEUE } from '#app/skills/constants/skill-topics'
 
@@ -87,6 +88,14 @@ const queueConfig = defineConfig({
      * run at a time.
      */
     [SKILL_TOPICS_QUEUE]: { globalConcurrency: 1 },
+
+    /**
+     * The convention evals' runs (`harbor run -e e2b`, one child process a run): listened to by
+     * the `convention-evals` worker only (`queue:work --queues=convention-evals`), the one image
+     * holding Harbor. Its trials run in E2B sandboxes, so a run's limit is the install's, not this
+     * machine's: two runs at a time.
+     */
+    [CONVENTION_EVALS_QUEUE]: { globalConcurrency: 2 },
 
     /**
      * Example of a queue with specific connection and options

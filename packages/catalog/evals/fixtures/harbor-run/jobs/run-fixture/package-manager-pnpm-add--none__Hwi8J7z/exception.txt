@@ -1,0 +1,51 @@
+Traceback (most recent call last):
+  File "/opt/harbor/lib/python3.12/site-packages/harbor/trial/trial.py", line 613, in run
+    await self._prepare()
+  File "/opt/harbor/lib/python3.12/site-packages/harbor/trial/trial.py", line 656, in _prepare
+    await self._setup_agent_environment()
+  File "/opt/harbor/lib/python3.12/site-packages/harbor/trial/trial.py", line 1879, in _setup_agent_environment
+    await self._start_agent_environment()
+  File "/opt/harbor/lib/python3.12/site-packages/harbor/trial/trial.py", line 1885, in _start_agent_environment
+    await asyncio.wait_for(
+  File "/opt/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/opt/harbor/lib/python3.12/site-packages/harbor/environments/e2b.py", line 1630, in start
+    await self._launch_from_built_template(force_build)
+  File "/opt/harbor/lib/python3.12/site-packages/harbor/environments/e2b.py", line 1517, in _launch_from_built_template
+    await self._create_sandbox()
+  File "/opt/harbor/lib/python3.12/site-packages/tenacity/asyncio/__init__.py", line 232, in async_wrapped
+    return await copy(fn, *args, **kwargs)  # type: ignore[type-var]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/harbor/lib/python3.12/site-packages/tenacity/asyncio/__init__.py", line 126, in __call__
+    do = await self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/harbor/lib/python3.12/site-packages/tenacity/asyncio/__init__.py", line 171, in iter
+    result = await action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/harbor/lib/python3.12/site-packages/tenacity/_utils.py", line 130, in inner
+    return call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/harbor/lib/python3.12/site-packages/tenacity/__init__.py", line 462, in <lambda>
+    self._add_action_func(lambda rs: rs.outcome.result())
+                                     ^^^^^^^^^^^^^^^^^^^
+  File "/opt/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/harbor/lib/python3.12/site-packages/tenacity/asyncio/__init__.py", line 130, in __call__
+    result = await fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/coreloom-pkg/coreloom_harbor/environment.py", line 134, in _create_sandbox
+    self._sandbox = await harbor_e2b.AsyncSandbox.create(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/harbor/lib/python3.12/site-packages/e2b/sandbox_async/main.py", line 235, in create
+    sandbox = await cls._create(
+              ^^^^^^^^^^^^^^^^^^
+  File "/opt/harbor/lib/python3.12/site-packages/e2b/sandbox_async/main.py", line 1251, in _create
+    response = await SandboxApi._create_sandbox(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/harbor/lib/python3.12/site-packages/e2b/sandbox_async/sandbox_api.py", line 267, in _create_sandbox
+    raise handle_api_exception(res)
+e2b.exceptions.SandboxException: 500: Failed to place sandbox: this node cannot allocate 1024 MiB of guest memory in hugepages

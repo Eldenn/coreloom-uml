@@ -155,6 +155,12 @@ the proxy being rejected. The rule below is a proposal.
 `SECRET_PATTERNS` does not exist yet: it is the list of key shapes (Anthropic, OpenAI, E2B, GitHub
 tokens) the filter looks for beside the exact value, written with the filter (ticket 4).
 
+How the key reaches the agent changed after this wording was validated (row g of the table
+below): never as an env of the agent's command, its command line or its standard input, all of
+which envd logs, but through a file written with E2B's file upload, which that command reads and
+removes at once. The amended sentences are proposed to the owner; until they are validated, row g is what
+the code does.
+
 Other AGENTS.md sentences that change with it:
 - The general key rule ("never returned, logged, traced or put in an error, a job's data, Redis
   or a sandbox") ends with "or a sandbox (but the convention tests, below)", so the two rules do
@@ -169,12 +175,21 @@ Other AGENTS.md sentences that change with it:
 
 | | What Harbor does (code read, live checks 4 and 5) | What we do |
 |---|---|---|
-| a | `_startup_env` is the task env plus `--ee`: a key there becomes a startup env of the sandbox. Agent credentials (`agent.extra_env`) go per command. | Key through the agent's env only. An environment subclass drops key names from `_startup_env` (Harbor's `superserve.py` does the same). A test of the exporter fails if `task.toml` or the command line names a key variable. |
+| a | `_startup_env` is the task env plus `--ee`: a key there becomes a startup env of the sandbox. Agent credentials (`agent.extra_env`) go per command. | Key to the agent's own command only, through a file it removes at once (row g). An environment subclass drops key names from `_startup_env` (Harbor's `superserve.py` does the same). A test of the exporter fails if `task.toml` or the command line names a key variable. |
 | b | Its `config.json` files serialise env through `templatize_sensitive_env`: `${KEY}` when the value equals its own `os.environ` (check 4: the fake value was in no file of the job folder), else a partial redaction (first 4 and last 3 characters). | The key is in Harbor's process env only, never a literal value. The filter reads the written JSON too. |
-| c | The built-in Codex agent writes `$CODEX_HOME/auth.json` holding `OPENAI_API_KEY` (check 5). | An agent subclass running `codex exec` with `CODEX_API_KEY` per command, no auth file; a test lists `$CODEX_HOME` after a trial. |
+| c | The built-in Codex agent writes `$CODEX_HOME/auth.json` holding `OPENAI_API_KEY` (check 5). | An agent subclass running `codex exec` with `CODEX_API_KEY` from a file it removes at once (row g), no auth file; a test lists `$CODEX_HOME` after a trial. |
 | d | The job folder holds `trial.log`, `job.log`, the agent's output, sessions, trajectories and the verifier's output, written before we can filter. | Per-run tmpfs, filtered from there, removed in a `finally`; stale folders purged at worker start. |
 | e | `add_inference_hosts` adds the agent's inference host by itself; a task's allowlist can widen egress. | The environment subclass asserts the final policy equals `[provider host]` before the agent phase, else the trial fails. |
 | f | Only `harbor.job_id` and `harbor.trial_name` as metadata; `stop()` treats a failed kill as a warning. | The subclass adds `coreloom.purpose=convention-evals` and `coreloom.account=<id>`; after the run the worker kills whatever E2B still lists with the run's `harbor.job_id`; the sweep of section 7 catches the rest. |
+| g | Every command starts through envd's `Process/Start`, which envd logs with the command line and its `envs` in full; the line is shipped to the install's collector (192.0.2.1, then ClickHouse `sandbox_logs`) whatever the egress policy (ticket 7: an earlier Harbor run with a fake key left `ANTHROPIC_API_KEY=<value>` in 2 rows). Harbor passes the agent's key as an env of its command (`exec(env=)`), and of Claude's setup command too. envd also logs every `Process/SendInput` at INFO with the bytes sent (base64): a command's standard input is logged too. Its file upload is logged with the path and the user, not the content. | The key is never in a command's `envs`, its command line nor its standard input. The agent classes start the agent's own command through `exec_with_secret` of our environment: as `node`, a fixed command makes `/home/node/.coreloom-secret` a real folder of `node`'s, mode 0700 (the upload creates files 0644), with no file at `key`; the key is written to `/home/node/.coreloom-secret/key` with the SDK's `files.write(path, value, user="node")` (e2b 2.66.0, which has no mode argument); then the command's fixed line reads it, removes it before anything else and fails (exit 97, the command not run) unless the file is gone and the value is there: `IFS= read -r ANTHROPIC_API_KEY 2> /dev/null < <file>; status=$?; rm -f -- <file>; [ ! -e <file> ] \|\| exit 97; …; export ANTHROPIC_API_KEY; exec 0</dev/null; …` (`CODEX_API_KEY` for Codex). Fail closed: nothing is written when the folder cannot be prepared, nothing runs when the write fails, and once the command is over or failed to start a fixed command removes the file and checks it is gone, else the trial fails. By value, the key is refused in any later command line or env (`_refuse_secret`). Our `_dispatch_command`, which every other command goes through, drops every credential name from its envs. Tests: no command's envs, line or standard input holds the key, it is in the one upload of its file only; the fixed line, run by bash on a temporary file, sets the variable in a child of the command and leaves no file; live: the fake key in 0 rows of `sandbox_logs`, as is and in base64 at each alignment, while an env canary and a standard input control of the same sandbox are found (section 13, round 4). |
+
+E2B's template builder also adds a user `user` with passwordless sudo to every template, and
+leaves root's and its password empty: in our templates the agent's user `node` could `su` to root
+without a password (seen live, section 13). At setup, as root, our environment class locks every
+empty password and clears every set-user-id and set-group-id bit of the root file system, then
+checks as `node` that `sudo -n true` and `su` to `root` or `user` fail, that no set-id file is
+left and that no root process's environment is readable, and as root that `node` has no group or
+sudoers entry of root's; else the trial fails.
 
 Not observed yet: whether the key persists inside the sandbox after the agent phase (check 4
 stopped at an authentication error, so no verifier ran). A pilot task asking the agent to print
@@ -357,11 +372,138 @@ What works (live checks of 2026-11-27, no model call):
 What does not: disk (check 3). The install keeps about 931 MB of root disk per sandbox; a template
 with Claude Code, curl, git and procps did not build ("No space left on device"), Claude Code alone
 on node slim did. So one small template per agent (Node slim, git, pnpm, that agent's CLI), built
-from the `agent` stage; whether Codex's template fits is unchecked (ticket 2). The other way is a
-larger disk on the install, an operational change of the vendored `infra/e2b/` (open: the owner
-decides, only if a template does not fit).
+from the `agent` stage. The other way is a larger disk on the install, an operational change of
+the vendored `infra/e2b/` (open: the owner decides, only if a template does not fit).
+
+Tickets 1 to 3, live on the local install (2026-11-27, `#147`; no model credential: Harbor's
+oracle agent, and the real agents with a fake key `sk-ant-api03-CANARYFAKE-…` /
+`sk-proj-CANARYFAKE-…` the providers answered with 401):
+- **Both templates build** in the install (`infra/evals/templates/{claude-code,codex}`), each once
+  for every task of its agent. The sandbox's root file system is 952 MB, of which ext4 reserves
+  256 MB for root: with both templates nothing was left to the `node` user (`cp: No space left on
+  device` in the oracle). The environment class now gives those blocks back at setup
+  (`tune2fs -r 0`), and the templates were trimmed (git's Perl and manual removed, no install
+  script, npm's cache in `/dev/shm`, Codex's voice host removed). Free disk then: Claude Code
+  720 MB used, 216 MB free; Codex 783 MB used, 153 MB free. Codex fits; no larger disk needed.
+- **Memory**: the install's host holds sandboxes in huge pages; with 2 GB per sandbox the
+  template build failed (`Internal VMM error … Device not found`) and three trials at once were
+  refused (`Failed to place sandbox: this node cannot allocate … in hugepages`). Sandboxes now have
+  1 GB (`SANDBOX_RESOURCES`), and the environment class tries a refused creation again while room
+  frees up: seen once in the last run, which then passed.
+- **Oracle**: every exported task passes, both graders, in both templates (8 trials each,
+  `harbor run --agent oracle -e coreloom_harbor.environment:ConventionEvalsE2BEnvironment
+  --n-concurrent 3`, the final workspace downloaded as the `/work` artifact and graded from
+  `readHarborJob`).
+- **Fake key, Claude Code** (`package-manager-pnpm-add--full`): 401, `AgentAuthenticationError`;
+  the value in no file of the job folder (`grep -r` of the whole run folder: only the command file
+  of the test harness); the policy read back before the agent started was `allow_out =
+  ['api.anthropic.com']`, `deny_out` = `0.0.0.0/0` plus `RESEARCH_DENIED_RANGES`,
+  `169.254.0.0/16`, `192.0.2.0/24`.
+- **Fake key, Codex** (same task, `api.openai.com`): 401, `AgentAuthenticationError`; the value in
+  no file of the job folder; no `auth.json` anywhere, and the `$CODEX_HOME` listing the agent
+  writes into its logs shows none.
+- **Startup environment**: an oracle whose solution writes `env` out, run with a fake key in the
+  worker's environment, saw no variable holding it and no provider or E2B variable but E2B's own
+  (`E2B_SANDBOX`, `E2B_SANDBOX_ID`, `E2B_TEMPLATE_ID`, `E2B_EVENTS_ADDRESS`), as user `node`.
+- **Cleanup**: after each run, `Sandbox.list` (running and paused) holds no sandbox with
+  `coreloom.purpose=convention-evals`.
+
+Round 2 (2026-11-27, after ticket 7 found envd's logging and the template's `user`):
+- **Key on standard input, fake keys, the install's logs** (the channel replaced in round 4): one
+  trial per agent
+  (`package-manager-pnpm-add--full`), through a scratch subclass of our environment that, before
+  the kill, starts one command with a control canary as an env (`COREL_ENVLOG_CANARY`) and waits
+  40 s for envd to ship. Then `select count() from sandbox_logs where position(raw, '<value>') > 0`
+  in `e2b-clickhouse-1`:
+
+  | Agent (sandbox) | Provider's answer | Fake key rows | Control canary rows | Rows of the sandbox |
+  |---|---|---|---|---|
+  | Claude Code (`itudijvjbw30qxztddl2a`) | 401, "Invalid API key" | 0 | 1 | 109 |
+  | Codex (`i8uv6gxy4fxqlpowve1lg`) | 401, "Incorrect API key provided: sk-proj-***…" | 0 | 1 | 135 |
+
+  The two rows of Claude's sandbox that name `ANTHROPIC_API_KEY` are the fixed line
+  (`IFS= read -r ANTHROPIC_API_KEY || exit 97; …`), with no value. The value is in no file of
+  either job folder, and the Codex trial left no `auth.json`. The 2 rows of the earlier run stay.
+  This count searched the plain value only, so it did not show that standard input is safe:
+  envd logs what is sent there in base64 (`Process/SendInput`), where the plain value never
+  appears. Round 4 replaces the channel and the check.
+- **Agent's user**: before our setup, in both templates, `node` (uid 1000, group `node` only) had
+  no sudo (`sudo -n true`: "a password is required") and could read no root process's
+  environment (0 of 78), but `su -c true root` and `su -c true user` succeeded without a password:
+  E2B's builder adds `user` (uid 1001, group `sudo`, `NOPASSWD: ALL`) and leaves root's and its
+  password empty. After our setup (an oracle whose solution reports as `node`): `sudo` refuses to
+  run ("must be owned by uid 0 and have the setuid bit set"), `su` to `root` and `user`:
+  "Authentication failure", 0 set-id files, 0 readable root environments of 75, `/etc/shadow`
+  unreadable. Same in the Codex template.
+- **Oracle**: every exported task still passes, both graders, in both templates (8 trials each).
+
+Round 3 (2026-11-27, reviews of PR #151), `infra/evals/live-check/run.sh <agent> fake` on the
+rebuilt worker image: Claude Code and Codex each answered 401 (`AgentAuthenticationError`), the
+policy read back `allow_out=['api.anthropic.com']` / `['api.openai.com']`, the no-network phases
+read back and every process of `node` killed after the agent phase (the trial ended normally),
+the fake key in no file of the job folder, no `auth.json`, and `sandbox_logs`: fake key rows=0,
+control canary rows=1, for each (the plain value only, as in round 2: see round 4). Claude Code's `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` (strip its
+credentials from the commands it starts) makes 2.1.322 refuse to start without bubblewrap, which
+the template does not hold: not set (security I4); Codex's `shell_environment_policy` excludes
+`*KEY*`, `*SECRET*`, `*TOKEN*`. A trial's final workspace is untrusted: `readHarborJob` refuses a
+symbolic link or a `.git` file, writes a fixed `.git/config` and drops hooks, attributes and
+alternates, and the workspace is graded in a sandbox only (#148).
+
+Round 4 (2026-11-27, the key's channel): envd logs every `Process/SendInput` at INFO with the
+bytes sent, in base64, into `sandbox_logs`, so the key sent on standard input in rounds 2 and 3
+was logged too; their counts searched the plain value only and could not see it. The key now goes
+through a file (row g: E2B's file upload, logged with the path and the user only; the command's
+fixed line reads it and removes it first), and `live-check/run.sh <agent> fake` searches the fake
+key as is and in base64 at offsets 0, 1 and 2 of a larger base64 blob, against two controls of
+the same sandbox (`envlog_probe.py`): a canary sent as an env, found as is, and a value sent on a
+command's standard input, found in base64. Run with this checkout's classes on the local worker
+image, before the install redacts its logs:
+
+| Agent | Provider's answer | Fake key, as is | base64 at 0 / 1 / 2 | Env canary | Stdin control, base64 (whole / at 0) |
+|---|---|---|---|---|---|
+| Claude Code | 401 (`AgentAuthenticationError`) | 0 | 0 / 0 / 0 | 1 | 1 / 1 |
+| Codex | 401 (`AgentAuthenticationError`) | 0 | 0 / 0 / 0 | 1 | 1 / 1 |
+
+The fake key is in no file of either job folder and the Codex trial left no `auth.json`. In the
+Claude Code run, 8 rows name the key file's path and 2 the fixed read line, with no value, and
+no file of the job folder shows the fixed line's exit 97.
+
+These figures date from before the local install masked its logs (its log collector has kept,
+since 2026-11-27 16:52 UTC, the names of a command's envs and the length of its standard input
+only). On such an install the controls cannot be found by value: `live-check/run.sh` now finds
+the mode by itself (the `[redacted` marker in the probe sandbox's SendInput row), prints it
+(`log mode: plain` or `redacted`), and in the `redacted` mode expects the canary's name with
+`[redacted]`, exactly 1 SendInput row of the probe sandbox carrying `[redacted: `, and 0 rows of
+either control's value, the fake key's checks unchanged. That mode was first exercised with stubbed
+counts only. It then ran once end to end, `run.sh claude-code fake` at aa4b762 on the local install
+that masks its logs: `log mode: redacted`; the fake key in 0 rows as is and in 0 rows in base64 at
+each of its three alignments; the canary's name with its value masked in 1 row; 1 masked SendInput
+row (the control's); 0 rows of either control's value; the trial ended in
+`AgentAuthenticationError` (the provider refused the fake key) and nothing was found leaked.
+
+Whether a real provider key went through standard input before the file channel (the owner's
+check of 2026-11-27, counts only): the local install held 27 SendInput rows, 11 starting with a
+provider key prefix, 4 already masked and 12 other, whose content was never read (the owner only
+counted them); all 27 were purged that day (on the SendInput
+predicate only, 27 to 0, no other row removed). No real provider key was ever used: the owner
+holds none, the dev database holds only test keys a script seeded, and the 11 key-shaped values
+are shorter than real keys of either provider. The hash comparison could not be run, since there
+is no real key to hash: "no real key" rests on those three points, not on a hash match. Nothing
+to rotate.
 
 Residuals, and what ticket 7 must prove for each:
+- **Claude Code's descendants hold the key** (open, not new with the file channel: it was the
+  same on standard input). The fixed line exports the key into the agent's command, so every
+  process it starts inherits it: its Bash tool, the fixture's scripts, npm hooks. Codex filters
+  it out (`shell_environment_policy` excludes `*KEY*`); Claude Code does not, since
+  `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` makes it refuse to start without bubblewrap (security I4).
+  Egress is the provider host only, so what is left is the key written to a workspace or output
+  file, which the job folder's filter must catch (section 5: the exact value, its base64 and the
+  other encoded forms; built with ticket 4, so today only the live check's search of the job
+  folder for the exact value stands), or used against the provider itself (the capped key).
+  Tracked fix: bubblewrap in the Claude Code template, then
+  `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` set, with a live check that a command started by the
+  agent sees no key.
 - **MMDS** (169.254.169.254, Firecracker's metadata service) answers despite deny-all; with a
   token it gives a hash, the envd log address, the env and instance ids, not a token. Not a
   blocker. Prove that it still answers with `169.254.0.0/16` denied (it is served inside
@@ -394,14 +536,16 @@ graders stay.
 ## 14. What PR #143 keeps, changes and drops
 
 - Keeps: the task format, the graders, the two task pairs, the offline tests, the version checks.
-- Changes (later tickets): `requirements.in` becomes `harbor[e2b]==0.27.0` with a new lock (e2b
-  2.66.0); no Docker client, Compose or daemon any more; the `agent` stage becomes the source of
-  the per-agent E2B templates.
-- Drops (later tickets): the standalone `evals` compose service. It becomes the worker
-  `convention-evals`, a stage of `apps/api/Dockerfile` on Debian like `skill-tagger` (Harbor and
-  Python 3.12 from the hash-locked lock, run as `node`), running only `queue:work
-  --queues=convention-evals`, with every other worker naming its queues without it
-  (`config/queue.ts`, the `queue:work` script, the `queue-worker` services).
+- Changed in #147 (tickets 1 to 3): `requirements.in` is `harbor[e2b]==0.27.0` with a new lock
+  (e2b 2.66.0); no Docker client, Compose or daemon any more; the `agent` stage became the two
+  per-agent templates of `infra/evals/templates/`, and `infra/evals/Dockerfile` with its
+  `agents/` lock is removed. The exporter and reader are `packages/catalog/evals/src/harbor/`, our
+  Harbor classes `infra/evals/coreloom_harbor/`.
+- Dropped in #147: the standalone `evals` compose service. It is the worker `convention-evals`, a
+  stage of `apps/api/Dockerfile` on Debian like `skill-tagger` (Harbor and Python 3.12 from the
+  hash-locked lock, run as `node`), running only `queue:work --queues=convention-evals`, with every
+  other worker naming its queues without it (`config/queue.ts`, the `queue:work` script, the
+  `queue-worker` services). Its job (`RunConventionEvalJob`) is ticket 4.
 - Done in #143: only this record and the line of `infra/evals/README.md` that pointed to the open
   questions. Everything else is in the tickets of section 16.
 
@@ -425,7 +569,7 @@ Top threats (security review of 2026-11-27):
 8. The admin pilot's key, the most valuable target: a dedicated project key with a spending cap,
    deleted after the pilot.
 
-Before the pilot: the owner validates the rule of section 5; fixes a to f in place with tests; the
+Before the pilot: the owner validates the rule of section 5; fixes a to g in place with tests; the
 egress checked live (a non-allowed host fails, MMDS and domain fronting recorded, DNS recorded);
 the 192.0.2.1 canary does not land in the install's logs, or that ingestion is off for these
 sandboxes, or the owner accepts it in writing for the pilot only and the logs are scanned for the
@@ -458,6 +602,18 @@ owner decides (section 8).
 
 Total: 18 to 25 days to opening with saved keys (tickets 1 to 8, 10 and the pilot), 24 to 34 with
 subscriptions under option A.
+
+Tickets 1 to 3 are done in #147 (section 13 has their live checks). What they changed for the
+next ones: sandboxes have 1 GB of memory, not 2 (the install's huge pages); the environment class
+releases the root file system's reserved blocks at setup; the queue `convention-evals` and its
+script `queue:evals` exist, with no job on it yet (ticket 4). Round 2: the key goes on the agent
+command's standard input (fix g; round 4: through a file that command removes at once, since envd
+logs standard input in base64), and the environment class takes root's ways back from the
+agent's user at setup. The worker started once through compose (`--profile evals up -d
+convention-evals`: "Starting workers", queues `["convention-evals"]`, as `node`, `/runs` and
+`/data/claude` on tmpfs, `memory.swap.max` 0). Not checked live: the worker running a trial itself
+(the live checks ran Harbor from its image with `docker run`), and `versions.test.ts` inside it
+(the image holds the API's build, not the catalog's tests).
 
 ## 17. Superseded
 
