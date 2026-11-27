@@ -287,7 +287,11 @@ keys go through (I), every other kind (`claude-code`, `openai-codex`, `mistral`,
   steps, 600 s, temperature 0, no retry. It never throws: a provider failure ends the trial with
   its reason and the repository is graded as it is. Usage is counted after each step
   (`onStepEnd`, by price class: plain input, cache reads, cache writes, output), so the cap is
-  checked while a trial runs. `claude-code` uses the one-action mode of `createClaudeCodeModel`
+  checked while a trial runs. A step aborted midway (the cap, the time limit) is not counted: the
+  AI SDK reports no partial usage, so the cost and the cap read low by at most one step per trial
+  under way. A step whose provider reports no usage is counted high instead (`unreportedStep`:
+  the conversation at 2 characters a token, plus the most output a step may give), and the Claude
+  subscription's cache reads and writes are counted from the binary's result. `claude-code` uses the one-action mode of `createClaudeCodeModel`
   (each step one launch under `withClaudeLock`) and runs one trial at a time (`SERIAL_KINDS`);
   others three at once.
 - **`full`**: the configuration's files rendered now (`render` on `currentInputs`, its own
