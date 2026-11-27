@@ -40,6 +40,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Start from a concrete design proposal and list the assumptions behind it in a few lines; do not open with a round of questions.',
           ],
@@ -63,6 +64,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Propose one design and keep the reasoning short; compare alternatives only when asked.',
           ],
@@ -80,6 +82,7 @@ export const systemDesign: RulePack = {
       rules: [
         {
           id: 'small',
+          noAutomaticSuggestion: true,
           label: {
             en: 'A small load (an internal tool, a few requests per second)',
             fr: 'Une petite charge (outil interne, quelques requêtes par seconde)',
@@ -132,6 +135,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'vertical',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Running one instance on a bigger machine',
             fr: 'Faisant tourner une seule instance sur une machine plus puissante',
@@ -231,6 +235,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'An average response time is enough to judge performance here; do not add percentile instrumentation unless asked.',
           ],
@@ -309,6 +314,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing takes over: it is restored by hand',
             fr: 'Rien ne prend le relais : il est restauré à la main',
@@ -373,6 +379,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'app-server',
+          noAutomaticSuggestion: true,
           label: {
             en: 'The application or web servers themselves',
             fr: 'Les serveurs applicatifs ou web eux-mêmes',
@@ -444,6 +451,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'DNS records are stable and managed elsewhere; do not change a record or its TTL.',
           ],
@@ -481,6 +489,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'single-service',
+          noAutomaticSuggestion: true,
           label: {
             en: 'One small service without module boundaries',
             fr: 'Un seul petit service sans frontières de modules',
@@ -532,6 +541,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'not-applicable',
+          noAutomaticSuggestion: true,
           label: {
             en: 'There is only one service',
             fr: "Il n'y a qu'un seul service",
@@ -594,6 +604,7 @@ export const systemDesign: RulePack = {
       rules: [
         {
           id: 'primary-only',
+          noAutomaticSuggestion: true,
           label: {
             en: 'The primary only',
             fr: 'Le primaire uniquement',
@@ -625,6 +636,7 @@ export const systemDesign: RulePack = {
       rules: [
         {
           id: 'single-database',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nowhere: one database holds it all',
             fr: 'Nulle part : une seule base contient tout',
@@ -716,6 +728,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nowhere',
             fr: 'Nulle part',
@@ -778,6 +791,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'There is no application cache',
             fr: "Il n'y a pas de cache applicatif",
@@ -863,6 +877,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'inline',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Runs inside the request anyway',
             fr: 'Tourne quand même dans la requête',
@@ -904,6 +919,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing is planned',
             fr: "Rien n'est prévu",
@@ -1016,6 +1032,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'not-applicable',
+          noAutomaticSuggestion: true,
           label: {
             en: 'There is only one service',
             fr: "Il n'y a qu'un seul service",
@@ -1081,6 +1098,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing: they reload',
             fr: 'Rien : ils rechargent',
@@ -1217,6 +1235,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'shared',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Yes, without limits per tenant yet',
             fr: 'Oui, sans limite par locataire pour l’instant',
@@ -1227,6 +1246,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'single-tenant',
+          noAutomaticSuggestion: true,
           label: {
             en: 'No',
             fr: 'Non',
@@ -1268,6 +1288,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing',
             fr: 'Rien',
@@ -1329,6 +1350,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing yet',
             fr: 'Rien pour l’instant',
@@ -1357,6 +1379,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Alerts and dashboards are managed outside this repository; do not add or change one, and say which signal a change would deserve.',
           ],
@@ -1394,6 +1417,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing: there is no such workflow',
             fr: "Rien : il n'y a pas de tel workflow",
@@ -1486,6 +1510,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'None of these',
             fr: 'Aucun de ceux-là',
@@ -1548,6 +1573,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'None: one model, read and written',
             fr: 'Aucun : un seul modèle, lu et écrit',
@@ -1590,6 +1616,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'not-applicable',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nowhere: there is none',
             fr: "Nulle part : il n'y en a pas",
@@ -1641,6 +1668,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing: clients call the API directly',
             fr: "Rien : les clients appellent l'API directement",
@@ -1682,6 +1710,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'No',
             fr: 'Non',
@@ -1703,6 +1732,7 @@ export const systemDesign: RulePack = {
       rules: [
         {
           id: 'sidecar-proxy',
+          noAutomaticSuggestion: true,
           label: {
             en: 'A sidecar or mesh proxy for outgoing calls (retries, TLS, metrics)',
             fr: 'Un proxy sidecar ou un maillage pour les appels sortants (retries, TLS, métriques)',
@@ -1733,6 +1763,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'None of these',
             fr: 'Rien de cela',
@@ -1775,6 +1806,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'fail-fast',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Does not retry: the failure goes back to the caller',
             fr: "Ne réessaie pas : l'échec remonte à l'appelant",
@@ -1819,6 +1851,7 @@ export const systemDesign: RulePack = {
         },
         {
           id: 'best-effort',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing: a failure is repaired by hand',
             fr: 'Rien : un échec est réparé à la main',
