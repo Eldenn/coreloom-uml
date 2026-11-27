@@ -706,6 +706,42 @@ router
 
 /*
 |--------------------------------------------------------------------------
+| Tech watch (shared by the whole instance, behind `tech-watch`)
+|--------------------------------------------------------------------------
+|
+| Articles from the RSS feeds the admin picks (see `app/watch`). The admin's routes write rows or
+| queue the run; none fetches a feed. Other accounts get a 404 on them.
+*/
+router
+  .get('/watch/articles', [
+    () => import('#app/watch/controllers/watch-articles-controller'),
+    'index',
+  ])
+  .as('watch.articles.index')
+  .use(middleware.auth())
+
+const adminWatchController = () => import('#app/watch/controllers/admin-watch-controller')
+router
+  .group(() => {
+    router.get('/sources', [adminWatchController, 'sources']).as('sources.index')
+    router.post('/sources', [adminWatchController, 'storeSource']).as('sources.store')
+    router.patch('/sources/:id', [adminWatchController, 'updateSource']).as('sources.update')
+    router.delete('/sources/:id', [adminWatchController, 'destroySource']).as('sources.destroy')
+    router.post('/refresh', [adminWatchController, 'refresh']).as('refresh')
+    router.patch('/articles/:id', [adminWatchController, 'updateArticle']).as('articles.update')
+    router.get('/blocked-sites', [adminWatchController, 'blockedSites']).as('blocked_sites.index')
+    router.post('/blocked-sites', [adminWatchController, 'blockSite']).as('blocked_sites.store')
+    router
+      .delete('/blocked-sites/:id', [adminWatchController, 'unblockSite'])
+      .as('blocked_sites.destroy')
+  })
+  .prefix('/admin/watch')
+  .as('admin.watch')
+  .where('id', /^[0-9]+$/)
+  .use([middleware.auth(), middleware.admin()])
+
+/*
+|--------------------------------------------------------------------------
 | Architectures and their diagrams (reference user-owned resource — copy this for new domains)
 |--------------------------------------------------------------------------
 */

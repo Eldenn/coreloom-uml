@@ -19,6 +19,7 @@ import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as AuthedFeatureFlagsRouteImport } from './routes/_authed.feature-flags'
 import { Route as AuthedSettingsRouteImport } from './routes/_authed.settings'
 import { Route as AuthedSkillsRouteImport } from './routes/_authed.skills'
+import { Route as AuthedWatchRouteImport } from './routes/_authed.watch'
 import { Route as STokenRouteImport } from './routes/s.$token'
 import { Route as AuthedAgentConfigsIndexRouteImport } from './routes/_authed.agent-configs.index'
 import { Route as AuthedAgentConfigsIdRouteImport } from './routes/_authed.agent-configs.$id'
@@ -78,6 +79,11 @@ const AuthedSkillsRoute = AuthedSkillsRouteImport.update({
   path: '/skills',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedWatchRoute = AuthedWatchRouteImport.update({
+  id: '/watch',
+  path: '/watch',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const STokenRoute = STokenRouteImport.update({
   id: '/s/$token',
   path: '/s/$token',
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/feature-flags': typeof AuthedFeatureFlagsRoute
   '/settings': typeof AuthedSettingsRoute
   '/skills': typeof AuthedSkillsRoute
+  '/watch': typeof AuthedWatchRoute
   '/s/$token': typeof STokenRoute
   '/agent-configs/$id': typeof AuthedAgentConfigsIdRoute
   '/architectures/$id': typeof AuthedArchitecturesIdRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/feature-flags': typeof AuthedFeatureFlagsRoute
   '/settings': typeof AuthedSettingsRoute
   '/skills': typeof AuthedSkillsRoute
+  '/watch': typeof AuthedWatchRoute
   '/s/$token': typeof STokenRoute
   '/agent-configs/$id': typeof AuthedAgentConfigsIdRoute
   '/architectures/$id': typeof AuthedArchitecturesIdRoute
@@ -177,6 +185,7 @@ export interface FileRoutesById {
   '/_authed/feature-flags': typeof AuthedFeatureFlagsRoute
   '/_authed/settings': typeof AuthedSettingsRoute
   '/_authed/skills': typeof AuthedSkillsRoute
+  '/_authed/watch': typeof AuthedWatchRoute
   '/s/$token': typeof STokenRoute
   '/_authed/agent-configs/$id': typeof AuthedAgentConfigsIdRoute
   '/_authed/architectures/$id': typeof AuthedArchitecturesIdRoute
@@ -199,6 +208,7 @@ export interface FileRouteTypes {
     | '/feature-flags'
     | '/settings'
     | '/skills'
+    | '/watch'
     | '/s/$token'
     | '/agent-configs/$id'
     | '/architectures/$id'
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
     | '/feature-flags'
     | '/settings'
     | '/skills'
+    | '/watch'
     | '/s/$token'
     | '/agent-configs/$id'
     | '/architectures/$id'
@@ -240,6 +251,7 @@ export interface FileRouteTypes {
     | '/_authed/feature-flags'
     | '/_authed/settings'
     | '/_authed/skills'
+    | '/_authed/watch'
     | '/s/$token'
     | '/_authed/agent-configs/$id'
     | '/_authed/architectures/$id'
@@ -334,6 +346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedSkillsRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/watch': {
+      id: '/_authed/watch'
+      path: '/watch'
+      fullPath: '/watch'
+      preLoaderRoute: typeof AuthedWatchRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/s/$token': {
       id: '/s/$token'
       path: '/s/$token'
@@ -404,6 +423,7 @@ interface AuthedRouteChildren {
   AuthedFeatureFlagsRoute: typeof AuthedFeatureFlagsRoute
   AuthedSettingsRoute: typeof AuthedSettingsRoute
   AuthedSkillsRoute: typeof AuthedSkillsRoute
+  AuthedWatchRoute: typeof AuthedWatchRoute
   AuthedAgentConfigsIdRoute: typeof AuthedAgentConfigsIdRoute
   AuthedArchitecturesIdRoute: typeof AuthedArchitecturesIdRoute
   AuthedGithubAppCreatedRoute: typeof AuthedGithubAppCreatedRoute
@@ -418,6 +438,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedFeatureFlagsRoute: AuthedFeatureFlagsRoute,
   AuthedSettingsRoute: AuthedSettingsRoute,
   AuthedSkillsRoute: AuthedSkillsRoute,
+  AuthedWatchRoute: AuthedWatchRoute,
   AuthedAgentConfigsIdRoute: AuthedAgentConfigsIdRoute,
   AuthedArchitecturesIdRoute: AuthedArchitecturesIdRoute,
   AuthedGithubAppCreatedRoute: AuthedGithubAppCreatedRoute,

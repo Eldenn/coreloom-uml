@@ -68,16 +68,27 @@ function failureOf(status: number): WebSearchFailure {
 }
 
 /**
+ * What a search may narrow, as Linkup takes it: pages published from `fromDate` (`YYYY-MM-DD`;
+ * an undated page is then left out), none of `excludeDomains`, at most `maxResults`.
+ */
+export type WebSearchOptions = {
+  fromDate?: string
+  excludeDomains?: readonly string[]
+  maxResults?: number
+}
+
+/**
  * The web search service's client. It is given the key on each call and never keeps, logs or
  * throws it, nor the query; every failure is reduced to a `WebSearchFailure`.
  */
 export default class WebSearch {
-  /** One search of at most `WEB_SEARCH_LIMITS.results` pages, within `timeoutMs`. */
+  /** One search of at most `WEB_SEARCH_LIMITS.results` pages (or `maxResults`), within `timeoutMs`. */
   async search(
     _kind: WebSearchKind,
     apiKey: string,
     query: string,
     signal?: AbortSignal,
+    options: WebSearchOptions = {},
   ): Promise<WebSearchAnswer> {
     const response = await this.#send(
       LINKUP.search,
@@ -88,7 +99,9 @@ export default class WebSearch {
           q: query,
           depth: 'fast',
           outputType: 'searchResults',
-          maxResults: WEB_SEARCH_LIMITS.results,
+          maxResults: options.maxResults ?? WEB_SEARCH_LIMITS.results,
+          ...(options.fromDate ? { fromDate: options.fromDate } : {}),
+          ...(options.excludeDomains?.length ? { excludeDomains: options.excludeDomains } : {}),
         }),
       },
       apiKey,

@@ -117,6 +117,23 @@ export interface ApiDefinition {
       update: typeof routes['admin.skill_sources.update']
       destroy: typeof routes['admin.skill_sources.destroy']
     }
+    watch: {
+      sources: {
+        index: typeof routes['admin.watch.sources.index']
+        store: typeof routes['admin.watch.sources.store']
+        update: typeof routes['admin.watch.sources.update']
+        destroy: typeof routes['admin.watch.sources.destroy']
+      }
+      refresh: typeof routes['admin.watch.refresh']
+      articles: {
+        update: typeof routes['admin.watch.articles.update']
+      }
+      blockedSites: {
+        index: typeof routes['admin.watch.blocked_sites.index']
+        store: typeof routes['admin.watch.blocked_sites.store']
+        destroy: typeof routes['admin.watch.blocked_sites.destroy']
+      }
+    }
     featureFlags: {
       index: typeof routes['admin.feature_flags.index']
       update: typeof routes['admin.feature_flags.update']
@@ -270,6 +287,11 @@ export interface ApiDefinition {
     events: typeof routes['skills.events']
     show: typeof routes['skills.show']
     copy: typeof routes['skills.copy']
+  }
+  watch: {
+    articles: {
+      index: typeof routes['watch.articles.index']
+    }
   }
   mcp: typeof routes['mcp']
   assistant: {
