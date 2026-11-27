@@ -4,6 +4,7 @@ import { FileTextIcon, SparklesIcon, Trash2Icon } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
+import { AgentConfigEvals } from '@/agent-configs/agent-config-evals'
 import { AgentConfigRoles } from '@/agent-configs/agent-config-roles'
 import { AgentConfigRules } from '@/agent-configs/agent-config-rules'
 import { AgentConfigSkills } from '@/agent-configs/agent-config-skills'
@@ -68,6 +69,7 @@ export function AgentConfigSummary({
       <AgentConfigRules configId={configId} config={config} packs={packs} onBrowse={onBrowse} />
       {roles && <AgentConfigRoles configId={configId} config={config} />}
       <AgentConfigSkills configId={configId} config={config} />
+      <AgentConfigEvals configId={configId} packs={packs} />
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <NotesCard configId={configId} config={config} />
         <TargetsCard configId={configId} config={config} />
