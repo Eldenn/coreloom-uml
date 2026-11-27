@@ -34,8 +34,12 @@ only (81 empty rules); its precision is indicative.
 
 ## Replaying
 
-Python 3.12 with `requirements.txt` (`torch` CPU build), and Node 22+ in `js/` (`npm ci`) for
-transformers.js. Models are pinned by revision in the scripts and downloaded on first use.
+Run from this folder. Python 3.12 with `requirements.txt` (`torch` CPU build), and Node 22+ in
+`js/` (`npm ci`) for transformers.js; the `export-*.ts` scripts read the catalog's source, so run
+`pnpm install` at the repository root first. Models are pinned by revision in the scripts and
+downloaded on first use. Replayed on 2026-11-27 from this folder: `curve.py`, `confirm-run.py`,
+`proposals.py` and `centering.py` print the figures below, and `export-rules.ts` writes a file
+identical to `rules.json`.
 
 | Step | Command | Model |
 | --- | --- | --- |

@@ -13,7 +13,6 @@ ALL = np.load(D / "qwen-onnx-fp32-all.npy")  # 881 x 215
 idx = [inp["rule_keys"].index(k) for k in keys]
 raw = ALL[idx]
 cen = raw - ALL.mean(0, keepdims=True)
-np.save(D / "skill-means.npy", ALL.mean(0))
 
 pos = np.array([i for i, k in enumerate(keys) if truth[k]])
 nth = np.array([i for i, k in enumerate(keys) if k in set(kinds["nothing"])])
