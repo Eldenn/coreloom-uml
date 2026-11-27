@@ -1,5 +1,5 @@
 import { BaseSchema } from '@adonisjs/lucid/schema'
-import { WATCH_SOURCE_KINDS, WATCH_LIMITS } from '#app/watch/constants/watch'
+import { WATCH_LIMITS, WATCH_SOURCE_KINDS } from '#app/watch/constants/watch'
 import { WEB_SEARCH_LIMITS } from '#app/web-search/constants/web-search'
 
 /**
