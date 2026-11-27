@@ -81,7 +81,8 @@ Python, no uv, no Harbor, no agent CLI.
     that no set-id file is left and that no root process's environment is readable; else the
     trial fails.
 
-  Its tests (`coreloom_harbor/tests/`, Python's `unittest`) run in the worker image:
+  Its tests (`coreloom_harbor/tests/`, Python's `unittest`) run in CI (job `harbor-classes`,
+  stage `harbor` of `apps/api/Dockerfile`, as `node`, about 45 s), or here:
 
   ```sh
   docker run --name evals-tests -v "$PWD/infra/evals:/src:ro" -w /src \
@@ -89,6 +90,16 @@ Python, no uv, no Harbor, no agent CLI.
     -m unittest discover -s coreloom_harbor/tests -t .
   docker rm evals-tests
   ```
+
+## Live check
+
+`live-check/run.sh <claude-code|codex> <oracle|fake>` replays the live checks of the record
+(section 13) against an E2B install, with the E2B settings taken from the environment
+(`E2B_API_KEY`, `E2B_API_URL`, `E2B_SANDBOX_URL`) and a made-up key it generates: `oracle` runs
+every exported task with Harbor's oracle agent, `fake` one trial with the fake key, then checks the
+provider's 401, the key in no file of the job folder, no `auth.json`, and 0 rows of the install's
+`sandbox_logs` holding it against 1 for a control canary sent as an env of the same sandbox
+(`live-check/envlog_probe.py`). Manual only, never in CI.
 
 ## Disk of the templates
 

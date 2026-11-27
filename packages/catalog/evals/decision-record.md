@@ -432,6 +432,18 @@ Round 2 (2026-11-27, after ticket 7 found envd's logging and the template's `use
   unreadable. Same in the Codex template.
 - **Oracle**: every exported task still passes, both graders, in both templates (8 trials each).
 
+Round 3 (2026-11-27, reviews of PR #151), `infra/evals/live-check/run.sh <agent> fake` on the
+rebuilt worker image: Claude Code and Codex each answered 401 (`AgentAuthenticationError`), the
+policy read back `allow_out=['api.anthropic.com']` / `['api.openai.com']`, the no-network phases
+read back and every process of `node` killed after the agent phase (the trial ended normally),
+the fake key in no file of the job folder, no `auth.json`, and `sandbox_logs`: fake key rows=0,
+control canary rows=1, for each. Claude Code's `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` (strip its
+credentials from the commands it starts) makes 2.1.322 refuse to start without bubblewrap, which
+the template does not hold: not set (security I4); Codex's `shell_environment_policy` excludes
+`*KEY*`, `*SECRET*`, `*TOKEN*`. A trial's final workspace is untrusted: `readHarborJob` refuses a
+symbolic link or a `.git` file, writes a fixed `.git/config` and drops hooks, attributes and
+alternates, and the workspace is graded in a sandbox only (#148).
+
 Residuals, and what ticket 7 must prove for each:
 - **MMDS** (169.254.169.254, Firecracker's metadata service) answers despite deny-all; with a
   token it gives a hash, the envd log address, the env and instance ids, not a token. Not a
