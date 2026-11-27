@@ -1,5 +1,5 @@
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join, relative, resolve } from 'node:path'
 import { Condition, type FinalState } from '../task.ts'
 import { TASK_METADATA_FILE, TASK_NAME_SEPARATOR } from './constants.ts'
 import { type TaskMetadata, trialWorkDir } from './export.ts'
@@ -167,7 +167,9 @@ const time = (value: string | null | undefined) => (value ? Date.parse(value) : 
  * holding a `result.json`. A trial Harbor never finished writing is left out. Nothing is
  * filtered here: the caller filters every `outputs` text before it stores or logs anything.
  */
-export async function readHarborJob(jobDir: string): Promise<readonly HarborTrialResult[]> {
+export async function readHarborJob(folder: string): Promise<readonly HarborTrialResult[]> {
+  // The final states are read by Git from other working directories: their paths are absolute.
+  const jobDir = resolve(folder)
   if (!existsSync(jobDir)) return []
   const read: (HarborTrialResult & { startedAt: number })[] = []
   for (const name of readdirSync(jobDir).sort()) {
