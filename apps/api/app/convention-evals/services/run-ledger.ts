@@ -141,7 +141,9 @@ export class RunLedger {
       return false
     }
     const max = CONVENTION_EVAL_LIMITS.reasonMaxChars
-    if (outcome.grades) this.graded++
+    // A trial counts as graded only when it ran to its end: graded after a provider refusal, it
+    // measures nothing of the conventions.
+    if (outcome.grades && !outcome.errorReason) this.graded++
     else if (outcome.errorReason) {
       this.errors.set(outcome.errorReason, (this.errors.get(outcome.errorReason) ?? 0) + 1)
     }
