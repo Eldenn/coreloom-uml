@@ -55,7 +55,13 @@ export async function openTrialSandbox(
   }
   const ready =
     (await sandbox.isolate()) &&
-    (await sandbox.run(DENY_SUDO, {}, { user: 'root', timeoutMs: 15_000 })).exitCode === 0 &&
+    (
+      await sandbox.run(
+        DENY_SUDO,
+        {},
+        { user: 'root', timeoutMs: CONVENTION_EVAL_LIMITS.sandboxAdminMs },
+      )
+    ).exitCode === 0 &&
     (await sandbox.upload(EVAL_SANDBOX_PATHS.trialArchive, workspace)) &&
     (await sandbox.run(SETUP, { ...BASE_ENVS })).exitCode === 0
   if (!ready) {
@@ -74,7 +80,12 @@ export async function gradeInSandbox(
   sandbox: OpenEvalSandbox,
   input: { taskId: string; base: string; graderArchive: Buffer },
 ): Promise<TrialGrades | null> {
-  await sandbox.run(STOP_AGENT, {}, { user: 'user', timeoutMs: 15_000 })
+  const stopped = await sandbox.run(
+    STOP_AGENT,
+    {},
+    { user: 'root', timeoutMs: CONVENTION_EVAL_LIMITS.sandboxAdminMs },
+  )
+  if (stopped.exitCode !== 0) return null
   if (!(await sandbox.upload(EVAL_SANDBOX_PATHS.graderArchive, input.graderArchive, 'root'))) {
     return null
   }

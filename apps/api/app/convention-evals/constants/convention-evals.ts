@@ -66,6 +66,10 @@ export const EvalFailureReason = {
   AgentTimeout: 'agent_timeout',
   CredentialUnavailable: 'credential_unavailable',
   NothingToTest: 'nothing_to_test',
+  /** The provider refused the credential (Harbor's `AgentAuthenticationError`, a 401). */
+  ProviderAuth: 'provider_auth',
+  /** Another run holds the account's slot when this one starts. */
+  Busy: 'busy',
 } as const
 export type EvalFailureReason = (typeof EvalFailureReason)[keyof typeof EvalFailureReason]
 
@@ -103,6 +107,8 @@ export const CONVENTION_EVAL_LIMITS = {
   sandboxRenewMs: 60_000,
   sandboxStartTimeoutMs: 30_000,
   sandboxRequestTimeoutMs: 20_000,
+  /** The fixed commands that take sudo away and stop the agent's processes, as root. */
+  sandboxAdminMs: 15_000,
   /** One command of the model in the harness, killed in the sandbox after this many seconds. */
   shellSeconds: 120,
   /** Most of one command's output read back from the sandbox, in bytes. */

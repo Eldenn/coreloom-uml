@@ -40,10 +40,12 @@ export const SETUP = `bash -c 'mkdir -p -- "$TRIAL_ROOT" && tar -xzf "$TRIAL_ARC
 export const SHELL = `bash -c 'cd -- "$TRIAL_ROOT/repo" && timeout -k 2 ${String(CONVENTION_EVAL_LIMITS.shellSeconds)} bash -c "$SHELL_COMMAND" 2>&1 < /dev/null | head -c ${String(CONVENTION_EVAL_LIMITS.shellOutputMaxBytes)}; exit "\${PIPESTATUS[0]}"'`
 
 /**
- * Run as the trial's user once the model is done: stops whatever the model left running, so
- * nothing of it changes the repository while it is graded.
+ * Run as root once the model is done: stops whatever the model's user left running (frozen first,
+ * so a fork loop cannot outrun the kill), again until none is left, at most 20 rounds. Fails when
+ * one is still there, and the trial is then not graded: nothing of the model may change the
+ * repository while root reads it.
  */
-export const STOP_AGENT = 'kill -KILL -1 2>/dev/null; true'
+export const STOP_AGENT = `bash -c 'for round in $(seq 20); do pkill -STOP -u user; pkill -KILL -u user; pgrep -u user >/dev/null || exit 0; sleep 0.1; done; exit 1'`
 
 /**
  * Run as root: hands the trial to root (no process of the model's user can touch it any more),
