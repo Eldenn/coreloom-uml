@@ -1,86 +1,134 @@
-# Evals runner
+# Convention evals runner
 
-The image that runs the agent convention evals of `packages/catalog/evals/`. Their decision
-record is `packages/catalog/evals/decision-record.md`. Nothing of it is installed on the host:
-no Python, no uv, no Harbor, no agent CLI.
+What runs the agent convention evals of `packages/catalog/evals/` from the app: the decision
+record is `packages/catalog/evals/decision-record.md`. Each trial runs in an E2B sandbox driven by
+Harbor, from the `convention-evals` worker of the API. Nothing of it is installed on the host: no
+Python, no uv, no Harbor, no agent CLI.
 
 ## What it is
 
-- **Image**: `infra/evals/Dockerfile`, x86_64 only (`--platform=linux/amd64` on every `FROM`),
-  two stages that count:
-  - `agent` is what a trial's agent runs on: Node on Debian, git, and, from
-    `agents/package-lock.json`, the agents' CLIs at exact versions (Claude Code `2.1.322`, Codex
-    `0.167.2`, the versions CI loads the rendered files into) and pnpm `11.5.2` (the root
-    `package.json`'s `packageManager`). They are installed with `npm ci` into `/opt/agents` by the
-    `node` user, so their install scripts never run as root, then copied as root and linked into
-    `/usr/local/bin`.
-  - `runner` is `agent` plus:
-    - Harbor `0.27.0` on Python 3.12, from `requirements.lock`, every package checked by its hash
-      and installed from a wheel only (`--no-build`: no package runs a build script);
-    - the Docker client and its Compose plugin, copied from the official `docker:<v>-cli` and
-      `docker/compose-bin:v<v>` images, pinned by digest (the `cli` image holds an older Compose
-      than the one pinned, so the plugin comes from `compose-bin`);
-    - `HARBOR_TELEMETRY=off` (Harbor 0.27.0 otherwise sends a usage event to PostHog at the end
-      of each command and job, `harbor/telemetry.py`) and `LITELLM_LOCAL_MODEL_COST_MAP=True`
-      (LiteLLM otherwise fetches its model cost map from GitHub when it is imported);
-    - the catalog with the tasks and graders. Only the catalog, `packages/config` and the files
-      its tests read are copied (CI's workflow and the API's Dockerfile, for the versions they
-      pin), never an app's code or a `.env`.
+- **Worker image**: stage `convention-evals` of `apps/api/Dockerfile` (image
+  `coreloom-uml-convention-evals`, built by `release.yml`). The API's build on Node's Debian slim
+  image, plus:
+  - Harbor `0.27.0` with its `e2b` extra on Python 3.12 from uv, from `requirements.lock`, every
+    package checked by its hash and installed from a wheel only (`--no-build`);
+  - our Harbor classes, `coreloom_harbor/` (below), copied into Harbor's `site-packages`;
+  - Claude Code at the API image's version, for the runs of a Claude subscription (path II of the
+    record, ticket 9);
+  - `HARBOR_TELEMETRY=off` (Harbor 0.27.0 otherwise sends a usage event to PostHog,
+    `harbor/telemetry.py`) and `LITELLM_LOCAL_MODEL_COST_MAP=True` (LiteLLM otherwise fetches its
+    cost map from GitHub when imported).
 
-  What is verified, and how:
-  - the BuildKit frontend (`# syntax=`) and every image by digest;
-  - the npm packages by the sha512 integrity of their lock;
-  - the Python packages by their SHA-256 in `requirements.lock`, and Python itself by the SHA-256
-    uv ships for its builds;
-  - git and ca-certificates by exact Debian version only: apt checks them against the signed
-    Release file of the base image's Debian, not against a hash of ours.
+  It runs as `node` and its command is `queue:work --queues=convention-evals` (`pnpm --filter
+  @coreloom-uml/api queue:evals` outside Docker): no other worker names that queue
+  (`config/queue.ts`, the `queue:work` script, the `queue-worker` services). No Docker client,
+  Compose or daemon: no trial runs on this machine.
+- **Service**: `convention-evals` in every compose file, behind the `evals` profile locally. It
+  holds the database, Redis, its own `APP_KEY`, `LLM_KEYS_ENCRYPTION_KEYS` (it resolves the
+  account's key itself) and `E2B_*`; no GitHub, Drive or mail setting (the mail ones are
+  placeholders the API's settings require). A run's folder (`/runs`, `CONVENTION_EVALS_DIR`) and
+  the Claude launches' folder (`/data/claude`, `CLAUDE_CODE_HOME`) are `tmpfs` mounts, since a key
+  sits in Harbor's process while it runs.
+  **No swap**: `memswap_limit` equals `mem_limit`, so Docker gives the container no swap of its
+  own. A `tmpfs` can still be swapped out if the host has swap: the host must run with no swap
+  (or with swap encrypted), which is a requirement of the deployment, not something a compose
+  file can enforce.
+  Locally the worker reaches the self-hosted E2B of `infra/e2b/` on the host through
+  `host.docker.internal` (`E2B_API_URL=http://host.docker.internal:3000`,
+  `E2B_SANDBOX_URL=http://host.docker.internal:3002`).
+- **Templates**: `templates/<agent>/` (`claude-code`, `codex`), one E2B template per agent. Each is
+  Node slim, git, pnpm and that agent's CLI, nothing else, each npm package by the sha512 of
+  `package-lock.json`, the base image by digest. The exporter copies the folder as is into every
+  task's `environment/`, so Harbor builds it once and finds it again by its hash: nothing of a
+  task, a condition or an account is ever in it. This replaces the `agent` stage of the former
+  `infra/evals/Dockerfile`, which is removed with its `runner` stage and its `agents/` lock.
+- **Exporter and reader**: `packages/catalog/evals/src/harbor/`
+  (`@coreloom-uml/catalog/evals/harbor`). `prepareHarborRun` writes one Harbor task per (task,
+  condition) under the run's folder (the template, `task.toml`, `instruction.md`, the fixture
+  workspace with the condition's files, `coreloom.json`, and for the oracle `solution/`) and
+  answers the `harbor run` command line and its environment, none naming a credential: the job
+  adds the key to that environment itself. `readHarborJob` reads Harbor's job folder back: per
+  trial its error, duration, usage, every text Harbor wrote (for the job's leak filter) and the
+  final workspace, downloaded by Harbor as the `/work` artifact, as a `FinalState` for the
+  graders. Grading is the caller's: Harbor runs with `--disable-verification`.
+- **Harbor classes**: `coreloom_harbor/`, given to Harbor by import path
+  (`--env coreloom_harbor.environment:ConventionEvalsE2BEnvironment`,
+  `--agent coreloom_harbor.agents:ConventionEvals{ClaudeCode,Codex}`). The fixes a to f of the
+  record's section 5:
+  - the environment drops every credential name from the sandbox's startup environment, labels
+    the sandbox (`coreloom.purpose=convention-evals`, `coreloom.run`, `coreloom.account`), keeps
+    300 s / 60 s for its timeout and renewal, and before the agent starts reads back the policy E2B
+    holds and fails the trial unless it is exactly `[provider host]` with `deny_out` of
+    `RESEARCH_DENIED_RANGES`, `169.254.0.0/16` and `192.0.2.0/24` (no network for the setup and
+    the verifier). At setup it uploads the trial's workspace to `/work` for the `node` user and
+    releases the root file system's reserved blocks (`tune2fs -r 0`: 256 MB of the install's
+    952 MB, more than a template leaves free; the sandbox is thrown away after the trial). A
+    creation the install refuses for lack of memory ("Failed to place sandbox") is tried again;
+  - the Claude Code agent runs the template's CLI only (never installs one), with
+    `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` and the API key as its only credential, passed to
+    its command's environment;
+  - the Codex agent runs `codex exec` with `CODEX_API_KEY` in that one command's environment and
+    writes no `auth.json`; it lists `$CODEX_HOME` into the trial's logs before removing it.
 
-  The image runs as `node`.
-- **Service**: `evals` in `infra/docker-compose.yml`, behind the `evals` profile, built as
-  `coreloom-uml-evals:local`. Started on its own, it runs the offline grader tests and checks that
-  its tools are the pinned ones (`EVALS_IMAGE=1`), then exits.
-- **What it holds**: no env file, no credential, no Docker socket, and it is not on the project's
-  network. How trials run and are paid (E2B sandboxes driven by a `convention-evals` worker of the
-  API, with the user's saved key) is settled in the decision record (sections 4 to 9 and 14);
-  until its tickets land, this image runs the offline tests only.
+  Its tests (`coreloom_harbor/tests/`, Python's `unittest`) run in the worker image:
 
-## Running it
+  ```sh
+  docker run --name evals-tests -v "$PWD/infra/evals:/src:ro" -w /src \
+    --entrypoint /opt/harbor/bin/python coreloom-uml-convention-evals \
+    -m unittest discover -s coreloom_harbor/tests -t .
+  docker rm evals-tests
+  ```
 
-```sh
-docker compose -f infra/docker-compose.yml --profile evals run --build --rm evals
-```
+## Disk of the templates
 
-The first build takes about a minute and a half and the image is about 3.3 GB (836 MB compressed): the two agent
-CLIs and Harbor's dependencies make most of it.
+The install gives each sandbox a 952 MB root file system. Measured on 2026-11-27 (`df -k /` in a
+sandbox of each template, before and after `tune2fs -r 0`):
+
+| Template | Used | Free for the agent before | after |
+|---|---|---|---|
+| `claude-code` | 720 MB | 0 | 216 MB |
+| `codex` | 783 MB | 0 | 153 MB |
+
+To fit, the templates remove git's Perl and its manual, run no install script (Claude Code's
+would copy its 330 MB binary a second time), keep npm's cache in `/dev/shm` during the install,
+and Codex's drops its voice host. A larger disk on the install is the owner's decision (record,
+section 13), only if a template stops fitting.
 
 ## Raising a version
 
 Every version is set in one place, and `packages/catalog/evals/versions.test.ts` keeps the copies
-equal (and checks the pins: `# syntax=` and images by digest, `--checksum` on any `ADD` of a URL).
+equal (and checks the pins).
 
 - **Harbor**:
-  1. Write the new version in `requirements.in`, in `HARBOR_VERSION` (`packages/catalog/evals/src/versions.ts`) and in the Dockerfile's `ARG HARBOR_VERSION`.
+  1. Write the new version in `requirements.in`, in `HARBOR_VERSION`
+     (`packages/catalog/evals/src/versions.ts`) and in the `convention-evals` stage's
+     `ARG HARBOR_VERSION`.
   2. Raise `EXCLUDE_NEWER` in `lock.Dockerfile` to the current time (UTC): the lock only takes
      files published before it, so the same inputs give the same lock.
   3. Regenerate the lock without Python on the host:
      `docker build -f infra/evals/lock.Dockerfile --output type=local,dest=infra/evals infra/evals`
-  4. Build and run the service. Read Harbor's changelog for the task format and the `--ak version` behaviour, and check that `HARBOR_TELEMETRY` is still the variable `harbor/telemetry.py` reads.
-- **An agent CLI or pnpm**: change it in `agents/package.json` and, for a CLI, in `ci.yml` and `AGENT_CLI_VERSIONS` (Claude Code's also in the API image, `apps/api/Dockerfile`); for pnpm, in the root `package.json`'s `packageManager`. Then regenerate the lock in a container, never on the host:
+  4. Re-read what `coreloom_harbor` subclasses (`environments/e2b.py`, `environments/base.py`,
+     `agents/installed/claude_code.py`, `agents/installed/codex.py`, `trial/trial.py`), run its
+     tests in the new image, then an oracle run and a fake-key trial on `infra/e2b/`. Check that
+     `HARBOR_TELEMETRY` is still the variable `harbor/telemetry.py` reads.
+- **An agent CLI or pnpm**: change it in `templates/<agent>/package.json` and, for a CLI, in
+  `ci.yml`, `AGENT_CLI_VERSIONS` and `coreloom_harbor/agents.py` (Claude Code's also in the API
+  image); for pnpm, in the root `package.json`'s `packageManager`. Regenerate the lock in a
+  container, never on the host:
 
   ```sh
-  docker run --rm --platform=linux/amd64 -u node -v "$PWD/infra/evals/agents:/w" -w /w \
+  docker run --name evals-lock --platform=linux/amd64 -u node \
+    -v "$PWD/infra/evals/templates/codex:/w" -w /w \
     node:26.3.0-slim@sha256:95a34da32a840bd9b3b09a5b773591c16923e350174b1c50e1200c75bf15eaa9 \
     npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+  docker rm evals-lock
   ```
-- **Docker client or Compose plugin**: change the tag and the digest of the `docker-cli` or
-  `compose-bin` stage together (`docker buildx imagetools inspect docker:<v>-cli`,
-  `docker buildx imagetools inspect docker/compose-bin:v<v>`). If a `docker:<v>-cli` image holds
-  the Compose version wanted, its plugin (`/usr/local/libexec/docker/cli-plugins/docker-compose`)
-  may be copied instead.
-- **Base images and the BuildKit frontend**: change the tag and the digest together (`docker buildx imagetools inspect <image>:<tag>`), in both Dockerfiles.
-- **git and ca-certificates**: the Debian package versions are pinned, and the image builds only
-  while Debian's mirror still serves them. A Debian point release, or a security update of
-  either package, replaces the pinned version and breaks the build: take the new candidate
-  (`apt-cache policy git ca-certificates` in the base image) and raise the base image with it.
-  Until then a security fix of git waits for that bump: there is no `snapshot.debian.org` source
-  for now.
+
+  Then measure the template's free disk again (the table above): Harbor builds a new template on
+  the next run, since the folder's hash changed.
+- **Base image**: change the tag and the digest together (`docker buildx imagetools inspect
+  <image>:<tag>`), in both templates and `lock.Dockerfile`.
+- **git, ca-certificates, e2fsprogs**: the Debian package versions are pinned, and a template
+  builds only while Debian's mirror still serves them. A point release or a security update
+  replaces the pinned version and breaks the build: take the new candidate (`apt-cache policy
+  <package>` in the base image) and raise the base image with it.
