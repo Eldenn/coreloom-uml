@@ -75,6 +75,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Not at all',
             fr: 'Pas du tout',
@@ -102,6 +103,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Keep a screen in a few cohesive components; do not split a component only to make it shorter.',
           ],
@@ -253,6 +255,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'None',
             fr: 'Aucun',
@@ -300,6 +303,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Deliver a feature as one complete change rather than a series of partial steps.',
           ],
@@ -413,6 +417,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Keep the script tags as the pages already load them; do not convert them to `defer`, `async` or modules as a side effect of another change.',
           ],
@@ -538,6 +543,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'No stated goal',
             fr: 'Aucun objectif fixé',
@@ -630,6 +636,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'generated',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing: types are generated from the API schema',
             fr: "Rien : les types sont générés depuis le schéma de l'API",
@@ -640,6 +647,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing',
             fr: 'Rien',
@@ -678,6 +686,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Keep the object shapes the code base uses, with optional fields and flags; do not rewrite them into discriminated unions unasked.',
           ],
@@ -701,6 +710,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Do not add request cancellation everywhere; at least ignore the answer of a request whose component unmounted or whose inputs changed since it started.',
           ],
@@ -857,6 +867,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nowhere',
             fr: 'Nulle part',
@@ -983,6 +994,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'No router',
             fr: 'Aucun routeur',
@@ -1021,6 +1033,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Keep view state (filters, sorting, open tab) in component state; put in the URL only what identifies the page.',
           ],
@@ -1197,6 +1210,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing',
             fr: 'Rien',
@@ -1272,6 +1286,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'No test runner',
             fr: 'Aucun lanceur de tests',
@@ -1399,6 +1414,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'There are none',
             fr: "Il n'y en a pas",
@@ -1505,6 +1521,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nowhere: the app has no sign-in',
             fr: "Nulle part : l'appli n'a pas de connexion",
@@ -1550,6 +1567,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'None',
             fr: 'Aucune',
@@ -1662,6 +1680,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Loading and errors are handled by the shared layout or boundary: do not add per-component loading or error states unasked.',
           ],
@@ -1720,6 +1739,7 @@ export const frontendReact: RulePack = {
       rules: [
         {
           id: 'refetch',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Refetching on action or on focus only',
             fr: 'Un rechargement sur action ou au retour sur la page seulement',
@@ -1771,6 +1791,7 @@ export const frontendReact: RulePack = {
       rules: [
         {
           id: 'not-used',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Are not used',
             fr: 'Ne sont pas utilisés',
@@ -1812,6 +1833,7 @@ export const frontendReact: RulePack = {
       rules: [
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'No',
             fr: 'Non',
@@ -1893,6 +1915,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'browser-only',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing else',
             fr: 'Rien d’autre',
@@ -1977,6 +2000,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'no',
+          noAutomaticSuggestion: true,
           label: {
             en: 'No',
             fr: 'Non',
@@ -2004,6 +2028,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Do not start the app or a browser to check a change: rely on types, lint and tests, and say what was not verified on screen.',
           ],
@@ -2027,6 +2052,7 @@ export const frontendReact: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Write library and browser API calls from what you know and let the type checker and the tests catch a wrong one; look an API up only when a check fails.',
           ],

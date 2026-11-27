@@ -324,6 +324,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'never',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Never touches the schema',
             fr: 'Ne touche jamais au schéma',
@@ -487,6 +488,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing: a retry may repeat the effect',
             fr: 'Rien : un rejeu peut répéter l’effet',
@@ -539,6 +541,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nowhere: the API only does I/O',
             fr: 'Nulle part : l’API ne fait que des entrées-sorties',
@@ -800,6 +803,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing else',
             fr: 'Rien d’autre',
@@ -845,6 +849,7 @@ export const backendNode: RulePack = {
       rules: [
         {
           id: 'primary',
+          noAutomaticSuggestion: true,
           label: {
             en: 'The primary only',
             fr: 'Le primaire seulement',
@@ -876,6 +881,7 @@ export const backendNode: RulePack = {
       rules: [
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Neither partitioned nor sharded',
             fr: 'Ni partitionnées ni shardées',
@@ -923,6 +929,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Connection handling is left to the platform (serverless driver, external pooler): do not add a pool or change connection settings unasked.',
           ],
@@ -960,6 +967,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing: lists are returned whole',
             fr: 'Rien : les listes sont renvoyées entières',
@@ -1001,6 +1009,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing: there is one version',
             fr: 'Rien : il n’y a qu’une version',
@@ -1040,6 +1049,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'No formal description',
             fr: 'Aucune description formelle',
@@ -1132,6 +1142,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Access is checked by a layer above the handlers (gateway, global guard): do not repeat the check in each handler, but say when a new route is not covered by it.',
           ],
@@ -1179,6 +1190,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing: the application stores no password',
             fr: 'Rien : l’application ne stocke aucun mot de passe',
@@ -1213,6 +1225,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'same-origin',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Not allowed: the front end is on the same origin',
             fr: 'Refusées : le front est sur la même origine',
@@ -1257,6 +1270,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'proxy',
+          noAutomaticSuggestion: true,
           label: {
             en: 'The reverse proxy or the CDN',
             fr: 'Le reverse proxy ou le CDN',
@@ -1267,6 +1281,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nobody yet',
             fr: 'Personne pour l’instant',
@@ -1328,6 +1343,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'None of these',
             fr: 'Rien de tout cela',
@@ -1356,6 +1372,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Do not add caching headers or ETags unasked: responses are not meant to be cached by clients or by a CDN.',
           ],
@@ -1393,6 +1410,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing',
             fr: 'Rien',
@@ -1469,6 +1487,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'No: the platform builds or runs it',
             fr: 'Non : la plateforme le construit ou l’exécute',
@@ -1496,6 +1515,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Configuration lives in the project’s configuration files: follow them, and do not move settings to environment variables unasked.',
           ],
@@ -1519,6 +1539,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Do not add signal handling: the process may be stopped at any time, so keep every operation safe to interrupt and to run again.',
           ],
@@ -1630,6 +1651,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing: everything runs in the request',
             fr: 'Rien : tout s’exécute dans la requête',
@@ -1692,6 +1714,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing: there is no live update',
             fr: 'Rien : pas de mise à jour en direct',
@@ -1733,6 +1756,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Neither sends nor receives any',
             fr: 'N’en envoie ni n’en reçoit',
@@ -1763,6 +1787,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'proxy',
+          noAutomaticSuggestion: true,
           label: {
             en: 'At the reverse proxy or the API gateway',
             fr: 'Au niveau du reverse proxy ou de la passerelle d’API',
@@ -1773,6 +1798,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nowhere',
             fr: 'Nulle part',
@@ -1915,6 +1941,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Test the services and business rules directly, in fast tests without network; do not add HTTP-level tests unasked.',
           ],
@@ -1972,6 +1999,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'None of these',
             fr: 'Rien de tout cela',
@@ -2024,6 +2052,7 @@ export const backendNode: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nowhere: the back end calls no model',
             fr: 'Nulle part : le back-end n’appelle aucun modèle',

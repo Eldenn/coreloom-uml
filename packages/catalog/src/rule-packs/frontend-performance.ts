@@ -66,6 +66,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'No set target',
             fr: 'Aucun objectif fixé',
@@ -121,6 +122,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing yet',
             fr: 'Rien pour l’instant',
@@ -162,6 +164,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'No budget in CI',
             fr: 'Aucun budget en CI',
@@ -201,6 +204,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'The number of requests is not a concern on this project: do not restructure assets to save requests; still remove any reference to a file that answers 404.',
           ],
@@ -238,6 +242,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'never',
+          noAutomaticSuggestion: true,
           label: {
             en: 'None are allowed',
             fr: 'Aucun n’est autorisé',
@@ -282,6 +287,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'as-is',
+          noAutomaticSuggestion: true,
           label: {
             en: 'As they are (JPEG, PNG)',
             fr: 'Telles quelles (JPEG, PNG)',
@@ -313,6 +319,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Lazy loading is not applied by rule: add `loading="lazy"` only where asked, and still give an image its dimensions when it would otherwise shift the layout.',
           ],
@@ -391,6 +398,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'one-file',
+          noAutomaticSuggestion: true,
           label: {
             en: 'In one stylesheet for the whole app',
             fr: 'Dans une seule feuille pour toute l’app',
@@ -432,6 +440,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'not-removed',
+          noAutomaticSuggestion: true,
           label: {
             en: 'It is not',
             fr: 'Il ne l’est pas',
@@ -473,6 +482,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'runtime-css-in-js',
+          noAutomaticSuggestion: true,
           label: {
             en: 'CSS-in-JS computed at run time',
             fr: 'Le CSS-in-JS calculé à l’exécution',
@@ -554,6 +564,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'It is not split',
             fr: 'Il n’est pas découpé',
@@ -605,6 +616,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Do not add a worker or task chunking unasked; point out a synchronous computation that visibly freezes an interaction.',
           ],
@@ -642,6 +654,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'system',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Not used: system fonts only',
             fr: 'Absentes : polices système seulement',
@@ -741,6 +754,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'platform',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Set by the hosting platform',
             fr: 'Réglé par la plateforme d’hébergement',
@@ -751,6 +765,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'not-set',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Not set up',
             fr: 'Pas en place',
@@ -775,6 +790,7 @@ export const frontendPerformance: RulePack = {
       rules: [
         {
           id: 'edge',
+          noAutomaticSuggestion: true,
           label: {
             en: 'By the CDN or the reverse proxy (Brotli, gzip)',
             fr: 'Par le CDN ou le reverse proxy (Brotli, gzip)',
@@ -795,6 +811,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'not-set',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Not set up',
             fr: 'Pas en place',
@@ -849,6 +866,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'None',
             fr: 'Aucune',
@@ -935,6 +953,7 @@ export const frontendPerformance: RulePack = {
         },
         {
           id: 'whole',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Rendered whole: they stay short',
             fr: 'Rendus en entier : ils restent courts',
