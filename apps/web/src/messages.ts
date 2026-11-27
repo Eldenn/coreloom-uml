@@ -23,6 +23,7 @@ export const en = {
       ImportGithubCodeMapJob: 'Code map import from GitHub',
       FollowGithubPushJob: 'GitHub push',
       PruneAssistantSandboxesJob: 'Cleanup of the assistant sandboxes',
+      RefreshWatchJob: 'Tech watch refresh',
     } as Record<string, string>,
     retry: (attempt: number) => `Attempt ${attempt}`,
     more: (count: number) => (count === 1 ? '1 more job waiting' : `${count} more jobs waiting`),
@@ -1977,6 +1978,7 @@ export const fr: Messages = {
       ImportGithubCodeMapJob: 'Import d’une code map depuis GitHub',
       FollowGithubPushJob: 'Push GitHub',
       PruneAssistantSandboxesJob: 'Nettoyage des sandboxes de l’assistant',
+      RefreshWatchJob: 'Actualisation de la veille',
     },
     retry: (attempt: number) => `Tentative ${attempt}`,
     more: (count: number) =>
