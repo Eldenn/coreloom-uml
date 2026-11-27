@@ -9,6 +9,7 @@ import { client } from '@/lib/client'
 import { isRunActive } from '@/lib/convention-eval-results'
 import { callBody, type StoredProvider } from '@/lib/llm-provider-body'
 import { queryClient } from '@/lib/query'
+import { jobLaunched } from '@/lib/queue-jobs'
 
 /** How often the screen asks how a running test stands. */
 const RUN_POLL_INTERVAL_MS = 3000
@@ -90,6 +91,9 @@ export function useStartEval(configId: number) {
   return useMutation({
     mutationFn: (provider: StoredProvider) =>
       client.api.agentConfigs.evals.store({ params: { id: configId }, body: callBody(provider) }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: conventionEvalKeys.runs(configId) }),
+    onSuccess: () => {
+      jobLaunched()
+      return queryClient.invalidateQueries({ queryKey: conventionEvalKeys.runs(configId) })
+    },
   })
 }
