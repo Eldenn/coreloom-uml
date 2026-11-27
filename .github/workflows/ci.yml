@@ -101,7 +101,8 @@ jobs:
         run: docker compose -f infra/docker-compose.production.yml config --quiet
 
   # Our Harbor classes (infra/evals/coreloom_harbor): their tests are the only offline proof that
-  # the key goes on stdin only, that the agent's user cannot become root and that each phase's
+  # the key reaches the agent's command through a file only (never a command line, an env or a
+  # standard input), that the agent's user cannot become root and that each phase's
   # network is read back. Built from the worker's own `harbor` stage (Harbor from its hash-locked
   # lock, no API build, no Claude Code), run as `node`. About 45 s (31 s build, 12 s tests).
   harbor-classes:

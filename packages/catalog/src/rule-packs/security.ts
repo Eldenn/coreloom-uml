@@ -70,6 +70,7 @@ export const security: RulePack = {
         },
         {
           id: 'never',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Never adds one',
             fr: 'N’en ajoute jamais',
@@ -190,6 +191,7 @@ export const security: RulePack = {
       rules: [
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Never',
             fr: 'Jamais',

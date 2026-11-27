@@ -1,0 +1,535 @@
+{
+ "typescript.any/agree": [
+  "typescript-advanced-types"
+ ],
+ "typescript.strict/all": [
+  "typescript-advanced-types"
+ ],
+ "react.granularity/agree": [
+  "react-composition-patterns",
+  "web-component-design",
+  "frontend-patterns"
+ ],
+ "react.state/tanstack-query-only": [
+  "react-state-management",
+  "frontend-patterns"
+ ],
+ "react.state/zustand": [
+  "react-state-management"
+ ],
+ "react.state/redux": [
+  "react-state-management"
+ ],
+ "react.styling/tailwind": [
+  "tailwind-design-system",
+  "tailwind-4-docs",
+  "tailwind-css-patterns",
+  "shadcn-ui"
+ ],
+ "react.effects/agree": [
+  "react-best-practices",
+  "frontend-patterns"
+ ],
+ "testing.levels/unit": [
+  "test-driven-development",
+  "tdd",
+  "vitest",
+  "javascript-testing-patterns",
+  "javascript-typescript-jest"
+ ],
+ "testing.levels/component": [
+  "javascript-testing-patterns",
+  "vitest"
+ ],
+ "testing.levels/e2e": [
+  "webapp-testing",
+  "playwright-best-practices",
+  "e2e-testing-patterns",
+  "e2e-testing",
+  "webapp-testing-github",
+  "playwright-generate-test"
+ ],
+ "style.comments/agree": [
+  "coding-standards"
+ ],
+ "workflow.changes/agree": [
+  "incremental-implementation",
+  "writing-plans",
+  "executing-plans"
+ ],
+ "workflow.autonomy/agree": [
+  "brainstorming"
+ ],
+ "tooling.checks/run": [
+  "verification-before-completion",
+  "verification-loop",
+  "code-change-verification"
+ ],
+ "frontend.animations/agree": [
+  "review-animations",
+  "improve-animations",
+  "remove-animations",
+  "animation-vocabulary"
+ ],
+ "frontend.accessibility/wcag-aa": [
+  "accessibility",
+  "better-accessibility",
+  "fixing-accessibility",
+  "accessibility-compliance",
+  "wcag-audit-patterns",
+  "web-quality-audit"
+ ],
+ "frontend.accessibility/basics": [
+  "accessibility",
+  "better-accessibility",
+  "fixing-accessibility"
+ ],
+ "frontend.css/tokens": [
+  "tailwind-design-system",
+  "frontend-design-anthropics-2",
+  "ui-ux-pro-max"
+ ],
+ "frontend.css/dark-mode": [
+  "tailwind-design-system",
+  "ui-ux-pro-max"
+ ],
+ "frontend.framework/next": [
+  "nextjs-app-router-patterns",
+  "next-cache-components-optimizer",
+  "nextjs-turbopack",
+  "nextjs-on-cloudflare",
+  "react-best-practices"
+ ],
+ "frontend.lint-format/biome": [
+  "ultracite"
+ ],
+ "frontend.test-runner/vitest": [
+  "vitest",
+  "javascript-testing-patterns"
+ ],
+ "frontend.test-runner/jest": [
+  "javascript-typescript-jest",
+  "javascript-testing-patterns"
+ ],
+ "frontend.test-style/agree": [
+  "javascript-testing-patterns",
+  "playwright-best-practices"
+ ],
+ "frontend.e2e-tool/playwright": [
+  "playwright-best-practices",
+  "webapp-testing",
+  "e2e-testing",
+  "e2e-testing-patterns",
+  "playwright-generate-test",
+  "webapp-testing-github"
+ ],
+ "frontend.browser-check/agree": [
+  "webapp-testing",
+  "webapp-testing-github",
+  "verification-before-completion"
+ ],
+ "frontend.platforms/react-native": [
+  "react-native-best-practices",
+  "react-native-architecture",
+  "react-native-design",
+  "upgrading-react-native"
+ ],
+ "api.style/rest": [
+  "backend-patterns"
+ ],
+ "api.style/rpc": [
+  "golang-grpc"
+ ],
+ "database.migrations/write": [
+  "database-migrations",
+  "postgresql-table-design"
+ ],
+ "database.query-rules/no-n-plus-one": [
+  "sql-optimization-patterns",
+  "sql-optimization",
+  "postgres-patterns",
+  "supabase-postgres-best-practices"
+ ],
+ "database.query-rules/indexes": [
+  "sql-optimization-patterns",
+  "sql-optimization",
+  "postgresql-table-design",
+  "postgres-patterns",
+  "postgresql-optimization",
+  "supabase-postgres-best-practices"
+ ],
+ "database.query-rules/online-migrations": [
+  "database-migrations"
+ ],
+ "database.query-rules/constraints": [
+  "postgresql-table-design"
+ ],
+ "backend.auth-strategy/jwt": [
+  "auth-implementation-patterns"
+ ],
+ "backend.auth-strategy/session": [
+  "auth-implementation-patterns"
+ ],
+ "backend.password-hashing/argon2id": [
+  "auth-implementation-patterns"
+ ],
+ "backend.container-image/dockerfile": [
+  "multi-stage-dockerfile"
+ ],
+ "backend.model-calls/stream": [
+  "claude-api"
+ ],
+ "llm.provider-abstraction/provider-sdk": [
+  "claude-api"
+ ],
+ "agents.evals/ci": [
+  "agentic-eval"
+ ],
+ "git.branching/worktree": [
+  "using-git-worktrees",
+  "git-advanced-workflows"
+ ],
+ "git.commit-messages/conventional": [
+  "git-commit",
+  "git-workflow-and-versioning"
+ ],
+ "git.pull-request-size/200": [
+  "gh-stack",
+  "git-workflow-and-versioning"
+ ],
+ "git.history/disagree": [
+  "git-advanced-workflows"
+ ],
+ "git.ci-workflow/github-actions": [
+  "github-actions-templates",
+  "deployment-pipeline-design"
+ ],
+ "security.destructive-commands/never": [
+  "git-guardrails-claude-code"
+ ],
+ "system.design-clarification/agree": [
+  "brainstorming",
+  "spec-driven-implementation",
+  "prd",
+  "create-specification"
+ ],
+ "design.refactoring/small-steps": [
+  "refactor",
+  "refactor-plan",
+  "test-driven-development"
+ ],
+ "design.code-structure/hexagonal": [
+  "architecture-patterns",
+  "codebase-design"
+ ],
+ "design.ddd/core-only": [
+  "architecture-patterns"
+ ],
+ "design.naming/agree": [
+  "coding-standards"
+ ],
+ "tooling.package-manager/pnpm": [
+  "pnpm",
+  "monorepo-management"
+ ],
+ "frontend.framework/vite-spa": [],
+ "testing.levels/none": [],
+ "frontend.accessibility/none": [],
+ "frontend.platforms/browser-only": [],
+ "backend.container-image/none": [],
+ "git.branching/trunk": [],
+ "design.paradigm/functional": [],
+ "llm.vector-store/none": [],
+ "agents.mcp/not-used": [],
+ "backend.model-calls/none": [],
+ "security.sandbox/host": [],
+ "api.contract/none": [],
+ "backend.password-hashing/none": [],
+ "security.secrets/agree": [],
+ "frontend.test-runner/none": [],
+ "design.abstraction-timing/third-case": [],
+ "database.migrations/never": [],
+ "react.state/context": [
+  "react-state-management"
+ ],
+ "react.styling/styled-components": [
+  "web-component-design"
+ ],
+ "react.hooks/agree": [
+  "react-best-practices"
+ ],
+ "frontend.rendering/server": [
+  "nextjs-app-router-patterns",
+  "next-cache-components-optimizer"
+ ],
+ "frontend.bundler/framework": [
+  "nextjs-turbopack"
+ ],
+ "frontend.test-network/msw": [
+  "javascript-testing-patterns"
+ ],
+ "frontend.e2e-tool/cypress": [
+  "e2e-testing-patterns",
+  "clerk-testing"
+ ],
+ "frontend.api-client/tanstack-query": [
+  "react-state-management",
+  "frontend-patterns"
+ ],
+ "frontend.api-client/rtk-query": [
+  "react-state-management"
+ ],
+ "frontend.semantic-html/agree": [
+  "accessibility",
+  "fixing-accessibility",
+  "better-accessibility"
+ ],
+ "frontend.css/mobile-first": [
+  "tailwind-css-patterns",
+  "mobile-native",
+  "ui-ux-pro-max"
+ ],
+ "frontend.css/flex-grid": [
+  "tailwind-css-patterns"
+ ],
+ "frontend.hosting/platform": [
+  "nextjs-on-cloudflare",
+  "azure-static-web-apps",
+  "workers-development"
+ ],
+ "frontend.preview-deploys/yes": [
+  "deployment-pipeline-design"
+ ],
+ "frontend.token-storage/httponly-cookie": [
+  "auth-implementation-patterns"
+ ],
+ "errors.handling/central-handler": [
+  "backend-patterns"
+ ],
+ "database.access/raw-sql": [
+  "sql-code-review",
+  "sql-optimization-patterns"
+ ],
+ "database.transactions/agree": [
+  "postgres-patterns"
+ ],
+ "database.concurrent-writes/row-lock": [
+  "postgres-patterns",
+  "postgresql-optimization"
+ ],
+ "database.json-columns/agree": [
+  "postgresql-table-design",
+  "postgresql-optimization"
+ ],
+ "database.table-splitting/partitioned": [
+  "postgresql-table-design",
+  "postgresql-optimization"
+ ],
+ "database.connections/agree": [
+  "neon-postgres",
+  "supabase-postgres-best-practices"
+ ],
+ "database.query-rules/explicit-columns": [
+  "sql-optimization-patterns",
+  "sql-optimization",
+  "sql-code-review"
+ ],
+ "backend.auth-strategy/identity-provider": [
+  "auth-implementation-patterns"
+ ],
+ "backend.authorization/agree": [
+  "auth-implementation-patterns"
+ ],
+ "backend.password-hashing/bcrypt": [
+  "auth-implementation-patterns"
+ ],
+ "backend.service-shape/serverless": [
+  "workers-development"
+ ],
+ "backend.service-shape/microservices": [
+  "architecture-patterns",
+  "golang-grpc"
+ ],
+ "backend.observability/traces": [
+  "appinsights-instrumentation"
+ ],
+ "backend.observability/metrics": [
+  "appinsights-instrumentation"
+ ],
+ "backend.model-call-guards/timeouts": [
+  "claude-api"
+ ],
+ "backend.model-calls/job": [
+  "claude-api"
+ ],
+ "git.commit-permission/commit": [
+  "git-commit"
+ ],
+ "git.pull-request-size/400": [
+  "gh-stack",
+  "git-workflow-and-versioning"
+ ],
+ "git.commit-messages/imperative": [
+  "git-commit",
+  "git-workflow-and-versioning"
+ ],
+ "git.history/agree": [
+  "git-guardrails-claude-code"
+ ],
+ "git.branching/branch": [
+  "git-workflow-and-versioning"
+ ],
+ "security.destructive-commands/ask": [
+  "git-guardrails-claude-code"
+ ],
+ "system.design-trade-offs/agree": [
+  "architecture-decision-records",
+  "documentation-and-adrs"
+ ],
+ "system.service-decomposition/modular-monolith": [
+  "architecture-patterns",
+  "codebase-design"
+ ],
+ "system.service-protocol/grpc": [
+  "golang-grpc"
+ ],
+ "system.monitoring-scope/performance": [
+  "appinsights-instrumentation"
+ ],
+ "design.function-size/agree": [
+  "coding-standards",
+  "refactor"
+ ],
+ "design.immutability/agree": [
+  "coding-standards"
+ ],
+ "design.principles/single-responsibility": [
+  "architecture-patterns",
+  "coding-standards",
+  "code-review-expert"
+ ],
+ "design.principles/dependency-inversion": [
+  "architecture-patterns",
+  "code-review-expert"
+ ],
+ "design.dependency-rule/agree": [
+  "architecture-patterns"
+ ],
+ "design.code-structure/layered": [
+  "architecture-patterns"
+ ],
+ "design.folder-structure/by-domain": [
+  "architecture-patterns"
+ ],
+ "design.ddd/everywhere": [
+  "architecture-patterns"
+ ],
+ "design.repositories/repositories": [
+  "architecture-patterns"
+ ],
+ "llm.streaming/stream": [
+  "claude-api"
+ ],
+ "llm.structured-output/schema-constrained": [
+  "claude-api"
+ ],
+ "llm.eval-tool/test-runner": [
+  "agentic-eval"
+ ],
+ "llm.eval-scoring/model-judge": [
+  "agentic-eval"
+ ],
+ "llm.eval-gate/ci": [
+  "agentic-eval"
+ ],
+ "agents.framework/framework": [
+  "copilot-sdk"
+ ],
+ "agents.self-review/agree": [
+  "agentic-eval"
+ ],
+ "agents.prompt-caching/cached": [
+  "claude-api"
+ ],
+ "agents.evals/manual": [
+  "agentic-eval"
+ ],
+ "perf.code-splitting/route": [
+  "react-best-practices",
+  "nextjs-app-router-patterns"
+ ],
+ "perf.memoization/measured": [
+  "react-best-practices"
+ ],
+ "perf.long-lists/virtualized": [
+  "react-best-practices",
+  "react-native-best-practices"
+ ],
+ "perf.measure-first/agree": [
+  "web-quality-audit",
+  "react-best-practices"
+ ],
+ "perf.vitals-targets/good": [
+  "web-quality-audit",
+  "next-cache-components-optimizer"
+ ],
+ "perf.budget-check/lighthouse-ci": [
+  "web-quality-audit"
+ ],
+ "perf.image-formats/modern-files": [
+  "web-quality-audit",
+  "image-manipulation-image-magick"
+ ],
+ "perf.dependency-weight/agree": [
+  "react-best-practices"
+ ],
+ "typescript.state-modeling/agree": [
+  "typescript-advanced-types"
+ ],
+ "workflow.autonomy/ask-before-writing": [
+  "brainstorming"
+ ],
+ "react.styling/css-modules": [],
+ "frontend.platforms/tauri": [],
+ "frontend.platforms/electron": [],
+ "frontend.bundler/vite": [],
+ "frontend.service-worker/offline": [],
+ "frontend.raw-html/sanitized": [],
+ "frontend.csp/strict": [],
+ "api.style/graphql": [],
+ "logging.style/structured": [],
+ "backend.background-jobs/job-queue": [],
+ "backend.module-system/esm": [],
+ "backend.graceful-shutdown/agree": [],
+ "git.attribution/agree": [],
+ "security.dependencies/ask": [],
+ "security.input-trust/agree": [],
+ "system.health-probes/liveness-readiness": [],
+ "tooling.package-manager/bun": [],
+ "frontend.browser-support/browserslist": [],
+ "api.webhooks/receives": [],
+ "api.rate-limiting/app": [],
+ "backend.cache-store/shared": [],
+ "system.queue-guarantees/at-least-once": [],
+ "system.failover/active-active": [],
+ "llm.fine-tuning/adapters": [],
+ "llm.vector-store/pgvector": [],
+ "llm.prompt-injection/agree": [],
+ "agents.long-term-memory/profile": [],
+ "perf.font-display/swap": [],
+ "security.network/none": [],
+ "design.refactoring/leave": [],
+ "frontend.e2e-tool/none": [],
+ "api.webhooks/none": [],
+ "backend.observability/none": [],
+ "llm.retrieval/none": [],
+ "agents.long-term-memory/none": [],
+ "backend.background-jobs/none": [],
+ "perf.budget-check/none": [],
+ "frontend.service-worker/none": [],
+ "llm.eval-tool/none": [],
+ "frontend.csp/none": [],
+ "frontend.browser-check/disagree": [],
+ "workflow.changes/disagree": [],
+ "git.pull-request-size/no-limit": []
+}

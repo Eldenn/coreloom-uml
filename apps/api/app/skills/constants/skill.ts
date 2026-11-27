@@ -98,25 +98,37 @@ export const SKILLS_EVENTS_HEARTBEAT_MS = 25_000
 
 /**
  * Where the weekly search looks for skills (`skill_sources`): skills.sh, searched with the
- * catalog's plan, or a GitHub repository of a trusted publisher, listed whole. A skill a GitHub
- * source lists needs no installs and no audit to be suggested; its copy is still scanned and
- * approved by the admin.
+ * catalog's plan; Smithery, whose top skills are listed; or a GitHub repository of a trusted
+ * publisher, listed whole (or as its `marketplace.json` says). A skill a GitHub source or Smithery
+ * lists needs no installs and no audit to be suggested (`TRUSTING_SOURCE_KINDS`); its copy is
+ * still scanned and approved by the admin.
  */
 export const SkillSourceKind = {
   SkillsSh: 'skills-sh',
   Github: 'github',
+  Smithery: 'smithery',
 } as const
+
+/** The kinds whose listing is enough to suggest a skill (Smithery lists only `SMITHERY_GATE`). */
+export const TRUSTING_SOURCE_KINDS = [SkillSourceKind.Github, SkillSourceKind.Smithery] as const
+
+/** A Smithery skill is listed only when its publisher is verified and its score this high. */
+export const SMITHERY_GATE = { minQualityScore: 0.8 } as const
 
 export type SkillSourceKind = (typeof SkillSourceKind)[keyof typeof SkillSourceKind]
 
 export const SKILL_SOURCE_KINDS = Object.values(SkillSourceKind) as readonly SkillSourceKind[]
 
 /**
- * A GitHub source contributes at most `skillsPerSource` skills a run (in path order); its folder
- * is at most `pathMaxLength` characters, and a run's error is kept to `errorMaxLength`.
+ * A source contributes at most `skillsPerSource` skills a run (a repository in path order,
+ * Smithery in its own order, reading at most `smitheryPages`); a marketplace reads at most
+ * `marketplaceRepos` other repositories. A folder is at most `pathMaxLength` characters, and a
+ * run's error is kept to `errorMaxLength`.
  */
 export const SKILL_SOURCE_LIMITS = {
   skillsPerSource: 100,
+  smitheryPages: 5,
+  marketplaceRepos: 30,
   pathMaxLength: 200,
   errorMaxLength: 300,
 } as const

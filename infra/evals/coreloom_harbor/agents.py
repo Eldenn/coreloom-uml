@@ -70,13 +70,14 @@ async def _exec_with_secret(
     timeout_sec: int | None = None,
     cwd: str | None = None,
 ) -> Any:
-    """The agent's own command with its key on standard input (record section 5, g), the way
-    Harbor's ``_exec`` runs any other: pipefail, a redacted debug line, errors classified."""
+    """The agent's own command with its key from a file it removes at once (record section 5,
+    g), run the way Harbor's ``_exec`` runs any other: pipefail, a redacted debug line, errors
+    classified."""
     exec_with_secret = getattr(environment, "exec_with_secret", None)
     if exec_with_secret is None:
         raise TypeError("the convention evals' agents run in ConventionEvalsE2BEnvironment only")
     agent.logger.debug(
-        f"Running command with {secret_name} on stdin: {agent._redact_command(command)}"
+        f"Running command with {secret_name} from its file: {agent._redact_command(command)}"
     )
     result = await exec_with_secret(
         f"(set -o pipefail) 2>/dev/null && set -o pipefail; {command}",
@@ -93,8 +94,9 @@ async def _exec_with_secret(
 
 class ConventionEvalsClaudeCode(ClaudeCode):
     """Harbor's Claude Code with the template's CLI only, no auth but the API key, and no
-    nonessential traffic. The key reaches Claude's own command on its standard input (fix g),
-    never an environment variable of a request nor a file; every other command gets none."""
+    nonessential traffic. The key reaches Claude's own command through a file that command
+    removes at once (fix g), never an environment variable of a request, a command line or a
+    standard input; every other command gets none."""
 
     #: What marks Harbor 0.27.0's command that starts Claude (agents/installed/claude_code.py).
     AGENT_COMMAND_MARK = "claude --verbose --output-format=stream-json"
@@ -193,8 +195,8 @@ class ConventionEvalsCodex(Codex):
 
         home = self._REMOTE_CODEX_HOME.as_posix()
         logs = self.environment_logs_dir.as_posix()
-        # No credential in any request's envs (fix g): `codex exec` gets CODEX_API_KEY from its
-        # standard input, read into its own process's environment by a fixed line.
+        # No credential in any request's envs (fix g): `codex exec` gets CODEX_API_KEY from a
+        # file a fixed line reads into its own process's environment and removes at once.
         base_env = {"CODEX_HOME": home}
 
         await self._ensure_agent_owned_dir(environment, self._REMOTE_CODEX_HOME)

@@ -9,7 +9,13 @@ import {
   sourcePaths,
 } from '@coreloom-uml/llm'
 import { REPOSITORY_SANDBOX } from '#app/assistant/constants/repository'
-import { CLONE_AT, READ_FILE, SHELL, tokenEnvs } from '#app/assistant/services/repository-commands'
+import {
+  CLONE_AT,
+  cloneKillSeconds,
+  READ_FILE,
+  SHELL,
+  writeCloneCredential,
+} from '#app/assistant/services/repository-commands'
 import RepositorySandbox from '#app/assistant/services/repository-sandbox'
 import { SOURCE_READ_LIMITS } from '#app/code-maps/constants/code-map'
 import type CodeMap from '#app/code-maps/models/code-map'
@@ -18,7 +24,7 @@ import { GITHUB_SOURCE_LIMITS } from '#app/github/constants/github'
 import type GithubApi from '#app/github/services/github-api'
 import { isCommitId, isRepositoryPath } from '#app/github/services/github-api'
 import { findGrant } from '#app/github/services/github-grants'
-import { repositoryToken } from '#app/github/services/repository-token'
+import { repositoryToken, revokeOnce, TokenFlow } from '#app/github/services/repository-token'
 import { ProviderKind } from '#app/llm-connections/constants/llm-connections'
 import type User from '#app/users/models/user'
 
@@ -28,7 +34,8 @@ import type User from '#app/users/models/user'
  * commit from GitHub and the files are read there with one fixed command line each; this server
  * never asks GitHub for a file. The source is never stored, logged, traced or returned, and a
  * map still holds none. A private repository is fetched with an installation token made here,
- * given to that one fetch and revoked before returning. The sandbox is killed whatever happens.
+ * given to that one fetch (`writeCloneCredential`) and revoked as soon as it answered. The
+ * sandbox is killed whatever happens.
  *
  * With an explorer, the owner's model then looks at the repository by itself (`exploreSource`):
  * it runs commands of its own in that sandbox, which is first cut off every network and gets no
@@ -119,6 +126,7 @@ export async function readSource(
     return absent(SourceAbsence.Unreadable)
   }
   if (typeof access === 'string') return absent(SourceAbsence.Unreadable)
+  const revoke = revokeOnce(access, TokenFlow.Source)
   const files: SourceFile[] = []
   let outputs: SourceExcerpt[] = []
   try {
@@ -130,16 +138,21 @@ export async function readSource(
     if (!sandbox) return absent(SourceAbsence.Unreadable)
     try {
       const root = REPOSITORY_SANDBOX.root
+      if (access && !(await writeCloneCredential(sandbox, root, access.token))) {
+        return absent(SourceAbsence.Unreadable)
+      }
       const fetched = await sandbox.run(
         CLONE_AT,
         {
           REPO_ROOT: root,
           REPO_URL: `${repository.url}.git`,
           REPO_COMMIT: commit,
-          ...(access ? tokenEnvs(access.token) : {}),
+          ...cloneKillSeconds(SOURCE_READ_LIMITS.cloneTimeoutMs),
         },
         SOURCE_READ_LIMITS.cloneTimeoutMs,
       )
+      // The commit is in, or never will be: the token has no use left.
+      await revoke()
       if (fetched.exitCode !== 0) return absent(SourceAbsence.Unreadable)
       // The files are in the sandbox: reading one needs no token.
       const answers = await Promise.all(
@@ -182,7 +195,7 @@ export async function readSource(
   } catch {
     return absent(SourceAbsence.Unreadable)
   } finally {
-    if (access) await access.github.revokeInstallationToken(access.token).catch(() => {})
+    await revoke()
   }
   if (files.length === 0) return absent(SourceAbsence.NotFound)
   const excerpts = excerptSource(files, nodes)

@@ -33,6 +33,7 @@ export const softwareDesign: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Keep names short and follow the abbreviations the code base already uses; do not rename existing identifiers to longer ones as a side effect.',
           ],
@@ -57,6 +58,7 @@ export const softwareDesign: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Keep a linear procedure in one function rather than a chain of two-line functions that call each other; extract a function only when it is reused or hides a real detail.',
           ],
@@ -84,6 +86,7 @@ export const softwareDesign: RulePack = {
         },
         {
           id: 'propose',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Tells me, and leaves it for a separate change',
             fr: 'Me le signale, et le laisse pour un changement séparé',
@@ -94,6 +97,7 @@ export const softwareDesign: RulePack = {
         },
         {
           id: 'leave',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Leaves it alone',
             fr: 'N’y touche pas',
@@ -200,6 +204,7 @@ export const softwareDesign: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Business code may read the clock and do I/O where it needs it; do not restructure it into pure functions unasked, and keep a way to fake the clock and the I/O in tests.',
           ],
@@ -268,6 +273,7 @@ export const softwareDesign: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Plain objects with public fields are fine; do not wrap them in classes with getters and setters, and do not narrow existing visibility as a side effect.',
           ],
@@ -537,6 +543,7 @@ export const softwareDesign: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Business code may use the framework and the ORM directly; do not add interfaces and mapping layers to hide them, except in front of a detail that is likely to be replaced.',
           ],
@@ -661,6 +668,7 @@ export const softwareDesign: RulePack = {
       rules: [
         {
           id: 'direct-calls',
+          noAutomaticSuggestion: true,
           label: {
             en: 'The code calls them directly',
             fr: 'Le code les appelle directement',
@@ -733,6 +741,7 @@ export const softwareDesign: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'None of these',
             fr: 'Aucun de ceux-là',
@@ -818,6 +827,7 @@ export const softwareDesign: RulePack = {
         },
         {
           id: 'not-used',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Not used',
             fr: 'Pas utilisées',
@@ -845,6 +855,7 @@ export const softwareDesign: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Entities are plain data and the rules live in services: put a rule in the service that owns the action, in one place, and do not add behaviour to the data types.',
           ],
@@ -869,6 +880,7 @@ export const softwareDesign: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Keep the names the code already has, even when the business now uses another word; do not rename identifiers to follow vocabulary unasked.',
           ],
@@ -906,6 +918,7 @@ export const softwareDesign: RulePack = {
         },
         {
           id: 'data-client',
+          noAutomaticSuggestion: true,
           label: {
             en: 'The ORM or database client, called directly',
             fr: 'L’ORM ou le client de base, appelé directement',

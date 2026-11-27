@@ -45,6 +45,14 @@ export const readyRuleSchema = z
     input: z.literal(true).optional(),
     /** Cannot be held together with another rule of its group (`many` only). */
     alone: z.literal(true).optional(),
+    /**
+     * No automatic suggestion: the project holding it does not use, does not do or must not add
+     * something, which a text similarity cannot read (a Docker skill looks close to "no container
+     * image is built here"). It gets no computed affinity; a skill still fits it through a
+     * written affinity or a pair the admin accepted. Marks the rule's text, not what the catalog
+     * covers today.
+     */
+    noAutomaticSuggestion: z.literal(true).optional(),
   })
   .strict()
 

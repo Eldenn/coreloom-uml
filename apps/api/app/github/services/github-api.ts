@@ -188,8 +188,9 @@ export default class GithubApi {
     return { ok: true, value: token }
   }
 
-  async revokeInstallationToken(token: string): Promise<void> {
-    await this.#api('/installation/token', {
+  /** Revokes an installation token: what GitHub answered (nothing is logged here). */
+  revokeInstallationToken(token: string): Promise<GithubResult<unknown>> {
+    return this.#api('/installation/token', {
       method: 'DELETE',
       headers: { authorization: `Bearer ${token}` },
     })

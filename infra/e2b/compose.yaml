@@ -5,6 +5,17 @@
 # the dev stack (`infra/docker-compose.yml`) and other local stacks commonly hold, together with
 # every `127.0.0.1:<port>` that reads them: postgres 5432 -> 15432, redis 6379 -> 16379,
 # clickhouse 9000 -> 19000 and 8123 -> 18123.
+# Second local divergence to keep on re-copy: envd logs each process it starts with its
+# environment and each input sent to it, and Vector stores every line in ClickHouse
+# `sandbox_logs`. The `redact_process_requests` transform of `configs.vector-config`, between
+# `remove_internal` and `sandbox_logs_rows`, keeps the names of a command's environment variables,
+# never their values, and the length of what is sent on standard input, never its bytes, so no
+# column (`raw`, `fields`, `message`) holds either; a request whose shape it cannot read is
+# replaced whole. Command lines (`cmd`, `args`) are kept as they are, so a value must never be
+# put in one. `VECTOR_CONFIG_SHA256` is the sha256 of
+# `configs.vector-config.content` as `docker compose config --format json` renders it: recompute
+# it after any change to that block. The 7-day TTL of `sandbox_logs` is upstream's, set by the
+# clickhouse-migrator image, and kept.
 #
 # The install is this file plus .env, side by side, and nothing else.
 #
@@ -130,7 +141,7 @@ services:
       # service hash change with the inline config so `up` recreates the
       # container (compose does not hash `configs:` content). Kept in step by
       # tests/config-hashes.bats.
-      VECTOR_CONFIG_SHA256: a4ca48367c4ae06f81fa08d9f8cbcace70f25a631f00496a44d96282e469b7a3
+      VECTOR_CONFIG_SHA256: 81b6cf72704ff6c2d67153cf168aeadeb6c05de83e394466c277474192e2e352
     ports:
       - "127.0.0.1:30006:30006"
     configs:
@@ -828,6 +839,67 @@ configs:
       # inputs = ["remove_internal"]
       # encoding.codec = "json"
 
+      # Local divergence (see the header): envd logs the environment of each
+      # process it starts and what is sent on its standard input. Before `raw`,
+      # `fields` and `message` are built from the event, every value under a key
+      # named `envs` anywhere in `request` becomes a marker (the names are kept),
+      # every string under a key named `input` or `data` becomes its length, and a
+      # `request` that is not an object, or that cannot be walked key by key,
+      # becomes a marker: a change of shape is redacted, never stored. Command
+      # lines (`cmd`, `args`) and `cwd` are kept as they are.
+      [transforms.redact_process_requests]
+      type = "remap"
+      inputs = [ "remove_internal" ]
+      drop_on_error = true
+      drop_on_abort = true
+      source = '''
+      if exists(.request) {
+        original, err = object(.request)
+        if err != null {
+          .request = "[redacted]"
+        } else {
+          request = original
+          broken = false
+          for_each(flatten(original, separator: "=")) -> |key, value| {
+            segments = split(key, "=")
+            if (get(original, segments) ?? null) != value { broken = true }
+            prefix = []
+            found = ""
+            for_each(segments) -> |_index, segment| {
+              if found == "" {
+                prefix = push(prefix, segment)
+                name = downcase(segment)
+                if includes(["envs", "input", "data"], name) { found = name }
+              }
+            }
+            if found == "envs" {
+              envs, err = object(get!(original, prefix))
+              if err == null {
+                request = set!(request, prefix, map_values(envs) -> |_value| { "[redacted]" })
+              } else {
+                request = set!(request, prefix, "[redacted]")
+              }
+            } else if found != "" {
+              text, err = string(value)
+              if err == null {
+                bytes = decode_base64(text) ?? text
+                request = set!(request, segments, "[redacted: " + to_string(length(bytes)) + " bytes]")
+              } else if is_array(value) {
+                request = set!(request, segments, "[redacted]")
+              }
+            } else if is_array(value) {
+              json = encode_json(value)
+              if contains(json, "\"envs\":", case_sensitive: false) || contains(json, "\"input\":", case_sensitive: false) || contains(json, "\"data\":", case_sensitive: false) {
+                request = set!(request, segments, "[redacted]")
+              }
+            }
+          }
+          .request = request
+          if broken { .request = "[redacted]" }
+        }
+      }
+      '''
+
       # One row of the ClickHouse `sandbox_logs` table per line, the same eleven
       # columns and the same rules as the collector that writes it in E2B's own
       # deployments. The api reads this table for sandbox and template-build logs
@@ -837,7 +909,7 @@ configs:
       # up by template and build id and stores under the "unknown" sandbox.
       [transforms.sandbox_logs_rows]
       type = "remap"
-      inputs = [ "remove_internal" ]
+      inputs = [ "redact_process_requests" ]
       drop_on_error = true
       drop_on_abort = true
       source = '''

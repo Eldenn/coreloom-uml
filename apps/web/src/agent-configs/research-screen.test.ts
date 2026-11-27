@@ -24,6 +24,12 @@ describe('researchScreen', () => {
     )
   })
 
+  it('shows a search as `search` and its query', () => {
+    expect(
+      researchScreen([{ kind: 'search', label: 'adonis queues', state: 'done' }], 'Failed'),
+    ).toBe('\x1b[2m$\x1b[0m search adonis queues\n\x1b[32m✓\x1b[0m')
+  })
+
   it('leaves no control character of a label on the screen', () => {
     const screen = researchScreen(
       [{ kind: 'command', label: 'echo \x1b[2J\x1b[31mred\r\x9b1A\x07', state: 'running' }],

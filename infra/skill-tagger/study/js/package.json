@@ -1,0 +1,1 @@
+{"name":"rerank-js","private":true,"type":"module","dependencies":{"@huggingface/transformers":"4.3.2"}}

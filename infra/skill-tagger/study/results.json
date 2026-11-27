@@ -1,0 +1,7796 @@
+{
+ "metrics": {
+  "current matchSkills": {
+   "P@5": 0.07258064516129031,
+   "R@5": 0.18387096774193545,
+   "MRR": 0.21306667497519122,
+   "nDCG@5": 0.15019853123955645,
+   "F1@th": 0.16730038022813687,
+   "precision@th": 0.5238095238095238,
+   "empty rules suggested": 0.016666666666666666,
+   "anthropics/skills R@5": 0.0
+  },
+  "BM25": {
+   "P@5": 0.1387096774193547,
+   "R@5": 0.353494623655914,
+   "MRR": 0.3816310686489329,
+   "nDCG@5": 0.31244842135015244,
+   "F1@th": 0.17786561264822134,
+   "precision@th": 0.15789473684210525,
+   "empty rules suggested": 0.38333333333333336,
+   "anthropics/skills R@5": 0.375
+  },
+  "Qwen3-Embedding-0.6B": {
+   "P@5": 0.2532258064516124,
+   "R@5": 0.7545698924731182,
+   "MRR": 0.6887928426165358,
+   "nDCG@5": 0.6515936035488918,
+   "F1@th": 0.3709677419354839,
+   "precision@th": 0.33454545454545453,
+   "empty rules suggested": 0.36666666666666664,
+   "anthropics/skills R@5": 0.75
+  },
+  "SparseUp-v2": {
+   "P@5": 0.2322580645161286,
+   "R@5": 0.6709677419354839,
+   "MRR": 0.618731787317612,
+   "nDCG@5": 0.574600784757632,
+   "F1@th": 0.33877551020408164,
+   "precision@th": 0.30855018587360594,
+   "empty rules suggested": 0.36666666666666664,
+   "anthropics/skills R@5": 0.5
+  },
+  "RRF Qwen + SparseUp": {
+   "P@5": 0.2580645161290318,
+   "R@5": 0.7666666666666666,
+   "MRR": 0.7092073657419958,
+   "nDCG@5": 0.6746945443772537,
+   "F1@th": 0.4260355029585799,
+   "precision@th": 0.3776223776223776,
+   "empty rules suggested": 0.7666666666666667,
+   "anthropics/skills R@5": 0.875
+  },
+  "RRF Qwen + BM25": {
+   "P@5": 0.2145161290322577,
+   "R@5": 0.5907258064516129,
+   "MRR": 0.5485786273301693,
+   "nDCG@5": 0.4995524768360356,
+   "F1@th": 0.3282275711159737,
+   "precision@th": 0.3177966101694915,
+   "empty rules suggested": 0.5833333333333334,
+   "anthropics/skills R@5": 1.0
+  }
+ },
+ "times": {
+  "qwen": 0.11136735871780751,
+  "sparseup": 0.07294621578482695
+ },
+ "tops": {
+  "current matchSkills": {
+   "typescript.any/agree": [
+    "typescript-advanced-types",
+    "prisma-compute",
+    "limrun-expo-development",
+    "javascript-testing-patterns",
+    "javascript-typescript-jest"
+   ],
+   "typescript.strict/all": [
+    "prisma-compute",
+    "typescript-advanced-types",
+    "limrun-expo-development",
+    "javascript-testing-patterns",
+    "javascript-typescript-jest"
+   ],
+   "react.granularity/agree": [
+    "react-composition-patterns",
+    "web-component-design",
+    "react-best-practices",
+    "ask-sonner",
+    "animate-expo"
+   ],
+   "react.state/tanstack-query-only": [
+    "react-best-practices",
+    "react-composition-patterns",
+    "ask-sonner",
+    "animate-expo",
+    "gsap-react"
+   ],
+   "react.state/zustand": [
+    "react-best-practices",
+    "react-state-management",
+    "react-composition-patterns",
+    "ask-sonner",
+    "animate-expo"
+   ],
+   "react.state/redux": [
+    "react-best-practices",
+    "react-state-management",
+    "react-composition-patterns",
+    "ask-sonner",
+    "animate-expo"
+   ],
+   "react.styling/tailwind": [
+    "ask-sonner",
+    "shadcn-ui",
+    "tailwind-css-patterns",
+    "tailwind-design-system",
+    "tailwind-4-docs"
+   ],
+   "react.effects/agree": [
+    "react-composition-patterns",
+    "react-best-practices",
+    "ask-sonner",
+    "animate-expo",
+    "gsap-react"
+   ],
+   "testing.levels/unit": [
+    "test-driven-development",
+    "tdd",
+    "vitest",
+    "python-testing-patterns",
+    "javascript-testing-patterns"
+   ],
+   "testing.levels/component": [
+    "test-driven-development",
+    "tdd",
+    "vitest",
+    "python-testing-patterns",
+    "javascript-testing-patterns"
+   ],
+   "testing.levels/e2e": [
+    "webapp-testing",
+    "playwright-stealth-verify",
+    "playwright-best-practices",
+    "clerk-testing",
+    "e2e-testing-patterns"
+   ],
+   "style.comments/agree": [
+    "documentation-and-adrs",
+    "golang-documentation",
+    "baoyu-markdown-to-html",
+    "documentation-writer",
+    "architecture-decision-records"
+   ],
+   "workflow.changes/agree": [
+    "writing-plans",
+    "executing-plans",
+    "subagent-driven-development",
+    "using-git-worktrees",
+    "ab-testing"
+   ],
+   "workflow.autonomy/agree": [
+    "brainstorming",
+    "writing-plans",
+    "systematic-debugging",
+    "verification-before-completion",
+    "requesting-code-review"
+   ],
+   "tooling.checks/run": [
+    "git-guardrails-claude-code",
+    "golang-code-style",
+    "golang-naming",
+    "golang-modernize",
+    "golang-cli"
+   ],
+   "frontend.animations/agree": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.accessibility/wcag-aa": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.accessibility/basics": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.css/tokens": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.css/dark-mode": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.framework/next": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.lint-format/biome": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.test-runner/vitest": [
+    "test-driven-development",
+    "webapp-testing",
+    "tdd",
+    "ui-ux-pro-max",
+    "review-animations"
+   ],
+   "frontend.test-runner/jest": [
+    "test-driven-development",
+    "webapp-testing",
+    "tdd",
+    "ui-ux-pro-max",
+    "review-animations"
+   ],
+   "frontend.test-style/agree": [
+    "test-driven-development",
+    "webapp-testing",
+    "tdd",
+    "ui-ux-pro-max",
+    "review-animations"
+   ],
+   "frontend.e2e-tool/playwright": [
+    "test-driven-development",
+    "webapp-testing",
+    "tdd",
+    "ui-ux-pro-max",
+    "review-animations"
+   ],
+   "frontend.browser-check/agree": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.platforms/react-native": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "api.style/rest": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "api.style/rpc": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "database.migrations/write": [
+    "supabase-postgres-best-practices",
+    "prisma-postgres",
+    "neon-postgres",
+    "golang-database",
+    "prisma-postgres-upgrade"
+   ],
+   "database.query-rules/no-n-plus-one": [
+    "supabase-postgres-best-practices",
+    "prisma-postgres",
+    "neon-postgres",
+    "golang-database",
+    "prisma-postgres-upgrade"
+   ],
+   "database.query-rules/indexes": [
+    "supabase-postgres-best-practices",
+    "prisma-postgres",
+    "neon-postgres",
+    "golang-database",
+    "prisma-postgres-upgrade"
+   ],
+   "database.query-rules/online-migrations": [
+    "supabase-postgres-best-practices",
+    "prisma-postgres",
+    "neon-postgres",
+    "golang-database",
+    "prisma-postgres-upgrade"
+   ],
+   "database.query-rules/constraints": [
+    "supabase-postgres-best-practices",
+    "prisma-postgres",
+    "neon-postgres",
+    "golang-database",
+    "prisma-postgres-upgrade"
+   ],
+   "backend.auth-strategy/jwt": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "backend.auth-strategy/session": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "backend.password-hashing/argon2id": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "backend.container-image/dockerfile": [
+    "prisma-compute",
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance"
+   ],
+   "backend.model-calls/stream": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "llm.provider-abstraction/provider-sdk": [
+    "analyze-project",
+    "cross-critique",
+    "health",
+    "create-agentsmd",
+    "agentic-eval"
+   ],
+   "agents.evals/ci": [
+    "test-driven-development",
+    "webapp-testing",
+    "tdd",
+    "analyze-project",
+    "playwright-stealth-verify"
+   ],
+   "git.branching/worktree": [
+    "git-guardrails-claude-code",
+    "golang-code-style",
+    "golang-naming",
+    "golang-modernize",
+    "golang-cli"
+   ],
+   "git.commit-messages/conventional": [
+    "git-guardrails-claude-code",
+    "golang-code-style",
+    "golang-naming",
+    "golang-modernize",
+    "golang-cli"
+   ],
+   "git.pull-request-size/200": [
+    "git-guardrails-claude-code",
+    "golang-code-style",
+    "golang-naming",
+    "golang-modernize",
+    "golang-cli"
+   ],
+   "git.history/disagree": [
+    "git-guardrails-claude-code",
+    "golang-code-style",
+    "golang-naming",
+    "golang-modernize",
+    "golang-cli"
+   ],
+   "git.ci-workflow/github-actions": [
+    "git-guardrails-claude-code",
+    "prisma-compute",
+    "golang-code-style",
+    "golang-naming",
+    "golang-modernize"
+   ],
+   "security.destructive-commands/never": [
+    "golang-security",
+    "auth-implementation-patterns",
+    "aws-security"
+   ],
+   "system.design-clarification/agree": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "design.refactoring/small-steps": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "design.code-structure/hexagonal": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "design.ddd/core-only": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "design.naming/agree": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "tooling.package-manager/pnpm": [
+    "pnpm",
+    "monorepo-management",
+    "git-guardrails-claude-code",
+    "golang-code-style",
+    "golang-naming"
+   ],
+   "frontend.framework/vite-spa": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "testing.levels/none": [
+    "test-driven-development",
+    "webapp-testing",
+    "tdd",
+    "playwright-stealth-verify",
+    "playwright-best-practices"
+   ],
+   "frontend.accessibility/none": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.platforms/browser-only": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "backend.container-image/none": [
+    "prisma-compute",
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance"
+   ],
+   "git.branching/trunk": [
+    "git-guardrails-claude-code",
+    "golang-code-style",
+    "golang-naming",
+    "golang-modernize",
+    "golang-cli"
+   ],
+   "design.paradigm/functional": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "llm.vector-store/none": [
+    "analyze-project",
+    "ad-conversion-tracking",
+    "cross-critique",
+    "health",
+    "kpi-dashboard-design"
+   ],
+   "agents.mcp/not-used": [
+    "analyze-project",
+    "cross-critique",
+    "health",
+    "create-agentsmd",
+    "agentic-eval"
+   ],
+   "backend.model-calls/none": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "security.sandbox/host": [
+    "golang-security",
+    "auth-implementation-patterns",
+    "aws-security"
+   ],
+   "api.contract/none": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "backend.password-hashing/none": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "security.secrets/agree": [
+    "golang-security",
+    "auth-implementation-patterns",
+    "aws-security"
+   ],
+   "frontend.test-runner/none": [
+    "test-driven-development",
+    "webapp-testing",
+    "tdd",
+    "ui-ux-pro-max",
+    "review-animations"
+   ],
+   "design.abstraction-timing/third-case": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "database.migrations/never": [
+    "supabase-postgres-best-practices",
+    "prisma-postgres",
+    "neon-postgres",
+    "golang-database",
+    "prisma-postgres-upgrade"
+   ],
+   "react.state/context": [
+    "react-best-practices",
+    "react-composition-patterns",
+    "ask-sonner",
+    "animate-expo",
+    "gsap-react"
+   ],
+   "react.styling/styled-components": [
+    "react-composition-patterns",
+    "react-best-practices",
+    "ask-sonner",
+    "animate-expo",
+    "gsap-react"
+   ],
+   "react.hooks/agree": [
+    "react-composition-patterns",
+    "react-best-practices",
+    "ask-sonner",
+    "animate-expo",
+    "gsap-react"
+   ],
+   "frontend.rendering/server": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.bundler/framework": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.test-network/msw": [
+    "test-driven-development",
+    "webapp-testing",
+    "tdd",
+    "ui-ux-pro-max",
+    "review-animations"
+   ],
+   "frontend.e2e-tool/cypress": [
+    "test-driven-development",
+    "webapp-testing",
+    "tdd",
+    "ui-ux-pro-max",
+    "review-animations"
+   ],
+   "frontend.api-client/tanstack-query": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.api-client/rtk-query": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.semantic-html/agree": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.css/mobile-first": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.css/flex-grid": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.hosting/platform": [
+    "ui-ux-pro-max",
+    "prisma-compute",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary"
+   ],
+   "frontend.preview-deploys/yes": [
+    "ui-ux-pro-max",
+    "prisma-compute",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary"
+   ],
+   "frontend.token-storage/httponly-cookie": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "errors.handling/central-handler": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "database.access/raw-sql": [
+    "supabase-postgres-best-practices",
+    "prisma-postgres",
+    "neon-postgres",
+    "golang-database",
+    "prisma-postgres-upgrade"
+   ],
+   "database.transactions/agree": [
+    "supabase-postgres-best-practices",
+    "prisma-postgres",
+    "neon-postgres",
+    "golang-database",
+    "prisma-postgres-upgrade"
+   ],
+   "database.concurrent-writes/row-lock": [
+    "supabase-postgres-best-practices",
+    "prisma-postgres",
+    "neon-postgres",
+    "golang-database",
+    "prisma-postgres-upgrade"
+   ],
+   "database.json-columns/agree": [
+    "supabase-postgres-best-practices",
+    "prisma-postgres",
+    "neon-postgres",
+    "golang-database",
+    "prisma-postgres-upgrade"
+   ],
+   "database.table-splitting/partitioned": [
+    "supabase-postgres-best-practices",
+    "prisma-postgres",
+    "neon-postgres",
+    "golang-database",
+    "prisma-postgres-upgrade"
+   ],
+   "database.connections/agree": [
+    "supabase-postgres-best-practices",
+    "prisma-postgres",
+    "neon-postgres",
+    "golang-database",
+    "prisma-postgres-upgrade"
+   ],
+   "database.query-rules/explicit-columns": [
+    "supabase-postgres-best-practices",
+    "prisma-postgres",
+    "neon-postgres",
+    "golang-database",
+    "prisma-postgres-upgrade"
+   ],
+   "backend.auth-strategy/identity-provider": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "backend.authorization/agree": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "backend.password-hashing/bcrypt": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "backend.service-shape/serverless": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "backend.service-shape/microservices": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "backend.observability/traces": [
+    "prisma-compute",
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance"
+   ],
+   "backend.observability/metrics": [
+    "prisma-compute",
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance"
+   ],
+   "backend.model-call-guards/timeouts": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "backend.model-calls/job": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "git.commit-permission/commit": [
+    "git-guardrails-claude-code",
+    "golang-code-style",
+    "golang-naming",
+    "golang-modernize",
+    "golang-cli"
+   ],
+   "git.pull-request-size/400": [
+    "git-guardrails-claude-code",
+    "golang-code-style",
+    "golang-naming",
+    "golang-modernize",
+    "golang-cli"
+   ],
+   "git.commit-messages/imperative": [
+    "git-guardrails-claude-code",
+    "golang-code-style",
+    "golang-naming",
+    "golang-modernize",
+    "golang-cli"
+   ],
+   "git.history/agree": [
+    "git-guardrails-claude-code",
+    "golang-code-style",
+    "golang-naming",
+    "golang-modernize",
+    "golang-cli"
+   ],
+   "git.branching/branch": [
+    "git-guardrails-claude-code",
+    "golang-code-style",
+    "golang-naming",
+    "golang-modernize",
+    "golang-cli"
+   ],
+   "security.destructive-commands/ask": [
+    "golang-security",
+    "auth-implementation-patterns",
+    "aws-security"
+   ],
+   "system.design-trade-offs/agree": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "system.service-decomposition/modular-monolith": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "system.service-protocol/grpc": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "system.monitoring-scope/performance": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "prisma-compute",
+    "excalidraw-diagram-generator"
+   ],
+   "design.function-size/agree": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "design.immutability/agree": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "design.principles/single-responsibility": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "design.principles/dependency-inversion": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "design.dependency-rule/agree": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "design.code-structure/layered": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "design.folder-structure/by-domain": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "design.ddd/everywhere": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "design.repositories/repositories": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "llm.streaming/stream": [
+    "analyze-project",
+    "cross-critique",
+    "health",
+    "create-agentsmd",
+    "agentic-eval"
+   ],
+   "llm.structured-output/schema-constrained": [
+    "analyze-project",
+    "cross-critique",
+    "health",
+    "create-agentsmd",
+    "agentic-eval"
+   ],
+   "llm.eval-tool/test-runner": [
+    "test-driven-development",
+    "webapp-testing",
+    "tdd",
+    "analyze-project",
+    "playwright-stealth-verify"
+   ],
+   "llm.eval-scoring/model-judge": [
+    "analyze-project",
+    "cross-critique",
+    "health",
+    "create-agentsmd",
+    "agentic-eval"
+   ],
+   "llm.eval-gate/ci": [
+    "analyze-project",
+    "cross-critique",
+    "health",
+    "create-agentsmd",
+    "agentic-eval"
+   ],
+   "agents.framework/framework": [
+    "analyze-project",
+    "cross-critique",
+    "health",
+    "create-agentsmd",
+    "agentic-eval"
+   ],
+   "agents.self-review/agree": [
+    "analyze-project",
+    "cross-critique",
+    "health",
+    "create-agentsmd",
+    "agentic-eval"
+   ],
+   "agents.prompt-caching/cached": [
+    "analyze-project",
+    "cross-critique",
+    "health",
+    "create-agentsmd",
+    "agentic-eval"
+   ],
+   "agents.evals/manual": [
+    "test-driven-development",
+    "webapp-testing",
+    "tdd",
+    "analyze-project",
+    "playwright-stealth-verify"
+   ],
+   "perf.code-splitting/route": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "perf.memoization/measured": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "perf.long-lists/virtualized": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "perf.measure-first/agree": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "perf.vitals-targets/good": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "perf.budget-check/lighthouse-ci": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "perf.image-formats/modern-files": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "perf.dependency-weight/agree": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "typescript.state-modeling/agree": [
+    "prisma-compute",
+    "typescript-advanced-types",
+    "limrun-expo-development",
+    "javascript-testing-patterns",
+    "javascript-typescript-jest"
+   ],
+   "workflow.autonomy/ask-before-writing": [
+    "brainstorming",
+    "writing-plans",
+    "systematic-debugging",
+    "verification-before-completion",
+    "requesting-code-review"
+   ],
+   "react.styling/css-modules": [
+    "react-composition-patterns",
+    "react-best-practices",
+    "ask-sonner",
+    "animate-expo",
+    "gsap-react"
+   ],
+   "frontend.platforms/tauri": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.platforms/electron": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.bundler/vite": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.service-worker/offline": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.raw-html/sanitized": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.csp/strict": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "api.style/graphql": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "logging.style/structured": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "backend.background-jobs/job-queue": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "backend.module-system/esm": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "backend.graceful-shutdown/agree": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "git.attribution/agree": [
+    "git-guardrails-claude-code",
+    "golang-code-style",
+    "golang-naming",
+    "golang-modernize",
+    "golang-cli"
+   ],
+   "security.dependencies/ask": [
+    "golang-security",
+    "auth-implementation-patterns",
+    "aws-security"
+   ],
+   "security.input-trust/agree": [
+    "golang-security",
+    "auth-implementation-patterns",
+    "aws-security"
+   ],
+   "system.health-probes/liveness-readiness": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "prisma-compute",
+    "excalidraw-diagram-generator"
+   ],
+   "tooling.package-manager/bun": [
+    "negotiation-concession-planner",
+    "partner-tiering",
+    "react-native-best-practices",
+    "nextjs-turbopack",
+    "git-guardrails-claude-code"
+   ],
+   "frontend.browser-support/browserslist": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "api.webhooks/receives": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "api.rate-limiting/app": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "backend.cache-store/shared": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "system.queue-guarantees/at-least-once": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "system.failover/active-active": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "llm.fine-tuning/adapters": [
+    "analyze-project",
+    "cross-critique",
+    "health",
+    "create-agentsmd",
+    "agentic-eval"
+   ],
+   "llm.vector-store/pgvector": [
+    "analyze-project",
+    "ad-conversion-tracking",
+    "cross-critique",
+    "health",
+    "kpi-dashboard-design"
+   ],
+   "llm.prompt-injection/agree": [
+    "analyze-project",
+    "cross-critique",
+    "health",
+    "create-agentsmd",
+    "agentic-eval"
+   ],
+   "agents.long-term-memory/profile": [
+    "analyze-project",
+    "cross-critique",
+    "health",
+    "create-agentsmd",
+    "agentic-eval"
+   ],
+   "perf.font-display/swap": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "security.network/none": [
+    "golang-security",
+    "auth-implementation-patterns",
+    "aws-security"
+   ],
+   "design.refactoring/leave": [
+    "c4-architecture",
+    "mermaid-diagrams",
+    "codebase-design",
+    "excalidraw-diagram-generator",
+    "diagramming-processes"
+   ],
+   "frontend.e2e-tool/none": [
+    "test-driven-development",
+    "webapp-testing",
+    "tdd",
+    "ui-ux-pro-max",
+    "review-animations"
+   ],
+   "api.webhooks/none": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "backend.observability/none": [
+    "prisma-compute",
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance"
+   ],
+   "llm.retrieval/none": [
+    "analyze-project",
+    "cross-critique",
+    "health",
+    "create-agentsmd",
+    "agentic-eval"
+   ],
+   "agents.long-term-memory/none": [
+    "analyze-project",
+    "cross-critique",
+    "health",
+    "create-agentsmd",
+    "agentic-eval"
+   ],
+   "backend.background-jobs/none": [
+    "durable-objects",
+    "convex-reviewer",
+    "golang-concurrency",
+    "golang-performance",
+    "golang-context"
+   ],
+   "perf.budget-check/none": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.service-worker/none": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "llm.eval-tool/none": [
+    "test-driven-development",
+    "webapp-testing",
+    "tdd",
+    "analyze-project",
+    "playwright-stealth-verify"
+   ],
+   "frontend.csp/none": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "frontend.browser-check/disagree": [
+    "ui-ux-pro-max",
+    "review-animations",
+    "apple-design",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "workflow.changes/disagree": [
+    "systematic-debugging",
+    "verification-before-completion",
+    "brainstorming",
+    "requesting-code-review",
+    "git-workflow-and-versioning"
+   ],
+   "git.pull-request-size/no-limit": [
+    "git-guardrails-claude-code",
+    "golang-code-style",
+    "golang-naming",
+    "golang-modernize",
+    "golang-cli"
+   ]
+  },
+  "BM25": {
+   "typescript.any/agree": [
+    "typescript-advanced-types",
+    "xlsx",
+    "remove-animations",
+    "improve",
+    "python-patterns"
+   ],
+   "typescript.strict/all": [
+    "pnpm",
+    "prisma-compute",
+    "microsoft-code-reference",
+    "ultracite",
+    "golang-naming"
+   ],
+   "react.granularity/agree": [
+    "next-cache-components-optimizer",
+    "frontend-patterns",
+    "writing-plans",
+    "shadcn-ui",
+    "diagramming-processes"
+   ],
+   "react.state/tanstack-query-only": [
+    "react-state-management",
+    "frontend-patterns",
+    "mermaid-diagrams",
+    "durable-objects",
+    "microsoft-docs"
+   ],
+   "react.state/zustand": [
+    "react-state-management",
+    "mermaid-diagrams",
+    "frontend-patterns",
+    "durable-objects",
+    "codebase-design"
+   ],
+   "react.state/redux": [
+    "react-state-management",
+    "mermaid-diagrams",
+    "frontend-patterns",
+    "durable-objects",
+    "codebase-design"
+   ],
+   "react.styling/tailwind": [
+    "tailwind-css-patterns",
+    "unocss",
+    "tailwind-4-docs",
+    "tailwind-design-system",
+    "shadcn-ui"
+   ],
+   "react.effects/agree": [
+    "remove-animations",
+    "react-state-management",
+    "frontend-patterns",
+    "gsap-react",
+    "expo-data-fetching"
+   ],
+   "testing.levels/unit": [
+    "javascript-testing-patterns",
+    "vitest",
+    "golang-testing",
+    "engineering-blog-post",
+    "clerk-testing"
+   ],
+   "testing.levels/component": [
+    "web-component-design",
+    "tailwind-design-system",
+    "vue-testing-best-practices",
+    "golang-testing",
+    "legacy-circuit-mockups"
+   ],
+   "testing.levels/e2e": [
+    "e2e-testing-patterns",
+    "javascript-testing-patterns",
+    "tdd",
+    "git-commit",
+    "limrun-expo-development"
+   ],
+   "style.comments/agree": [
+    "remove-animations",
+    "improve-animations",
+    "cargo-connection",
+    "improve",
+    "brainstorming"
+   ],
+   "workflow.changes/agree": [
+    "incremental-implementation",
+    "mobile-native",
+    "writing-plans",
+    "git-workflow-and-versioning",
+    "git-commit"
+   ],
+   "workflow.autonomy/agree": [
+    "brainstorming",
+    "hunt",
+    "claude-api",
+    "architecture-decision-records",
+    "ad-conversion-tracking"
+   ],
+   "tooling.checks/run": [
+    "verification-before-completion",
+    "code-change-verification",
+    "pytest-coverage",
+    "web-quality-audit",
+    "git-guardrails-claude-code"
+   ],
+   "frontend.animations/agree": [
+    "remove-animations",
+    "animate-expo",
+    "expo-animation",
+    "improve-animations",
+    "improve"
+   ],
+   "frontend.accessibility/wcag-aa": [
+    "better-accessibility",
+    "accessibility",
+    "wcag-audit-patterns",
+    "accessibility-compliance",
+    "fixing-accessibility"
+   ],
+   "frontend.accessibility/basics": [
+    "fixing-accessibility",
+    "better-accessibility",
+    "remove-animations",
+    "accessibility",
+    "engineering-blog-post"
+   ],
+   "frontend.css/tokens": [
+    "tailwind-design-system",
+    "tailwind-css-patterns",
+    "ab-testing",
+    "incremental-implementation",
+    "prisma-postgres-upgrade"
+   ],
+   "frontend.css/dark-mode": [
+    "theme-factory",
+    "prisma-postgres-upgrade",
+    "ultracite",
+    "incremental-implementation",
+    "webapp-testing"
+   ],
+   "frontend.framework/next": [
+    "nextjs-app-router-patterns",
+    "next-cache-components-optimizer",
+    "frontend-patterns",
+    "nextjs-on-cloudflare",
+    "prisma-postgres-upgrade"
+   ],
+   "frontend.lint-format/biome": [
+    "verification-before-completion",
+    "git-commit",
+    "ultracite",
+    "code-change-verification",
+    "cargo-connection"
+   ],
+   "frontend.test-runner/vitest": [
+    "vitest",
+    "javascript-testing-patterns",
+    "pytest-coverage",
+    "golang-testing",
+    "javascript-typescript-jest"
+   ],
+   "frontend.test-runner/jest": [
+    "vitest",
+    "javascript-testing-patterns",
+    "javascript-typescript-jest",
+    "pytest-coverage",
+    "ab-testing"
+   ],
+   "frontend.test-style/agree": [
+    "remove-animations",
+    "azure-role-selector",
+    "cargo-connection",
+    "improve-animations",
+    "brainstorming"
+   ],
+   "frontend.e2e-tool/playwright": [
+    "e2e-testing-patterns",
+    "javascript-testing-patterns",
+    "webapp-testing",
+    "negotiation-concession-planner",
+    "playwright-generate-test"
+   ],
+   "frontend.browser-check/agree": [
+    "code-change-verification",
+    "remove-animations",
+    "mobile-native",
+    "verification-before-completion",
+    "incremental-implementation"
+   ],
+   "frontend.platforms/react-native": [
+    "mobile-native",
+    "react-native-architecture",
+    "react-native-best-practices",
+    "expo-animation",
+    "animate-expo"
+   ],
+   "api.style/rest": [
+    "microsoft-code-reference",
+    "cargo-connection",
+    "claude-api",
+    "azure-resource-visualizer",
+    "remove-animations"
+   ],
+   "api.style/rpc": [
+    "backend-patterns",
+    "cargo-connection",
+    "next-cache-components-optimizer",
+    "git-commit",
+    "claude-api"
+   ],
+   "database.migrations/write": [
+    "database-migrations",
+    "incremental-implementation",
+    "supabase-postgres-best-practices",
+    "code-change-verification",
+    "xlsx"
+   ],
+   "database.query-rules/no-n-plus-one": [
+    "sql-optimization",
+    "sql-optimization-patterns",
+    "next-cache-components-optimizer",
+    "prisma-postgres-upgrade",
+    "supabase-postgres-best-practices"
+   ],
+   "database.query-rules/indexes": [
+    "postgres-patterns",
+    "diagramming-processes",
+    "theme-factory",
+    "incremental-implementation",
+    "microsoft-docs"
+   ],
+   "database.query-rules/online-migrations": [
+    "supabase-postgres-best-practices",
+    "test-driven-development",
+    "database-migrations",
+    "next-cache-components-optimizer",
+    "incremental-implementation"
+   ],
+   "database.query-rules/constraints": [
+    "prisma-postgres-upgrade",
+    "improve-animations",
+    "postgresql-table-design",
+    "supabase-postgres-best-practices",
+    "postgresql-code-review"
+   ],
+   "backend.auth-strategy/jwt": [
+    "backend-patterns",
+    "nextjs-on-cloudflare",
+    "auth-implementation-patterns",
+    "ad-conversion-tracking",
+    "make-repo-contribution"
+   ],
+   "backend.auth-strategy/session": [
+    "verification-loop",
+    "incremental-implementation",
+    "backend-patterns",
+    "auth-implementation-patterns",
+    "documentation-and-adrs"
+   ],
+   "backend.password-hashing/argon2id": [
+    "golang-modernize",
+    "nextjs-on-cloudflare",
+    "ultracite",
+    "pytest-coverage",
+    "negotiation-concession-planner"
+   ],
+   "backend.container-image/dockerfile": [
+    "diagramming-processes",
+    "git-commit",
+    "multi-stage-dockerfile",
+    "limrun-expo-development",
+    "next-cache-components-optimizer"
+   ],
+   "backend.model-calls/stream": [
+    "next-cache-components-optimizer",
+    "ask-sonner",
+    "make-repo-contribution",
+    "ab-testing",
+    "create-pr"
+   ],
+   "llm.provider-abstraction/provider-sdk": [
+    "claude-api",
+    "codebase-design",
+    "diagramming-processes",
+    "copilot-sdk",
+    "base44-troubleshooter"
+   ],
+   "agents.evals/ci": [
+    "claude-api",
+    "incremental-implementation",
+    "make-repo-contribution",
+    "prisma-postgres-upgrade",
+    "animation-vocabulary"
+   ],
+   "git.branching/worktree": [
+    "make-repo-contribution",
+    "create-pr",
+    "using-git-worktrees",
+    "gh-stack",
+    "pr-draft-summary"
+   ],
+   "git.commit-messages/conventional": [
+    "git-commit",
+    "make-repo-contribution",
+    "write",
+    "executing-plans",
+    "test-driven-development"
+   ],
+   "git.pull-request-size/200": [
+    "create-pr",
+    "make-repo-contribution",
+    "lavish",
+    "git-workflow-and-versioning",
+    "pytest-coverage"
+   ],
+   "git.history/disagree": [
+    "gh-stack",
+    "remove-animations",
+    "executing-plans",
+    "make-repo-contribution",
+    "coding-standards"
+   ],
+   "git.ci-workflow/github-actions": [
+    "github-actions-templates",
+    "make-repo-contribution",
+    "create-pr",
+    "git-workflow-and-versioning",
+    "remove-animations"
+   ],
+   "security.destructive-commands/never": [
+    "git-guardrails-claude-code",
+    "git-commit",
+    "git-workflow-and-versioning",
+    "using-git-worktrees",
+    "remove-animations"
+   ],
+   "system.design-clarification/agree": [
+    "cargo-connection",
+    "brainstorming",
+    "verification-before-completion",
+    "test-driven-development",
+    "documentation-and-adrs"
+   ],
+   "design.refactoring/small-steps": [
+    "tdd",
+    "test-driven-development",
+    "refactor-plan",
+    "incremental-implementation",
+    "mobile-native"
+   ],
+   "design.code-structure/hexagonal": [
+    "architecture-patterns",
+    "memory-merger",
+    "partner-tiering",
+    "remove-animations",
+    "executing-plans"
+   ],
+   "design.ddd/core-only": [
+    "negotiation-concession-planner",
+    "ad-conversion-tracking",
+    "e2e-testing",
+    "documentation-writer",
+    "dotnet-backend-patterns"
+   ],
+   "design.naming/agree": [
+    "prisma-postgres",
+    "animation-vocabulary",
+    "base44-troubleshooter",
+    "ultracite",
+    "cargo-connection"
+   ],
+   "tooling.package-manager/pnpm": [
+    "pnpm",
+    "monorepo-management",
+    "turborepo-vercel",
+    "python-patterns",
+    "golang-patterns"
+   ],
+   "frontend.framework/vite-spa": [
+    "nextjs-app-router-patterns",
+    "health",
+    "vitest",
+    "next-cache-components-optimizer",
+    "coding-standards"
+   ],
+   "testing.levels/none": [
+    "git-commit",
+    "golang-testing",
+    "javascript-testing-patterns",
+    "e2e-testing-patterns",
+    "pytest-coverage"
+   ],
+   "frontend.accessibility/none": [
+    "remove-animations",
+    "fixing-accessibility",
+    "better-accessibility",
+    "accessibility-compliance",
+    "better-interface"
+   ],
+   "frontend.platforms/browser-only": [
+    "git-commit",
+    "cargo-connection",
+    "mobile-native",
+    "improve-animations",
+    "expo-animation"
+   ],
+   "backend.container-image/none": [
+    "git-commit",
+    "executing-plans",
+    "cargo-connection",
+    "image-manipulation-image-magick",
+    "memory-merger"
+   ],
+   "git.branching/trunk": [
+    "make-repo-contribution",
+    "pr-draft-summary",
+    "create-pr",
+    "gh-stack",
+    "cargo-connection"
+   ],
+   "design.paradigm/functional": [
+    "refactor",
+    "mermaid-diagrams",
+    "postgresql-optimization",
+    "convex-reviewer",
+    "golang-naming"
+   ],
+   "llm.vector-store/none": [
+    "executing-plans",
+    "ad-conversion-tracking",
+    "engineering-blog-post",
+    "coding-standards",
+    "app-store-screenshots"
+   ],
+   "agents.mcp/not-used": [
+    "health",
+    "improve-animations",
+    "git-commit",
+    "claude-api",
+    "hunt"
+   ],
+   "backend.model-calls/none": [
+    "claude-api",
+    "c4-architecture",
+    "e2e-testing-patterns",
+    "javascript-testing-patterns",
+    "analyze-project"
+   ],
+   "security.sandbox/host": [
+    "github-profile-optimization",
+    "cross-critique",
+    "brainstorming",
+    "remove-animations",
+    "cargo-connection"
+   ],
+   "api.contract/none": [
+    "pr-draft-summary",
+    "make-repo-contribution",
+    "executing-plans",
+    "ad-conversion-tracking",
+    "xlsx"
+   ],
+   "backend.password-hashing/none": [
+    "remove-animations",
+    "ad-conversion-tracking",
+    "executing-plans",
+    "engineering-blog-post",
+    "canvas-design"
+   ],
+   "security.secrets/agree": [
+    "improve",
+    "remove-animations",
+    "canvas-design",
+    "git-commit",
+    "supabase-postgres-best-practices"
+   ],
+   "frontend.test-runner/none": [
+    "javascript-testing-patterns",
+    "vitest",
+    "python-testing-patterns",
+    "ab-testing",
+    "ad-conversion-tracking"
+   ],
+   "design.abstraction-timing/third-case": [
+    "ab-testing",
+    "incremental-implementation",
+    "cargo-connection",
+    "next-cache-components-optimizer",
+    "remove-animations"
+   ],
+   "database.migrations/never": [
+    "incremental-implementation",
+    "supabase-postgres-best-practices",
+    "database-migrations",
+    "code-change-verification",
+    "diagramming-processes"
+   ],
+   "react.state/context": [
+    "react-state-management",
+    "frontend-patterns",
+    "gsap-react",
+    "golang-context",
+    "react-composition-patterns"
+   ],
+   "react.styling/styled-components": [
+    "tailwind-css-patterns",
+    "shadcn-ui",
+    "golang-code-style",
+    "ask-sonner",
+    "git-commit"
+   ],
+   "react.hooks/agree": [
+    "ab-testing",
+    "remove-animations",
+    "canvas-design",
+    "frontend-patterns",
+    "react-composition-patterns"
+   ],
+   "frontend.rendering/server": [
+    "make-repo-contribution",
+    "ad-conversion-tracking",
+    "cross-critique",
+    "theme-factory",
+    "test-driven-development"
+   ],
+   "frontend.bundler/framework": [
+    "animate-expo",
+    "expo-animation",
+    "improve-animations",
+    "verification-loop",
+    "documentation-writer"
+   ],
+   "frontend.test-network/msw": [
+    "expo-data-fetching",
+    "ab-testing",
+    "ad-conversion-tracking",
+    "prisma-compute",
+    "vitest"
+   ],
+   "frontend.e2e-tool/cypress": [
+    "e2e-testing-patterns",
+    "javascript-testing-patterns",
+    "limrun-expo-development",
+    "remove-animations",
+    "clerk-testing"
+   ],
+   "frontend.api-client/tanstack-query": [
+    "expo-data-fetching",
+    "workers-development",
+    "postgres-patterns",
+    "remove-animations",
+    "react-state-management"
+   ],
+   "frontend.api-client/rtk-query": [
+    "expo-data-fetching",
+    "workers-development",
+    "java-springboot",
+    "backend-patterns",
+    "golang-context"
+   ],
+   "frontend.semantic-html/agree": [
+    "azure-role-selector",
+    "mobile-native",
+    "limrun-expo-development",
+    "react-native-architecture",
+    "improve-animations"
+   ],
+   "frontend.css/mobile-first": [
+    "test-driven-development",
+    "ultracite",
+    "mobile-native",
+    "create-readme",
+    "accessibility-compliance"
+   ],
+   "frontend.css/flex-grid": [
+    "tailwind-css-patterns",
+    "documentation-and-adrs",
+    "golang-concurrency",
+    "supabase-postgres-best-practices",
+    "ask-sonner"
+   ],
+   "frontend.hosting/platform": [
+    "convex-reviewer",
+    "verification-before-completion",
+    "e2e-testing-patterns",
+    "executing-plans",
+    "make-repo-contribution"
+   ],
+   "frontend.preview-deploys/yes": [
+    "create-pr",
+    "make-repo-contribution",
+    "azure-deployment-preflight",
+    "git-workflow-and-versioning",
+    "prisma-compute"
+   ],
+   "frontend.token-storage/httponly-cookie": [
+    "executing-plans",
+    "claude-api",
+    "make-repo-contribution",
+    "subagent-driven-development",
+    "supabase-postgres-best-practices"
+   ],
+   "errors.handling/central-handler": [
+    "vue-debug-guides",
+    "next-cache-components-optimizer",
+    "git-commit",
+    "hunt",
+    "animation-vocabulary"
+   ],
+   "database.access/raw-sql": [
+    "sql-optimization-patterns",
+    "sql-optimization",
+    "sql-code-review",
+    "cargo-connection",
+    "git-commit"
+   ],
+   "database.transactions/agree": [
+    "incremental-implementation",
+    "git-commit",
+    "animate-expo",
+    "expo-animation",
+    "prisma-postgres-upgrade"
+   ],
+   "database.concurrent-writes/row-lock": [
+    "documentation-and-adrs",
+    "animate-expo",
+    "expo-animation",
+    "incremental-implementation",
+    "golang-database"
+   ],
+   "database.json-columns/agree": [
+    "supabase-postgres-best-practices",
+    "xlsx",
+    "golang-database",
+    "remove-animations",
+    "golang-safety"
+   ],
+   "database.table-splitting/partitioned": [
+    "supabase-postgres-best-practices",
+    "remove-animations",
+    "theme-factory",
+    "ad-conversion-tracking",
+    "cross-critique"
+   ],
+   "database.connections/agree": [
+    "golang-database",
+    "sql-optimization-patterns",
+    "prisma-postgres-upgrade",
+    "codebase-design",
+    "ab-testing"
+   ],
+   "database.query-rules/explicit-columns": [
+    "golang-database",
+    "remove-animations",
+    "improve-animations",
+    "prisma-postgres-upgrade",
+    "microsoft-docs"
+   ],
+   "backend.auth-strategy/identity-provider": [
+    "azure-role-selector",
+    "next-cache-components-optimizer",
+    "remove-animations",
+    "documentation-and-adrs",
+    "make-repo-contribution"
+   ],
+   "backend.authorization/agree": [
+    "discernment-nudge",
+    "next-cache-components-optimizer",
+    "animation-vocabulary",
+    "mobile-native",
+    "azure-resource-visualizer"
+   ],
+   "backend.password-hashing/bcrypt": [
+    "remove-animations",
+    "ultracite",
+    "golang-modernize",
+    "animation-vocabulary",
+    "golang-code-style"
+   ],
+   "backend.service-shape/serverless": [
+    "verification-before-completion",
+    "executing-plans",
+    "code-change-verification",
+    "next-cache-components-optimizer",
+    "make-repo-contribution"
+   ],
+   "backend.service-shape/microservices": [
+    "negotiation-concession-planner",
+    "webapp-testing",
+    "memory-merger",
+    "ultracite",
+    "xlsx"
+   ],
+   "backend.observability/traces": [
+    "canvas-design",
+    "prisma-postgres-upgrade",
+    "golang-context",
+    "remove-animations",
+    "next-cache-components-optimizer"
+   ],
+   "backend.observability/metrics": [
+    "kpi-dashboard-design",
+    "github-profile-optimization",
+    "frontend-design-anthropics-2",
+    "next-cache-components-optimizer",
+    "partner-tiering"
+   ],
+   "backend.model-call-guards/timeouts": [
+    "engineering-blog-post",
+    "improve-animations",
+    "ab-testing",
+    "analyze-project",
+    "github-profile-optimization"
+   ],
+   "backend.model-calls/job": [
+    "ab-testing",
+    "next-cache-components-optimizer",
+    "make-repo-contribution",
+    "animation-vocabulary",
+    "create-pr"
+   ],
+   "git.commit-permission/commit": [
+    "git-commit",
+    "make-repo-contribution",
+    "gh-stack",
+    "git-guardrails-claude-code",
+    "write"
+   ],
+   "git.pull-request-size/400": [
+    "create-pr",
+    "make-repo-contribution",
+    "lavish",
+    "git-workflow-and-versioning",
+    "pytest-coverage"
+   ],
+   "git.commit-messages/imperative": [
+    "git-commit",
+    "make-repo-contribution",
+    "write",
+    "animation-vocabulary",
+    "improve-animations"
+   ],
+   "git.history/agree": [
+    "remove-animations",
+    "executing-plans",
+    "gh-stack",
+    "coding-standards",
+    "make-repo-contribution"
+   ],
+   "git.branching/branch": [
+    "pr-draft-summary",
+    "make-repo-contribution",
+    "create-pr",
+    "verification-before-completion",
+    "neon-postgres"
+   ],
+   "security.destructive-commands/ask": [
+    "git-guardrails-claude-code",
+    "using-git-worktrees",
+    "git-workflow-and-versioning",
+    "git-commit",
+    "git-advanced-workflows"
+   ],
+   "system.design-trade-offs/agree": [
+    "next-cache-components-optimizer",
+    "frontend-design-anthropics-2",
+    "documentation-and-adrs",
+    "incremental-implementation",
+    "animation-vocabulary"
+   ],
+   "system.service-decomposition/modular-monolith": [
+    "codebase-design",
+    "memory-merger",
+    "ab-testing",
+    "remove-animations",
+    "e2e-testing-patterns"
+   ],
+   "system.service-protocol/grpc": [
+    "golang-grpc",
+    "cross-critique",
+    "negotiation-concession-planner",
+    "azure-resource-visualizer",
+    "cargo-connection"
+   ],
+   "system.monitoring-scope/performance": [
+    "ab-testing",
+    "partner-tiering",
+    "canvas-design",
+    "ask-sonner",
+    "engineering-blog-post"
+   ],
+   "design.function-size/agree": [
+    "incremental-implementation",
+    "ab-testing",
+    "next-cache-components-optimizer",
+    "react-composition-patterns",
+    "webapp-testing"
+   ],
+   "design.immutability/agree": [
+    "xlsx",
+    "prisma-postgres-upgrade",
+    "frontend-design-anthropics-2",
+    "ab-testing",
+    "negotiation-concession-planner"
+   ],
+   "design.principles/single-responsibility": [
+    "codebase-design",
+    "incremental-implementation",
+    "git-commit",
+    "improve-animations",
+    "hunt"
+   ],
+   "design.principles/dependency-inversion": [
+    "improve-animations",
+    "remove-animations",
+    "animate-expo",
+    "expo-animation",
+    "documentation-and-adrs"
+   ],
+   "design.dependency-rule/agree": [
+    "prisma-postgres-upgrade",
+    "diagramming-processes",
+    "improve-animations",
+    "next-cache-components-optimizer",
+    "remove-animations"
+   ],
+   "design.code-structure/layered": [
+    "memory-merger",
+    "git-commit",
+    "remove-animations",
+    "prisma-postgres-upgrade",
+    "partner-tiering"
+   ],
+   "design.folder-structure/by-domain": [
+    "git-commit",
+    "memory-merger",
+    "improve-animations",
+    "incremental-implementation",
+    "animation-vocabulary"
+   ],
+   "design.ddd/everywhere": [
+    "negotiation-concession-planner",
+    "frontend-design-anthropics-2",
+    "ad-conversion-tracking",
+    "documentation-writer",
+    "azure-role-selector"
+   ],
+   "design.repositories/repositories": [
+    "durable-objects",
+    "diagramming-processes",
+    "analyze-project",
+    "prisma-postgres-upgrade",
+    "github-profile-optimization"
+   ],
+   "llm.streaming/stream": [
+    "next-cache-components-optimizer",
+    "executing-plans",
+    "make-repo-contribution",
+    "ab-testing",
+    "improve-animations"
+   ],
+   "llm.structured-output/schema-constrained": [
+    "discernment-nudge",
+    "prisma-postgres-upgrade",
+    "claude-api",
+    "create-pr",
+    "refactor-plan"
+   ],
+   "llm.eval-tool/test-runner": [
+    "ab-testing",
+    "make-repo-contribution",
+    "theme-factory",
+    "cross-critique",
+    "lavish"
+   ],
+   "llm.eval-scoring/model-judge": [
+    "webapp-testing",
+    "c4-architecture",
+    "negotiation-concession-planner",
+    "claude-api",
+    "animation-vocabulary"
+   ],
+   "llm.eval-gate/ci": [
+    "incremental-implementation",
+    "claude-api",
+    "git-workflow-and-versioning",
+    "ab-testing",
+    "golang-modernize"
+   ],
+   "agents.framework/framework": [
+    "documentation-writer",
+    "azure-role-selector",
+    "microsoft-docs",
+    "spec-driven-implementation",
+    "vitest"
+   ],
+   "agents.self-review/agree": [
+    "verification-before-completion",
+    "verification-loop",
+    "improve-animations",
+    "next-cache-components-optimizer",
+    "prisma-postgres-upgrade"
+   ],
+   "agents.prompt-caching/cached": [
+    "claude-api",
+    "animate-expo",
+    "expo-animation",
+    "executing-plans",
+    "create-agentsmd"
+   ],
+   "agents.evals/manual": [
+    "claude-api",
+    "make-repo-contribution",
+    "theme-factory",
+    "supabase-postgres-best-practices",
+    "verification-before-completion"
+   ],
+   "perf.code-splitting/route": [
+    "next-cache-components-optimizer",
+    "ab-testing",
+    "react-best-practices",
+    "git-commit",
+    "neon-postgres"
+   ],
+   "perf.memoization/measured": [
+    "react-composition-patterns",
+    "remove-animations",
+    "frontend-patterns",
+    "incremental-implementation",
+    "memory-merger"
+   ],
+   "perf.long-lists/virtualized": [
+    "theme-factory",
+    "lavish",
+    "cargo-connection",
+    "gsap-react",
+    "ad-conversion-tracking"
+   ],
+   "perf.measure-first/agree": [
+    "github-profile-optimization",
+    "remove-animations",
+    "refactor-plan",
+    "next-cache-components-optimizer",
+    "git-commit"
+   ],
+   "perf.vitals-targets/good": [
+    "penpot-uiux-design",
+    "incremental-implementation",
+    "ab-testing",
+    "ultracite",
+    "animation-vocabulary"
+   ],
+   "perf.budget-check/lighthouse-ci": [
+    "e2e-testing",
+    "gitlab-ci-patterns",
+    "web-quality-audit",
+    "turborepo-vercel",
+    "playwright-best-practices"
+   ],
+   "perf.image-formats/modern-files": [
+    "git-commit",
+    "lavish",
+    "improve",
+    "spec-driven-implementation",
+    "supabase-postgres-best-practices"
+   ],
+   "perf.dependency-weight/agree": [
+    "remove-animations",
+    "cargo-connection",
+    "expo-animation",
+    "animate-expo",
+    "improve-animations"
+   ],
+   "typescript.state-modeling/agree": [
+    "diagramming-processes",
+    "mobile-native",
+    "discernment-nudge",
+    "improve",
+    "improve-animations"
+   ],
+   "workflow.autonomy/ask-before-writing": [
+    "brainstorming",
+    "hunt",
+    "claude-api",
+    "xlsx",
+    "refactor-plan"
+   ],
+   "react.styling/css-modules": [
+    "tailwind-css-patterns",
+    "web-component-design",
+    "tailwind-design-system",
+    "unocss",
+    "shadcn-ui"
+   ],
+   "frontend.platforms/tauri": [
+    "mobile-native",
+    "git-commit",
+    "webapp-testing",
+    "animate-expo",
+    "expo-animation"
+   ],
+   "frontend.platforms/electron": [
+    "animate-expo",
+    "expo-animation",
+    "mobile-native",
+    "git-commit",
+    "partner-tiering"
+   ],
+   "frontend.bundler/vite": [
+    "verification-before-completion",
+    "vitest",
+    "workers-development",
+    "make-repo-contribution",
+    "e2e-testing-patterns"
+   ],
+   "frontend.service-worker/offline": [
+    "webapp-testing",
+    "expo-data-fetching",
+    "nextjs-app-router-patterns",
+    "remove-animations",
+    "app-store-screenshots"
+   ],
+   "frontend.raw-html/sanitized": [
+    "animation-vocabulary",
+    "memory-merger",
+    "expo-animation",
+    "animate-expo",
+    "lavish"
+   ],
+   "frontend.csp/strict": [
+    "executing-plans",
+    "aws-security",
+    "make-repo-contribution",
+    "incremental-implementation",
+    "xlsx"
+   ],
+   "api.style/graphql": [
+    "cargo-connection",
+    "backend-patterns",
+    "git-commit",
+    "microsoft-code-reference",
+    "claude-api"
+   ],
+   "logging.style/structured": [
+    "cross-critique",
+    "remove-animations",
+    "github-profile-optimization",
+    "git-commit",
+    "improve-animations"
+   ],
+   "backend.background-jobs/job-queue": [
+    "git-workflow-and-versioning",
+    "create-pr",
+    "mobile-native",
+    "git-commit",
+    "canvas-design"
+   ],
+   "backend.module-system/esm": [
+    "codebase-design",
+    "github-profile-optimization",
+    "improve",
+    "prisma-compute",
+    "nestjs-best-practices"
+   ],
+   "backend.graceful-shutdown/agree": [
+    "animate-expo",
+    "expo-animation",
+    "brainstorming",
+    "remove-animations",
+    "cargo-connection"
+   ],
+   "git.attribution/agree": [
+    "make-repo-contribution",
+    "create-pr",
+    "git-workflow-and-versioning",
+    "git-commit",
+    "remove-animations"
+   ],
+   "security.dependencies/ask": [
+    "brainstorming",
+    "cargo-connection",
+    "animation-vocabulary",
+    "verification-loop",
+    "refactor-plan"
+   ],
+   "security.input-trust/agree": [
+    "animate-expo",
+    "expo-animation",
+    "lavish",
+    "improve-animations",
+    "next-cache-components-optimizer"
+   ],
+   "system.health-probes/liveness-readiness": [
+    "cargo-connection",
+    "sql-optimization-patterns",
+    "remove-animations",
+    "improve",
+    "azure-deployment-preflight"
+   ],
+   "tooling.package-manager/bun": [
+    "pnpm",
+    "turborepo-vercel",
+    "python-patterns",
+    "golang-patterns",
+    "monorepo-management"
+   ],
+   "frontend.browser-support/browserslist": [
+    "make-repo-contribution",
+    "animation-vocabulary",
+    "executing-plans",
+    "animate-expo",
+    "expo-animation"
+   ],
+   "api.webhooks/receives": [
+    "next-cache-components-optimizer",
+    "cargo-connection",
+    "ad-conversion-tracking",
+    "verification-before-completion",
+    "expo-animation"
+   ],
+   "api.rate-limiting/app": [
+    "make-repo-contribution",
+    "create-pr",
+    "documentation-writer",
+    "animate-expo",
+    "expo-animation"
+   ],
+   "backend.cache-store/shared": [
+    "next-cache-components-optimizer",
+    "turborepo-vercel",
+    "ab-testing",
+    "prisma-postgres-upgrade",
+    "codebase-design"
+   ],
+   "system.queue-guarantees/at-least-once": [
+    "incremental-implementation",
+    "git-commit",
+    "diagramming-processes",
+    "ad-conversion-tracking",
+    "ab-testing"
+   ],
+   "system.failover/active-active": [
+    "backend-patterns",
+    "pnpm",
+    "git-commit",
+    "discernment-nudge",
+    "engineering-blog-post"
+   ],
+   "llm.fine-tuning/adapters": [
+    "next-cache-components-optimizer",
+    "ab-testing",
+    "git-commit",
+    "azure-deployment-preflight",
+    "c4-architecture"
+   ],
+   "llm.vector-store/pgvector": [
+    "sql-optimization",
+    "postgres-patterns",
+    "sql-code-review",
+    "prisma-postgres-upgrade",
+    "app-store-screenshots"
+   ],
+   "llm.prompt-injection/agree": [
+    "c4-architecture",
+    "documentation-and-adrs",
+    "claude-api",
+    "improve",
+    "discernment-nudge"
+   ],
+   "agents.long-term-memory/profile": [
+    "github-profile-optimization",
+    "remove-animations",
+    "improve-animations",
+    "animation-vocabulary",
+    "cargo-connection"
+   ],
+   "perf.font-display/swap": [
+    "ab-testing",
+    "improve-animations",
+    "incremental-implementation",
+    "git-commit",
+    "using-git-worktrees"
+   ],
+   "security.network/none": [
+    "executing-plans",
+    "remove-animations",
+    "git-commit",
+    "ask-sonner",
+    "ab-testing"
+   ],
+   "design.refactoring/leave": [
+    "improve-animations",
+    "refactor-plan",
+    "git-commit",
+    "incremental-implementation",
+    "documentation-and-adrs"
+   ],
+   "frontend.e2e-tool/none": [
+    "e2e-testing-patterns",
+    "javascript-testing-patterns",
+    "theme-factory",
+    "cargo-connection",
+    "pytest-coverage"
+   ],
+   "api.webhooks/none": [
+    "e2e-testing-patterns",
+    "javascript-testing-patterns",
+    "hunt",
+    "git-commit",
+    "systematic-debugging"
+   ],
+   "backend.observability/none": [
+    "kpi-dashboard-design",
+    "workers-development",
+    "documentation-and-adrs",
+    "gsap-react",
+    "diagramming-processes"
+   ],
+   "llm.retrieval/none": [
+    "improve-animations",
+    "git-commit",
+    "diagramming-processes",
+    "hunt",
+    "discernment-nudge"
+   ],
+   "agents.long-term-memory/none": [
+    "cargo-connection",
+    "azure-resource-visualizer",
+    "copilot-sdk",
+    "github-profile-optimization",
+    "verification-loop"
+   ],
+   "backend.background-jobs/none": [
+    "git-workflow-and-versioning",
+    "create-pr",
+    "expo-animation",
+    "animate-expo",
+    "golang-context"
+   ],
+   "perf.budget-check/none": [
+    "e2e-testing",
+    "incremental-implementation",
+    "executing-plans",
+    "git-workflow-and-versioning",
+    "gitlab-ci-patterns"
+   ],
+   "frontend.service-worker/none": [
+    "webapp-testing",
+    "executing-plans",
+    "git-commit",
+    "app-store-screenshots",
+    "playwright-stealth-verify"
+   ],
+   "llm.eval-tool/none": [
+    "theme-factory",
+    "incremental-implementation",
+    "claude-api",
+    "make-repo-contribution",
+    "code-change-verification"
+   ],
+   "frontend.csp/none": [
+    "executing-plans",
+    "ad-conversion-tracking",
+    "aws-security",
+    "coding-standards",
+    "engineering-blog-post"
+   ],
+   "frontend.browser-check/disagree": [
+    "code-change-verification",
+    "git-commit",
+    "mobile-native",
+    "cargo-connection",
+    "incremental-implementation"
+   ],
+   "workflow.changes/disagree": [
+    "incremental-implementation",
+    "make-repo-contribution",
+    "writing-plans",
+    "create-pr",
+    "git-commit"
+   ],
+   "git.pull-request-size/no-limit": [
+    "create-pr",
+    "remove-animations",
+    "git-workflow-and-versioning",
+    "mobile-native",
+    "make-repo-contribution"
+   ]
+  },
+  "Qwen3-Embedding-0.6B": {
+   "typescript.any/agree": [
+    "typescript-advanced-types",
+    "python-anti-patterns",
+    "coding-standards",
+    "nestjs-best-practices",
+    "writing-plans"
+   ],
+   "typescript.strict/all": [
+    "typescript-advanced-types",
+    "javascript-typescript-jest",
+    "nestjs-best-practices",
+    "react-best-practices",
+    "dotnet-best-practices"
+   ],
+   "react.granularity/agree": [
+    "writing-plans",
+    "web-component-design",
+    "refactor",
+    "incremental-implementation",
+    "architecture-patterns"
+   ],
+   "react.state/tanstack-query-only": [
+    "react-state-management",
+    "react-composition-patterns",
+    "expo-data-fetching",
+    "frontend-patterns",
+    "web-component-design"
+   ],
+   "react.state/zustand": [
+    "react-state-management",
+    "react-composition-patterns",
+    "expo-data-fetching",
+    "frontend-patterns",
+    "web-component-design"
+   ],
+   "react.state/redux": [
+    "react-state-management",
+    "react-composition-patterns",
+    "web-component-design",
+    "expo-data-fetching",
+    "frontend-patterns"
+   ],
+   "react.styling/tailwind": [
+    "tailwind-css-patterns",
+    "tailwind-design-system",
+    "tailwind-4-docs",
+    "unocss",
+    "frontend-patterns"
+   ],
+   "react.effects/agree": [
+    "react-state-management",
+    "react-composition-patterns",
+    "react-best-practices",
+    "expo-data-fetching",
+    "gsap-react"
+   ],
+   "testing.levels/unit": [
+    "python-testing-patterns",
+    "javascript-testing-patterns",
+    "systematic-debugging",
+    "writing-plans",
+    "test-driven-development"
+   ],
+   "testing.levels/component": [
+    "python-testing-patterns",
+    "systematic-debugging",
+    "javascript-testing-patterns",
+    "writing-plans",
+    "test-driven-development"
+   ],
+   "testing.levels/e2e": [
+    "javascript-testing-patterns",
+    "e2e-testing-patterns",
+    "e2e-testing",
+    "playwright-generate-test",
+    "python-testing-patterns"
+   ],
+   "style.comments/agree": [
+    "improve",
+    "writing-plans",
+    "python-anti-patterns",
+    "refactor",
+    "debugging-strategies"
+   ],
+   "workflow.changes/agree": [
+    "writing-plans",
+    "refactor",
+    "incremental-implementation",
+    "code-review-expert",
+    "requesting-code-review"
+   ],
+   "workflow.autonomy/agree": [
+    "improve",
+    "writing-plans",
+    "architecture-patterns",
+    "documentation-and-adrs",
+    "backend-patterns"
+   ],
+   "tooling.checks/run": [
+    "code-change-verification",
+    "python-code-style",
+    "verification-before-completion",
+    "python-anti-patterns",
+    "improve"
+   ],
+   "frontend.animations/agree": [
+    "animate-expo",
+    "remove-animations",
+    "expo-animation",
+    "improve-animations",
+    "gsap-react"
+   ],
+   "frontend.accessibility/wcag-aa": [
+    "accessibility-compliance",
+    "better-accessibility",
+    "fixing-accessibility",
+    "wcag-audit-patterns",
+    "ui-ux-pro-max"
+   ],
+   "frontend.accessibility/basics": [
+    "fixing-accessibility",
+    "better-accessibility",
+    "accessibility-compliance",
+    "ui-ux-pro-max",
+    "better-interface"
+   ],
+   "frontend.css/tokens": [
+    "tailwind-design-system",
+    "frontend-design-anthropics-2",
+    "tailwind-css-patterns",
+    "ui-ux-pro-max",
+    "theme-factory"
+   ],
+   "frontend.css/dark-mode": [
+    "frontend-design-anthropics-2",
+    "theme-factory",
+    "ui-ux-pro-max",
+    "tailwind-css-patterns",
+    "tailwind-design-system"
+   ],
+   "frontend.framework/next": [
+    "nextjs-app-router-patterns",
+    "react-best-practices",
+    "next-cache-components-optimizer",
+    "clerk-nextjs-patterns",
+    "react-composition-patterns"
+   ],
+   "frontend.lint-format/biome": [
+    "python-code-style",
+    "code-change-verification",
+    "code-review-expert",
+    "refactor-plan",
+    "coding-standards"
+   ],
+   "frontend.test-runner/vitest": [
+    "vitest",
+    "vue-testing-best-practices",
+    "javascript-testing-patterns",
+    "javascript-typescript-jest",
+    "python-testing-patterns"
+   ],
+   "frontend.test-runner/jest": [
+    "javascript-testing-patterns",
+    "javascript-typescript-jest",
+    "vue-testing-best-practices",
+    "vitest",
+    "python-testing-patterns"
+   ],
+   "frontend.test-style/agree": [
+    "webapp-testing-github",
+    "clerk-testing",
+    "vue-testing-best-practices",
+    "playwright-best-practices",
+    "e2e-testing"
+   ],
+   "frontend.e2e-tool/playwright": [
+    "playwright-best-practices",
+    "e2e-testing",
+    "e2e-testing-patterns",
+    "playwright-generate-test",
+    "webapp-testing-github"
+   ],
+   "frontend.browser-check/agree": [
+    "webapp-testing-github",
+    "webapp-testing",
+    "e2e-testing",
+    "clerk-testing",
+    "playwright-stealth-verify"
+   ],
+   "frontend.platforms/react-native": [
+    "react-native-architecture",
+    "web-component-design",
+    "react-native-best-practices",
+    "react-best-practices",
+    "frontend-patterns"
+   ],
+   "api.style/rest": [
+    "backend-patterns",
+    "docs-sync",
+    "claude-api",
+    "lavish",
+    "azure-resource-visualizer"
+   ],
+   "api.style/rpc": [
+    "golang-grpc",
+    "copilot-sdk",
+    "backend-patterns",
+    "health",
+    "create-specification"
+   ],
+   "database.migrations/write": [
+    "database-migrations",
+    "supabase-postgres-best-practices",
+    "postgresql-table-design",
+    "prisma-postgres-upgrade",
+    "postgres-patterns"
+   ],
+   "database.query-rules/no-n-plus-one": [
+    "sql-optimization-patterns",
+    "sql-optimization",
+    "sql-code-review",
+    "postgres-patterns",
+    "supabase-postgres-best-practices"
+   ],
+   "database.query-rules/indexes": [
+    "sql-optimization-patterns",
+    "postgres-patterns",
+    "sql-optimization",
+    "postgresql-optimization",
+    "postgresql-table-design"
+   ],
+   "database.query-rules/online-migrations": [
+    "database-migrations",
+    "supabase-postgres-best-practices",
+    "postgresql-table-design",
+    "prisma-postgres-upgrade",
+    "postgres-patterns"
+   ],
+   "database.query-rules/constraints": [
+    "postgresql-table-design",
+    "postgres-patterns",
+    "supabase-postgres-best-practices",
+    "postgresql-code-review",
+    "sql-code-review"
+   ],
+   "backend.auth-strategy/jwt": [
+    "auth-implementation-patterns",
+    "azure-role-selector",
+    "health",
+    "expo-data-fetching",
+    "verification-loop"
+   ],
+   "backend.auth-strategy/session": [
+    "auth-implementation-patterns",
+    "clerk-nextjs-patterns",
+    "react-state-management",
+    "nextjs-app-router-patterns",
+    "playwright-stealth-verify"
+   ],
+   "backend.password-hashing/argon2id": [
+    "auth-implementation-patterns",
+    "postgres-patterns",
+    "sql-code-review",
+    "postgresql-optimization",
+    "postgresql-code-review"
+   ],
+   "backend.container-image/dockerfile": [
+    "multi-stage-dockerfile",
+    "gitlab-ci-patterns",
+    "deployment-pipeline-design",
+    "monorepo-management",
+    "nestjs-best-practices"
+   ],
+   "backend.model-calls/stream": [
+    "claude-api",
+    "copilot-sdk",
+    "agentic-eval",
+    "verification-loop",
+    "create-specification"
+   ],
+   "llm.provider-abstraction/provider-sdk": [
+    "docs-sync",
+    "code-change-verification",
+    "codebase-design",
+    "improve",
+    "copilot-sdk"
+   ],
+   "agents.evals/ci": [
+    "agentic-eval",
+    "health",
+    "code-change-verification",
+    "deployment-pipeline-design",
+    "code-review-excellence"
+   ],
+   "git.branching/worktree": [
+    "using-git-worktrees",
+    "git-workflow-and-versioning",
+    "git-advanced-workflows",
+    "git-commit",
+    "gh-stack"
+   ],
+   "git.commit-messages/conventional": [
+    "git-commit",
+    "pr-draft-summary",
+    "requesting-code-review",
+    "make-repo-contribution",
+    "writing-plans"
+   ],
+   "git.pull-request-size/200": [
+    "refactor",
+    "code-review-excellence",
+    "code-review-expert",
+    "requesting-code-review",
+    "pr-draft-summary"
+   ],
+   "git.history/disagree": [
+    "git-advanced-workflows",
+    "make-repo-contribution",
+    "git-workflow-and-versioning",
+    "requesting-code-review",
+    "git-commit"
+   ],
+   "git.ci-workflow/github-actions": [
+    "code-review-expert",
+    "code-review-excellence",
+    "code-change-verification",
+    "make-repo-contribution",
+    "health"
+   ],
+   "security.destructive-commands/never": [
+    "git-advanced-workflows",
+    "git-guardrails-claude-code",
+    "git-commit",
+    "git-workflow-and-versioning",
+    "database-migrations"
+   ],
+   "system.design-clarification/agree": [
+    "ui-ux-pro-max",
+    "prd",
+    "architecture-patterns",
+    "frontend-design-anthropics-2",
+    "writing-plans"
+   ],
+   "design.refactoring/small-steps": [
+    "refactor",
+    "writing-plans",
+    "refactor-plan",
+    "test-driven-development",
+    "systematic-debugging"
+   ],
+   "design.code-structure/hexagonal": [
+    "architecture-patterns",
+    "nestjs-best-practices",
+    "writing-plans",
+    "improve",
+    "documentation-and-adrs"
+   ],
+   "design.ddd/core-only": [
+    "architecture-patterns",
+    "writing-plans",
+    "powerbi-modeling",
+    "nestjs-best-practices",
+    "incremental-implementation"
+   ],
+   "design.naming/agree": [
+    "golang-naming",
+    "python-anti-patterns",
+    "python-code-style",
+    "writing-plans",
+    "coding-standards"
+   ],
+   "tooling.package-manager/pnpm": [
+    "pnpm",
+    "monorepo-management",
+    "nextjs-turbopack",
+    "nestjs-best-practices",
+    "turborepo-vercel"
+   ],
+   "frontend.framework/vite-spa": [
+    "react-best-practices",
+    "frontend-patterns",
+    "web-component-design",
+    "react-composition-patterns",
+    "react-state-management"
+   ],
+   "testing.levels/none": [
+    "debugging-strategies",
+    "writing-plans",
+    "systematic-debugging",
+    "improve",
+    "python-testing-patterns"
+   ],
+   "frontend.accessibility/none": [
+    "fixing-accessibility",
+    "better-accessibility",
+    "accessibility-compliance",
+    "ui-ux-pro-max",
+    "better-interface"
+   ],
+   "frontend.platforms/browser-only": [
+    "webapp-testing-github",
+    "frontend-patterns",
+    "webapp-testing",
+    "playwright-stealth-verify",
+    "mobile-native"
+   ],
+   "backend.container-image/none": [
+    "deployment-pipeline-design",
+    "multi-stage-dockerfile",
+    "gitlab-ci-patterns",
+    "health",
+    "architecture-patterns"
+   ],
+   "git.branching/trunk": [
+    "requesting-code-review",
+    "git-advanced-workflows",
+    "git-workflow-and-versioning",
+    "writing-plans",
+    "gh-stack"
+   ],
+   "design.paradigm/functional": [
+    "refactor",
+    "writing-plans",
+    "react-composition-patterns",
+    "frontend-patterns",
+    "python-patterns"
+   ],
+   "llm.vector-store/none": [
+    "agentic-eval",
+    "copilot-sdk",
+    "claude-api",
+    "create-specification",
+    "powerbi-modeling"
+   ],
+   "agents.mcp/not-used": [
+    "copilot-sdk",
+    "improve",
+    "coding-standards",
+    "requesting-code-review",
+    "health"
+   ],
+   "backend.model-calls/none": [
+    "claude-api",
+    "copilot-sdk",
+    "agentic-eval",
+    "docs-sync",
+    "create-specification"
+   ],
+   "security.sandbox/host": [
+    "improve",
+    "code-review-expert",
+    "git-guardrails-claude-code",
+    "health",
+    "requesting-code-review"
+   ],
+   "api.contract/none": [
+    "copilot-sdk",
+    "docs-sync",
+    "agentic-eval",
+    "backend-patterns",
+    "create-specification"
+   ],
+   "backend.password-hashing/none": [
+    "auth-implementation-patterns",
+    "supabase-postgres-best-practices",
+    "github-profile-optimization",
+    "postgres-patterns",
+    "postgresql-table-design"
+   ],
+   "security.secrets/agree": [
+    "health",
+    "git-guardrails-claude-code",
+    "github-actions-templates",
+    "terraform-style-guide",
+    "python-anti-patterns"
+   ],
+   "frontend.test-runner/none": [
+    "python-testing-patterns",
+    "javascript-testing-patterns",
+    "test-driven-development",
+    "writing-plans",
+    "systematic-debugging"
+   ],
+   "design.abstraction-timing/third-case": [
+    "writing-plans",
+    "refactor",
+    "test-driven-development",
+    "improve",
+    "incremental-implementation"
+   ],
+   "database.migrations/never": [
+    "database-migrations",
+    "postgresql-table-design",
+    "supabase-postgres-best-practices",
+    "prisma-postgres-upgrade",
+    "snowflake-semanticview"
+   ],
+   "react.state/context": [
+    "react-state-management",
+    "react-composition-patterns",
+    "frontend-patterns",
+    "web-component-design",
+    "react-best-practices"
+   ],
+   "react.styling/styled-components": [
+    "frontend-patterns",
+    "web-component-design",
+    "tailwind-css-patterns",
+    "react-state-management",
+    "react-native-design"
+   ],
+   "react.hooks/agree": [
+    "react-composition-patterns",
+    "react-best-practices",
+    "frontend-patterns",
+    "react-state-management",
+    "web-component-design"
+   ],
+   "frontend.rendering/server": [
+    "react-best-practices",
+    "next-cache-components-optimizer",
+    "nextjs-app-router-patterns",
+    "expo-data-fetching",
+    "react-state-management"
+   ],
+   "frontend.bundler/framework": [
+    "react-native-architecture",
+    "coding-standards",
+    "architecture-patterns",
+    "frontend-patterns",
+    "react-best-practices"
+   ],
+   "frontend.test-network/msw": [
+    "expo-data-fetching",
+    "webapp-testing-github",
+    "javascript-testing-patterns",
+    "playwright-best-practices",
+    "webapp-testing"
+   ],
+   "frontend.e2e-tool/cypress": [
+    "e2e-testing-patterns",
+    "javascript-testing-patterns",
+    "clerk-testing",
+    "e2e-testing",
+    "playwright-best-practices"
+   ],
+   "frontend.api-client/tanstack-query": [
+    "expo-data-fetching",
+    "react-state-management",
+    "nextjs-app-router-patterns",
+    "react-composition-patterns",
+    "backend-patterns"
+   ],
+   "frontend.api-client/rtk-query": [
+    "expo-data-fetching",
+    "react-state-management",
+    "backend-patterns",
+    "nextjs-app-router-patterns",
+    "durable-objects"
+   ],
+   "frontend.semantic-html/agree": [
+    "fixing-accessibility",
+    "better-accessibility",
+    "accessibility-compliance",
+    "ui-ux-pro-max",
+    "frontend-design-anthropics-2"
+   ],
+   "frontend.css/mobile-first": [
+    "mobile-native",
+    "react-native-best-practices",
+    "tailwind-css-patterns",
+    "accessibility-compliance",
+    "ui-ux-pro-max"
+   ],
+   "frontend.css/flex-grid": [
+    "tailwind-css-patterns",
+    "web-component-design",
+    "ui-ux-pro-max",
+    "frontend-design-anthropics-2",
+    "frontend-patterns"
+   ],
+   "frontend.hosting/platform": [
+    "backend-patterns",
+    "nextjs-on-cloudflare",
+    "react-best-practices",
+    "deployment-pipeline-design",
+    "frontend-patterns"
+   ],
+   "frontend.preview-deploys/yes": [
+    "pr-draft-summary",
+    "deployment-pipeline-design",
+    "github-actions-templates",
+    "code-review-excellence",
+    "requesting-code-review"
+   ],
+   "frontend.token-storage/httponly-cookie": [
+    "auth-implementation-patterns",
+    "playwright-stealth-verify",
+    "react-state-management",
+    "clerk-nextjs-patterns",
+    "clerk-testing"
+   ],
+   "errors.handling/central-handler": [
+    "python-anti-patterns",
+    "vue-debug-guides",
+    "deployment-pipeline-design",
+    "backend-patterns",
+    "nestjs-best-practices"
+   ],
+   "database.access/raw-sql": [
+    "sql-code-review",
+    "sql-optimization",
+    "sql-optimization-patterns",
+    "postgresql-table-design",
+    "supabase-postgres-best-practices"
+   ],
+   "database.transactions/agree": [
+    "supabase-postgres-best-practices",
+    "sql-optimization",
+    "golang-database",
+    "database-migrations",
+    "postgresql-optimization"
+   ],
+   "database.concurrent-writes/row-lock": [
+    "golang-database",
+    "sql-optimization",
+    "sql-optimization-patterns",
+    "postgresql-optimization",
+    "database-migrations"
+   ],
+   "database.json-columns/agree": [
+    "postgresql-table-design",
+    "supabase-postgres-best-practices",
+    "powerbi-modeling",
+    "postgres-patterns",
+    "postgresql-optimization"
+   ],
+   "database.table-splitting/partitioned": [
+    "sql-optimization",
+    "postgres-patterns",
+    "sql-optimization-patterns",
+    "postgresql-optimization",
+    "supabase-postgres-best-practices"
+   ],
+   "database.connections/agree": [
+    "sql-optimization-patterns",
+    "sql-optimization",
+    "postgresql-optimization",
+    "golang-database",
+    "sql-code-review"
+   ],
+   "database.query-rules/explicit-columns": [
+    "sql-optimization-patterns",
+    "sql-optimization",
+    "postgresql-table-design",
+    "postgres-patterns",
+    "supabase-postgres-best-practices"
+   ],
+   "backend.auth-strategy/identity-provider": [
+    "auth-implementation-patterns",
+    "azure-role-selector",
+    "verification-loop",
+    "github-profile-optimization",
+    "audit"
+   ],
+   "backend.authorization/agree": [
+    "auth-implementation-patterns",
+    "azure-role-selector",
+    "audit",
+    "clerk-testing",
+    "verification-loop"
+   ],
+   "backend.password-hashing/bcrypt": [
+    "auth-implementation-patterns",
+    "postgres-patterns",
+    "sql-code-review",
+    "supabase-postgres-best-practices",
+    "postgresql-optimization"
+   ],
+   "backend.service-shape/serverless": [
+    "durable-objects",
+    "backend-patterns",
+    "workers-development",
+    "deployment-pipeline-design",
+    "base44-troubleshooter"
+   ],
+   "backend.service-shape/microservices": [
+    "architecture-patterns",
+    "supabase-postgres-best-practices",
+    "backend-patterns",
+    "expo-data-fetching",
+    "nestjs-best-practices"
+   ],
+   "backend.observability/traces": [
+    "appinsights-instrumentation",
+    "debugging-strategies",
+    "deployment-pipeline-design",
+    "workers-development",
+    "health"
+   ],
+   "backend.observability/metrics": [
+    "kpi-dashboard-design",
+    "appinsights-instrumentation",
+    "deployment-pipeline-design",
+    "health",
+    "base44-troubleshooter"
+   ],
+   "backend.model-call-guards/timeouts": [
+    "deployment-pipeline-design",
+    "backend-patterns",
+    "copilot-sdk",
+    "agentic-eval",
+    "claude-api"
+   ],
+   "backend.model-calls/job": [
+    "copilot-sdk",
+    "claude-api",
+    "gitlab-ci-patterns",
+    "incremental-implementation",
+    "verification-loop"
+   ],
+   "git.commit-permission/commit": [
+    "git-commit",
+    "git-advanced-workflows",
+    "git-workflow-and-versioning",
+    "requesting-code-review",
+    "git-guardrails-claude-code"
+   ],
+   "git.pull-request-size/400": [
+    "refactor",
+    "code-review-excellence",
+    "code-review-expert",
+    "requesting-code-review",
+    "pr-draft-summary"
+   ],
+   "git.commit-messages/imperative": [
+    "git-commit",
+    "pr-draft-summary",
+    "requesting-code-review",
+    "writing-plans",
+    "make-repo-contribution"
+   ],
+   "git.history/agree": [
+    "git-advanced-workflows",
+    "git-commit",
+    "git-workflow-and-versioning",
+    "git-guardrails-claude-code",
+    "make-repo-contribution"
+   ],
+   "git.branching/branch": [
+    "git-advanced-workflows",
+    "git-workflow-and-versioning",
+    "git-commit",
+    "requesting-code-review",
+    "gh-stack"
+   ],
+   "security.destructive-commands/ask": [
+    "git-advanced-workflows",
+    "git-commit",
+    "git-guardrails-claude-code",
+    "database-migrations",
+    "supabase-postgres-best-practices"
+   ],
+   "system.design-trade-offs/agree": [
+    "brainstorming",
+    "writing-plans",
+    "cross-critique",
+    "debugging-strategies",
+    "architecture-patterns"
+   ],
+   "system.service-decomposition/modular-monolith": [
+    "architecture-patterns",
+    "nestjs-best-practices",
+    "backend-patterns",
+    "codebase-design",
+    "incremental-implementation"
+   ],
+   "system.service-protocol/grpc": [
+    "golang-grpc",
+    "architecture-patterns",
+    "copilot-sdk",
+    "incremental-implementation",
+    "code-change-verification"
+   ],
+   "system.monitoring-scope/performance": [
+    "kpi-dashboard-design",
+    "appinsights-instrumentation",
+    "debugging-strategies",
+    "health",
+    "deployment-pipeline-design"
+   ],
+   "design.function-size/agree": [
+    "writing-plans",
+    "refactor",
+    "python-anti-patterns",
+    "nestjs-best-practices",
+    "debugging-strategies"
+   ],
+   "design.immutability/agree": [
+    "refactor",
+    "incremental-implementation",
+    "python-anti-patterns",
+    "improve",
+    "refactor-plan"
+   ],
+   "design.principles/single-responsibility": [
+    "refactor",
+    "incremental-implementation",
+    "writing-plans",
+    "improve",
+    "nestjs-best-practices"
+   ],
+   "design.principles/dependency-inversion": [
+    "improve",
+    "architecture-patterns",
+    "nestjs-best-practices",
+    "writing-plans",
+    "codebase-design"
+   ],
+   "design.dependency-rule/agree": [
+    "architecture-patterns",
+    "database-migrations",
+    "postgresql-table-design",
+    "powerbi-modeling",
+    "supabase-postgres-best-practices"
+   ],
+   "design.code-structure/layered": [
+    "architecture-patterns",
+    "writing-plans",
+    "backend-patterns",
+    "nestjs-best-practices",
+    "coding-standards"
+   ],
+   "design.folder-structure/by-domain": [
+    "architecture-patterns",
+    "incremental-implementation",
+    "writing-plans",
+    "memory-merger",
+    "documentation-and-adrs"
+   ],
+   "design.ddd/everywhere": [
+    "architecture-patterns",
+    "incremental-implementation",
+    "powerbi-modeling",
+    "writing-plans",
+    "mermaid-diagrams"
+   ],
+   "design.repositories/repositories": [
+    "database-migrations",
+    "architecture-patterns",
+    "incremental-implementation",
+    "supabase-postgres-best-practices",
+    "durable-objects"
+   ],
+   "llm.streaming/stream": [
+    "copilot-sdk",
+    "claude-api",
+    "agentic-eval",
+    "verification-loop",
+    "lavish"
+   ],
+   "llm.structured-output/schema-constrained": [
+    "agentic-eval",
+    "code-change-verification",
+    "verification-loop",
+    "powerbi-modeling",
+    "health"
+   ],
+   "llm.eval-tool/test-runner": [
+    "agentic-eval",
+    "code-review-excellence",
+    "improve",
+    "analyze-project",
+    "code-review-expert"
+   ],
+   "llm.eval-scoring/model-judge": [
+    "agentic-eval",
+    "code-review-excellence",
+    "improve",
+    "coding-standards",
+    "verification-loop"
+   ],
+   "llm.eval-gate/ci": [
+    "agentic-eval",
+    "health",
+    "code-review-excellence",
+    "deployment-pipeline-design",
+    "code-review-expert"
+   ],
+   "agents.framework/framework": [
+    "copilot-sdk",
+    "health",
+    "docs-sync",
+    "agentic-eval",
+    "claude-api"
+   ],
+   "agents.self-review/agree": [
+    "improve",
+    "agentic-eval",
+    "code-review-excellence",
+    "health",
+    "code-review-expert"
+   ],
+   "agents.prompt-caching/cached": [
+    "copilot-sdk",
+    "claude-api",
+    "agentic-eval",
+    "health",
+    "verification-loop"
+   ],
+   "agents.evals/manual": [
+    "systematic-debugging",
+    "agentic-eval",
+    "health",
+    "improve",
+    "code-review-excellence"
+   ],
+   "perf.code-splitting/route": [
+    "react-best-practices",
+    "nextjs-app-router-patterns",
+    "next-cache-components-optimizer",
+    "react-composition-patterns",
+    "nextjs-turbopack"
+   ],
+   "perf.memoization/measured": [
+    "react-composition-patterns",
+    "react-best-practices",
+    "react-native-best-practices",
+    "frontend-patterns",
+    "python-performance-optimization"
+   ],
+   "perf.long-lists/virtualized": [
+    "react-composition-patterns",
+    "react-best-practices",
+    "web-component-design",
+    "frontend-patterns",
+    "react-state-management"
+   ],
+   "perf.measure-first/agree": [
+    "golang-performance",
+    "python-performance-optimization",
+    "debugging-strategies",
+    "react-native-best-practices",
+    "web-quality-audit"
+   ],
+   "perf.vitals-targets/good": [
+    "web-quality-audit",
+    "react-best-practices",
+    "next-cache-components-optimizer",
+    "react-native-best-practices",
+    "better-interface"
+   ],
+   "perf.budget-check/lighthouse-ci": [
+    "code-review-excellence",
+    "web-quality-audit",
+    "code-review-expert",
+    "gitlab-ci-patterns",
+    "code-change-verification"
+   ],
+   "perf.image-formats/modern-files": [
+    "image-manipulation-image-magick",
+    "app-store-screenshots",
+    "lavish",
+    "slack-gif-creator",
+    "canvas-design"
+   ],
+   "perf.dependency-weight/agree": [
+    "nextjs-turbopack",
+    "react-best-practices",
+    "react-native-best-practices",
+    "frontend-patterns",
+    "python-performance-optimization"
+   ],
+   "typescript.state-modeling/agree": [
+    "react-state-management",
+    "incremental-implementation",
+    "verification-before-completion",
+    "react-composition-patterns",
+    "health"
+   ],
+   "workflow.autonomy/ask-before-writing": [
+    "writing-plans",
+    "improve",
+    "refactor-plan",
+    "documentation-and-adrs",
+    "coding-standards"
+   ],
+   "react.styling/css-modules": [
+    "web-component-design",
+    "tailwind-css-patterns",
+    "frontend-patterns",
+    "unocss",
+    "tailwind-design-system"
+   ],
+   "frontend.platforms/tauri": [
+    "webapp-testing-github",
+    "mobile-native",
+    "webapp-testing",
+    "react-native-best-practices",
+    "react-native-architecture"
+   ],
+   "frontend.platforms/electron": [
+    "playwright-stealth-verify",
+    "webapp-testing-github",
+    "react-native-architecture",
+    "react-best-practices",
+    "react-native-best-practices"
+   ],
+   "frontend.bundler/vite": [
+    "nextjs-turbopack",
+    "react-best-practices",
+    "vitest",
+    "next-cache-components-optimizer",
+    "frontend-patterns"
+   ],
+   "frontend.service-worker/offline": [
+    "expo-data-fetching",
+    "react-native-architecture",
+    "react-best-practices",
+    "nextjs-turbopack",
+    "backend-patterns"
+   ],
+   "frontend.raw-html/sanitized": [
+    "markdown-to-html",
+    "fixing-accessibility",
+    "baoyu-markdown-to-html",
+    "react-best-practices",
+    "frontend-patterns"
+   ],
+   "frontend.csp/strict": [
+    "health",
+    "python-anti-patterns",
+    "fixing-accessibility",
+    "git-guardrails-claude-code",
+    "web-quality-audit"
+   ],
+   "api.style/graphql": [
+    "postgresql-table-design",
+    "supabase-postgres-best-practices",
+    "powerbi-modeling",
+    "backend-patterns",
+    "database-migrations"
+   ],
+   "logging.style/structured": [
+    "nestjs-best-practices",
+    "debugging-strategies",
+    "appinsights-instrumentation",
+    "documentation-and-adrs",
+    "workers-development"
+   ],
+   "backend.background-jobs/job-queue": [
+    "deployment-pipeline-design",
+    "gitlab-ci-patterns",
+    "incremental-implementation",
+    "backend-patterns",
+    "writing-plans"
+   ],
+   "backend.module-system/esm": [
+    "nestjs-best-practices",
+    "javascript-typescript-jest",
+    "nextjs-turbopack",
+    "react-best-practices",
+    "frontend-patterns"
+   ],
+   "backend.graceful-shutdown/agree": [
+    "golang-concurrency",
+    "verification-before-completion",
+    "rust-async-patterns",
+    "golang-context",
+    "deployment-pipeline-design"
+   ],
+   "git.attribution/agree": [
+    "make-repo-contribution",
+    "requesting-code-review",
+    "pr-draft-summary",
+    "code-review-excellence",
+    "improve"
+   ],
+   "security.dependencies/ask": [
+    "documentation-and-adrs",
+    "code-review-excellence",
+    "analyze-project",
+    "improve",
+    "coding-standards"
+   ],
+   "security.input-trust/agree": [
+    "sql-code-review",
+    "golang-security",
+    "health",
+    "git-guardrails-claude-code",
+    "verification-before-completion"
+   ],
+   "system.health-probes/liveness-readiness": [
+    "health",
+    "deployment-pipeline-design",
+    "verification-before-completion",
+    "durable-objects",
+    "debugging-strategies"
+   ],
+   "tooling.package-manager/bun": [
+    "pnpm",
+    "monorepo-management",
+    "nextjs-turbopack",
+    "turborepo-vercel",
+    "golang-cli"
+   ],
+   "frontend.browser-support/browserslist": [
+    "webapp-testing-github",
+    "playwright-stealth-verify",
+    "webapp-testing",
+    "e2e-testing",
+    "javascript-testing-patterns"
+   ],
+   "api.webhooks/receives": [
+    "deployment-pipeline-design",
+    "health",
+    "workers-development",
+    "azure-static-web-apps",
+    "verification-before-completion"
+   ],
+   "api.rate-limiting/app": [
+    "backend-patterns",
+    "auth-implementation-patterns",
+    "base44-troubleshooter",
+    "clerk-nextjs-patterns",
+    "durable-objects"
+   ],
+   "backend.cache-store/shared": [
+    "durable-objects",
+    "expo-data-fetching",
+    "gitlab-ci-patterns",
+    "backend-patterns",
+    "clerk-nextjs-patterns"
+   ],
+   "system.queue-guarantees/at-least-once": [
+    "incremental-implementation",
+    "durable-objects",
+    "deployment-pipeline-design",
+    "gitlab-ci-patterns",
+    "base44-troubleshooter"
+   ],
+   "system.failover/active-active": [
+    "react-state-management",
+    "react-composition-patterns",
+    "durable-objects",
+    "incremental-implementation",
+    "golang-concurrency"
+   ],
+   "llm.fine-tuning/adapters": [
+    "agentic-eval",
+    "health",
+    "analyze-project",
+    "claude-api",
+    "create-specification"
+   ],
+   "llm.vector-store/pgvector": [
+    "postgresql-optimization",
+    "postgres-patterns",
+    "postgresql-table-design",
+    "supabase-postgres-best-practices",
+    "postgresql-code-review"
+   ],
+   "llm.prompt-injection/agree": [
+    "health",
+    "agentic-eval",
+    "improve",
+    "claude-api",
+    "verification-loop"
+   ],
+   "agents.long-term-memory/profile": [
+    "memory-merger",
+    "copilot-sdk",
+    "agentic-eval",
+    "claude-api",
+    "verification-loop"
+   ],
+   "perf.font-display/swap": [
+    "frontend-design-anthropics-2",
+    "ui-ux-pro-max",
+    "tailwind-css-patterns",
+    "unocss",
+    "tailwind-design-system"
+   ],
+   "security.network/none": [
+    "copilot-sdk",
+    "agentic-eval",
+    "health",
+    "debugging-strategies",
+    "verification-loop"
+   ],
+   "design.refactoring/leave": [
+    "refactor",
+    "refactor-plan",
+    "improve",
+    "code-review-expert",
+    "requesting-code-review"
+   ],
+   "frontend.e2e-tool/none": [
+    "javascript-testing-patterns",
+    "e2e-testing-patterns",
+    "vue-testing-best-practices",
+    "e2e-testing",
+    "python-testing-patterns"
+   ],
+   "api.webhooks/none": [
+    "deployment-pipeline-design",
+    "copilot-sdk",
+    "health",
+    "backend-patterns",
+    "agentic-eval"
+   ],
+   "backend.observability/none": [
+    "health",
+    "improve",
+    "nestjs-best-practices",
+    "deployment-pipeline-design",
+    "coding-standards"
+   ],
+   "llm.retrieval/none": [
+    "agentic-eval",
+    "claude-api",
+    "copilot-sdk",
+    "create-specification",
+    "prd"
+   ],
+   "agents.long-term-memory/none": [
+    "copilot-sdk",
+    "claude-api",
+    "memory-merger",
+    "verification-loop",
+    "agentic-eval"
+   ],
+   "backend.background-jobs/none": [
+    "requesting-code-review",
+    "create-specification",
+    "prd",
+    "deployment-pipeline-design",
+    "improve"
+   ],
+   "perf.budget-check/none": [
+    "code-review-expert",
+    "gitlab-ci-patterns",
+    "react-best-practices",
+    "deployment-pipeline-design",
+    "code-review-excellence"
+   ],
+   "frontend.service-worker/none": [
+    "mobile-native",
+    "webapp-testing",
+    "react-native-architecture",
+    "react-best-practices",
+    "webapp-testing-github"
+   ],
+   "llm.eval-tool/none": [
+    "agentic-eval",
+    "improve",
+    "code-review-excellence",
+    "requesting-code-review",
+    "analyze-project"
+   ],
+   "frontend.csp/none": [
+    "coding-standards",
+    "python-anti-patterns",
+    "cpp-coding-standards",
+    "react-best-practices",
+    "health"
+   ],
+   "frontend.browser-check/disagree": [
+    "webapp-testing-github",
+    "webapp-testing",
+    "playwright-stealth-verify",
+    "e2e-testing",
+    "clerk-testing"
+   ],
+   "workflow.changes/disagree": [
+    "incremental-implementation",
+    "writing-plans",
+    "refactor",
+    "requesting-code-review",
+    "git-commit"
+   ],
+   "git.pull-request-size/no-limit": [
+    "code-review-excellence",
+    "requesting-code-review",
+    "code-review-expert",
+    "pr-draft-summary",
+    "writing-plans"
+   ]
+  },
+  "SparseUp-v2": {
+   "typescript.any/agree": [
+    "test-driven-development",
+    "writing-plans",
+    "golang-naming",
+    "code-review-expert",
+    "golang-code-style"
+   ],
+   "typescript.strict/all": [
+    "improve",
+    "javascript-typescript-jest",
+    "typescript-advanced-types",
+    "pnpm",
+    "ultracite"
+   ],
+   "react.granularity/agree": [
+    "web-component-design",
+    "writing-plans",
+    "brainstorming",
+    "test-driven-development",
+    "tailwind-design-system"
+   ],
+   "react.state/tanstack-query-only": [
+    "react-state-management",
+    "nextjs-app-router-patterns",
+    "frontend-patterns",
+    "react-native-best-practices",
+    "durable-objects"
+   ],
+   "react.state/zustand": [
+    "react-state-management",
+    "monorepo-management",
+    "codebase-design",
+    "shadcn-ui",
+    "limrun-expo-development"
+   ],
+   "react.state/redux": [
+    "react-state-management",
+    "frontend-patterns",
+    "limrun-expo-development",
+    "ask-sonner",
+    "nextjs-on-cloudflare"
+   ],
+   "react.styling/tailwind": [
+    "tailwind-css-patterns",
+    "tailwind-4-docs",
+    "tailwind-design-system",
+    "unocss",
+    "shadcn-ui"
+   ],
+   "react.effects/agree": [
+    "gsap-react",
+    "react-best-practices",
+    "expo-data-fetching",
+    "react-state-management",
+    "frontend-patterns"
+   ],
+   "testing.levels/unit": [
+    "writing-plans",
+    "test-driven-development",
+    "vitest",
+    "code-change-verification",
+    "javascript-testing-patterns"
+   ],
+   "testing.levels/component": [
+    "vue-testing-best-practices",
+    "webapp-testing",
+    "writing-plans",
+    "javascript-testing-patterns",
+    "e2e-testing"
+   ],
+   "testing.levels/e2e": [
+    "e2e-testing-patterns",
+    "javascript-testing-patterns",
+    "e2e-testing",
+    "clerk-testing",
+    "writing-plans"
+   ],
+   "style.comments/agree": [
+    "golang-code-style",
+    "write",
+    "golang-documentation",
+    "test-driven-development",
+    "improve"
+   ],
+   "workflow.changes/agree": [
+    "make-repo-contribution",
+    "git-workflow-and-versioning",
+    "create-pr",
+    "refactor",
+    "git-commit"
+   ],
+   "workflow.autonomy/agree": [
+    "documentation-and-adrs",
+    "brainstorming",
+    "backend-patterns",
+    "claude-api",
+    "powerbi-modeling"
+   ],
+   "tooling.checks/run": [
+    "code-change-verification",
+    "verification-before-completion",
+    "writing-plans",
+    "ab-testing",
+    "limrun-expo-development"
+   ],
+   "frontend.animations/agree": [
+    "remove-animations",
+    "animation-vocabulary",
+    "improve-animations",
+    "animate-expo",
+    "review-animations"
+   ],
+   "frontend.accessibility/wcag-aa": [
+    "better-accessibility",
+    "fixing-accessibility",
+    "accessibility-compliance",
+    "accessibility",
+    "wcag-audit-patterns"
+   ],
+   "frontend.accessibility/basics": [
+    "fixing-accessibility",
+    "better-accessibility",
+    "better-interface",
+    "accessibility-compliance",
+    "accessibility"
+   ],
+   "frontend.css/tokens": [
+    "tailwind-design-system",
+    "tailwind-css-patterns",
+    "theme-factory",
+    "penpot-uiux-design",
+    "applying-brand-guidelines"
+   ],
+   "frontend.css/dark-mode": [
+    "theme-factory",
+    "react-native-design",
+    "golang-code-style",
+    "brand-guidelines",
+    "better-interface"
+   ],
+   "frontend.framework/next": [
+    "nextjs-app-router-patterns",
+    "nextjs-on-cloudflare",
+    "frontend-patterns",
+    "react-best-practices",
+    "next-cache-components-optimizer"
+   ],
+   "frontend.lint-format/biome": [
+    "code-change-verification",
+    "ultracite",
+    "python-code-style",
+    "xlsx",
+    "image-manipulation-image-magick"
+   ],
+   "frontend.test-runner/vitest": [
+    "vitest",
+    "javascript-testing-patterns",
+    "vue-testing-best-practices",
+    "javascript-typescript-jest",
+    "python-testing-patterns"
+   ],
+   "frontend.test-runner/jest": [
+    "javascript-typescript-jest",
+    "javascript-testing-patterns",
+    "vitest",
+    "vue-testing-best-practices",
+    "python-testing-patterns"
+   ],
+   "frontend.test-style/agree": [
+    "ab-testing",
+    "test-driven-development",
+    "webapp-testing",
+    "webapp-testing-github",
+    "javascript-testing-patterns"
+   ],
+   "frontend.e2e-tool/playwright": [
+    "e2e-testing-patterns",
+    "e2e-testing",
+    "webapp-testing",
+    "clerk-testing",
+    "webapp-testing-github"
+   ],
+   "frontend.browser-check/agree": [
+    "better-interface",
+    "code-change-verification",
+    "webapp-testing",
+    "fixing-accessibility",
+    "verification-before-completion"
+   ],
+   "frontend.platforms/react-native": [
+    "react-native-architecture",
+    "react-native-design",
+    "frontend-patterns",
+    "web-component-design",
+    "limrun-expo-development"
+   ],
+   "api.style/rest": [
+    "microsoft-code-reference",
+    "java-springboot",
+    "claude-api",
+    "backend-patterns",
+    "dotnet-backend-patterns"
+   ],
+   "api.style/rpc": [
+    "golang-grpc",
+    "microsoft-code-reference",
+    "backend-patterns",
+    "java-springboot",
+    "claude-api"
+   ],
+   "database.migrations/write": [
+    "database-migrations",
+    "supabase-postgres-best-practices",
+    "neon-postgres",
+    "postgresql-code-review",
+    "postgresql-table-design"
+   ],
+   "database.query-rules/no-n-plus-one": [
+    "sql-optimization",
+    "sql-code-review",
+    "postgresql-code-review",
+    "postgresql-optimization",
+    "golang-database"
+   ],
+   "database.query-rules/indexes": [
+    "sql-optimization",
+    "sql-optimization-patterns",
+    "sql-code-review",
+    "postgres-patterns",
+    "postgresql-code-review"
+   ],
+   "database.query-rules/online-migrations": [
+    "golang-database",
+    "database-migrations",
+    "sql-code-review",
+    "sql-optimization",
+    "postgresql-code-review"
+   ],
+   "database.query-rules/constraints": [
+    "postgresql-code-review",
+    "sql-code-review",
+    "postgresql-optimization",
+    "sql-optimization",
+    "golang-database"
+   ],
+   "backend.auth-strategy/jwt": [
+    "auth-implementation-patterns",
+    "playwright-stealth-verify",
+    "better-accessibility",
+    "tailwind-design-system",
+    "microsoft-code-reference"
+   ],
+   "backend.auth-strategy/session": [
+    "auth-implementation-patterns",
+    "golang-security",
+    "aws-security",
+    "verification-loop",
+    "playwright-best-practices"
+   ],
+   "backend.password-hashing/argon2id": [
+    "accessibility",
+    "e2e-testing-patterns",
+    "create-readme",
+    "terraform-style-guide",
+    "accessibility-compliance"
+   ],
+   "backend.container-image/dockerfile": [
+    "multi-stage-dockerfile",
+    "pnpm",
+    "monorepo-management",
+    "backend-patterns",
+    "gitlab-ci-patterns"
+   ],
+   "backend.model-calls/stream": [
+    "claude-api",
+    "ab-testing",
+    "limrun-expo-development",
+    "base44-troubleshooter",
+    "dotnet-backend-patterns"
+   ],
+   "llm.provider-abstraction/provider-sdk": [
+    "claude-api",
+    "microsoft-code-reference",
+    "code-change-verification",
+    "dotnet-best-practices",
+    "docs-sync"
+   ],
+   "agents.evals/ci": [
+    "claude-api",
+    "e2e-testing",
+    "playwright-best-practices",
+    "refactor-plan",
+    "code-change-verification"
+   ],
+   "git.branching/worktree": [
+    "using-git-worktrees",
+    "git-advanced-workflows",
+    "git-workflow-and-versioning",
+    "gh-stack",
+    "make-repo-contribution"
+   ],
+   "git.commit-messages/conventional": [
+    "git-commit",
+    "make-repo-contribution",
+    "write",
+    "git-workflow-and-versioning",
+    "git-guardrails-claude-code"
+   ],
+   "git.pull-request-size/200": [
+    "create-pr",
+    "make-repo-contribution",
+    "git-workflow-and-versioning",
+    "gh-stack",
+    "code-review-excellence"
+   ],
+   "git.history/disagree": [
+    "git-advanced-workflows",
+    "gh-stack",
+    "refactor-plan",
+    "make-repo-contribution",
+    "git-guardrails-claude-code"
+   ],
+   "git.ci-workflow/github-actions": [
+    "github-actions-templates",
+    "git-workflow-and-versioning",
+    "make-repo-contribution",
+    "agentic-eval",
+    "create-agentsmd"
+   ],
+   "security.destructive-commands/never": [
+    "git-guardrails-claude-code",
+    "git-advanced-workflows",
+    "postgresql-optimization",
+    "sql-optimization",
+    "git-commit"
+   ],
+   "system.design-clarification/agree": [
+    "brainstorming",
+    "deployment-pipeline-design",
+    "writing-plans",
+    "postgresql-table-design",
+    "supabase-postgres-best-practices"
+   ],
+   "design.refactoring/small-steps": [
+    "writing-plans",
+    "refactor-plan",
+    "refactor",
+    "test-driven-development",
+    "tdd"
+   ],
+   "design.code-structure/hexagonal": [
+    "architecture-patterns",
+    "dotnet-backend-patterns",
+    "codebase-design",
+    "improve",
+    "dotnet-best-practices"
+   ],
+   "design.ddd/core-only": [
+    "tdd",
+    "dotnet-backend-patterns",
+    "architecture-patterns",
+    "test-driven-development",
+    "mermaid-diagrams"
+   ],
+   "design.naming/agree": [
+    "golang-naming",
+    "coding-standards",
+    "golang-code-style",
+    "refactor",
+    "write"
+   ],
+   "tooling.package-manager/pnpm": [
+    "pnpm",
+    "monorepo-management",
+    "prisma-postgres",
+    "pytest-coverage",
+    "upgrading-react-native"
+   ],
+   "frontend.framework/vite-spa": [
+    "nextjs-app-router-patterns",
+    "web-component-design",
+    "react-best-practices",
+    "react-native-architecture",
+    "react-composition-patterns"
+   ],
+   "testing.levels/none": [
+    "writing-plans",
+    "test-driven-development",
+    "javascript-typescript-jest",
+    "playwright-best-practices",
+    "python-testing-patterns"
+   ],
+   "frontend.accessibility/none": [
+    "fixing-accessibility",
+    "better-accessibility",
+    "accessibility-compliance",
+    "better-interface",
+    "accessibility"
+   ],
+   "frontend.platforms/browser-only": [
+    "frontend-patterns",
+    "web-component-design",
+    "coding-standards",
+    "webapp-testing-github",
+    "frontend-design-anthropics-2"
+   ],
+   "backend.container-image/none": [
+    "multi-stage-dockerfile",
+    "c4-architecture",
+    "aws-security",
+    "limrun-expo-development",
+    "gitlab-ci-patterns"
+   ],
+   "git.branching/trunk": [
+    "create-pr",
+    "writing-plans",
+    "make-repo-contribution",
+    "pr-draft-summary",
+    "gh-stack"
+   ],
+   "design.paradigm/functional": [
+    "swiftui-expert-skill",
+    "writing-plans",
+    "golang-naming",
+    "test-driven-development",
+    "react-best-practices"
+   ],
+   "llm.vector-store/none": [
+    "analyze-project",
+    "copilot-sdk",
+    "create-readme",
+    "microsoft-docs",
+    "java-springboot"
+   ],
+   "agents.mcp/not-used": [
+    "microsoft-docs",
+    "penpot-uiux-design",
+    "health",
+    "copilot-sdk",
+    "dotnet-backend-patterns"
+   ],
+   "backend.model-calls/none": [
+    "docs-sync",
+    "dotnet-backend-patterns",
+    "claude-api",
+    "backend-patterns",
+    "base44-troubleshooter"
+   ],
+   "security.sandbox/host": [
+    "limrun-expo-development",
+    "postgresql-optimization",
+    "powerbi-modeling",
+    "workers-development",
+    "sql-code-review"
+   ],
+   "api.contract/none": [
+    "documentation-and-adrs",
+    "microsoft-code-reference",
+    "golang-documentation",
+    "claude-api",
+    "docs-sync"
+   ],
+   "backend.password-hashing/none": [
+    "java-springboot",
+    "nextjs-on-cloudflare",
+    "health",
+    "prisma-postgres-upgrade",
+    "webapp-testing"
+   ],
+   "security.secrets/agree": [
+    "postgresql-code-review",
+    "sql-code-review",
+    "improve",
+    "golang-documentation",
+    "postgresql-optimization"
+   ],
+   "frontend.test-runner/none": [
+    "test-driven-development",
+    "vue-testing-best-practices",
+    "javascript-testing-patterns",
+    "writing-plans",
+    "python-testing-patterns"
+   ],
+   "design.abstraction-timing/third-case": [
+    "test-driven-development",
+    "writing-plans",
+    "golang-naming",
+    "refactor-plan",
+    "codebase-design"
+   ],
+   "database.migrations/never": [
+    "database-migrations",
+    "supabase-postgres-best-practices",
+    "postgresql-table-design",
+    "neon-postgres",
+    "postgresql-code-review"
+   ],
+   "react.state/context": [
+    "react-state-management",
+    "gsap-react",
+    "frontend-patterns",
+    "react-composition-patterns",
+    "web-component-design"
+   ],
+   "react.styling/styled-components": [
+    "web-component-design",
+    "shadcn-ui",
+    "tailwind-design-system",
+    "tailwind-css-patterns",
+    "theme-factory"
+   ],
+   "react.hooks/agree": [
+    "react-best-practices",
+    "frontend-patterns",
+    "react-composition-patterns",
+    "react-native-best-practices",
+    "web-component-design"
+   ],
+   "frontend.rendering/server": [
+    "react-best-practices",
+    "baoyu-markdown-to-html",
+    "workers-development",
+    "game-engine",
+    "expo-data-fetching"
+   ],
+   "frontend.bundler/framework": [
+    "frontend-patterns",
+    "coding-standards",
+    "dotnet-backend-patterns",
+    "frontend-design-anthropics-2",
+    "web-component-design"
+   ],
+   "frontend.test-network/msw": [
+    "playwright-best-practices",
+    "vitest",
+    "javascript-testing-patterns",
+    "vue-testing-best-practices",
+    "python-testing-patterns"
+   ],
+   "frontend.e2e-tool/cypress": [
+    "e2e-testing-patterns",
+    "clerk-testing",
+    "javascript-testing-patterns",
+    "e2e-testing",
+    "vue-testing-best-practices"
+   ],
+   "frontend.api-client/tanstack-query": [
+    "expo-data-fetching",
+    "react-state-management",
+    "database-migrations",
+    "nextjs-app-router-patterns",
+    "react-native-best-practices"
+   ],
+   "frontend.api-client/rtk-query": [
+    "expo-data-fetching",
+    "react-state-management",
+    "java-springboot",
+    "ad-conversion-tracking",
+    "backend-patterns"
+   ],
+   "frontend.semantic-html/agree": [
+    "fixing-accessibility",
+    "mobile-native",
+    "better-accessibility",
+    "accessibility-compliance",
+    "lavish"
+   ],
+   "frontend.css/mobile-first": [
+    "react-native-design",
+    "golang-code-style",
+    "test-driven-development",
+    "python-code-style",
+    "mobile-native"
+   ],
+   "frontend.css/flex-grid": [
+    "tailwind-css-patterns",
+    "tailwind-design-system",
+    "theme-factory",
+    "web-component-design",
+    "golang-code-style"
+   ],
+   "frontend.hosting/platform": [
+    "frontend-patterns",
+    "backend-patterns",
+    "frontend-design-anthropics-2",
+    "web-component-design",
+    "azure-static-web-apps"
+   ],
+   "frontend.preview-deploys/yes": [
+    "azure-deployment-preflight",
+    "create-pr",
+    "make-repo-contribution",
+    "git-workflow-and-versioning",
+    "github-actions-templates"
+   ],
+   "frontend.token-storage/httponly-cookie": [
+    "golang-security",
+    "auth-implementation-patterns",
+    "playwright-stealth-verify",
+    "subagent-driven-development",
+    "executing-plans"
+   ],
+   "errors.handling/central-handler": [
+    "vue-debug-guides",
+    "rust-patterns",
+    "rust-async-patterns",
+    "nextjs-app-router-patterns",
+    "backend-patterns"
+   ],
+   "database.access/raw-sql": [
+    "database-migrations",
+    "sql-optimization-patterns",
+    "sql-code-review",
+    "sql-optimization",
+    "golang-database"
+   ],
+   "database.transactions/agree": [
+    "writing-plans",
+    "supabase-postgres-best-practices",
+    "java-springboot",
+    "postgresql-code-review",
+    "golang-database"
+   ],
+   "database.concurrent-writes/row-lock": [
+    "golang-database",
+    "database-migrations",
+    "docs-sync",
+    "prisma-postgres-upgrade",
+    "golang-concurrency"
+   ],
+   "database.json-columns/agree": [
+    "postgresql-table-design",
+    "powerbi-modeling",
+    "supabase-postgres-best-practices",
+    "database-migrations",
+    "postgresql-optimization"
+   ],
+   "database.table-splitting/partitioned": [
+    "postgresql-table-design",
+    "database-migrations",
+    "supabase-postgres-best-practices",
+    "neon-postgres",
+    "sql-optimization"
+   ],
+   "database.connections/agree": [
+    "golang-database",
+    "sql-optimization-patterns",
+    "database-migrations",
+    "neon-postgres",
+    "sql-optimization"
+   ],
+   "database.query-rules/explicit-columns": [
+    "sql-code-review",
+    "postgresql-code-review",
+    "golang-database",
+    "sql-optimization",
+    "postgresql-optimization"
+   ],
+   "backend.auth-strategy/identity-provider": [
+    "auth-implementation-patterns",
+    "code-change-verification",
+    "clerk-testing",
+    "java-springboot",
+    "pr-draft-summary"
+   ],
+   "backend.authorization/agree": [
+    "backend-patterns",
+    "playwright-best-practices",
+    "dotnet-best-practices",
+    "webapp-testing",
+    "code-change-verification"
+   ],
+   "backend.password-hashing/bcrypt": [
+    "pdf",
+    "legacy-circuit-mockups",
+    "golang-security",
+    "baoyu-markdown-to-html",
+    "terraform-style-guide"
+   ],
+   "backend.service-shape/serverless": [
+    "dotnet-backend-patterns",
+    "base44-troubleshooter",
+    "backend-patterns",
+    "frontend-patterns",
+    "architecture-patterns"
+   ],
+   "backend.service-shape/microservices": [
+    "backend-patterns",
+    "dotnet-backend-patterns",
+    "architecture-patterns",
+    "base44-troubleshooter",
+    "database-migrations"
+   ],
+   "backend.observability/traces": [
+    "appinsights-instrumentation",
+    "ad-conversion-tracking",
+    "kpi-dashboard-design",
+    "workers-development",
+    "nextjs-on-cloudflare"
+   ],
+   "backend.observability/metrics": [
+    "kpi-dashboard-design",
+    "appinsights-instrumentation",
+    "aws-security",
+    "base44-troubleshooter",
+    "microsoft-code-reference"
+   ],
+   "backend.model-call-guards/timeouts": [
+    "dotnet-backend-patterns",
+    "base44-troubleshooter",
+    "test-driven-development",
+    "git-guardrails-claude-code",
+    "creating-financial-models"
+   ],
+   "backend.model-calls/job": [
+    "base44-troubleshooter",
+    "backend-patterns",
+    "limrun-expo-development",
+    "dotnet-backend-patterns",
+    "excalidraw-diagram-generator"
+   ],
+   "git.commit-permission/commit": [
+    "git-workflow-and-versioning",
+    "git-commit",
+    "git-guardrails-claude-code",
+    "make-repo-contribution",
+    "gh-stack"
+   ],
+   "git.pull-request-size/400": [
+    "create-pr",
+    "make-repo-contribution",
+    "git-workflow-and-versioning",
+    "gh-stack",
+    "code-review-excellence"
+   ],
+   "git.commit-messages/imperative": [
+    "git-commit",
+    "make-repo-contribution",
+    "write",
+    "git-guardrails-claude-code",
+    "code-review-expert"
+   ],
+   "git.history/agree": [
+    "git-advanced-workflows",
+    "git-guardrails-claude-code",
+    "git-workflow-and-versioning",
+    "git-commit",
+    "make-repo-contribution"
+   ],
+   "git.branching/branch": [
+    "make-repo-contribution",
+    "git-workflow-and-versioning",
+    "create-pr",
+    "gh-stack",
+    "writing-plans"
+   ],
+   "security.destructive-commands/ask": [
+    "git-guardrails-claude-code",
+    "make-repo-contribution",
+    "refactor-plan",
+    "git-advanced-workflows",
+    "remove-animations"
+   ],
+   "system.design-trade-offs/agree": [
+    "cross-critique",
+    "brainstorming",
+    "deployment-pipeline-design",
+    "architecture-decision-records",
+    "test-driven-development"
+   ],
+   "system.service-decomposition/modular-monolith": [
+    "architecture-patterns",
+    "dotnet-backend-patterns",
+    "backend-patterns",
+    "coding-standards",
+    "codebase-design"
+   ],
+   "system.service-protocol/grpc": [
+    "golang-grpc",
+    "aws-security",
+    "meeting-minutes",
+    "golang-context",
+    "react-native-best-practices"
+   ],
+   "system.monitoring-scope/performance": [
+    "kpi-dashboard-design",
+    "base44-troubleshooter",
+    "web-quality-audit",
+    "appinsights-instrumentation",
+    "sql-optimization"
+   ],
+   "design.function-size/agree": [
+    "golang-patterns",
+    "kotlin-patterns",
+    "golang-naming",
+    "writing-plans",
+    "coding-standards"
+   ],
+   "design.immutability/agree": [
+    "coding-standards",
+    "improve",
+    "react-best-practices",
+    "database-migrations",
+    "golang-concurrency"
+   ],
+   "design.principles/single-responsibility": [
+    "codebase-design",
+    "refactor",
+    "code-change-verification",
+    "sql-code-review",
+    "refactor-plan"
+   ],
+   "design.principles/dependency-inversion": [
+    "golang-patterns",
+    "dotnet-backend-patterns",
+    "sql-code-review",
+    "nestjs-best-practices",
+    "postgresql-code-review"
+   ],
+   "design.dependency-rule/agree": [
+    "dotnet-backend-patterns",
+    "java-springboot",
+    "dotnet-best-practices",
+    "code-change-verification",
+    "microsoft-code-reference"
+   ],
+   "design.code-structure/layered": [
+    "partner-tiering",
+    "react-best-practices",
+    "codebase-design",
+    "improve",
+    "dotnet-best-practices"
+   ],
+   "design.folder-structure/by-domain": [
+    "create-implementation-plan",
+    "memory-merger",
+    "architecture-patterns",
+    "create-specification",
+    "make-repo-contribution"
+   ],
+   "design.ddd/everywhere": [
+    "architecture-patterns",
+    "tdd",
+    "creating-financial-models",
+    "kpi-dashboard-design",
+    "dotnet-backend-patterns"
+   ],
+   "design.repositories/repositories": [
+    "database-migrations",
+    "postgresql-code-review",
+    "prisma-postgres-upgrade",
+    "sql-code-review",
+    "supabase-postgres-best-practices"
+   ],
+   "llm.streaming/stream": [
+    "nextjs-app-router-patterns",
+    "discernment-nudge",
+    "copilot-sdk",
+    "java-springboot",
+    "lavish"
+   ],
+   "llm.structured-output/schema-constrained": [
+    "verification-before-completion",
+    "claude-api",
+    "powerbi-modeling",
+    "improve",
+    "java-springboot"
+   ],
+   "llm.eval-tool/test-runner": [
+    "agentic-eval",
+    "create-implementation-plan",
+    "analyze-project",
+    "playwright-best-practices",
+    "code-change-verification"
+   ],
+   "llm.eval-scoring/model-judge": [
+    "agentic-eval",
+    "creating-financial-models",
+    "powerbi-modeling",
+    "verification-before-completion",
+    "ab-testing"
+   ],
+   "llm.eval-gate/ci": [
+    "code-change-verification",
+    "claude-api",
+    "code-review-expert",
+    "agentic-eval",
+    "gitlab-ci-patterns"
+   ],
+   "agents.framework/framework": [
+    "agentic-eval",
+    "copilot-sdk",
+    "microsoft-docs",
+    "vitest",
+    "verification-loop"
+   ],
+   "agents.self-review/agree": [
+    "agentic-eval",
+    "lavish",
+    "verification-before-completion",
+    "code-change-verification",
+    "health"
+   ],
+   "agents.prompt-caching/cached": [
+    "claude-api",
+    "create-agentsmd",
+    "clerk-nextjs-patterns",
+    "terraform-azurerm-set-diff-analyzer",
+    "turborepo-vercel"
+   ],
+   "agents.evals/manual": [
+    "claude-api",
+    "writing-plans",
+    "systematic-debugging",
+    "refactor-plan",
+    "requesting-code-review"
+   ],
+   "perf.code-splitting/route": [
+    "react-best-practices",
+    "react-native-best-practices",
+    "nextjs-app-router-patterns",
+    "next-cache-components-optimizer",
+    "nextjs-turbopack"
+   ],
+   "perf.memoization/measured": [
+    "react-best-practices",
+    "react-native-best-practices",
+    "frontend-patterns",
+    "react-composition-patterns",
+    "gsap-react"
+   ],
+   "perf.long-lists/virtualized": [
+    "react-best-practices",
+    "react-native-best-practices",
+    "web-component-design",
+    "frontend-patterns",
+    "react-composition-patterns"
+   ],
+   "perf.measure-first/agree": [
+    "python-performance-optimization",
+    "react-native-best-practices",
+    "golang-performance",
+    "github-profile-optimization",
+    "sql-optimization-patterns"
+   ],
+   "perf.vitals-targets/good": [
+    "web-quality-audit",
+    "accessibility",
+    "ab-testing",
+    "dotnet-best-practices",
+    "better-accessibility"
+   ],
+   "perf.budget-check/lighthouse-ci": [
+    "web-quality-audit",
+    "playwright-best-practices",
+    "e2e-testing",
+    "code-review-expert",
+    "gitlab-ci-patterns"
+   ],
+   "perf.image-formats/modern-files": [
+    "image-manipulation-image-magick",
+    "app-store-screenshots",
+    "canvas-design",
+    "lavish",
+    "legacy-circuit-mockups"
+   ],
+   "perf.dependency-weight/agree": [
+    "react-best-practices",
+    "react-native-best-practices",
+    "web-component-design",
+    "pnpm",
+    "coding-standards"
+   ],
+   "typescript.state-modeling/agree": [
+    "golang-naming",
+    "mermaid-diagrams",
+    "golang-patterns",
+    "react-composition-patterns",
+    "powerbi-modeling"
+   ],
+   "workflow.autonomy/ask-before-writing": [
+    "documentation-and-adrs",
+    "writing-plans",
+    "make-repo-contribution",
+    "claude-api",
+    "architecture-decision-records"
+   ],
+   "react.styling/css-modules": [
+    "web-component-design",
+    "tailwind-css-patterns",
+    "tailwind-design-system",
+    "unocss",
+    "theme-factory"
+   ],
+   "frontend.platforms/tauri": [
+    "webapp-testing-github",
+    "frontend-patterns",
+    "mobile-native",
+    "limrun-expo-development",
+    "web-component-design"
+   ],
+   "frontend.platforms/electron": [
+    "frontend-patterns",
+    "webapp-testing-github",
+    "web-component-design",
+    "limrun-expo-development",
+    "backend-patterns"
+   ],
+   "frontend.bundler/vite": [
+    "workers-development",
+    "frontend-patterns",
+    "vitest",
+    "frontend-design-anthropics-2",
+    "nextjs-on-cloudflare"
+   ],
+   "frontend.service-worker/offline": [
+    "expo-data-fetching",
+    "workers-development",
+    "react-native-architecture",
+    "swiftui-expert-skill",
+    "webapp-testing"
+   ],
+   "frontend.raw-html/sanitized": [
+    "baoyu-markdown-to-html",
+    "markdown-to-html",
+    "game-engine",
+    "lavish",
+    "fixing-accessibility"
+   ],
+   "frontend.csp/strict": [
+    "aws-security",
+    "improve",
+    "golang-security",
+    "playwright-stealth-verify",
+    "ad-conversion-tracking"
+   ],
+   "api.style/graphql": [
+    "backend-patterns",
+    "java-springboot",
+    "microsoft-code-reference",
+    "postgresql-code-review",
+    "postgresql-table-design"
+   ],
+   "logging.style/structured": [
+    "base44-troubleshooter",
+    "webapp-testing",
+    "coding-standards",
+    "golang-documentation",
+    "architecture-decision-records-affaan-m"
+   ],
+   "backend.background-jobs/job-queue": [
+    "workers-development",
+    "base44-troubleshooter",
+    "supabase-postgres-best-practices",
+    "database-migrations",
+    "neon-postgres"
+   ],
+   "backend.module-system/esm": [
+    "nestjs-best-practices",
+    "limrun-expo-development",
+    "codebase-design",
+    "pnpm",
+    "react-best-practices"
+   ],
+   "backend.graceful-shutdown/agree": [
+    "golang-concurrency",
+    "git-guardrails-claude-code",
+    "supabase-postgres-best-practices",
+    "azure-deployment-preflight",
+    "neon-postgres"
+   ],
+   "git.attribution/agree": [
+    "make-repo-contribution",
+    "postgresql-code-review",
+    "sql-code-review",
+    "git-workflow-and-versioning",
+    "postgresql-optimization"
+   ],
+   "security.dependencies/ask": [
+    "brainstorming",
+    "pnpm",
+    "verification-before-completion",
+    "writing-plans",
+    "test-driven-development"
+   ],
+   "security.input-trust/agree": [
+    "golang-security",
+    "sql-code-review",
+    "postgresql-code-review",
+    "golang-safety",
+    "snowflake-semanticview"
+   ],
+   "system.health-probes/liveness-readiness": [
+    "sql-code-review",
+    "database-migrations",
+    "sql-optimization",
+    "health",
+    "sql-optimization-patterns"
+   ],
+   "tooling.package-manager/bun": [
+    "pnpm",
+    "monorepo-management",
+    "prisma-postgres",
+    "turborepo-vercel",
+    "python-patterns"
+   ],
+   "frontend.browser-support/browserslist": [
+    "webapp-testing-github",
+    "web-component-design",
+    "playwright-stealth-verify",
+    "ad-conversion-tracking",
+    "frontend-patterns"
+   ],
+   "api.webhooks/receives": [
+    "dotnet-backend-patterns",
+    "ad-conversion-tracking",
+    "microsoft-code-reference",
+    "architecture-patterns",
+    "playwright-stealth-verify"
+   ],
+   "api.rate-limiting/app": [
+    "app-store-screenshots",
+    "expo-data-fetching",
+    "limrun-expo-development",
+    "nextjs-app-router-patterns",
+    "monorepo-management"
+   ],
+   "backend.cache-store/shared": [
+    "expo-data-fetching",
+    "turborepo-vercel",
+    "monorepo-management",
+    "java-springboot",
+    "next-cache-components-optimizer"
+   ],
+   "system.queue-guarantees/at-least-once": [
+    "ad-conversion-tracking",
+    "git-commit",
+    "incremental-implementation",
+    "diagramming-processes",
+    "golang-concurrency"
+   ],
+   "system.failover/active-active": [
+    "react-state-management",
+    "swiftui-expert-skill",
+    "react-best-practices",
+    "golang-concurrency",
+    "pnpm"
+   ],
+   "llm.fine-tuning/adapters": [
+    "azure-deployment-preflight",
+    "using-git-worktrees",
+    "deployment-pipeline-design",
+    "sql-optimization",
+    "requesting-code-review"
+   ],
+   "llm.vector-store/pgvector": [
+    "database-migrations",
+    "postgres-patterns",
+    "neon-postgres",
+    "supabase-postgres-best-practices",
+    "postgresql-optimization"
+   ],
+   "llm.prompt-injection/agree": [
+    "claude-api",
+    "golang-security",
+    "c4-architecture",
+    "pdf",
+    "improve"
+   ],
+   "agents.long-term-memory/profile": [
+    "subagent-driven-development",
+    "copilot-sdk",
+    "executing-plans",
+    "agentic-eval",
+    "lavish"
+   ],
+   "perf.font-display/swap": [
+    "theme-factory",
+    "applying-brand-guidelines",
+    "web-component-design",
+    "mobile-native",
+    "unocss"
+   ],
+   "security.network/none": [
+    "ask-sonner",
+    "brainstorming",
+    "postgresql-code-review",
+    "powerbi-modeling",
+    "sql-code-review"
+   ],
+   "design.refactoring/leave": [
+    "refactor",
+    "writing-plans",
+    "refactor-plan",
+    "improve",
+    "requesting-code-review"
+   ],
+   "frontend.e2e-tool/none": [
+    "e2e-testing-patterns",
+    "javascript-testing-patterns",
+    "webapp-testing-github",
+    "vue-testing-best-practices",
+    "webapp-testing"
+   ],
+   "api.webhooks/none": [
+    "dotnet-backend-patterns",
+    "backend-patterns",
+    "appinsights-instrumentation",
+    "gsap-react",
+    "architecture-patterns"
+   ],
+   "backend.observability/none": [
+    "aws-security",
+    "health",
+    "workers-development",
+    "kpi-dashboard-design",
+    "appinsights-instrumentation"
+   ],
+   "llm.retrieval/none": [
+    "analyze-project",
+    "powerbi-modeling",
+    "prd",
+    "create-agentsmd",
+    "data-visualization"
+   ],
+   "agents.long-term-memory/none": [
+    "copilot-sdk",
+    "subagent-driven-development",
+    "executing-plans",
+    "create-agentsmd",
+    "microsoft-docs"
+   ],
+   "backend.background-jobs/none": [
+    "requesting-code-review",
+    "verification-before-completion",
+    "git-workflow-and-versioning",
+    "code-change-verification",
+    "workers-development"
+   ],
+   "perf.budget-check/none": [
+    "react-best-practices",
+    "react-native-best-practices",
+    "gitlab-ci-patterns",
+    "e2e-testing",
+    "deployment-pipeline-design"
+   ],
+   "frontend.service-worker/none": [
+    "expo-data-fetching",
+    "nextjs-on-cloudflare",
+    "workers-development",
+    "webapp-testing",
+    "azure-static-web-apps"
+   ],
+   "llm.eval-tool/none": [
+    "agentic-eval",
+    "code-change-verification",
+    "improve",
+    "incremental-implementation",
+    "improve-animations"
+   ],
+   "frontend.csp/none": [
+    "golang-security",
+    "golang-safety",
+    "aws-security",
+    "nestjs-best-practices",
+    "playwright-stealth-verify"
+   ],
+   "frontend.browser-check/disagree": [
+    "code-change-verification",
+    "webapp-testing",
+    "verification-before-completion",
+    "webapp-testing-github",
+    "better-interface"
+   ],
+   "workflow.changes/disagree": [
+    "make-repo-contribution",
+    "incremental-implementation",
+    "git-workflow-and-versioning",
+    "create-implementation-plan",
+    "create-pr"
+   ],
+   "git.pull-request-size/no-limit": [
+    "create-pr",
+    "make-repo-contribution",
+    "git-workflow-and-versioning",
+    "gh-stack",
+    "code-review-excellence"
+   ]
+  },
+  "RRF Qwen + SparseUp": {
+   "typescript.any/agree": [
+    "typescript-advanced-types",
+    "writing-plans",
+    "golang-naming",
+    "python-anti-patterns",
+    "python-code-style"
+   ],
+   "typescript.strict/all": [
+    "typescript-advanced-types",
+    "javascript-typescript-jest",
+    "dotnet-best-practices",
+    "improve",
+    "coding-standards"
+   ],
+   "react.granularity/agree": [
+    "writing-plans",
+    "web-component-design",
+    "refactor",
+    "react-composition-patterns",
+    "test-driven-development"
+   ],
+   "react.state/tanstack-query-only": [
+    "react-state-management",
+    "frontend-patterns",
+    "nextjs-app-router-patterns",
+    "expo-data-fetching",
+    "web-component-design"
+   ],
+   "react.state/zustand": [
+    "react-state-management",
+    "shadcn-ui",
+    "durable-objects",
+    "frontend-patterns",
+    "codebase-design"
+   ],
+   "react.state/redux": [
+    "react-state-management",
+    "frontend-patterns",
+    "expo-data-fetching",
+    "web-component-design",
+    "nextjs-app-router-patterns"
+   ],
+   "react.styling/tailwind": [
+    "tailwind-css-patterns",
+    "tailwind-4-docs",
+    "tailwind-design-system",
+    "unocss",
+    "shadcn-ui"
+   ],
+   "react.effects/agree": [
+    "react-state-management",
+    "react-best-practices",
+    "gsap-react",
+    "expo-data-fetching",
+    "react-composition-patterns"
+   ],
+   "testing.levels/unit": [
+    "writing-plans",
+    "test-driven-development",
+    "javascript-testing-patterns",
+    "python-testing-patterns",
+    "javascript-typescript-jest"
+   ],
+   "testing.levels/component": [
+    "vue-testing-best-practices",
+    "writing-plans",
+    "javascript-testing-patterns",
+    "python-testing-patterns",
+    "e2e-testing"
+   ],
+   "testing.levels/e2e": [
+    "javascript-testing-patterns",
+    "e2e-testing-patterns",
+    "e2e-testing",
+    "clerk-testing",
+    "playwright-best-practices"
+   ],
+   "style.comments/agree": [
+    "improve",
+    "writing-plans",
+    "refactor",
+    "code-review-excellence",
+    "test-driven-development"
+   ],
+   "workflow.changes/agree": [
+    "refactor",
+    "git-workflow-and-versioning",
+    "make-repo-contribution",
+    "incremental-implementation",
+    "writing-plans"
+   ],
+   "workflow.autonomy/agree": [
+    "documentation-and-adrs",
+    "backend-patterns",
+    "writing-plans",
+    "architecture-patterns",
+    "brainstorming"
+   ],
+   "tooling.checks/run": [
+    "code-change-verification",
+    "verification-before-completion",
+    "python-code-style",
+    "writing-plans",
+    "git-guardrails-claude-code"
+   ],
+   "frontend.animations/agree": [
+    "remove-animations",
+    "animate-expo",
+    "improve-animations",
+    "expo-animation",
+    "gsap-react"
+   ],
+   "frontend.accessibility/wcag-aa": [
+    "better-accessibility",
+    "accessibility-compliance",
+    "fixing-accessibility",
+    "wcag-audit-patterns",
+    "ui-ux-pro-max"
+   ],
+   "frontend.accessibility/basics": [
+    "fixing-accessibility",
+    "better-accessibility",
+    "accessibility-compliance",
+    "better-interface",
+    "ui-ux-pro-max"
+   ],
+   "frontend.css/tokens": [
+    "tailwind-design-system",
+    "tailwind-css-patterns",
+    "theme-factory",
+    "unocss",
+    "penpot-uiux-design"
+   ],
+   "frontend.css/dark-mode": [
+    "theme-factory",
+    "brand-guidelines",
+    "tailwind-css-patterns",
+    "react-native-design",
+    "applying-brand-guidelines"
+   ],
+   "frontend.framework/next": [
+    "nextjs-app-router-patterns",
+    "react-best-practices",
+    "next-cache-components-optimizer",
+    "frontend-patterns",
+    "nextjs-on-cloudflare"
+   ],
+   "frontend.lint-format/biome": [
+    "code-change-verification",
+    "python-code-style",
+    "refactor-plan",
+    "ultracite",
+    "terraform-style-guide"
+   ],
+   "frontend.test-runner/vitest": [
+    "vitest",
+    "javascript-testing-patterns",
+    "vue-testing-best-practices",
+    "javascript-typescript-jest",
+    "python-testing-patterns"
+   ],
+   "frontend.test-runner/jest": [
+    "javascript-testing-patterns",
+    "javascript-typescript-jest",
+    "vue-testing-best-practices",
+    "vitest",
+    "python-testing-patterns"
+   ],
+   "frontend.test-style/agree": [
+    "webapp-testing-github",
+    "test-driven-development",
+    "webapp-testing",
+    "javascript-testing-patterns",
+    "vue-testing-best-practices"
+   ],
+   "frontend.e2e-tool/playwright": [
+    "e2e-testing-patterns",
+    "e2e-testing",
+    "playwright-best-practices",
+    "clerk-testing",
+    "webapp-testing-github"
+   ],
+   "frontend.browser-check/agree": [
+    "webapp-testing",
+    "webapp-testing-github",
+    "better-interface",
+    "fixing-accessibility",
+    "playwright-stealth-verify"
+   ],
+   "frontend.platforms/react-native": [
+    "react-native-architecture",
+    "web-component-design",
+    "react-native-design",
+    "frontend-patterns",
+    "react-native-best-practices"
+   ],
+   "api.style/rest": [
+    "backend-patterns",
+    "claude-api",
+    "microsoft-code-reference",
+    "docs-sync",
+    "base44-troubleshooter"
+   ],
+   "api.style/rpc": [
+    "golang-grpc",
+    "backend-patterns",
+    "claude-api",
+    "documentation-and-adrs",
+    "base44-troubleshooter"
+   ],
+   "database.migrations/write": [
+    "database-migrations",
+    "supabase-postgres-best-practices",
+    "postgresql-table-design",
+    "neon-postgres",
+    "postgresql-code-review"
+   ],
+   "database.query-rules/no-n-plus-one": [
+    "sql-optimization",
+    "sql-code-review",
+    "sql-optimization-patterns",
+    "postgresql-code-review",
+    "postgresql-optimization"
+   ],
+   "database.query-rules/indexes": [
+    "sql-optimization-patterns",
+    "sql-optimization",
+    "postgres-patterns",
+    "postgresql-optimization",
+    "sql-code-review"
+   ],
+   "database.query-rules/online-migrations": [
+    "database-migrations",
+    "supabase-postgres-best-practices",
+    "golang-database",
+    "postgresql-table-design",
+    "sql-code-review"
+   ],
+   "database.query-rules/constraints": [
+    "postgresql-code-review",
+    "sql-code-review",
+    "postgresql-table-design",
+    "postgresql-optimization",
+    "postgres-patterns"
+   ],
+   "backend.auth-strategy/jwt": [
+    "auth-implementation-patterns",
+    "expo-data-fetching",
+    "code-change-verification",
+    "nestjs-best-practices",
+    "azure-role-selector"
+   ],
+   "backend.auth-strategy/session": [
+    "auth-implementation-patterns",
+    "nextjs-app-router-patterns",
+    "playwright-stealth-verify",
+    "verification-loop",
+    "react-state-management"
+   ],
+   "backend.password-hashing/argon2id": [
+    "auth-implementation-patterns",
+    "terraform-style-guide",
+    "aws-security",
+    "sql-optimization",
+    "documentation-and-adrs"
+   ],
+   "backend.container-image/dockerfile": [
+    "multi-stage-dockerfile",
+    "gitlab-ci-patterns",
+    "monorepo-management",
+    "pnpm",
+    "deployment-pipeline-design"
+   ],
+   "backend.model-calls/stream": [
+    "claude-api",
+    "backend-patterns",
+    "write",
+    "copilot-sdk",
+    "base44-troubleshooter"
+   ],
+   "llm.provider-abstraction/provider-sdk": [
+    "code-change-verification",
+    "docs-sync",
+    "claude-api",
+    "codebase-design",
+    "improve"
+   ],
+   "agents.evals/ci": [
+    "code-change-verification",
+    "claude-api",
+    "deployment-pipeline-design",
+    "refactor-plan",
+    "e2e-testing"
+   ],
+   "git.branching/worktree": [
+    "using-git-worktrees",
+    "git-advanced-workflows",
+    "git-workflow-and-versioning",
+    "gh-stack",
+    "git-commit"
+   ],
+   "git.commit-messages/conventional": [
+    "git-commit",
+    "make-repo-contribution",
+    "git-workflow-and-versioning",
+    "code-review-expert",
+    "pr-draft-summary"
+   ],
+   "git.pull-request-size/200": [
+    "code-review-excellence",
+    "code-review-expert",
+    "refactor",
+    "make-repo-contribution",
+    "git-workflow-and-versioning"
+   ],
+   "git.history/disagree": [
+    "git-advanced-workflows",
+    "make-repo-contribution",
+    "requesting-code-review",
+    "gh-stack",
+    "git-workflow-and-versioning"
+   ],
+   "git.ci-workflow/github-actions": [
+    "github-actions-templates",
+    "make-repo-contribution",
+    "git-workflow-and-versioning",
+    "agentic-eval",
+    "github-profile-optimization"
+   ],
+   "security.destructive-commands/never": [
+    "git-guardrails-claude-code",
+    "git-advanced-workflows",
+    "git-commit",
+    "git-workflow-and-versioning",
+    "using-git-worktrees"
+   ],
+   "system.design-clarification/agree": [
+    "writing-plans",
+    "brainstorming",
+    "postgresql-table-design",
+    "prd",
+    "spec-driven-implementation"
+   ],
+   "design.refactoring/small-steps": [
+    "writing-plans",
+    "refactor",
+    "refactor-plan",
+    "test-driven-development",
+    "improve"
+   ],
+   "design.code-structure/hexagonal": [
+    "architecture-patterns",
+    "improve",
+    "refactor",
+    "coding-standards",
+    "nestjs-best-practices"
+   ],
+   "design.ddd/core-only": [
+    "architecture-patterns",
+    "powerbi-modeling",
+    "mermaid-diagrams",
+    "test-driven-development",
+    "postgresql-table-design"
+   ],
+   "design.naming/agree": [
+    "golang-naming",
+    "coding-standards",
+    "python-code-style",
+    "refactor",
+    "writing-plans"
+   ],
+   "tooling.package-manager/pnpm": [
+    "pnpm",
+    "monorepo-management",
+    "upgrading-react-native",
+    "turborepo-vercel",
+    "prisma-compute"
+   ],
+   "frontend.framework/vite-spa": [
+    "react-best-practices",
+    "web-component-design",
+    "nextjs-app-router-patterns",
+    "frontend-patterns",
+    "react-composition-patterns"
+   ],
+   "testing.levels/none": [
+    "writing-plans",
+    "test-driven-development",
+    "python-testing-patterns",
+    "javascript-typescript-jest",
+    "javascript-testing-patterns"
+   ],
+   "frontend.accessibility/none": [
+    "fixing-accessibility",
+    "better-accessibility",
+    "accessibility-compliance",
+    "better-interface",
+    "ui-ux-pro-max"
+   ],
+   "frontend.platforms/browser-only": [
+    "frontend-patterns",
+    "webapp-testing-github",
+    "web-component-design",
+    "mobile-native",
+    "playwright-stealth-verify"
+   ],
+   "backend.container-image/none": [
+    "multi-stage-dockerfile",
+    "gitlab-ci-patterns",
+    "architecture-patterns",
+    "deployment-pipeline-design",
+    "prisma-compute"
+   ],
+   "git.branching/trunk": [
+    "writing-plans",
+    "git-workflow-and-versioning",
+    "make-repo-contribution",
+    "pr-draft-summary",
+    "gh-stack"
+   ],
+   "design.paradigm/functional": [
+    "writing-plans",
+    "refactor",
+    "react-best-practices",
+    "test-driven-development",
+    "swiftui-expert-skill"
+   ],
+   "llm.vector-store/none": [
+    "copilot-sdk",
+    "analyze-project",
+    "create-specification",
+    "supabase-postgres-best-practices",
+    "improve"
+   ],
+   "agents.mcp/not-used": [
+    "copilot-sdk",
+    "health",
+    "penpot-uiux-design",
+    "claude-api",
+    "coding-standards"
+   ],
+   "backend.model-calls/none": [
+    "claude-api",
+    "docs-sync",
+    "code-change-verification",
+    "copilot-sdk",
+    "backend-patterns"
+   ],
+   "security.sandbox/host": [
+    "improve",
+    "workers-development",
+    "code-change-verification",
+    "code-review-expert",
+    "refactor"
+   ],
+   "api.contract/none": [
+    "docs-sync",
+    "backend-patterns",
+    "claude-api",
+    "documentation-and-adrs",
+    "create-specification"
+   ],
+   "backend.password-hashing/none": [
+    "auth-implementation-patterns",
+    "health",
+    "nestjs-best-practices",
+    "base44-troubleshooter",
+    "azure-role-selector"
+   ],
+   "security.secrets/agree": [
+    "improve",
+    "git-guardrails-claude-code",
+    "create-agentsmd",
+    "golang-security",
+    "code-change-verification"
+   ],
+   "frontend.test-runner/none": [
+    "test-driven-development",
+    "javascript-testing-patterns",
+    "python-testing-patterns",
+    "vue-testing-best-practices",
+    "writing-plans"
+   ],
+   "design.abstraction-timing/third-case": [
+    "writing-plans",
+    "test-driven-development",
+    "codebase-design",
+    "refactor",
+    "refactor-plan"
+   ],
+   "database.migrations/never": [
+    "database-migrations",
+    "supabase-postgres-best-practices",
+    "postgresql-table-design",
+    "neon-postgres",
+    "postgresql-code-review"
+   ],
+   "react.state/context": [
+    "react-state-management",
+    "react-composition-patterns",
+    "frontend-patterns",
+    "gsap-react",
+    "web-component-design"
+   ],
+   "react.styling/styled-components": [
+    "web-component-design",
+    "tailwind-css-patterns",
+    "frontend-patterns",
+    "react-native-design",
+    "tailwind-design-system"
+   ],
+   "react.hooks/agree": [
+    "react-best-practices",
+    "react-composition-patterns",
+    "frontend-patterns",
+    "react-native-best-practices",
+    "web-component-design"
+   ],
+   "frontend.rendering/server": [
+    "react-best-practices",
+    "expo-data-fetching",
+    "frontend-patterns",
+    "game-engine",
+    "nextjs-app-router-patterns"
+   ],
+   "frontend.bundler/framework": [
+    "coding-standards",
+    "frontend-patterns",
+    "react-native-architecture",
+    "web-component-design",
+    "webapp-testing-github"
+   ],
+   "frontend.test-network/msw": [
+    "playwright-best-practices",
+    "javascript-testing-patterns",
+    "expo-data-fetching",
+    "vitest",
+    "python-testing-patterns"
+   ],
+   "frontend.e2e-tool/cypress": [
+    "e2e-testing-patterns",
+    "clerk-testing",
+    "javascript-testing-patterns",
+    "e2e-testing",
+    "vue-testing-best-practices"
+   ],
+   "frontend.api-client/tanstack-query": [
+    "expo-data-fetching",
+    "react-state-management",
+    "nextjs-app-router-patterns",
+    "database-migrations",
+    "react-native-best-practices"
+   ],
+   "frontend.api-client/rtk-query": [
+    "expo-data-fetching",
+    "react-state-management",
+    "backend-patterns",
+    "nextjs-app-router-patterns",
+    "golang-database"
+   ],
+   "frontend.semantic-html/agree": [
+    "fixing-accessibility",
+    "better-accessibility",
+    "accessibility-compliance",
+    "mobile-native",
+    "ui-ux-pro-max"
+   ],
+   "frontend.css/mobile-first": [
+    "mobile-native",
+    "react-native-design",
+    "tailwind-css-patterns",
+    "swiftui-expert-skill",
+    "react-native-architecture"
+   ],
+   "frontend.css/flex-grid": [
+    "tailwind-css-patterns",
+    "web-component-design",
+    "tailwind-design-system",
+    "unocss",
+    "frontend-design-anthropics-2"
+   ],
+   "frontend.hosting/platform": [
+    "backend-patterns",
+    "frontend-patterns",
+    "azure-static-web-apps",
+    "nextjs-on-cloudflare",
+    "deployment-pipeline-design"
+   ],
+   "frontend.preview-deploys/yes": [
+    "github-actions-templates",
+    "create-pr",
+    "azure-deployment-preflight",
+    "deployment-pipeline-design",
+    "gh-stack"
+   ],
+   "frontend.token-storage/httponly-cookie": [
+    "auth-implementation-patterns",
+    "playwright-stealth-verify",
+    "verification-loop",
+    "react-state-management",
+    "webapp-testing-github"
+   ],
+   "errors.handling/central-handler": [
+    "vue-debug-guides",
+    "backend-patterns",
+    "rust-async-patterns",
+    "java-springboot",
+    "nestjs-best-practices"
+   ],
+   "database.access/raw-sql": [
+    "sql-code-review",
+    "sql-optimization-patterns",
+    "sql-optimization",
+    "database-migrations",
+    "supabase-postgres-best-practices"
+   ],
+   "database.transactions/agree": [
+    "supabase-postgres-best-practices",
+    "golang-database",
+    "database-migrations",
+    "sql-optimization",
+    "postgresql-table-design"
+   ],
+   "database.concurrent-writes/row-lock": [
+    "golang-database",
+    "database-migrations",
+    "sql-optimization-patterns",
+    "sql-code-review",
+    "supabase-postgres-best-practices"
+   ],
+   "database.json-columns/agree": [
+    "postgresql-table-design",
+    "powerbi-modeling",
+    "supabase-postgres-best-practices",
+    "database-migrations",
+    "postgresql-optimization"
+   ],
+   "database.table-splitting/partitioned": [
+    "sql-optimization",
+    "postgresql-table-design",
+    "supabase-postgres-best-practices",
+    "postgres-patterns",
+    "database-migrations"
+   ],
+   "database.connections/agree": [
+    "sql-optimization-patterns",
+    "golang-database",
+    "sql-optimization",
+    "neon-postgres",
+    "sql-code-review"
+   ],
+   "database.query-rules/explicit-columns": [
+    "sql-optimization",
+    "sql-optimization-patterns",
+    "sql-code-review",
+    "postgresql-code-review",
+    "postgresql-optimization"
+   ],
+   "backend.auth-strategy/identity-provider": [
+    "auth-implementation-patterns",
+    "azure-role-selector",
+    "clerk-testing",
+    "playwright-stealth-verify",
+    "code-change-verification"
+   ],
+   "backend.authorization/agree": [
+    "auth-implementation-patterns",
+    "azure-role-selector",
+    "backend-patterns",
+    "verification-before-completion",
+    "webapp-testing"
+   ],
+   "backend.password-hashing/bcrypt": [
+    "terraform-style-guide",
+    "auth-implementation-patterns",
+    "golang-security",
+    "sql-code-review",
+    "postgresql-code-review"
+   ],
+   "backend.service-shape/serverless": [
+    "backend-patterns",
+    "base44-troubleshooter",
+    "durable-objects",
+    "workers-development",
+    "frontend-patterns"
+   ],
+   "backend.service-shape/microservices": [
+    "backend-patterns",
+    "architecture-patterns",
+    "expo-data-fetching",
+    "supabase-postgres-best-practices",
+    "base44-troubleshooter"
+   ],
+   "backend.observability/traces": [
+    "appinsights-instrumentation",
+    "workers-development",
+    "ad-conversion-tracking",
+    "architecture-patterns",
+    "debugging-strategies"
+   ],
+   "backend.observability/metrics": [
+    "kpi-dashboard-design",
+    "appinsights-instrumentation",
+    "base44-troubleshooter",
+    "ad-conversion-tracking",
+    "durable-objects"
+   ],
+   "backend.model-call-guards/timeouts": [
+    "dotnet-backend-patterns",
+    "nestjs-best-practices",
+    "claude-api",
+    "expo-data-fetching",
+    "creating-financial-models"
+   ],
+   "backend.model-calls/job": [
+    "backend-patterns",
+    "base44-troubleshooter",
+    "claude-api",
+    "dotnet-backend-patterns",
+    "architecture-patterns"
+   ],
+   "git.commit-permission/commit": [
+    "git-commit",
+    "git-workflow-and-versioning",
+    "git-guardrails-claude-code",
+    "git-advanced-workflows",
+    "make-repo-contribution"
+   ],
+   "git.pull-request-size/400": [
+    "code-review-excellence",
+    "make-repo-contribution",
+    "code-review-expert",
+    "refactor",
+    "git-workflow-and-versioning"
+   ],
+   "git.commit-messages/imperative": [
+    "git-commit",
+    "make-repo-contribution",
+    "writing-plans",
+    "code-review-expert",
+    "git-workflow-and-versioning"
+   ],
+   "git.history/agree": [
+    "git-advanced-workflows",
+    "git-guardrails-claude-code",
+    "git-commit",
+    "git-workflow-and-versioning",
+    "make-repo-contribution"
+   ],
+   "git.branching/branch": [
+    "git-workflow-and-versioning",
+    "git-advanced-workflows",
+    "gh-stack",
+    "make-repo-contribution",
+    "git-commit"
+   ],
+   "security.destructive-commands/ask": [
+    "git-guardrails-claude-code",
+    "git-advanced-workflows",
+    "git-commit",
+    "refactor-plan",
+    "git-workflow-and-versioning"
+   ],
+   "system.design-trade-offs/agree": [
+    "brainstorming",
+    "cross-critique",
+    "architecture-decision-records",
+    "frontend-design-anthropics-2",
+    "architecture-decision-records-affaan-m"
+   ],
+   "system.service-decomposition/modular-monolith": [
+    "architecture-patterns",
+    "backend-patterns",
+    "dotnet-backend-patterns",
+    "codebase-design",
+    "nestjs-best-practices"
+   ],
+   "system.service-protocol/grpc": [
+    "golang-grpc",
+    "code-change-verification",
+    "cargo-connection",
+    "architecture-patterns",
+    "docs-sync"
+   ],
+   "system.monitoring-scope/performance": [
+    "kpi-dashboard-design",
+    "appinsights-instrumentation",
+    "base44-troubleshooter",
+    "react-native-best-practices",
+    "web-quality-audit"
+   ],
+   "design.function-size/agree": [
+    "writing-plans",
+    "refactor",
+    "test-driven-development",
+    "nestjs-best-practices",
+    "improve"
+   ],
+   "design.immutability/agree": [
+    "improve",
+    "refactor",
+    "react-best-practices",
+    "swiftui-expert-skill",
+    "golang-safety"
+   ],
+   "design.principles/single-responsibility": [
+    "refactor",
+    "codebase-design",
+    "improve",
+    "incremental-implementation",
+    "writing-plans"
+   ],
+   "design.principles/dependency-inversion": [
+    "nestjs-best-practices",
+    "golang-patterns",
+    "codebase-design",
+    "writing-plans",
+    "improve"
+   ],
+   "design.dependency-rule/agree": [
+    "database-migrations",
+    "dotnet-backend-patterns",
+    "improve",
+    "architecture-patterns",
+    "nestjs-best-practices"
+   ],
+   "design.code-structure/layered": [
+    "architecture-patterns",
+    "writing-plans",
+    "codebase-design",
+    "improve",
+    "nestjs-best-practices"
+   ],
+   "design.folder-structure/by-domain": [
+    "architecture-patterns",
+    "memory-merger",
+    "create-implementation-plan",
+    "incremental-implementation",
+    "refactor-plan"
+   ],
+   "design.ddd/everywhere": [
+    "architecture-patterns",
+    "powerbi-modeling",
+    "mermaid-diagrams",
+    "postgresql-table-design",
+    "database-migrations"
+   ],
+   "design.repositories/repositories": [
+    "database-migrations",
+    "supabase-postgres-best-practices",
+    "postgresql-code-review",
+    "golang-database",
+    "prisma-postgres-upgrade"
+   ],
+   "llm.streaming/stream": [
+    "copilot-sdk",
+    "claude-api",
+    "lavish",
+    "nextjs-app-router-patterns",
+    "create-specification"
+   ],
+   "llm.structured-output/schema-constrained": [
+    "powerbi-modeling",
+    "verification-before-completion",
+    "improve",
+    "postgresql-table-design",
+    "claude-api"
+   ],
+   "llm.eval-tool/test-runner": [
+    "agentic-eval",
+    "analyze-project",
+    "code-change-verification",
+    "e2e-testing",
+    "javascript-typescript-jest"
+   ],
+   "llm.eval-scoring/model-judge": [
+    "agentic-eval",
+    "claude-api",
+    "improve",
+    "analyze-project",
+    "creating-financial-models"
+   ],
+   "llm.eval-gate/ci": [
+    "agentic-eval",
+    "code-change-verification",
+    "code-review-expert",
+    "health",
+    "deployment-pipeline-design"
+   ],
+   "agents.framework/framework": [
+    "copilot-sdk",
+    "agentic-eval",
+    "claude-api",
+    "health",
+    "verification-loop"
+   ],
+   "agents.self-review/agree": [
+    "agentic-eval",
+    "health",
+    "verification-before-completion",
+    "code-change-verification",
+    "code-review-excellence"
+   ],
+   "agents.prompt-caching/cached": [
+    "claude-api",
+    "create-agentsmd",
+    "gitlab-ci-patterns",
+    "code-change-verification",
+    "base44-troubleshooter"
+   ],
+   "agents.evals/manual": [
+    "systematic-debugging",
+    "writing-plans",
+    "refactor-plan",
+    "refactor",
+    "requesting-code-review"
+   ],
+   "perf.code-splitting/route": [
+    "react-best-practices",
+    "nextjs-app-router-patterns",
+    "next-cache-components-optimizer",
+    "nextjs-turbopack",
+    "frontend-patterns"
+   ],
+   "perf.memoization/measured": [
+    "react-best-practices",
+    "react-composition-patterns",
+    "react-native-best-practices",
+    "frontend-patterns",
+    "react-state-management"
+   ],
+   "perf.long-lists/virtualized": [
+    "react-best-practices",
+    "react-composition-patterns",
+    "web-component-design",
+    "frontend-patterns",
+    "react-state-management"
+   ],
+   "perf.measure-first/agree": [
+    "python-performance-optimization",
+    "golang-performance",
+    "react-native-best-practices",
+    "sql-optimization-patterns",
+    "github-profile-optimization"
+   ],
+   "perf.vitals-targets/good": [
+    "web-quality-audit",
+    "react-best-practices",
+    "react-native-best-practices",
+    "ui-ux-pro-max",
+    "wcag-audit-patterns"
+   ],
+   "perf.budget-check/lighthouse-ci": [
+    "web-quality-audit",
+    "code-review-expert",
+    "e2e-testing",
+    "gitlab-ci-patterns",
+    "code-change-verification"
+   ],
+   "perf.image-formats/modern-files": [
+    "image-manipulation-image-magick",
+    "app-store-screenshots",
+    "lavish",
+    "canvas-design",
+    "slack-gif-creator"
+   ],
+   "perf.dependency-weight/agree": [
+    "react-best-practices",
+    "react-native-best-practices",
+    "frontend-patterns",
+    "pnpm",
+    "web-component-design"
+   ],
+   "typescript.state-modeling/agree": [
+    "react-state-management",
+    "react-composition-patterns",
+    "powerbi-modeling",
+    "mermaid-diagrams",
+    "durable-objects"
+   ],
+   "workflow.autonomy/ask-before-writing": [
+    "writing-plans",
+    "documentation-and-adrs",
+    "refactor-plan",
+    "architecture-decision-records",
+    "nestjs-best-practices"
+   ],
+   "react.styling/css-modules": [
+    "web-component-design",
+    "tailwind-css-patterns",
+    "tailwind-design-system",
+    "unocss",
+    "react-native-design"
+   ],
+   "frontend.platforms/tauri": [
+    "webapp-testing-github",
+    "mobile-native",
+    "frontend-patterns",
+    "webapp-testing",
+    "react-native-best-practices"
+   ],
+   "frontend.platforms/electron": [
+    "webapp-testing-github",
+    "react-native-architecture",
+    "frontend-patterns",
+    "react-best-practices",
+    "limrun-expo-development"
+   ],
+   "frontend.bundler/vite": [
+    "vitest",
+    "frontend-patterns",
+    "react-best-practices",
+    "nextjs-on-cloudflare",
+    "web-component-design"
+   ],
+   "frontend.service-worker/offline": [
+    "expo-data-fetching",
+    "react-native-architecture",
+    "swiftui-expert-skill",
+    "webapp-testing",
+    "nextjs-on-cloudflare"
+   ],
+   "frontend.raw-html/sanitized": [
+    "markdown-to-html",
+    "baoyu-markdown-to-html",
+    "fixing-accessibility",
+    "react-best-practices",
+    "frontend-patterns"
+   ],
+   "frontend.csp/strict": [
+    "playwright-stealth-verify",
+    "fixing-accessibility",
+    "web-quality-audit",
+    "improve",
+    "golang-security"
+   ],
+   "api.style/graphql": [
+    "backend-patterns",
+    "postgresql-table-design",
+    "postgresql-code-review",
+    "database-migrations",
+    "prisma-postgres-upgrade"
+   ],
+   "logging.style/structured": [
+    "base44-troubleshooter",
+    "workers-development",
+    "improve",
+    "webapp-testing",
+    "coding-standards"
+   ],
+   "backend.background-jobs/job-queue": [
+    "base44-troubleshooter",
+    "verification-before-completion",
+    "neon-postgres",
+    "sql-optimization-patterns",
+    "workers-development"
+   ],
+   "backend.module-system/esm": [
+    "nestjs-best-practices",
+    "nextjs-turbopack",
+    "react-best-practices",
+    "codebase-design",
+    "javascript-typescript-jest"
+   ],
+   "backend.graceful-shutdown/agree": [
+    "golang-concurrency",
+    "verification-before-completion",
+    "deployment-pipeline-design",
+    "git-guardrails-claude-code",
+    "golang-cli"
+   ],
+   "git.attribution/agree": [
+    "make-repo-contribution",
+    "code-review-excellence",
+    "code-review-expert",
+    "git-commit",
+    "git-workflow-and-versioning"
+   ],
+   "security.dependencies/ask": [
+    "requesting-code-review",
+    "improve",
+    "documentation-writer",
+    "hunt",
+    "make-repo-contribution"
+   ],
+   "security.input-trust/agree": [
+    "golang-security",
+    "sql-code-review",
+    "postgresql-code-review",
+    "git-guardrails-claude-code",
+    "convex-reviewer"
+   ],
+   "system.health-probes/liveness-readiness": [
+    "health",
+    "sql-code-review",
+    "postgresql-code-review",
+    "verification-before-completion",
+    "neon-postgres"
+   ],
+   "tooling.package-manager/bun": [
+    "pnpm",
+    "monorepo-management",
+    "turborepo-vercel",
+    "nextjs-turbopack",
+    "upgrading-react-native"
+   ],
+   "frontend.browser-support/browserslist": [
+    "webapp-testing-github",
+    "playwright-stealth-verify",
+    "frontend-patterns",
+    "webapp-testing",
+    "fixing-accessibility"
+   ],
+   "api.webhooks/receives": [
+    "ad-conversion-tracking",
+    "verification-before-completion",
+    "health",
+    "base44-troubleshooter",
+    "architecture-patterns"
+   ],
+   "api.rate-limiting/app": [
+    "expo-data-fetching",
+    "base44-troubleshooter",
+    "nextjs-app-router-patterns",
+    "backend-patterns",
+    "health"
+   ],
+   "backend.cache-store/shared": [
+    "expo-data-fetching",
+    "clerk-nextjs-patterns",
+    "gitlab-ci-patterns",
+    "durable-objects",
+    "memory-merger"
+   ],
+   "system.queue-guarantees/at-least-once": [
+    "incremental-implementation",
+    "ad-conversion-tracking",
+    "deployment-pipeline-design",
+    "golang-concurrency",
+    "base44-troubleshooter"
+   ],
+   "system.failover/active-active": [
+    "react-state-management",
+    "golang-concurrency",
+    "backend-patterns",
+    "database-migrations",
+    "durable-objects"
+   ],
+   "llm.fine-tuning/adapters": [
+    "agentic-eval",
+    "azure-deployment-preflight",
+    "analyze-project",
+    "deployment-pipeline-design",
+    "health"
+   ],
+   "llm.vector-store/pgvector": [
+    "postgres-patterns",
+    "postgresql-optimization",
+    "supabase-postgres-best-practices",
+    "postgresql-table-design",
+    "neon-postgres"
+   ],
+   "llm.prompt-injection/agree": [
+    "claude-api",
+    "improve",
+    "git-guardrails-claude-code",
+    "analyze-project",
+    "verification-before-completion"
+   ],
+   "agents.long-term-memory/profile": [
+    "copilot-sdk",
+    "agentic-eval",
+    "memory-merger",
+    "subagent-driven-development",
+    "executing-plans"
+   ],
+   "perf.font-display/swap": [
+    "unocss",
+    "tailwind-css-patterns",
+    "web-component-design",
+    "tailwind-design-system",
+    "applying-brand-guidelines"
+   ],
+   "security.network/none": [
+    "improve",
+    "copilot-sdk",
+    "health",
+    "lavish",
+    "debugging-strategies"
+   ],
+   "design.refactoring/leave": [
+    "refactor",
+    "refactor-plan",
+    "improve",
+    "writing-plans",
+    "requesting-code-review"
+   ],
+   "frontend.e2e-tool/none": [
+    "javascript-testing-patterns",
+    "e2e-testing-patterns",
+    "vue-testing-best-practices",
+    "webapp-testing-github",
+    "e2e-testing"
+   ],
+   "api.webhooks/none": [
+    "backend-patterns",
+    "health",
+    "architecture-patterns",
+    "azure-static-web-apps",
+    "coding-standards"
+   ],
+   "backend.observability/none": [
+    "health",
+    "appinsights-instrumentation",
+    "architecture-patterns",
+    "kpi-dashboard-design",
+    "golang-grpc"
+   ],
+   "llm.retrieval/none": [
+    "prd",
+    "analyze-project",
+    "powerbi-modeling",
+    "agentic-eval",
+    "create-agentsmd"
+   ],
+   "agents.long-term-memory/none": [
+    "copilot-sdk",
+    "agentic-eval",
+    "subagent-driven-development",
+    "memory-merger",
+    "health"
+   ],
+   "backend.background-jobs/none": [
+    "requesting-code-review",
+    "workers-development",
+    "verification-before-completion",
+    "writing-plans",
+    "git-workflow-and-versioning"
+   ],
+   "perf.budget-check/none": [
+    "react-best-practices",
+    "gitlab-ci-patterns",
+    "deployment-pipeline-design",
+    "react-native-best-practices",
+    "code-review-expert"
+   ],
+   "frontend.service-worker/none": [
+    "webapp-testing",
+    "expo-data-fetching",
+    "react-native-architecture",
+    "nextjs-on-cloudflare",
+    "azure-static-web-apps"
+   ],
+   "llm.eval-tool/none": [
+    "agentic-eval",
+    "improve",
+    "code-change-verification",
+    "requesting-code-review",
+    "improve-animations"
+   ],
+   "frontend.csp/none": [
+    "golang-security",
+    "react-best-practices",
+    "nestjs-best-practices",
+    "git-guardrails-claude-code",
+    "coding-standards"
+   ],
+   "frontend.browser-check/disagree": [
+    "webapp-testing",
+    "webapp-testing-github",
+    "playwright-stealth-verify",
+    "code-change-verification",
+    "better-interface"
+   ],
+   "workflow.changes/disagree": [
+    "incremental-implementation",
+    "refactor",
+    "git-workflow-and-versioning",
+    "make-repo-contribution",
+    "git-commit"
+   ],
+   "git.pull-request-size/no-limit": [
+    "code-review-excellence",
+    "requesting-code-review",
+    "make-repo-contribution",
+    "code-review-expert",
+    "gh-stack"
+   ]
+  },
+  "RRF Qwen + BM25": {
+   "typescript.any/agree": [
+    "typescript-advanced-types",
+    "improve",
+    "python-patterns",
+    "code-change-verification",
+    "refactor"
+   ],
+   "typescript.strict/all": [
+    "typescript-advanced-types",
+    "dotnet-best-practices",
+    "javascript-typescript-jest",
+    "coding-standards",
+    "python-code-style"
+   ],
+   "react.granularity/agree": [
+    "writing-plans",
+    "frontend-patterns",
+    "react-composition-patterns",
+    "web-component-design",
+    "incremental-implementation"
+   ],
+   "react.state/tanstack-query-only": [
+    "react-state-management",
+    "frontend-patterns",
+    "durable-objects",
+    "expo-data-fetching",
+    "nextjs-app-router-patterns"
+   ],
+   "react.state/zustand": [
+    "react-state-management",
+    "frontend-patterns",
+    "durable-objects",
+    "swiftui-expert-skill",
+    "codebase-design"
+   ],
+   "react.state/redux": [
+    "react-state-management",
+    "frontend-patterns",
+    "durable-objects",
+    "swiftui-expert-skill",
+    "codebase-design"
+   ],
+   "react.styling/tailwind": [
+    "tailwind-css-patterns",
+    "tailwind-design-system",
+    "unocss",
+    "tailwind-4-docs",
+    "shadcn-ui"
+   ],
+   "react.effects/agree": [
+    "react-state-management",
+    "frontend-patterns",
+    "expo-data-fetching",
+    "gsap-react",
+    "nextjs-app-router-patterns"
+   ],
+   "testing.levels/unit": [
+    "javascript-testing-patterns",
+    "golang-testing",
+    "python-testing-patterns",
+    "vitest",
+    "e2e-testing"
+   ],
+   "testing.levels/component": [
+    "vue-testing-best-practices",
+    "javascript-testing-patterns",
+    "golang-testing",
+    "python-testing-patterns",
+    "clerk-testing"
+   ],
+   "testing.levels/e2e": [
+    "javascript-testing-patterns",
+    "e2e-testing-patterns",
+    "python-testing-patterns",
+    "e2e-testing",
+    "golang-testing"
+   ],
+   "style.comments/agree": [
+    "improve",
+    "improve-animations",
+    "python-anti-patterns",
+    "writing-plans",
+    "test-driven-development"
+   ],
+   "workflow.changes/agree": [
+    "incremental-implementation",
+    "writing-plans",
+    "git-workflow-and-versioning",
+    "git-commit",
+    "code-review-excellence"
+   ],
+   "workflow.autonomy/agree": [
+    "documentation-and-adrs",
+    "brainstorming",
+    "architecture-decision-records",
+    "incremental-implementation",
+    "refactor-plan"
+   ],
+   "tooling.checks/run": [
+    "code-change-verification",
+    "verification-before-completion",
+    "git-guardrails-claude-code",
+    "pytest-coverage",
+    "requesting-code-review"
+   ],
+   "frontend.animations/agree": [
+    "animate-expo",
+    "remove-animations",
+    "expo-animation",
+    "improve-animations",
+    "review-animations"
+   ],
+   "frontend.accessibility/wcag-aa": [
+    "better-accessibility",
+    "accessibility-compliance",
+    "wcag-audit-patterns",
+    "fixing-accessibility",
+    "accessibility"
+   ],
+   "frontend.accessibility/basics": [
+    "fixing-accessibility",
+    "better-accessibility",
+    "better-interface",
+    "accessibility",
+    "wcag-audit-patterns"
+   ],
+   "frontend.css/tokens": [
+    "tailwind-design-system",
+    "tailwind-css-patterns",
+    "frontend-design-anthropics-2",
+    "penpot-uiux-design",
+    "canvas-design"
+   ],
+   "frontend.css/dark-mode": [
+    "theme-factory",
+    "frontend-design-anthropics-2",
+    "better-interface",
+    "webapp-testing",
+    "canvas-design"
+   ],
+   "frontend.framework/next": [
+    "nextjs-app-router-patterns",
+    "next-cache-components-optimizer",
+    "frontend-patterns",
+    "nextjs-on-cloudflare",
+    "backend-patterns"
+   ],
+   "frontend.lint-format/biome": [
+    "code-change-verification",
+    "python-code-style",
+    "refactor-plan",
+    "ultracite",
+    "git-commit"
+   ],
+   "frontend.test-runner/vitest": [
+    "vitest",
+    "javascript-testing-patterns",
+    "vue-testing-best-practices",
+    "javascript-typescript-jest",
+    "golang-testing"
+   ],
+   "frontend.test-runner/jest": [
+    "javascript-testing-patterns",
+    "vitest",
+    "javascript-typescript-jest",
+    "golang-testing",
+    "e2e-testing-patterns"
+   ],
+   "frontend.test-style/agree": [
+    "systematic-debugging",
+    "tdd",
+    "ab-testing",
+    "playwright-generate-test",
+    "improve-animations"
+   ],
+   "frontend.e2e-tool/playwright": [
+    "e2e-testing-patterns",
+    "e2e-testing",
+    "javascript-testing-patterns",
+    "playwright-generate-test",
+    "webapp-testing"
+   ],
+   "frontend.browser-check/agree": [
+    "code-change-verification",
+    "better-interface",
+    "verification-before-completion",
+    "mobile-native",
+    "ad-conversion-tracking"
+   ],
+   "frontend.platforms/react-native": [
+    "react-native-architecture",
+    "react-native-best-practices",
+    "expo-animation",
+    "animate-expo",
+    "react-native-design"
+   ],
+   "api.style/rest": [
+    "claude-api",
+    "backend-patterns",
+    "azure-resource-visualizer",
+    "microsoft-code-reference",
+    "expo-data-fetching"
+   ],
+   "api.style/rpc": [
+    "backend-patterns",
+    "claude-api",
+    "golang-grpc",
+    "verification-loop",
+    "azure-role-selector"
+   ],
+   "database.migrations/write": [
+    "database-migrations",
+    "supabase-postgres-best-practices",
+    "incremental-implementation",
+    "golang-database",
+    "prisma-postgres-upgrade"
+   ],
+   "database.query-rules/no-n-plus-one": [
+    "sql-optimization-patterns",
+    "sql-optimization",
+    "supabase-postgres-best-practices",
+    "sql-code-review",
+    "prisma-postgres-upgrade"
+   ],
+   "database.query-rules/indexes": [
+    "postgres-patterns",
+    "sql-optimization-patterns",
+    "sql-optimization",
+    "supabase-postgres-best-practices",
+    "incremental-implementation"
+   ],
+   "database.query-rules/online-migrations": [
+    "supabase-postgres-best-practices",
+    "database-migrations",
+    "prisma-postgres-upgrade",
+    "golang-database",
+    "incremental-implementation"
+   ],
+   "database.query-rules/constraints": [
+    "postgresql-table-design",
+    "supabase-postgres-best-practices",
+    "postgresql-code-review",
+    "prisma-postgres-upgrade",
+    "postgres-patterns"
+   ],
+   "backend.auth-strategy/jwt": [
+    "auth-implementation-patterns",
+    "backend-patterns",
+    "azure-role-selector",
+    "expo-data-fetching",
+    "improve-animations"
+   ],
+   "backend.auth-strategy/session": [
+    "auth-implementation-patterns",
+    "verification-loop",
+    "backend-patterns",
+    "react-state-management",
+    "nextjs-app-router-patterns"
+   ],
+   "backend.password-hashing/argon2id": [
+    "documentation-and-adrs",
+    "coding-standards",
+    "terraform-style-guide",
+    "improve-animations",
+    "improve"
+   ],
+   "backend.container-image/dockerfile": [
+    "multi-stage-dockerfile",
+    "limrun-expo-development",
+    "documentation-and-adrs",
+    "gitlab-ci-patterns",
+    "deployment-pipeline-design"
+   ],
+   "backend.model-calls/stream": [
+    "claude-api",
+    "documentation-and-adrs",
+    "lavish",
+    "copilot-sdk",
+    "analyze-project"
+   ],
+   "llm.provider-abstraction/provider-sdk": [
+    "codebase-design",
+    "claude-api",
+    "docs-sync",
+    "copilot-sdk",
+    "code-change-verification"
+   ],
+   "agents.evals/ci": [
+    "code-change-verification",
+    "claude-api",
+    "systematic-debugging",
+    "e2e-testing",
+    "verification-loop"
+   ],
+   "git.branching/worktree": [
+    "using-git-worktrees",
+    "gh-stack",
+    "make-repo-contribution",
+    "git-guardrails-claude-code",
+    "create-pr"
+   ],
+   "git.commit-messages/conventional": [
+    "git-commit",
+    "make-repo-contribution",
+    "pr-draft-summary",
+    "git-workflow-and-versioning",
+    "incremental-implementation"
+   ],
+   "git.pull-request-size/200": [
+    "make-repo-contribution",
+    "git-workflow-and-versioning",
+    "code-review-excellence",
+    "create-pr",
+    "refactor-plan"
+   ],
+   "git.history/disagree": [
+    "make-repo-contribution",
+    "gh-stack",
+    "git-guardrails-claude-code",
+    "pr-draft-summary",
+    "requesting-code-review"
+   ],
+   "git.ci-workflow/github-actions": [
+    "make-repo-contribution",
+    "github-actions-templates",
+    "git-workflow-and-versioning",
+    "agentic-eval",
+    "deployment-pipeline-design"
+   ],
+   "security.destructive-commands/never": [
+    "git-guardrails-claude-code",
+    "git-commit",
+    "git-advanced-workflows",
+    "git-workflow-and-versioning",
+    "using-git-worktrees"
+   ],
+   "system.design-clarification/agree": [
+    "brainstorming",
+    "documentation-and-adrs",
+    "systematic-debugging",
+    "test-driven-development",
+    "spec-driven-implementation"
+   ],
+   "design.refactoring/small-steps": [
+    "test-driven-development",
+    "refactor-plan",
+    "tdd",
+    "refactor",
+    "incremental-implementation"
+   ],
+   "design.code-structure/hexagonal": [
+    "architecture-patterns",
+    "documentation-and-adrs",
+    "coding-standards",
+    "java-springboot",
+    "memory-merger"
+   ],
+   "design.ddd/core-only": [
+    "documentation-and-adrs",
+    "mermaid-diagrams",
+    "spec-driven-implementation",
+    "durable-objects",
+    "architecture-patterns"
+   ],
+   "design.naming/agree": [
+    "code-change-verification",
+    "golang-code-style",
+    "documentation-and-adrs",
+    "animation-vocabulary",
+    "verification-loop"
+   ],
+   "tooling.package-manager/pnpm": [
+    "pnpm",
+    "monorepo-management",
+    "turborepo-vercel",
+    "upgrading-react-native",
+    "prisma-compute"
+   ],
+   "frontend.framework/vite-spa": [
+    "nextjs-app-router-patterns",
+    "next-cache-components-optimizer",
+    "react-state-management",
+    "vitest",
+    "frontend-patterns"
+   ],
+   "testing.levels/none": [
+    "javascript-testing-patterns",
+    "test-driven-development",
+    "python-testing-patterns",
+    "javascript-typescript-jest",
+    "playwright-best-practices"
+   ],
+   "frontend.accessibility/none": [
+    "fixing-accessibility",
+    "better-accessibility",
+    "accessibility-compliance",
+    "better-interface",
+    "accessibility"
+   ],
+   "frontend.platforms/browser-only": [
+    "mobile-native",
+    "webapp-testing-github",
+    "e2e-testing",
+    "playwright-stealth-verify",
+    "web-component-design"
+   ],
+   "backend.container-image/none": [
+    "multi-stage-dockerfile",
+    "verification-loop",
+    "health",
+    "create-implementation-plan",
+    "coding-standards"
+   ],
+   "git.branching/trunk": [
+    "make-repo-contribution",
+    "pr-draft-summary",
+    "gh-stack",
+    "git-commit",
+    "create-pr"
+   ],
+   "design.paradigm/functional": [
+    "refactor",
+    "react-state-management",
+    "react-best-practices",
+    "python-patterns",
+    "postgresql-optimization"
+   ],
+   "llm.vector-store/none": [
+    "claude-api",
+    "analyze-project",
+    "copilot-sdk",
+    "supabase-postgres-best-practices",
+    "coding-standards"
+   ],
+   "agents.mcp/not-used": [
+    "health",
+    "copilot-sdk",
+    "claude-api",
+    "penpot-uiux-design",
+    "coding-standards"
+   ],
+   "backend.model-calls/none": [
+    "claude-api",
+    "copilot-sdk",
+    "analyze-project",
+    "docs-sync",
+    "powerbi-modeling"
+   ],
+   "security.sandbox/host": [
+    "improve",
+    "github-profile-optimization",
+    "code-change-verification",
+    "git-workflow-and-versioning",
+    "verification-before-completion"
+   ],
+   "api.contract/none": [
+    "claude-api",
+    "backend-patterns",
+    "pr-draft-summary",
+    "create-implementation-plan",
+    "create-specification"
+   ],
+   "backend.password-hashing/none": [
+    "supabase-postgres-best-practices",
+    "health",
+    "github-profile-optimization",
+    "coding-standards",
+    "git-guardrails-claude-code"
+   ],
+   "security.secrets/agree": [
+    "improve",
+    "git-guardrails-claude-code",
+    "github-profile-optimization",
+    "git-commit",
+    "health"
+   ],
+   "frontend.test-runner/none": [
+    "javascript-testing-patterns",
+    "python-testing-patterns",
+    "vitest",
+    "test-driven-development",
+    "vue-testing-best-practices"
+   ],
+   "design.abstraction-timing/third-case": [
+    "incremental-implementation",
+    "test-driven-development",
+    "refactor-plan",
+    "codebase-design",
+    "remove-animations"
+   ],
+   "database.migrations/never": [
+    "database-migrations",
+    "supabase-postgres-best-practices",
+    "postgresql-table-design",
+    "prisma-postgres-upgrade",
+    "incremental-implementation"
+   ],
+   "react.state/context": [
+    "react-state-management",
+    "frontend-patterns",
+    "react-composition-patterns",
+    "gsap-react",
+    "golang-context"
+   ],
+   "react.styling/styled-components": [
+    "tailwind-css-patterns",
+    "shadcn-ui",
+    "frontend-patterns",
+    "react-native-design",
+    "react-composition-patterns"
+   ],
+   "react.hooks/agree": [
+    "react-composition-patterns",
+    "frontend-patterns",
+    "next-cache-components-optimizer",
+    "react-state-management",
+    "gsap-react"
+   ],
+   "frontend.rendering/server": [
+    "next-cache-components-optimizer",
+    "nextjs-app-router-patterns",
+    "backend-patterns",
+    "animate-expo",
+    "clerk-nextjs-patterns"
+   ],
+   "frontend.bundler/framework": [
+    "coding-standards",
+    "animate-expo",
+    "multi-stage-dockerfile",
+    "expo-animation",
+    "nextjs-on-cloudflare"
+   ],
+   "frontend.test-network/msw": [
+    "expo-data-fetching",
+    "vitest",
+    "backend-patterns",
+    "javascript-testing-patterns",
+    "next-cache-components-optimizer"
+   ],
+   "frontend.e2e-tool/cypress": [
+    "e2e-testing-patterns",
+    "javascript-testing-patterns",
+    "clerk-testing",
+    "python-testing-patterns",
+    "vitest"
+   ],
+   "frontend.api-client/tanstack-query": [
+    "expo-data-fetching",
+    "react-state-management",
+    "nextjs-app-router-patterns",
+    "backend-patterns",
+    "postgres-patterns"
+   ],
+   "frontend.api-client/rtk-query": [
+    "expo-data-fetching",
+    "backend-patterns",
+    "react-state-management",
+    "nextjs-app-router-patterns",
+    "workers-development"
+   ],
+   "frontend.semantic-html/agree": [
+    "mobile-native",
+    "react-native-design",
+    "fixing-accessibility",
+    "lavish",
+    "react-native-architecture"
+   ],
+   "frontend.css/mobile-first": [
+    "mobile-native",
+    "accessibility-compliance",
+    "test-driven-development",
+    "better-interface",
+    "next-cache-components-optimizer"
+   ],
+   "frontend.css/flex-grid": [
+    "tailwind-css-patterns",
+    "better-interface",
+    "frontend-design-anthropics-2",
+    "ui-ux-pro-max",
+    "web-component-design"
+   ],
+   "frontend.hosting/platform": [
+    "react-native-architecture",
+    "backend-patterns",
+    "azure-static-web-apps",
+    "nextjs-on-cloudflare",
+    "next-cache-components-optimizer"
+   ],
+   "frontend.preview-deploys/yes": [
+    "create-pr",
+    "azure-deployment-preflight",
+    "code-review-excellence",
+    "webapp-testing",
+    "make-repo-contribution"
+   ],
+   "frontend.token-storage/httponly-cookie": [
+    "auth-implementation-patterns",
+    "expo-data-fetching",
+    "next-cache-components-optimizer",
+    "verification-loop",
+    "react-state-management"
+   ],
+   "errors.handling/central-handler": [
+    "vue-debug-guides",
+    "hunt",
+    "java-springboot",
+    "copilot-sdk",
+    "python-anti-patterns"
+   ],
+   "database.access/raw-sql": [
+    "sql-optimization-patterns",
+    "sql-code-review",
+    "sql-optimization",
+    "supabase-postgres-best-practices",
+    "prisma-postgres-upgrade"
+   ],
+   "database.transactions/agree": [
+    "incremental-implementation",
+    "supabase-postgres-best-practices",
+    "prisma-postgres-upgrade",
+    "git-commit",
+    "sql-optimization-patterns"
+   ],
+   "database.concurrent-writes/row-lock": [
+    "golang-database",
+    "incremental-implementation",
+    "documentation-and-adrs",
+    "prisma-postgres-upgrade",
+    "supabase-postgres-best-practices"
+   ],
+   "database.json-columns/agree": [
+    "supabase-postgres-best-practices",
+    "postgresql-table-design",
+    "golang-database",
+    "prisma-postgres-upgrade",
+    "xlsx"
+   ],
+   "database.table-splitting/partitioned": [
+    "supabase-postgres-best-practices",
+    "prisma-postgres-upgrade",
+    "neon-postgres",
+    "postgres-patterns",
+    "postgresql-optimization"
+   ],
+   "database.connections/agree": [
+    "sql-optimization-patterns",
+    "golang-database",
+    "prisma-postgres-upgrade",
+    "sql-optimization",
+    "neon-postgres"
+   ],
+   "database.query-rules/explicit-columns": [
+    "golang-database",
+    "supabase-postgres-best-practices",
+    "prisma-postgres-upgrade",
+    "sql-optimization",
+    "prisma-postgres"
+   ],
+   "backend.auth-strategy/identity-provider": [
+    "azure-role-selector",
+    "playwright-stealth-verify",
+    "cargo-connection",
+    "auth-implementation-patterns",
+    "documentation-and-adrs"
+   ],
+   "backend.authorization/agree": [
+    "azure-role-selector",
+    "verification-before-completion",
+    "documentation-and-adrs",
+    "next-cache-components-optimizer",
+    "test-driven-development"
+   ],
+   "backend.password-hashing/bcrypt": [
+    "coding-standards",
+    "terraform-style-guide",
+    "golang-code-style",
+    "python-code-style",
+    "prisma-postgres-upgrade"
+   ],
+   "backend.service-shape/serverless": [
+    "react-state-management",
+    "azure-static-web-apps",
+    "durable-objects",
+    "next-cache-components-optimizer",
+    "workers-development"
+   ],
+   "backend.service-shape/microservices": [
+    "expo-data-fetching",
+    "backend-patterns",
+    "incremental-implementation",
+    "cargo-connection",
+    "supabase-postgres-best-practices"
+   ],
+   "backend.observability/traces": [
+    "workers-development",
+    "golang-context",
+    "ad-conversion-tracking",
+    "documentation-and-adrs",
+    "improve"
+   ],
+   "backend.observability/metrics": [
+    "kpi-dashboard-design",
+    "github-profile-optimization",
+    "base44-troubleshooter",
+    "lavish",
+    "appinsights-instrumentation"
+   ],
+   "backend.model-call-guards/timeouts": [
+    "claude-api",
+    "expo-data-fetching",
+    "analyze-project",
+    "improve",
+    "systematic-debugging"
+   ],
+   "backend.model-calls/job": [
+    "incremental-implementation",
+    "claude-api",
+    "base44-troubleshooter",
+    "documentation-and-adrs",
+    "verification-before-completion"
+   ],
+   "git.commit-permission/commit": [
+    "git-commit",
+    "git-guardrails-claude-code",
+    "git-workflow-and-versioning",
+    "make-repo-contribution",
+    "gh-stack"
+   ],
+   "git.pull-request-size/400": [
+    "make-repo-contribution",
+    "git-workflow-and-versioning",
+    "code-review-excellence",
+    "create-pr",
+    "git-commit"
+   ],
+   "git.commit-messages/imperative": [
+    "git-commit",
+    "make-repo-contribution",
+    "incremental-implementation",
+    "create-pr",
+    "write"
+   ],
+   "git.history/agree": [
+    "gh-stack",
+    "make-repo-contribution",
+    "git-commit",
+    "git-guardrails-claude-code",
+    "git-advanced-workflows"
+   ],
+   "git.branching/branch": [
+    "pr-draft-summary",
+    "make-repo-contribution",
+    "gh-stack",
+    "git-guardrails-claude-code",
+    "create-pr"
+   ],
+   "security.destructive-commands/ask": [
+    "git-guardrails-claude-code",
+    "git-advanced-workflows",
+    "git-commit",
+    "git-workflow-and-versioning",
+    "using-git-worktrees"
+   ],
+   "system.design-trade-offs/agree": [
+    "brainstorming",
+    "frontend-design-anthropics-2",
+    "documentation-and-adrs",
+    "cross-critique",
+    "incremental-implementation"
+   ],
+   "system.service-decomposition/modular-monolith": [
+    "codebase-design",
+    "architecture-patterns",
+    "improve",
+    "memory-merger",
+    "prisma-compute"
+   ],
+   "system.service-protocol/grpc": [
+    "golang-grpc",
+    "cargo-connection",
+    "base44-troubleshooter",
+    "incremental-implementation",
+    "code-change-verification"
+   ],
+   "system.monitoring-scope/performance": [
+    "kpi-dashboard-design",
+    "workers-development",
+    "base44-troubleshooter",
+    "documentation-and-adrs",
+    "python-performance-optimization"
+   ],
+   "design.function-size/agree": [
+    "react-composition-patterns",
+    "incremental-implementation",
+    "refactor",
+    "improve",
+    "writing-plans"
+   ],
+   "design.immutability/agree": [
+    "improve",
+    "incremental-implementation",
+    "memory-merger",
+    "next-cache-components-optimizer",
+    "improve-animations"
+   ],
+   "design.principles/single-responsibility": [
+    "incremental-implementation",
+    "codebase-design",
+    "hunt",
+    "create-implementation-plan",
+    "improve-animations"
+   ],
+   "design.principles/dependency-inversion": [
+    "nestjs-best-practices",
+    "documentation-and-adrs",
+    "improve-animations",
+    "improve",
+    "golang-patterns"
+   ],
+   "design.dependency-rule/agree": [
+    "prisma-postgres-upgrade",
+    "incremental-implementation",
+    "documentation-and-adrs",
+    "supabase-postgres-best-practices",
+    "database-migrations"
+   ],
+   "design.code-structure/layered": [
+    "architecture-patterns",
+    "incremental-implementation",
+    "partner-tiering",
+    "improve",
+    "memory-merger"
+   ],
+   "design.folder-structure/by-domain": [
+    "incremental-implementation",
+    "memory-merger",
+    "architecture-patterns",
+    "git-commit",
+    "create-implementation-plan"
+   ],
+   "design.ddd/everywhere": [
+    "frontend-design-anthropics-2",
+    "spec-driven-implementation",
+    "documentation-and-adrs",
+    "architecture-patterns",
+    "mermaid-diagrams"
+   ],
+   "design.repositories/repositories": [
+    "durable-objects",
+    "prisma-postgres-upgrade",
+    "analyze-project",
+    "sql-code-review",
+    "supabase-postgres-best-practices"
+   ],
+   "llm.streaming/stream": [
+    "verification-loop",
+    "lavish",
+    "documentation-and-adrs",
+    "claude-api",
+    "verification-before-completion"
+   ],
+   "llm.structured-output/schema-constrained": [
+    "claude-api",
+    "verification-loop",
+    "verification-before-completion",
+    "analyze-project",
+    "documentation-and-adrs"
+   ],
+   "llm.eval-tool/test-runner": [
+    "analyze-project",
+    "code-change-verification",
+    "better-interface",
+    "lavish",
+    "e2e-testing"
+   ],
+   "llm.eval-scoring/model-judge": [
+    "agentic-eval",
+    "claude-api",
+    "analyze-project",
+    "improve",
+    "cross-critique"
+   ],
+   "llm.eval-gate/ci": [
+    "claude-api",
+    "code-change-verification",
+    "analyze-project",
+    "improve",
+    "incremental-implementation"
+   ],
+   "agents.framework/framework": [
+    "health",
+    "verification-loop",
+    "agentic-eval",
+    "azure-role-selector",
+    "microsoft-docs"
+   ],
+   "agents.self-review/agree": [
+    "verification-before-completion",
+    "verification-loop",
+    "improve-animations",
+    "code-change-verification",
+    "systematic-debugging"
+   ],
+   "agents.prompt-caching/cached": [
+    "claude-api",
+    "verification-loop",
+    "pr-draft-summary",
+    "create-agentsmd",
+    "documentation-and-adrs"
+   ],
+   "agents.evals/manual": [
+    "systematic-debugging",
+    "writing-plans",
+    "refactor-plan",
+    "documentation-and-adrs",
+    "pr-draft-summary"
+   ],
+   "perf.code-splitting/route": [
+    "next-cache-components-optimizer",
+    "react-best-practices",
+    "react-native-best-practices",
+    "react-composition-patterns",
+    "mobile-native"
+   ],
+   "perf.memoization/measured": [
+    "react-composition-patterns",
+    "frontend-patterns",
+    "react-native-best-practices",
+    "remove-animations",
+    "improve-animations"
+   ],
+   "perf.long-lists/virtualized": [
+    "lavish",
+    "react-composition-patterns",
+    "frontend-patterns",
+    "theme-factory",
+    "supabase-postgres-best-practices"
+   ],
+   "perf.measure-first/agree": [
+    "github-profile-optimization",
+    "systematic-debugging",
+    "improve-animations",
+    "python-performance-optimization",
+    "next-cache-components-optimizer"
+   ],
+   "perf.vitals-targets/good": [
+    "next-cache-components-optimizer",
+    "ui-ux-pro-max",
+    "improve-animations",
+    "wcag-audit-patterns",
+    "penpot-uiux-design"
+   ],
+   "perf.budget-check/lighthouse-ci": [
+    "web-quality-audit",
+    "gitlab-ci-patterns",
+    "e2e-testing",
+    "deployment-pipeline-design",
+    "github-actions-templates"
+   ],
+   "perf.image-formats/modern-files": [
+    "lavish",
+    "canvas-design",
+    "image-manipulation-image-magick",
+    "improve-animations",
+    "git-commit"
+   ],
+   "perf.dependency-weight/agree": [
+    "next-cache-components-optimizer",
+    "react-best-practices",
+    "improve-animations",
+    "remove-animations",
+    "react-native-best-practices"
+   ],
+   "typescript.state-modeling/agree": [
+    "ad-conversion-tracking",
+    "documentation-and-adrs",
+    "incremental-implementation",
+    "improve",
+    "python-anti-patterns"
+   ],
+   "workflow.autonomy/ask-before-writing": [
+    "refactor-plan",
+    "documentation-and-adrs",
+    "writing-plans",
+    "architecture-decision-records",
+    "incremental-implementation"
+   ],
+   "react.styling/css-modules": [
+    "tailwind-css-patterns",
+    "web-component-design",
+    "tailwind-design-system",
+    "unocss",
+    "shadcn-ui"
+   ],
+   "frontend.platforms/tauri": [
+    "mobile-native",
+    "webapp-testing",
+    "webapp-testing-github",
+    "limrun-expo-development",
+    "vscode-ext-commands"
+   ],
+   "frontend.platforms/electron": [
+    "mobile-native",
+    "animate-expo",
+    "expo-animation",
+    "react-native-best-practices",
+    "limrun-expo-development"
+   ],
+   "frontend.bundler/vite": [
+    "vitest",
+    "workers-development",
+    "animate-expo",
+    "nextjs-on-cloudflare",
+    "expo-animation"
+   ],
+   "frontend.service-worker/offline": [
+    "expo-data-fetching",
+    "webapp-testing",
+    "nextjs-app-router-patterns",
+    "next-cache-components-optimizer",
+    "mobile-native"
+   ],
+   "frontend.raw-html/sanitized": [
+    "markdown-to-html",
+    "verification-before-completion",
+    "lavish",
+    "baoyu-markdown-to-html",
+    "next-cache-components-optimizer"
+   ],
+   "frontend.csp/strict": [
+    "improve",
+    "aws-security",
+    "documentation-and-adrs",
+    "code-review-expert",
+    "convex-reviewer"
+   ],
+   "api.style/graphql": [
+    "backend-patterns",
+    "cargo-connection",
+    "prisma-postgres-upgrade",
+    "database-migrations",
+    "supabase-postgres-best-practices"
+   ],
+   "logging.style/structured": [
+    "documentation-and-adrs",
+    "workers-development",
+    "webapp-testing",
+    "improve",
+    "improve-animations"
+   ],
+   "backend.background-jobs/job-queue": [
+    "verification-before-completion",
+    "base44-troubleshooter",
+    "incremental-implementation",
+    "writing-plans",
+    "systematic-debugging"
+   ],
+   "backend.module-system/esm": [
+    "nestjs-best-practices",
+    "codebase-design",
+    "react-native-architecture",
+    "improve",
+    "react-native-best-practices"
+   ],
+   "backend.graceful-shutdown/agree": [
+    "golang-concurrency",
+    "verification-before-completion",
+    "remove-animations",
+    "golang-context",
+    "cargo-connection"
+   ],
+   "git.attribution/agree": [
+    "make-repo-contribution",
+    "code-review-excellence",
+    "git-commit",
+    "coding-standards",
+    "improve"
+   ],
+   "security.dependencies/ask": [
+    "documentation-and-adrs",
+    "verification-loop",
+    "git-commit",
+    "improve-animations",
+    "nestjs-best-practices"
+   ],
+   "security.input-trust/agree": [
+    "supabase-postgres-best-practices",
+    "sql-code-review",
+    "verification-before-completion",
+    "verification-loop",
+    "golang-security"
+   ],
+   "system.health-probes/liveness-readiness": [
+    "verification-before-completion",
+    "azure-deployment-preflight",
+    "improve",
+    "health",
+    "systematic-debugging"
+   ],
+   "tooling.package-manager/bun": [
+    "pnpm",
+    "turborepo-vercel",
+    "monorepo-management",
+    "upgrading-react-native",
+    "prisma-compute"
+   ],
+   "frontend.browser-support/browserslist": [
+    "javascript-testing-patterns",
+    "e2e-testing",
+    "webapp-testing-github",
+    "webapp-testing",
+    "mobile-native"
+   ],
+   "api.webhooks/receives": [
+    "cargo-connection",
+    "verification-before-completion",
+    "ad-conversion-tracking",
+    "azure-role-selector",
+    "next-cache-components-optimizer"
+   ],
+   "api.rate-limiting/app": [
+    "next-cache-components-optimizer",
+    "incremental-implementation",
+    "documentation-and-adrs",
+    "python-performance-optimization",
+    "base44-troubleshooter"
+   ],
+   "backend.cache-store/shared": [
+    "next-cache-components-optimizer",
+    "turborepo-vercel",
+    "nextjs-on-cloudflare",
+    "codebase-design",
+    "prisma-compute"
+   ],
+   "system.queue-guarantees/at-least-once": [
+    "incremental-implementation",
+    "ad-conversion-tracking",
+    "azure-role-selector",
+    "cargo-connection",
+    "documentation-and-adrs"
+   ],
+   "system.failover/active-active": [
+    "backend-patterns",
+    "documentation-and-adrs",
+    "cross-critique",
+    "react-state-management",
+    "incremental-implementation"
+   ],
+   "llm.fine-tuning/adapters": [
+    "claude-api",
+    "azure-deployment-preflight",
+    "analyze-project",
+    "deployment-pipeline-design",
+    "documentation-and-adrs"
+   ],
+   "llm.vector-store/pgvector": [
+    "postgres-patterns",
+    "postgresql-optimization",
+    "sql-optimization",
+    "postgresql-table-design",
+    "sql-code-review"
+   ],
+   "llm.prompt-injection/agree": [
+    "improve",
+    "claude-api",
+    "analyze-project",
+    "azure-role-selector",
+    "documentation-and-adrs"
+   ],
+   "agents.long-term-memory/profile": [
+    "github-profile-optimization",
+    "verification-loop",
+    "memory-merger",
+    "claude-api",
+    "documentation-and-adrs"
+   ],
+   "perf.font-display/swap": [
+    "swiftui-expert-skill",
+    "next-cache-components-optimizer",
+    "ui-ux-pro-max",
+    "improve-animations",
+    "apple-design"
+   ],
+   "security.network/none": [
+    "claude-api",
+    "documentation-and-adrs",
+    "health",
+    "copilot-sdk",
+    "cargo-connection"
+   ],
+   "design.refactoring/leave": [
+    "refactor-plan",
+    "refactor",
+    "improve-animations",
+    "health",
+    "incremental-implementation"
+   ],
+   "frontend.e2e-tool/none": [
+    "javascript-testing-patterns",
+    "e2e-testing-patterns",
+    "python-testing-patterns",
+    "pytest-coverage",
+    "webapp-testing"
+   ],
+   "api.webhooks/none": [
+    "health",
+    "cargo-connection",
+    "debugging-strategies",
+    "improve",
+    "claude-api"
+   ],
+   "backend.observability/none": [
+    "health",
+    "kpi-dashboard-design",
+    "documentation-and-adrs",
+    "workers-development",
+    "coding-standards"
+   ],
+   "llm.retrieval/none": [
+    "analyze-project",
+    "claude-api",
+    "health",
+    "lavish",
+    "documentation-and-adrs"
+   ],
+   "agents.long-term-memory/none": [
+    "copilot-sdk",
+    "verification-loop",
+    "health",
+    "github-profile-optimization",
+    "cargo-connection"
+   ],
+   "backend.background-jobs/none": [
+    "git-workflow-and-versioning",
+    "verification-before-completion",
+    "incremental-implementation",
+    "requesting-code-review",
+    "pr-draft-summary"
+   ],
+   "perf.budget-check/none": [
+    "gitlab-ci-patterns",
+    "deployment-pipeline-design",
+    "turborepo-vercel",
+    "react-best-practices",
+    "incremental-implementation"
+   ],
+   "frontend.service-worker/none": [
+    "webapp-testing",
+    "mobile-native",
+    "expo-data-fetching",
+    "appinsights-instrumentation",
+    "app-store-screenshots"
+   ],
+   "llm.eval-tool/none": [
+    "analyze-project",
+    "code-change-verification",
+    "incremental-implementation",
+    "claude-api",
+    "documentation-and-adrs"
+   ],
+   "frontend.csp/none": [
+    "coding-standards",
+    "golang-security",
+    "code-review-expert",
+    "nestjs-best-practices",
+    "aws-security"
+   ],
+   "frontend.browser-check/disagree": [
+    "code-change-verification",
+    "webapp-testing",
+    "playwright-stealth-verify",
+    "webapp-testing-github",
+    "better-interface"
+   ],
+   "workflow.changes/disagree": [
+    "incremental-implementation",
+    "writing-plans",
+    "git-commit",
+    "git-workflow-and-versioning",
+    "make-repo-contribution"
+   ],
+   "git.pull-request-size/no-limit": [
+    "make-repo-contribution",
+    "code-review-excellence",
+    "git-workflow-and-versioning",
+    "create-pr",
+    "incremental-implementation"
+   ]
+  }
+ }
+}

@@ -15,6 +15,8 @@ export const FeatureFlagKey = {
   AssistantRepository: 'assistant-repository',
   DesignRecords: 'design-records',
   ConventionEvals: 'convention-evals',
+  WebSearch: 'web-search',
+  TechWatch: 'tech-watch',
 } as const
 
 export type FeatureFlagKey = (typeof FeatureFlagKey)[keyof typeof FeatureFlagKey]
@@ -116,6 +118,22 @@ export const FEATURE_FLAGS: readonly FeatureFlagDeclaration[] = [
     description:
       'Lets the owner of agent conventions test them against a coding agent in E2B sandboxes, paid with their own provider. Needs E2B_API_KEY on the server and the convention-evals worker.',
     tags: ['agents', 'llm'],
+    defaultState: OFF,
+  },
+  {
+    key: FeatureFlagKey.WebSearch,
+    name: 'Web search',
+    description:
+      "Lets the research and the assistant search the web with the instance's search service.",
+    tags: ['llm'],
+    defaultState: OFF,
+  },
+  {
+    key: FeatureFlagKey.TechWatch,
+    name: 'Tech watch',
+    description:
+      'Shows the Watch page: articles from the RSS feeds and the web searches the admin picks, tagged by topic, which the assistant reads too.',
+    tags: ['watch'],
     defaultState: OFF,
   },
 ]

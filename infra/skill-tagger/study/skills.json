@@ -1,0 +1,3317 @@
+[
+ {
+  "slug": "test-driven-development",
+  "name": "Test-driven development (Superpowers)",
+  "description": "Write the failing test first, watch it fail, then write the least code that passes.",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "unit",
+     "component"
+    ]
+   },
+   {
+    "slot": "workflow.changes",
+    "values": [
+     "agree"
+    ],
+    "against": [
+     "disagree"
+    ]
+   }
+  ],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": null,
+  "source": "manual"
+ },
+ {
+  "slug": "systematic-debugging",
+  "name": "Systematic debugging (Superpowers)",
+  "description": "Find the root cause of a bug or a failing test before proposing any fix.",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "unit",
+     "component",
+     "e2e"
+    ]
+   }
+  ],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": null,
+  "source": "manual"
+ },
+ {
+  "slug": "verification-before-completion",
+  "name": "Verification before completion (Superpowers)",
+  "description": "Run the checks and read their output before saying that work is done or passing.",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "unit",
+     "component",
+     "e2e"
+    ]
+   }
+  ],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": null,
+  "source": "manual"
+ },
+ {
+  "slug": "brainstorming",
+  "name": "Brainstorming (Superpowers)",
+  "description": "Ask what you actually want, and agree on a design, before building anything new.",
+  "affinities": [
+   {
+    "slot": "workflow.autonomy",
+    "values": [
+     "agree",
+     "ask-before-writing"
+    ],
+    "against": [
+     "disagree"
+    ]
+   }
+  ],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": null,
+  "source": "manual"
+ },
+ {
+  "slug": "writing-plans",
+  "name": "Writing plans (Superpowers)",
+  "description": "Turn a spec into a plan of small, separately testable tasks before touching code.",
+  "affinities": [
+   {
+    "slot": "workflow.changes",
+    "values": [
+     "agree"
+    ],
+    "against": [
+     "disagree"
+    ]
+   },
+   {
+    "slot": "workflow.autonomy",
+    "values": [
+     "agree",
+     "ask-before-writing"
+    ],
+    "against": [
+     "disagree"
+    ]
+   }
+  ],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": null,
+  "source": "manual"
+ },
+ {
+  "slug": "react-composition-patterns",
+  "name": "React composition patterns (Vercel)",
+  "description": "Compound components and context providers instead of a growing list of boolean props.",
+  "affinities": [
+   {
+    "slot": "react.granularity",
+    "values": [
+     "agree"
+    ],
+    "against": [
+     "disagree"
+    ]
+   }
+  ],
+  "topics": [
+   "react"
+  ],
+  "registry_id": null,
+  "source": "manual"
+ },
+ {
+  "slug": "react-best-practices",
+  "name": "React best practices (Vercel)",
+  "description": "Performance rules for React and Next.js code: rendering, data fetching and bundle size.",
+  "affinities": [
+   {
+    "slot": "react.state",
+    "values": [
+     "tanstack-query-only",
+     "zustand",
+     "redux",
+     "context"
+    ]
+   }
+  ],
+  "topics": [
+   "react"
+  ],
+  "registry_id": null,
+  "source": "manual"
+ },
+ {
+  "slug": "webapp-testing",
+  "name": "Web app testing (Anthropic)",
+  "description": "Drive a local web app with Playwright to check its behaviour, take screenshots and read its logs.",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "e2e"
+    ]
+   }
+  ],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": null,
+  "source": "manual"
+ },
+ {
+  "slug": "c4-architecture",
+  "name": "C4 architecture (softaworks)",
+  "description": "Document a system with C4 model diagrams in Mermaid: context, containers, components and deployment.",
+  "affinities": [
+   {
+    "diagramKinds": [
+     "c4",
+     "component",
+     "deployment"
+    ]
+   }
+  ],
+  "topics": [
+   "architecture"
+  ],
+  "registry_id": null,
+  "source": "manual"
+ },
+ {
+  "slug": "mermaid-diagrams",
+  "name": "Mermaid diagrams (softaworks)",
+  "description": "Write class, sequence, state, entity-relationship and C4 diagrams in Mermaid syntax.",
+  "affinities": [
+   {
+    "diagramKinds": [
+     "class",
+     "sequence",
+     "state",
+     "er",
+     "c4"
+    ]
+   }
+  ],
+  "topics": [
+   "architecture"
+  ],
+  "registry_id": null,
+  "source": "manual"
+ },
+ {
+  "slug": "tdd",
+  "name": "tdd (mattpocock)",
+  "description": "Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions \"red-green-refactor\", or wants integration tests.",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "unit",
+     "component"
+    ]
+   }
+  ],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": "mattpocock/skills/tdd",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "codebase-design",
+  "name": "codebase-design (mattpocock)",
+  "description": "Shared vocabulary for designing deep modules. Use when the user wants to design or improve a module's interface, find deepening opportunities, decide where a seam goes, make code more testable or AI-navigable, or when another skill needs the deep-module vocabulary.",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "unit",
+     "component"
+    ]
+   },
+   {
+    "diagramKinds": [
+     "er"
+    ]
+   }
+  ],
+  "topics": [
+   "architecture"
+  ],
+  "registry_id": "mattpocock/skills/codebase-design",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "git-guardrails-claude-code",
+  "name": "git-guardrails-claude-code (mattpocock)",
+  "description": "Set up Claude Code hooks to block dangerous git commands (push, reset --hard, clean, branch -D, etc.) before they execute. Use when user wants to prevent destructive git operations, add git safety hooks, or block git push/reset in Claude Code.",
+  "affinities": [],
+  "topics": [
+   "tooling"
+  ],
+  "registry_id": "mattpocock/skills/git-guardrails-claude-code",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "supabase-postgres-best-practices",
+  "name": "supabase-postgres-best-practices (supabase)",
+  "description": "Postgres best practices maintained by Supabase, for Postgres running anywhere. Load this skill BEFORE writing or changing anything that lives in a Postgres database: creating or altering tables and columns (including choosing column types), schema design, migrations and declarative schema files, RL…",
+  "affinities": [
+   {
+    "diagramKinds": [
+     "er"
+    ]
+   }
+  ],
+  "topics": [
+   "databases"
+  ],
+  "registry_id": "supabase/agent-skills/supabase-postgres-best-practices",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "ui-ux-pro-max",
+  "name": "ui-ux-pro-max (nextlevelbuilder)",
+  "description": "UI/UX design intelligence for web, mobile, and desktop. This skill should be used when designing, building, reviewing, or fixing interfaces, including pages, components, design systems, accessibility, interaction, responsive layout, typography, color, charts, and stack-specific UI implementation. S…",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "nextlevelbuilder/ui-ux-pro-max-skill/ui-ux-pro-max",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "prisma-postgres",
+  "name": "prisma-postgres (prisma)",
+  "description": "Deprecated compatibility name for prisma-postgres-setup. Use only when a user or existing integration explicitly invokes prisma-postgres; otherwise select prisma-postgres-setup.",
+  "affinities": [],
+  "topics": [
+   "databases"
+  ],
+  "registry_id": "prisma/skills/prisma-postgres",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "prisma-compute",
+  "name": "prisma-compute (prisma)",
+  "description": "Deploy and operate apps on Prisma Compute with the Prisma 8 CLI. Use whenever the user mentions Prisma Compute, deploying or hosting a Prisma app, `prisma deploy`, `prisma dev module.ts`, Prisma Composer apps (`module.ts`, `compute()`, the `composer` section of `prisma.config.ts`), preview stages,…",
+  "affinities": [],
+  "topics": [
+   "devops",
+   "typescript"
+  ],
+  "registry_id": "prisma/skills/prisma-compute",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "analyze-project",
+  "name": "analyze-project (lllllllama)",
+  "description": "Rigor Analyze / Rigor Audit read-only skill for deep learning research repositories. Use when the user wants to read and understand a repository, inspect model structure and training or inference entrypoints, review configs and insertion points, or flag suspicious implementation patterns without mo…",
+  "affinities": [],
+  "topics": [
+   "ai"
+  ],
+  "registry_id": "lllllllama/rigorpilot-skills/analyze-project",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "review-animations",
+  "name": "review-animations (emilkowalski)",
+  "description": "Reviews animation and motion code against a high craft bar derived from Emil Kowalski's design engineering philosophy. Default to flagging; approval is earned.",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "emilkowalski/skills/review-animations",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "apple-design",
+  "name": "apple-design (emilkowalski)",
+  "description": "Apple's approach to interface design and fluid, physical motion, translated for the web. Use when building or reviewing gesture-driven UI, spring animations, drag/swipe/sheet interactions, momentum and interruptible transitions, translucent materials and depth, typography (optical sizing, tracking,…",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "emilkowalski/skills/apple-design",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "neon-postgres",
+  "name": "neon-postgres (neondatabase)",
+  "description": "Guides and best practices for working with Lakebase Postgres on Neon: connections, pooled vs direct, schema migrations, branching (including schema-only, reset-from-parent, and branch-per-PR workflows), autoscaling, scale-to-zero, instant restore, read replicas, IP allow lists, logical replication,…",
+  "affinities": [],
+  "topics": [
+   "databases"
+  ],
+  "registry_id": "neondatabase/agent-skills/neon-postgres",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "animation-vocabulary",
+  "name": "animation-vocabulary (emilkowalski)",
+  "description": "Reverse-lookup glossary that turns a vague description of a web animation or motion effect into its exact term (\"the bouncy thing when a popover opens\" → Pop in; \"the iOS rubber-band scroll\" → Rubber-banding). Use when the user asks \"what's it called when…\", or describes a motion effect without kno…",
+  "affinities": [],
+  "topics": [
+   "frontend",
+   "mobile"
+  ],
+  "registry_id": "emilkowalski/skills/animation-vocabulary",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "improve-animations",
+  "name": "improve-animations (emilkowalski)",
+  "description": "Survey a codebase's animation and motion code as a senior motion advisor, then produce a prioritized audit and self-contained implementation plans for other agents (or cheaper models) to execute. Read-only on source code — it plans improvements, it does not apply them. Use when the user asks to \"im…",
+  "affinities": [
+   {
+    "slot": "workflow.changes",
+    "values": [
+     "agree"
+    ],
+    "against": [
+     "disagree"
+    ]
+   }
+  ],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "emilkowalski/skills/improve-animations",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "requesting-code-review",
+  "name": "requesting-code-review (obra)",
+  "description": "Use when completing tasks, implementing major features, or before merging to verify work meets requirements",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "obra/superpowers/requesting-code-review",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "executing-plans",
+  "name": "executing-plans (obra)",
+  "description": "Use when executing an implementation plan in the current session as the implementer yourself — your human partner chose inline execution, or no subagent tool is available",
+  "affinities": [
+   {
+    "slot": "workflow.changes",
+    "values": [
+     "agree"
+    ],
+    "against": [
+     "disagree"
+    ]
+   }
+  ],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "obra/superpowers/executing-plans",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "subagent-driven-development",
+  "name": "subagent-driven-development (obra)",
+  "description": "Use when executing implementation plans with independent tasks in the current session",
+  "affinities": [
+   {
+    "slot": "workflow.changes",
+    "values": [
+     "agree"
+    ],
+    "against": [
+     "disagree"
+    ]
+   }
+  ],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "obra/superpowers/subagent-driven-development",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "using-git-worktrees",
+  "name": "using-git-worktrees (obra)",
+  "description": "Use when starting feature work that needs isolation from current workspace or before executing implementation plans - ensures an isolated workspace exists via native tools or git worktree fallback",
+  "affinities": [
+   {
+    "slot": "workflow.changes",
+    "values": [
+     "agree"
+    ],
+    "against": [
+     "disagree"
+    ]
+   }
+  ],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "obra/superpowers/using-git-worktrees",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "ask-sonner",
+  "name": "ask-sonner (emilkowalski)",
+  "description": "Guide to Sonner, the React toast library — install and wire up the Toaster, pick the right toast() call, promise and loading toasts, updating, dismissing and persisting toasts, styling, theming and icons, positioning and multiple toasters. Use when working with Sonner or troubleshooting it — toasts…",
+  "affinities": [
+   {
+    "slot": "react.styling",
+    "values": [
+     "tailwind"
+    ]
+   }
+  ],
+  "topics": [
+   "react"
+  ],
+  "registry_id": "emilkowalski/skills/ask-sonner",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "animate-expo",
+  "name": "animate-expo (emilkowalski)",
+  "description": "Build animations in React Native and Expo, making the decisions in the order that determines whether they feel right — should it animate, which thread it runs on, which properties, spring or timing, how the gesture hands off, how it degrades. Writes the implementation with Reanimated, Gesture Handl…",
+  "affinities": [],
+  "topics": [
+   "mobile",
+   "react"
+  ],
+  "registry_id": "emilkowalski/skills/animate-expo",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "mobile-native",
+  "name": "mobile-native (emilkowalski)",
+  "description": "Make a web app feel native on a phone — the small CSS and meta-tag fixes that separate \"a website in a browser\" from something that feels installed. Covers sticky hover states, tap highlight flashes, the 100vh bug, inputs that zoom the page, laggy taps, pull-to-refresh hijacking scroll, content und…",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "emilkowalski/skills/mobile-native",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "durable-objects",
+  "name": "durable-objects (cloudflare)",
+  "description": "Build, debug, or review Cloudflare Durable Objects code for persistent state and coordination.",
+  "affinities": [],
+  "topics": [
+   "backend"
+  ],
+  "registry_id": "cloudflare/skills/durable-objects",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "playwright-stealth-verify",
+  "name": "playwright-stealth-verify (liarjsdev)",
+  "description": "Check whether a Playwright, Puppeteer, Selenium or CDP-driven browser presents a coherent fingerprint, using liarjs as a library against a Page you already have - navigator.webdriver, HeadlessChrome tokens, worker versus main-thread identity, patched-API integrity, WebGL versus WebGPU GPU identity.…",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "e2e"
+    ]
+   }
+  ],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": "liarjsdev/liarjs-skills/playwright-stealth-verify",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "playwright-best-practices",
+  "name": "playwright-best-practices (currents-dev)",
+  "description": "Use when writing Playwright tests, fixing flaky tests, debugging failures, implementing Page Object Model, configuring CI/CD, optimizing performance, mocking APIs, handling authentication or OAuth, testing accessibility (axe-core), file uploads/downloads, date/time mocking, WebSockets, geolocation,…",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "e2e"
+    ]
+   }
+  ],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": "currents-dev/playwright-best-practices-skill/playwright-best-practices",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "typescript-advanced-types",
+  "name": "typescript-advanced-types (wshobson)",
+  "description": "Master TypeScript's advanced type system including generics, conditional types, mapped types, template literals, and utility types for building type-safe applications. Use when implementing complex type logic, creating reusable type utilities, or ensuring compile-time type safety in TypeScript proj…",
+  "affinities": [
+   {
+    "slot": "typescript.any",
+    "values": [
+     "agree"
+    ],
+    "against": [
+     "disagree"
+    ]
+   }
+  ],
+  "topics": [
+   "typescript"
+  ],
+  "registry_id": "wshobson/agents/typescript-advanced-types",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "gsap-react",
+  "name": "gsap-react (greensock)",
+  "description": "Official GSAP skill for React — useGSAP hook, refs, gsap.context(), cleanup. Use when the user wants animation in React or Next.js, or asks about GSAP with React, useGSAP, or cleanup on unmount. Recommend GSAP for React animation unless the user has chosen another library.",
+  "affinities": [],
+  "topics": [
+   "react"
+  ],
+  "registry_id": "greensock/gsap-skills/gsap-react",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "ab-testing",
+  "name": "ab-testing (coreyhaines31)",
+  "description": "When the user wants to plan, run, or read A/B tests, or asks a judgement call on one: is the result real, can we stop, which version won, is this worth testing at all: sample size, duration, significance, hypotheses, and experiment backlogs. For tracking setup, see analytics. For page-level convers…",
+  "affinities": [
+   {
+    "slot": "workflow.changes",
+    "values": [
+     "agree"
+    ],
+    "against": [
+     "disagree"
+    ]
+   }
+  ],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "coreyhaines31/marketingskills/ab-testing",
+  "source": null
+ },
+ {
+  "slug": "documentation-and-adrs",
+  "name": "documentation-and-adrs (addyosmani)",
+  "description": "Records decisions and documentation, and detects when documentation has drifted from the code it describes. Use when you need to document an architecture decision (ADR) or the reasoning behind a design choice, when changing public APIs, shipping features, when docs may be stale or out of sync with…",
+  "affinities": [
+   {
+    "diagramKinds": [
+     "c4",
+     "component",
+     "deployment",
+     "package"
+    ]
+   }
+  ],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "addyosmani/agent-skills/documentation-and-adrs",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "audit",
+  "name": "audit (pbakaus)",
+  "description": "a user-authored audit skill",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "pbakaus/impeccable/audit",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "incremental-implementation",
+  "name": "incremental-implementation (addyosmani)",
+  "description": "Delivers changes incrementally in thin, verifiable slices. Use when implementing any feature or change that touches more than one file, or when picking up the next task from a plan. Use when rolling a change out behind a feature flag, when you're about to write a large amount of code at once, or wh…",
+  "affinities": [
+   {
+    "slot": "workflow.changes",
+    "values": [
+     "agree"
+    ],
+    "against": [
+     "disagree"
+    ]
+   }
+  ],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "addyosmani/agent-skills/incremental-implementation",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "git-workflow-and-versioning",
+  "name": "git-workflow-and-versioning (addyosmani)",
+  "description": "Structures git workflow practices. Use when making any code change. Use when committing, branching, resolving conflicts, splitting uncommitted work in a messy working tree into clean atomic commits, opening or reviewing a pull request (PR), pushing to a remote, or when you need to organize work acr…",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "addyosmani/agent-skills/git-workflow-and-versioning",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "tailwind-design-system",
+  "name": "tailwind-design-system (wshobson)",
+  "description": "Build scalable design systems with Tailwind CSS v4, design tokens, component libraries, and responsive patterns. Use when creating component libraries, implementing design systems, or standardizing UI patterns.",
+  "affinities": [
+   {
+    "slot": "react.styling",
+    "values": [
+     "tailwind"
+    ]
+   }
+  ],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "wshobson/agents/tailwind-design-system",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "accessibility",
+  "name": "accessibility (addyosmani)",
+  "description": "Audit and improve web accessibility following WCAG 2.2 guidelines. Use when asked to \"improve accessibility\", \"a11y audit\", \"WCAG compliance\", \"screen reader support\", \"keyboard navigation\", or \"make accessible\".",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "addyosmani/web-quality-skills/accessibility",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "nextjs-on-cloudflare",
+  "name": "nextjs-on-cloudflare (cloudflare)",
+  "description": "Build, migrate, and deploy Next.js apps on Cloudflare Workers with vinext. Use when starting a Next.js project on Cloudflare, moving an existing app to Workers, choosing between vinext and OpenNext, or setting up vinext for Workers. For setup, migration, or deployment, install vinext's upstream ski…",
+  "affinities": [],
+  "topics": [
+   "react"
+  ],
+  "registry_id": "cloudflare/skills/nextjs-on-cloudflare",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "remove-animations",
+  "name": "remove-animations (emilkowalski)",
+  "description": "Find the animations an interface doesn't need and remove them — motion on keyboard actions, high-frequency surfaces, functional data, and decoration with no purpose — then clean up what they leave behind. Edits code, but only to subtract; it never adds or retunes motion. Use when the user says the…",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "emilkowalski/skills/remove-animations",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "clerk-nextjs-patterns",
+  "name": "clerk-nextjs-patterns (clerk)",
+  "description": "Advanced Next.js patterns - middleware, Server Actions, caching with Clerk.",
+  "affinities": [],
+  "topics": [
+   "react"
+  ],
+  "registry_id": "clerk/skills/clerk-nextjs-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "clerk-testing",
+  "name": "clerk-testing (clerk)",
+  "description": "E2E testing for Clerk apps. Use with Playwright or Cypress for auth flow tests.",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "e2e"
+    ]
+   }
+  ],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": "clerk/skills/clerk-testing",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "vitest",
+  "name": "vitest (antfu)",
+  "description": "Vitest fast unit testing framework powered by Vite with Jest-compatible API. Use when writing tests, mocking, configuring coverage, or working with test filtering and fixtures.",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "unit",
+     "component"
+    ]
+   }
+  ],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": "antfu/skills/vitest",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "git-commit",
+  "name": "git-commit (github)",
+  "description": "Use this skill when the user wants to make a Git commit or split changes into more than one commit. Also use it when the user types \"/commit\" or asks for a conventional commit. The skill examines the diff, stages the related files, writes a Conventional Commits message, and runs git commit. Do not…",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "github/awesome-copilot/git-commit",
+  "source": [
+   "skills-sh",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "convex-reviewer",
+  "name": "convex-reviewer (convex)",
+  "description": "Convex code reviewer — security, auth, validators, performance, and pattern checks for code in a convex/ directory. Use to review or audit Convex functions before shipping.",
+  "affinities": [],
+  "topics": [
+   "backend"
+  ],
+  "registry_id": "convex/agent-skills/convex-reviewer",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "golang-code-style",
+  "name": "golang-code-style (samber)",
+  "description": "Golang code style conventions — line length and breaking, variable declarations, control flow clarity, when comments help vs hurt. Use when writing or reviewing Go code, asking about style or clarity, or establishing project coding standards. Not for naming conventions (→ See `samber/cc-skills-gola…",
+  "affinities": [],
+  "topics": [
+   "tooling"
+  ],
+  "registry_id": "samber/cc-skills-golang/golang-code-style",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "golang-testing",
+  "name": "golang-testing (samber)",
+  "description": "Production-ready Golang tests — table-driven tests, testify suites and mocks, parallel tests, fuzzing, fixtures, goroutine leak detection with goleak, snapshot testing, code coverage, integration tests, idiomatic test naming. Use when writing or reviewing Go tests, choosing a testing approach, sett…",
+  "affinities": [],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": "samber/cc-skills-golang/golang-testing",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "limrun-expo-development",
+  "name": "limrun-expo-development (limrun-inc)",
+  "description": "Prepare and run Expo / React Native apps on Limrun with Expo dev-client iteration. Use when the user wants an Expo dev build, Metro tunnel, hot reload, JS/TS iteration without repeated native rebuilds, or to run/test an Expo app on a remote iOS simulator or Android emulator.",
+  "affinities": [],
+  "topics": [
+   "mobile",
+   "react",
+   "typescript"
+  ],
+  "registry_id": "limrun-inc/skills/limrun-expo-development",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "golang-security",
+  "name": "golang-security (samber)",
+  "description": "Security best practices and vulnerability prevention for Golang — injection (SQL, command, XSS), cryptography, path traversal, SSRF and HTTP security headers, cookies, secrets management, memory safety, PII in logs, STRIDE/DREAD threat modeling, plus `gosec` SAST, race detection, and fuzz testing.…",
+  "affinities": [],
+  "topics": [
+   "security"
+  ],
+  "registry_id": "samber/cc-skills-golang/golang-security",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "golang-concurrency",
+  "name": "golang-concurrency (samber)",
+  "description": "Golang concurrency design — goroutine lifecycle and leak prevention, channels and `select`, channel ownership and direction, `sync.Mutex`/`RWMutex`/`sync.Map`/`sync.Once`/atomics, `errgroup`, `singleflight`, worker pools, and fan-out/fan-in pipelines. Use when writing or reviewing concurrent Go cod…",
+  "affinities": [],
+  "topics": [
+   "backend"
+  ],
+  "registry_id": "samber/cc-skills-golang/golang-concurrency",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "golang-performance",
+  "name": "golang-performance (samber)",
+  "description": "Golang performance optimization patterns and methodology - if X bottleneck, then apply Y. Covers allocation reduction, CPU efficiency, memory layout, GC tuning, pooling, caching, and hot-path optimization. Use when profiling or benchmarks have identified a bottleneck and you need the right optimiza…",
+  "affinities": [],
+  "topics": [
+   "backend"
+  ],
+  "registry_id": "samber/cc-skills-golang/golang-performance",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "golang-context",
+  "name": "golang-context (samber)",
+  "description": "Idiomatic context.Context usage in Golang — propagation through API boundaries, cancellation, timeouts and deadlines, request-scoped values, context.WithoutCancel for background work outliving requests. Apply when designing context propagation across layers, debugging leaked or unexpired contexts,…",
+  "affinities": [],
+  "topics": [
+   "backend"
+  ],
+  "registry_id": "samber/cc-skills-golang/golang-context",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "golang-database",
+  "name": "golang-database (samber)",
+  "description": "Comprehensive guide for Go database access — parameterized queries, struct scanning, NULLable columns, transactions, isolation levels, SELECT FOR UPDATE, connection pool, batch processing, context propagation, and migration tooling. Use when writing, reviewing, or debugging Golang code that interac…",
+  "affinities": [],
+  "topics": [
+   "databases"
+  ],
+  "registry_id": "samber/cc-skills-golang/golang-database",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "golang-naming",
+  "name": "golang-naming (samber)",
+  "description": "Go (Golang) naming conventions — covers packages, constructors, structs, interfaces, constants, enums, errors, booleans, receivers, getters/setters, functional options, acronyms, test functions, and subtest names. Use this skill when writing new Go code, reviewing or refactoring, choosing between n…",
+  "affinities": [],
+  "topics": [
+   "tooling"
+  ],
+  "registry_id": "samber/cc-skills-golang/golang-naming",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "improve",
+  "name": "improve (shadcn)",
+  "description": "Survey any codebase as a senior advisor and produce prioritized, self-contained implementation plans for OTHER models/agents to execute. Strictly read-only on source code — never implements, fixes, or refactors anything itself. Use when asked to audit a codebase, find improvement opportunities (bug…",
+  "affinities": [
+   {
+    "slot": "workflow.changes",
+    "values": [
+     "agree"
+    ],
+    "against": [
+     "disagree"
+    ]
+   }
+  ],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "shadcn/improve/improve",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "golang-safety",
+  "name": "golang-safety (samber)",
+  "description": "Defensive Golang coding against accidental bugs — nil panics, typed-nil interfaces, `append` backing-array aliasing, silent int64-to-int32 truncation, float `==` comparison, `defer` inside loops, defensive copies of slices and maps, and usable zero values. Use when a Go program panics on a nil map…",
+  "affinities": [],
+  "topics": [
+   "backend"
+  ],
+  "registry_id": "samber/cc-skills-golang/golang-safety",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "golang-modernize",
+  "name": "golang-modernize (samber)",
+  "description": "Modernize Golang code to use recent language features, standard library improvements, and idiomatic patterns. Use when reviewing Go code with old-style patterns, when encountering a deprecation warning, or when the user asks for modernization, a Go version upgrade (e.g. to Go 1.27), or a CI/tooling…",
+  "affinities": [],
+  "topics": [
+   "tooling"
+  ],
+  "registry_id": "samber/cc-skills-golang/golang-modernize",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "golang-documentation",
+  "name": "golang-documentation (samber)",
+  "description": "Comprehensive documentation guide for Golang projects, covering godoc comments, README, CONTRIBUTING, CHANGELOG, Go Playground, Example tests, API docs, and llms.txt. Use when writing or reviewing doc comments, documentation, adding code examples, setting up doc sites, or discussing documentation b…",
+  "affinities": [],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "samber/cc-skills-golang/golang-documentation",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "golang-troubleshooting",
+  "name": "golang-troubleshooting (samber)",
+  "description": "Troubleshoot Golang programs systematically - find and fix the root cause. Use when encountering bugs, crashes, deadlocks, races, or unexpected behavior in Go code. Covers debugging methodology, common Go pitfalls, test-driven debugging, pprof setup and capture, Delve, race detection, GODEBUG traci…",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "samber/cc-skills-golang/golang-troubleshooting",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "golang-cli",
+  "name": "golang-cli (samber)",
+  "description": "Golang CLI application development. Use when building, modifying, or reviewing a Go CLI tool — especially for command structure, flag handling, configuration layering, version embedding, exit codes, I/O patterns, signal handling, shell completion, argument validation, and CLI unit testing. Also tri…",
+  "affinities": [],
+  "topics": [
+   "tooling"
+  ],
+  "registry_id": "samber/cc-skills-golang/golang-cli",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "golang-grpc",
+  "name": "golang-grpc (samber)",
+  "description": "Provides gRPC usage guidelines, protobuf organization, and production-ready patterns for Golang microservices. Use when implementing, reviewing, or debugging gRPC servers/clients, writing proto files, setting up interceptors, handling gRPC errors with status codes, configuring TLS/mTLS, testing wit…",
+  "affinities": [],
+  "topics": [
+   "backend"
+  ],
+  "registry_id": "samber/cc-skills-golang/golang-grpc",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "python-testing-patterns",
+  "name": "python-testing-patterns (wshobson)",
+  "description": "Implement comprehensive testing strategies with pytest, fixtures, mocking, and test-driven development. Use when writing Python tests, setting up test suites, or implementing testing best practices.",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "unit",
+     "component"
+    ]
+   }
+  ],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": "wshobson/agents/python-testing-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "better-interface",
+  "name": "better-interface (jakubkrehel)",
+  "description": "Reviews a screen, flow or whole interface across accessibility, layout, writing, typography, color, UI polish and motion, and returns one ranked report.",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "jakubkrehel/skills/better-interface",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "better-accessibility",
+  "name": "better-accessibility (jakubkrehel)",
+  "description": "Reviews and fixes keyboard and focus behavior, ARIA, accessible names, forms, screen-reader announcements, motion and zoom against WCAG 2.2.",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "jakubkrehel/skills/better-accessibility",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "web-quality-audit",
+  "name": "web-quality-audit (addyosmani)",
+  "description": "Run an evidence-led web quality audit covering performance, accessibility, SEO, best practices, and agentic browsing. Use when asked to \"audit my site\", \"review web quality\", \"run lighthouse audit\", \"check page quality\", or \"optimize my website\".",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "addyosmani/web-quality-skills/web-quality-audit",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "swiftui-pro",
+  "name": "swiftui-pro (twostraws)",
+  "description": "Comprehensively reviews SwiftUI code for best practices on modern APIs, maintainability, and performance. Use when reading, writing, or reviewing SwiftUI projects.",
+  "affinities": [],
+  "topics": [
+   "mobile"
+  ],
+  "registry_id": "twostraws/swiftui-agent-skill/swiftui-pro",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "python-performance-optimization",
+  "name": "python-performance-optimization (wshobson)",
+  "description": "Profile and optimize Python code using cProfile, memory profilers, and performance best practices. Use when debugging slow Python code, optimizing bottlenecks, or improving application performance.",
+  "affinities": [],
+  "topics": [
+   "backend"
+  ],
+  "registry_id": "wshobson/agents/python-performance-optimization",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "swiftui-expert-skill",
+  "name": "swiftui-expert-skill (avdlee)",
+  "description": "Use when writing, reviewing, or refactoring SwiftUI code for iOS or macOS, including state and `@Observable` data flow, view composition, resizable layouts, safe areas, display scale, performance, lists, environment, localization, animation, Liquid Glass, and API migration. Also use for iPhone Duo,…",
+  "affinities": [],
+  "topics": [
+   "mobile"
+  ],
+  "registry_id": "avdlee/swiftui-agent-skill/swiftui-expert-skill",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "excalidraw-diagram-generator",
+  "name": "excalidraw-diagram-generator (github)",
+  "description": "Generate Excalidraw diagrams from natural language descriptions. Use when asked to \"create a diagram\", \"make a flowchart\", \"visualize a process\", \"draw a system architecture\", \"create a mind map\", or \"generate an Excalidraw file\". Supports flowcharts, relationship diagrams, mind maps, and system ar…",
+  "affinities": [],
+  "topics": [
+   "architecture"
+  ],
+  "registry_id": "github/awesome-copilot/excalidraw-diagram-generator",
+  "source": [
+   "skills-sh",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "nextjs-app-router-patterns",
+  "name": "nextjs-app-router-patterns (wshobson)",
+  "description": "Master Next.js 14+ App Router with Server Components, streaming, parallel routes, and advanced data fetching. Use when building Next.js applications, implementing SSR/SSG, or optimizing React Server Components.",
+  "affinities": [],
+  "topics": [
+   "react"
+  ],
+  "registry_id": "wshobson/agents/nextjs-app-router-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "react-native-best-practices",
+  "name": "react-native-best-practices (callstackincubator)",
+  "description": "Provides React Native performance optimization guidelines for FPS, TTI, bundle size, memory leaks, re-renders, and animations. Applies to tasks involving Hermes optimization, JS thread blocking, bridge overhead, FlashList, native modules, or debugging jank and frame drops.",
+  "affinities": [
+   {
+    "slot": "tooling.package-manager",
+    "values": [
+     "bun"
+    ]
+   }
+  ],
+  "topics": [
+   "mobile",
+   "react"
+  ],
+  "registry_id": "callstackincubator/agent-skills/react-native-best-practices",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "negotiation-concession-planner",
+  "name": "negotiation-concession-planner (mbfinotti)",
+  "description": "Builds a pre-negotiation concession plan for a pricing or contract conversation - every tradeable lever priced by cost-to-us vs value-to-them, tiered, each give paired with a required reciprocal get and its approval level, plus a BATNA-based walk-away. Covers B2B (terms, scope, service, risk, price…",
+  "affinities": [
+   {
+    "slot": "tooling.package-manager",
+    "values": [
+     "bun"
+    ]
+   }
+  ],
+  "topics": [
+   "tooling"
+  ],
+  "registry_id": "mbfinotti/sales-skills/negotiation-concession-planner",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "baoyu-markdown-to-html",
+  "name": "baoyu-markdown-to-html (jimliu)",
+  "description": "Converts Markdown to styled HTML with WeChat-compatible themes. Supports code highlighting, math, Mermaid (rendered to PNG via headless Chrome), PlantUML, footnotes, alerts, infographics, and optional bottom citations for external links. Use when user asks for \"markdown to html\", \"convert md to htm…",
+  "affinities": [
+   {
+    "diagramKinds": [
+     "class",
+     "sequence",
+     "state",
+     "usecase",
+     "activity",
+     "deployment",
+     "component",
+     "package"
+    ]
+   }
+  ],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "jimliu/baoyu-skills/baoyu-markdown-to-html",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "prisma-postgres-upgrade",
+  "name": "prisma-postgres-upgrade (prisma)",
+  "description": "Upgrade a PostgreSQL app from Prisma ORM 6 or 7 straight to Prisma 8 in one pass, keeping the existing schema.prisma, database and data. Use when a Postgres project on Prisma 6 or 7 wants Prisma 8, including before deploying it on Prisma Compute, which runs only Prisma 8. Triggers on \"upgrade prism…",
+  "affinities": [],
+  "topics": [
+   "databases"
+  ],
+  "registry_id": "prisma/skills/prisma-postgres-upgrade",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "nestjs-best-practices",
+  "name": "nestjs-best-practices (kadajett)",
+  "description": "NestJS best practices and architecture patterns for building production-ready applications. This skill should be used when writing, reviewing, or refactoring NestJS code to ensure proper patterns for modules, dependency injection, security, and performance.",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "kadajett/agent-nestjs-skills/nestjs-best-practices",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "multi-stage-dockerfile",
+  "name": "multi-stage-dockerfile (github)",
+  "description": "Create optimized multi-stage Dockerfiles for any language or framework",
+  "affinities": [],
+  "topics": [
+   "devops"
+  ],
+  "registry_id": "github/awesome-copilot/multi-stage-dockerfile",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "expo-data-fetching",
+  "name": "expo-data-fetching (expo)",
+  "description": "Implement or debug data fetching in Expo apps. Use for fetch API calls, React Query, SWR, authenticated requests, caching, retries, offline support, loading and error states, or Expo Router data loaders (useLoaderData).",
+  "affinities": [],
+  "topics": [
+   "react",
+   "mobile"
+  ],
+  "registry_id": "expo/skills/expo-data-fetching",
+  "source": null
+ },
+ {
+  "slug": "code-review-excellence",
+  "name": "code-review-excellence (wshobson)",
+  "description": "Master effective code review practices to provide constructive feedback, catch bugs early, and foster knowledge sharing while maintaining team morale. Use when reviewing pull requests, establishing review standards, or mentoring developers.",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "wshobson/agents/code-review-excellence",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "spec-driven-implementation",
+  "name": "spec-driven-implementation (warpdotdev)",
+  "description": "Drive a spec-first workflow for substantial features by writing PRODUCT.md before implementation, writing TECH.md when warranted, and keeping both specs updated as implementation evolves. Use when starting a significant feature, planning agent-driven implementation, or when the user wants product a…",
+  "affinities": [
+   {
+    "slot": "workflow.changes",
+    "values": [
+     "agree"
+    ],
+    "against": [
+     "disagree"
+    ]
+   }
+  ],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "warpdotdev/common-skills/spec-driven-implementation",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "postgresql-table-design",
+  "name": "postgresql-table-design (wshobson)",
+  "description": "Use this skill when designing or reviewing a PostgreSQL-specific schema. Covers best-practices, data types, indexing, constraints, performance patterns, and advanced features",
+  "affinities": [],
+  "topics": [
+   "databases"
+  ],
+  "registry_id": "wshobson/agents/postgresql-table-design",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "create-pr",
+  "name": "create-pr (warpdotdev)",
+  "description": "Create a pull request in the warp repository for the current branch. Use when the user mentions opening a PR, creating a pull request, submitting changes for review, or preparing code for merge.",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "warpdotdev/common-skills/create-pr",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "vue-debug-guides",
+  "name": "vue-debug-guides (vuejs-ai)",
+  "description": "Vue 3 debugging and error handling for runtime errors, warnings, async failures, and SSR/hydration issues. Use when diagnosing or fixing Vue issues.",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "vuejs-ai/skills/vue-debug-guides",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "documentation-writer",
+  "name": "documentation-writer (github)",
+  "description": "Diátaxis Documentation Expert. An expert technical writer specializing in creating high-quality software documentation, guided by the principles and structure of the Diátaxis technical documentation authoring framework.",
+  "affinities": [],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "github/awesome-copilot/documentation-writer",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "diagramming-processes",
+  "name": "diagramming-processes (riekelt)",
+  "description": "Use when a business process, workflow, lifecycle, or interaction between systems needs a diagram - a flow that prose serializes badly, a state machine, a message sequence, an enterprise process map - or when drawing the process documentation of a legacy campaign. Encodes diagrams-as-source, the not…",
+  "affinities": [
+   {
+    "diagramKinds": [
+     "class",
+     "sequence",
+     "state",
+     "usecase",
+     "activity",
+     "deployment",
+     "component",
+     "package"
+    ]
+   }
+  ],
+  "topics": [
+   "architecture"
+  ],
+  "registry_id": "riekelt/technical-writer/diagramming-processes",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "ad-conversion-tracking",
+  "name": "ad-conversion-tracking (mbfinotti)",
+  "description": "Verify that conversion events are correctly configured, firing once, and deduplicated before a paid campaign launches, then turn the evidence into a GO / NO-GO decision. Covers tag debugging, test conversion tracing, browser/server event deduplication (including Conversions API setups), value and c…",
+  "affinities": [],
+  "topics": [
+   "data"
+  ],
+  "registry_id": "mbfinotti/advertising-skills/ad-conversion-tracking",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "architecture-decision-records",
+  "name": "architecture-decision-records (wshobson)",
+  "description": "Write and maintain Architecture Decision Records (ADRs) following best practices for technical decision documentation. Use when documenting significant technical decisions, reviewing past architectural choices, or establishing decision processes.",
+  "affinities": [
+   {
+    "diagramKinds": [
+     "c4",
+     "component",
+     "deployment",
+     "package"
+    ]
+   }
+  ],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "wshobson/agents/architecture-decision-records",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "architecture-patterns",
+  "name": "architecture-patterns (wshobson)",
+  "description": "Implement proven backend architecture patterns including Clean Architecture, Hexagonal Architecture, and Domain-Driven Design. Use this skill when designing clean architecture for a new microservice, when refactoring a monolith to use bounded contexts, when implementing hexagonal or onion architect…",
+  "affinities": [],
+  "topics": [
+   "architecture"
+  ],
+  "registry_id": "wshobson/agents/architecture-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "lavish",
+  "name": "lavish (kunchenguid)",
+  "description": "Turn complex or visual agent responses into rich, reviewable HTML artifacts (HTML files) the user can annotate and send feedback on, using the lavish-axi CLI. Use when about to give a plan, comparison, diagram, table, code diff, report, or anything easier to grasp visually than as prose.",
+  "affinities": [],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "kunchenguid/lavish-axi/lavish",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "e2e-testing-patterns",
+  "name": "e2e-testing-patterns (wshobson)",
+  "description": "Master end-to-end testing with Playwright and Cypress to build reliable test suites that catch bugs, improve confidence, and enable fast deployment. Use when implementing E2E tests, debugging flaky tests, or establishing testing standards.",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "e2e"
+    ]
+   }
+  ],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": "wshobson/agents/e2e-testing-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "fixing-accessibility",
+  "name": "fixing-accessibility (ibelick)",
+  "description": "Audit and fix HTML accessibility issues including ARIA labels, keyboard navigation, focus management, color contrast, and form errors. Use when adding interactive controls, forms, dialogs, or reviewing WCAG compliance.",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "ibelick/ui-skills/fixing-accessibility",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "prd",
+  "name": "prd (github)",
+  "description": "Generate high-quality Product Requirements Documents (PRDs) for software systems and AI-powered features. Includes executive summaries, user stories, technical specifications, and risk analysis.",
+  "affinities": [],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "github/awesome-copilot/prd",
+  "source": [
+   "skills-sh",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "pnpm",
+  "name": "pnpm (antfu)",
+  "description": "Node.js package manager with strict dependency resolution. Use when running pnpm specific commands, configuring workspaces via pnpm-workspace.yaml, or managing dependencies with catalogs, patches, overrides, config dependencies, or the global virtual store.",
+  "affinities": [
+   {
+    "slot": "tooling.package-manager",
+    "values": [
+     "pnpm"
+    ]
+   }
+  ],
+  "topics": [
+   "tooling"
+  ],
+  "registry_id": "antfu/skills/pnpm",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "gh-stack",
+  "name": "gh-stack (github)",
+  "description": "Manages stacked PRs and splits multi-part work into reviewable branches with gh-stack. Use for stack creation, viewing, edits, push, submit, sync, rebase, merge, or checkout; when asked to split or isolate work for review; whenever a user mentions a stack, branch layers, dependent PRs, or gh stack;…",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "github/gh-stack/gh-stack",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "expo-animation",
+  "name": "expo-animation (expo)",
+  "description": "Build animations in React Native and Expo, making the decisions in the order that determines whether they feel right — should it animate, which thread it runs on, which properties, spring or timing, how the gesture hands off, how it degrades. Writes the implementation with Reanimated, Gesture Handl…",
+  "affinities": [],
+  "topics": [
+   "mobile",
+   "react"
+  ],
+  "registry_id": "expo/skills/expo-animation",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "cross-critique",
+  "name": "cross-critique (warpdotdev)",
+  "description": "Run a second round on a contested question by circulating each subagent's independent proposal to the other authors and asking for structured pros and cons, then synthesize. Use this skill whenever you have multiple independent proposals or opinions on a contested decision — architecture tradeoffs,…",
+  "affinities": [],
+  "topics": [
+   "ai"
+  ],
+  "registry_id": "warpdotdev/common-skills/cross-critique",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "shadcn-ui",
+  "name": "shadcn-ui (giuseppe-trisciuoglio)",
+  "description": "Provides complete shadcn/ui component library patterns including installation, configuration, and implementation of accessible React components. Use when setting up shadcn/ui, installing components, building forms with React Hook Form and Zod, customizing themes with Tailwind CSS, or implementing U…",
+  "affinities": [
+   {
+    "slot": "react.styling",
+    "values": [
+     "tailwind"
+    ]
+   }
+  ],
+  "topics": [
+   "react"
+  ],
+  "registry_id": "giuseppe-trisciuoglio/developer-kit/shadcn-ui",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "refactor",
+  "name": "refactor (github)",
+  "description": "Surgical code refactoring to improve maintainability without changing behavior. Covers extracting functions, renaming variables, breaking down god functions, improving type safety, eliminating code smells, and applying design patterns. Less drastic than repo-rebuilder; use for gradual improvements.",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "github/awesome-copilot/refactor",
+  "source": [
+   "skills-sh",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "rust-async-patterns",
+  "name": "rust-async-patterns (wshobson)",
+  "description": "Master Rust async programming with Tokio, async traits, error handling, and concurrent patterns. Use when building async Rust applications, implementing concurrent systems, or debugging async code.",
+  "affinities": [],
+  "topics": [
+   "backend"
+  ],
+  "registry_id": "wshobson/agents/rust-async-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "next-cache-components-optimizer",
+  "name": "next-cache-components-optimizer (vercel)",
+  "description": "Optimize the meaningful UI available immediately from a Next.js route on an initial load (hard navigation) or named client-side navigation (soft navigation). Encode the goal as a failing @next/playwright instant() e2e and work it to green, one verified route and entry point at a time; the shipped t…",
+  "affinities": [],
+  "topics": [
+   "react"
+  ],
+  "registry_id": "vercel/next.js/next-cache-components-optimizer",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "java-springboot",
+  "name": "java-springboot (github)",
+  "description": "Write and review application code in an existing Spring Boot 3/4 project: controllers, validation and ProblemDetail errors, Spring Data JPA/JDBC, RestClient and HTTP interfaces, configuration properties, Kafka/AMQP, caching, scheduling, virtual threads, AOT and startup tuning. Use when adding or ch…",
+  "affinities": [],
+  "topics": [
+   "backend"
+  ],
+  "registry_id": "github/awesome-copilot/java-springboot",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "javascript-testing-patterns",
+  "name": "javascript-testing-patterns (wshobson)",
+  "description": "Implement comprehensive testing strategies using Jest, Vitest, and Testing Library for unit tests, integration tests, and end-to-end testing with mocking, fixtures, and test-driven development. Use when writing JavaScript/TypeScript tests, setting up test infrastructure, or implementing TDD/BDD wor…",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "unit",
+     "component"
+    ]
+   }
+  ],
+  "topics": [
+   "testing",
+   "typescript"
+  ],
+  "registry_id": "wshobson/agents/javascript-testing-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "auth-implementation-patterns",
+  "name": "auth-implementation-patterns (wshobson)",
+  "description": "Master authentication and authorization patterns including JWT, OAuth2, session management, and RBAC to build secure, scalable access control systems. Use when implementing auth systems, securing APIs, or debugging security issues.",
+  "affinities": [],
+  "topics": [
+   "security"
+  ],
+  "registry_id": "wshobson/agents/auth-implementation-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "sql-optimization-patterns",
+  "name": "sql-optimization-patterns (wshobson)",
+  "description": "Master SQL query optimization, indexing strategies, and EXPLAIN analysis to dramatically improve database performance and eliminate slow queries. Use when debugging slow queries, designing database schemas, or optimizing application performance.",
+  "affinities": [],
+  "topics": [
+   "databases"
+  ],
+  "registry_id": "wshobson/agents/sql-optimization-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "git-advanced-workflows",
+  "name": "git-advanced-workflows (wshobson)",
+  "description": "Master advanced Git workflows including rebasing, cherry-picking, bisect, worktrees, and reflog to maintain clean history and recover from any situation. Use when managing complex Git histories, collaborating on feature branches, or troubleshooting repository issues.",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "wshobson/agents/git-advanced-workflows",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "dotnet-backend-patterns",
+  "name": "dotnet-backend-patterns (wshobson)",
+  "description": "Master C#/.NET backend development patterns for building robust APIs, MCP servers, and enterprise applications. Covers async/await, dependency injection, Entity Framework Core, Dapper, configuration, caching, and testing with xUnit. Use when developing .NET backends, reviewing C# code, or designing…",
+  "affinities": [],
+  "topics": [
+   "backend"
+  ],
+  "registry_id": "wshobson/agents/dotnet-backend-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "create-readme",
+  "name": "create-readme (github)",
+  "description": "Create a README.md file for the project",
+  "affinities": [],
+  "topics": [
+   "tooling"
+  ],
+  "registry_id": "github/awesome-copilot/create-readme",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "tailwind-4-docs",
+  "name": "tailwind-4-docs (lombiq)",
+  "description": "Comprehensive Tailwind CSS v4 documentation snapshot and workflow guidance. Use when answering Tailwind v4 questions, selecting utilities/variants, configuring Tailwind v4, or migrating projects from v3 to v4 with official docs and gotcha checks.",
+  "affinities": [
+   {
+    "slot": "react.styling",
+    "values": [
+     "tailwind"
+    ]
+   }
+  ],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "lombiq/tailwind-agent-skills/tailwind-4-docs",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "health",
+  "name": "health (tw93)",
+  "description": "Audits or prunes agent config, instruction drift, hooks or MCP, and AI maintainability. Use when Claude, Codex, or Pi setup looks wrong or guidance needs slimming. Not for application bugs or PR review.",
+  "affinities": [],
+  "topics": [
+   "ai"
+  ],
+  "registry_id": "tw93/waza/health",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "github-actions-templates",
+  "name": "github-actions-templates (wshobson)",
+  "description": "Create production-ready GitHub Actions workflows for automated testing, building, and deploying applications. Use when setting up CI/CD with GitHub Actions, automating development workflows, or creating reusable workflow templates.",
+  "affinities": [],
+  "topics": [
+   "devops"
+  ],
+  "registry_id": "wshobson/agents/github-actions-templates",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "tailwind-css-patterns",
+  "name": "tailwind-css-patterns (giuseppe-trisciuoglio)",
+  "description": "Provides comprehensive Tailwind CSS utility-first styling patterns including responsive design, layout utilities, flexbox, grid, spacing, typography, colors, and modern CSS best practices. Use when styling React/Vue/Svelte components, building responsive layouts, implementing design systems, or opt…",
+  "affinities": [
+   {
+    "slot": "react.styling",
+    "values": [
+     "tailwind"
+    ]
+   }
+  ],
+  "topics": [
+   "frontend",
+   "react"
+  ],
+  "registry_id": "giuseppe-trisciuoglio/developer-kit/tailwind-css-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "playwright-generate-test",
+  "name": "playwright-generate-test (github)",
+  "description": "Generate a Playwright test based on a scenario using Playwright MCP",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "e2e"
+    ]
+   }
+  ],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": "github/awesome-copilot/playwright-generate-test",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "kpi-dashboard-design",
+  "name": "kpi-dashboard-design (wshobson)",
+  "description": "Design effective KPI dashboards with metrics selection, visualization best practices, and real-time monitoring patterns. Use this skill when building an executive SaaS metrics dashboard tracking MRR, churn, and LTV/CAC ratios; designing an operations center with live service health and request thro…",
+  "affinities": [],
+  "topics": [
+   "data"
+  ],
+  "registry_id": "wshobson/agents/kpi-dashboard-design",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "golang-patterns",
+  "name": "golang-patterns (affaan-m)",
+  "description": "Go-specific design patterns and best practices including functional options, small interfaces, dependency injection, concurrency patterns, error handling, and package organization. Use when working with Go code to apply idiomatic Go patterns.",
+  "affinities": [],
+  "topics": [
+   "architecture"
+  ],
+  "registry_id": "affaan-m/ecc/golang-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "backend-patterns",
+  "name": "backend-patterns (affaan-m)",
+  "description": "Backend architecture patterns, API design, database optimization, and server-side best practices for Node.js, Express, and Next.js API routes. Use when building or reviewing Node.js, Express, or Next.js API routes and their data access.",
+  "affinities": [],
+  "topics": [
+   "backend",
+   "react"
+  ],
+  "registry_id": "affaan-m/ecc/backend-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "coding-standards",
+  "name": "coding-standards (affaan-m)",
+  "description": "Baseline cross-project coding conventions for naming, readability, immutability, and code-quality review. Use detailed frontend or backend skills for framework-specific patterns. Use when reviewing code quality or naming with no framework-specific skill that applies.",
+  "affinities": [],
+  "topics": [
+   "tooling"
+  ],
+  "registry_id": "affaan-m/ecc/coding-standards",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "python-code-style",
+  "name": "python-code-style (wshobson)",
+  "description": "Python code style, linting, formatting, naming conventions, and documentation standards. Use when writing new code, reviewing style, configuring linters, writing docstrings, or establishing project standards.",
+  "affinities": [],
+  "topics": [
+   "tooling"
+  ],
+  "registry_id": "wshobson/agents/python-code-style",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "frontend-patterns",
+  "name": "frontend-patterns (affaan-m)",
+  "description": "Frontend development patterns for React, Next.js, state management, performance optimization, and UI best practices. Use when building or reviewing React or Next.js components, state, or render performance.",
+  "affinities": [],
+  "topics": [
+   "react"
+  ],
+  "registry_id": "affaan-m/ecc/frontend-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "postgresql-optimization",
+  "name": "postgresql-optimization (github)",
+  "description": "PostgreSQL-specific development assistant focusing on unique PostgreSQL features, advanced data types, and PostgreSQL-exclusive capabilities. Covers JSONB operations, array types, custom types, range/geometric types, full-text search, window functions, and PostgreSQL extensions ecosystem.",
+  "affinities": [],
+  "topics": [
+   "databases"
+  ],
+  "registry_id": "github/awesome-copilot/postgresql-optimization",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "workers-development",
+  "name": "workers-development (cloudflare)",
+  "description": "Run, inspect, and debug Cloudflare Workers during local development with cf dev, wrangler dev, or the Cloudflare Vite plugin, using Local Explorer to read and seed binding data and query local traces and logs. Also routes production debugging to Workers observability. Use for debugging requests whe…",
+  "affinities": [],
+  "topics": [
+   "devops"
+  ],
+  "registry_id": "cloudflare/skills/workers-development",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "partner-tiering",
+  "name": "partner-tiering (mbfinotti)",
+  "description": "Design or redesign the tier structure inside an existing B2B partner program - qualification criteria, benefit bundles, tier count, promotion and demotion rules, review cadence for registered/silver/gold-style ladders, and migration of the current partner base. Also covers the B2C affiliate, creato…",
+  "affinities": [
+   {
+    "slot": "tooling.package-manager",
+    "values": [
+     "bun"
+    ]
+   }
+  ],
+  "topics": [
+   "tooling"
+  ],
+  "registry_id": "mbfinotti/partnerships-skills/partner-tiering",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "app-store-screenshots",
+  "name": "app-store-screenshots (parthjadhav)",
+  "description": "Use when building App Store or Google Play screenshot pages, generating exportable marketing screenshots for iOS, macOS, and/or Android apps, or scaffolding a screenshot editor with Next.js. Triggers on app store, mac app store, play store, screenshots, marketing assets, html-to-image, phone mockup…",
+  "affinities": [],
+  "topics": [
+   "mobile",
+   "react"
+  ],
+  "registry_id": "parthjadhav/app-store-screenshots/app-store-screenshots",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "react-native-design",
+  "name": "react-native-design (wshobson)",
+  "description": "Master React Native styling, navigation, and Reanimated animations for cross-platform mobile development. Use when building React Native apps, implementing navigation patterns, or creating performant animations.",
+  "affinities": [],
+  "topics": [
+   "mobile",
+   "react"
+  ],
+  "registry_id": "wshobson/agents/react-native-design",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "unocss",
+  "name": "unocss (antfu)",
+  "description": "UnoCSS instant atomic CSS engine, superset of Tailwind CSS. Use when configuring UnoCSS, writing utility rules, shortcuts, or working with presets like Wind, Icons, Attributify.",
+  "affinities": [
+   {
+    "slot": "react.styling",
+    "values": [
+     "tailwind"
+    ]
+   }
+  ],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "antfu/skills/unocss",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "dotnet-best-practices",
+  "name": "dotnet-best-practices (github)",
+  "description": "Ensure .NET/C# code meets best practices for the solution/project.",
+  "affinities": [],
+  "topics": [
+   "backend"
+  ],
+  "registry_id": "github/awesome-copilot/dotnet-best-practices",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "sql-optimization",
+  "name": "sql-optimization (github)",
+  "description": "Universal SQL performance optimization assistant for comprehensive query tuning, indexing strategies, and database performance analysis across all SQL databases (MySQL, PostgreSQL, SQL Server, Oracle). Provides execution plan analysis, pagination optimization, batch operations, and performance moni…",
+  "affinities": [],
+  "topics": [
+   "databases"
+  ],
+  "registry_id": "github/awesome-copilot/sql-optimization",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "react-state-management",
+  "name": "react-state-management (wshobson)",
+  "description": "Master modern React state management with Redux Toolkit, Zustand, Jotai, and React Query. Use when setting up global state, managing server state, or choosing between state management solutions.",
+  "affinities": [
+   {
+    "slot": "react.state",
+    "values": [
+     "zustand",
+     "redux"
+    ]
+   }
+  ],
+  "topics": [
+   "react"
+  ],
+  "registry_id": "wshobson/agents/react-state-management",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "write",
+  "name": "write (tw93)",
+  "description": "Rewrites and polishes Chinese or English prose, technical instructions, and product copy. Use when drafting, editing, localizing, or cutting AI tone. Not for code comments or commit messages.",
+  "affinities": [],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "tw93/waza/write",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "react-native-architecture",
+  "name": "react-native-architecture (wshobson)",
+  "description": "Build production React Native apps with Expo, navigation, native modules, offline sync, and cross-platform patterns. Use when developing mobile apps, implementing native integrations, or architecting React Native projects.",
+  "affinities": [],
+  "topics": [
+   "mobile",
+   "react"
+  ],
+  "registry_id": "wshobson/agents/react-native-architecture",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "vue-testing-best-practices",
+  "name": "vue-testing-best-practices (vuejs-ai)",
+  "description": "Use for Vue.js testing. Covers Vitest, Vue Test Utils, component testing, mocking, testing patterns, and Playwright for E2E testing.",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "unit",
+     "component",
+     "e2e"
+    ]
+   }
+  ],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": "vuejs-ai/skills/vue-testing-best-practices",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "sql-code-review",
+  "name": "sql-code-review (github)",
+  "description": "Universal SQL code review assistant that performs comprehensive security, maintainability, and code quality analysis across all SQL databases (MySQL, PostgreSQL, SQL Server, Oracle). Focuses on SQL injection prevention, access control, code standards, and anti-pattern detection. Complements SQL opt…",
+  "affinities": [],
+  "topics": [
+   "databases"
+  ],
+  "registry_id": "github/awesome-copilot/sql-code-review",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "python-patterns",
+  "name": "python-patterns (affaan-m)",
+  "description": "Python-specific design patterns and best practices including protocols, dataclasses, context managers, decorators, async/await, type hints, and package organization. Use when working with Python code to apply Pythonic patterns.",
+  "affinities": [],
+  "topics": [
+   "architecture"
+  ],
+  "registry_id": "affaan-m/ecc/python-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "accessibility-compliance",
+  "name": "accessibility-compliance (wshobson)",
+  "description": "Implement WCAG 2.2 compliant interfaces with mobile accessibility, inclusive design patterns, and assistive technology support. Use when auditing accessibility, implementing ARIA patterns, building for screen readers, or ensuring inclusive user experiences.",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "wshobson/agents/accessibility-compliance",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "data-visualization",
+  "name": "data-visualization (anthropics)",
+  "description": "Create effective data visualizations with Python (matplotlib, seaborn, plotly). Use when building charts, choosing the right chart type for a dataset, creating publication-quality figures, or applying design principles like accessibility and color theory.",
+  "affinities": [],
+  "topics": [
+   "data"
+  ],
+  "registry_id": "anthropics/knowledge-work-plugins/data-visualization",
+  "source": [
+   "skills-sh",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "hunt",
+  "name": "hunt (tw93)",
+  "description": "Finds root cause before any fix. Use when something errors, crashes, regresses, or used to work. Not for code review or new features.",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "tw93/waza/hunt",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "monorepo-management",
+  "name": "monorepo-management (wshobson)",
+  "description": "Master monorepo management with Turborepo, Nx, and pnpm workspaces to build efficient, scalable multi-package repositories with optimized builds and dependency management. Use when setting up monorepos, optimizing builds, or managing shared dependencies.",
+  "affinities": [
+   {
+    "slot": "tooling.package-manager",
+    "values": [
+     "pnpm"
+    ]
+   }
+  ],
+  "topics": [
+   "tooling"
+  ],
+  "registry_id": "wshobson/agents/monorepo-management",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "postgres-patterns",
+  "name": "postgres-patterns (affaan-m)",
+  "description": "PostgreSQL database patterns for query optimization, schema design, indexing, and security. Quick reference for common patterns, index types, data types, and anti-pattern detection. Based on Supabase best practices.",
+  "affinities": [
+   {
+    "diagramKinds": [
+     "er"
+    ]
+   }
+  ],
+  "topics": [
+   "databases"
+  ],
+  "registry_id": "affaan-m/ecc/postgres-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "microsoft-docs",
+  "name": "microsoft-docs (github)",
+  "description": "Query official Microsoft documentation to find concepts, tutorials, and code examples across Azure, .NET, Agent Framework, Aspire, VS Code, GitHub, and more. Uses Microsoft Learn MCP as the default, with Context7 and Aspire MCP for content that lives outside learn.microsoft.com.",
+  "affinities": [],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "github/awesome-copilot/microsoft-docs",
+  "source": [
+   "skills-sh",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "base44-troubleshooter",
+  "name": "base44-troubleshooter (base44)",
+  "description": "Troubleshoot production issues using backend function logs and workflow run history. Use when investigating app errors, debugging function calls, diagnosing why a scheduled job or automation failed, or diagnosing production problems in Base44 apps.",
+  "affinities": [],
+  "topics": [
+   "devops"
+  ],
+  "registry_id": "base44/skills/base44-troubleshooter",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "upgrading-react-native",
+  "name": "upgrading-react-native (callstackincubator)",
+  "description": "Upgrades React Native apps to newer versions by applying rn-diff-purge template diffs, updating package.json dependencies, migrating native iOS and Android configuration, resolving CocoaPods and Gradle changes, and handling breaking API updates. Use when upgrading React Native, bumping RN version,…",
+  "affinities": [],
+  "topics": [
+   "mobile",
+   "react"
+  ],
+  "registry_id": "callstackincubator/agent-skills/upgrading-react-native",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "javascript-typescript-jest",
+  "name": "javascript-typescript-jest (github)",
+  "description": "Best practices for writing JavaScript/TypeScript tests using Jest, including mocking strategies, test structure, and common patterns.",
+  "affinities": [],
+  "topics": [
+   "testing",
+   "typescript"
+  ],
+  "registry_id": "github/awesome-copilot/javascript-typescript-jest",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "deployment-pipeline-design",
+  "name": "deployment-pipeline-design (wshobson)",
+  "description": "Design multi-stage CI/CD pipelines with approval gates, security checks, and deployment orchestration. Use this skill when designing zero-downtime deployment pipelines, implementing canary rollout strategies, setting up multi-environment promotion workflows, or debugging failed deployment gates in…",
+  "affinities": [],
+  "topics": [
+   "devops"
+  ],
+  "registry_id": "wshobson/agents/deployment-pipeline-design",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "microsoft-code-reference",
+  "name": "microsoft-code-reference (github)",
+  "description": "Look up Microsoft API references, find working code samples, and verify SDK code is correct. Use when working with Azure SDKs, .NET libraries, or Microsoft APIs—to find the right method, check parameters, get working examples, or troubleshoot errors. Catches hallucinated methods, wrong signatures,…",
+  "affinities": [],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "github/awesome-copilot/microsoft-code-reference",
+  "source": [
+   "skills-sh",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "cpp-coding-standards",
+  "name": "cpp-coding-standards (affaan-m)",
+  "description": "C++ coding standards based on the C++ Core Guidelines (isocpp.github.io). Use when writing, reviewing, or refactoring C++ code to enforce modern, safe, and idiomatic practices.",
+  "affinities": [],
+  "topics": [
+   "tooling"
+  ],
+  "registry_id": "affaan-m/ecc/cpp-coding-standards",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "python-anti-patterns",
+  "name": "python-anti-patterns (wshobson)",
+  "description": "Use this skill when reviewing Python code for common anti-patterns to avoid. Use as a checklist when reviewing code, before finalizing implementations, or when debugging issues that might stem from known bad practices.",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "wshobson/agents/python-anti-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "debugging-strategies",
+  "name": "debugging-strategies (wshobson)",
+  "description": "Master systematic debugging techniques, profiling tools, and root cause analysis to efficiently track down bugs across any codebase or technology stack. Use when investigating bugs, performance issues, or unexpected behavior.",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "wshobson/agents/debugging-strategies",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "database-migrations",
+  "name": "database-migrations (affaan-m)",
+  "description": "Database migration best practices for schema changes, data migrations, rollbacks, and zero-downtime deployments across PostgreSQL, MySQL, and common ORMs (Prisma, Drizzle, Django, TypeORM, golang-migrate). Use when planning or implementing database schema changes.",
+  "affinities": [],
+  "topics": [
+   "databases"
+  ],
+  "registry_id": "affaan-m/ecc/database-migrations",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "e2e-testing",
+  "name": "e2e-testing (affaan-m)",
+  "description": "Playwright E2E testing patterns, Page Object Model, configuration, CI/CD integration, artifact management, and flaky test strategies. Use when writing Playwright tests, structuring page objects, or fixing flaky E2E runs in CI.",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "e2e"
+    ]
+   }
+  ],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": "affaan-m/ecc/e2e-testing",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "ultracite",
+  "name": "ultracite (haydenbleasel)",
+  "description": "Ultracite is a zero-config linting and formatting preset for JavaScript/TypeScript projects. Use when: (1) Setting up or initializing Ultracite in a project, or migrating its existing lint and format config onto Ultracite (ultracite init), (2) Running linting or formatting commands (check, fix, doc…",
+  "affinities": [],
+  "topics": [
+   "tooling",
+   "typescript"
+  ],
+  "registry_id": "haydenbleasel/ultracite/ultracite",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "web-component-design",
+  "name": "web-component-design (wshobson)",
+  "description": "Master React, Vue, and Svelte component patterns including CSS-in-JS, composition strategies, and reusable component architecture. Use when building UI component libraries, designing component APIs, or implementing frontend design systems.",
+  "affinities": [
+   {
+    "slot": "react.granularity",
+    "values": [
+     "agree"
+    ],
+    "against": [
+     "disagree"
+    ]
+   }
+  ],
+  "topics": [
+   "frontend",
+   "react"
+  ],
+  "registry_id": "wshobson/agents/web-component-design",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "gitlab-ci-patterns",
+  "name": "gitlab-ci-patterns (wshobson)",
+  "description": "Build GitLab CI/CD pipelines with multi-stage workflows, caching, and distributed runners for scalable automation. Use when implementing GitLab CI/CD, optimizing pipeline performance, or setting up automated testing and deployment.",
+  "affinities": [],
+  "topics": [
+   "devops"
+  ],
+  "registry_id": "wshobson/agents/gitlab-ci-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "code-review-expert",
+  "name": "code-review-expert (sanyuan0704)",
+  "description": "Expert code review of current git changes with a senior engineer lens. Detects SOLID violations, security risks, and proposes actionable improvements.",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "sanyuan0704/sanyuan-skills/code-review-expert",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "terraform-style-guide",
+  "name": "terraform-style-guide (hashicorp)",
+  "description": "Generate Terraform HCL code following HashiCorp's official style conventions and best practices. Use when writing, reviewing, or generating Terraform configurations.",
+  "affinities": [],
+  "topics": [
+   "devops"
+  ],
+  "registry_id": "hashicorp/agent-skills/terraform-style-guide",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "verification-loop",
+  "name": "verification-loop (affaan-m)",
+  "description": "A comprehensive verification system for Claude Code sessions. Use when verifying a Claude Code session's work before claiming it is complete.",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "affaan-m/ecc/verification-loop",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "playwright-automation-fill-in-form",
+  "name": "playwright-automation-fill-in-form (github)",
+  "description": "Automate filling in a form using Playwright MCP",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "e2e"
+    ]
+   }
+  ],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": "github/awesome-copilot/playwright-automation-fill-in-form",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "game-engine",
+  "name": "game-engine (github)",
+  "description": "Expert skill for building web-based game engines and games using HTML5, Canvas, WebGL, and JavaScript. Use when asked to create games, build game engines, implement game physics, handle collision detection, set up game loops, manage sprites, add game controls, or work with 2D/3D rendering. Covers t…",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "github/awesome-copilot/game-engine",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "create-specification",
+  "name": "create-specification (github)",
+  "description": "Create a new specification file for the solution, optimized for Generative AI consumption.",
+  "affinities": [],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "github/awesome-copilot/create-specification",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "springboot-tdd",
+  "name": "springboot-tdd (affaan-m)",
+  "description": "Desarrollo guiado por pruebas para Spring Boot usando JUnit 5, Mockito, MockMvc, Testcontainers y JaCoCo. Usar al agregar funcionalidades, corregir bugs o refactorizar.",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "unit",
+     "component"
+    ]
+   }
+  ],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": "affaan-m/ecc/springboot-tdd",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "swift-concurrency-pro",
+  "name": "swift-concurrency-pro (twostraws)",
+  "description": "Reviews Swift code for concurrency correctness, modern API usage, and common async/await pitfalls. Use when reading, writing, or reviewing Swift concurrency code.",
+  "affinities": [],
+  "topics": [
+   "mobile"
+  ],
+  "registry_id": "twostraws/swift-concurrency-agent-skill/swift-concurrency-pro",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "engineering-blog-post",
+  "name": "engineering-blog-post (samber)",
+  "description": "Writes or edits a technical blog post a skeptical developer audience will believe - the right post pattern, evidence behind every claim, published trade-offs and limitations, runnable snippets, and no marketing voice. Use whenever the user wants an engineering blog post, a technical article, a \"how…",
+  "affinities": [],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "samber/developer-relations-skills/engineering-blog-post",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "wcag-audit-patterns",
+  "name": "wcag-audit-patterns (wshobson)",
+  "description": "Conduct WCAG 2.2 accessibility audits with automated testing, manual verification, and remediation guidance. Use when auditing websites for accessibility, fixing WCAG violations, or implementing accessible design patterns.",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "wshobson/agents/wcag-audit-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "github-profile-optimization",
+  "name": "github-profile-optimization (samber)",
+  "description": "Audits and rebuilds a personal or organization profile on GitHub as a developer-relations surface - the profile README, the six pinned items, bio and social fields, the organization profile repository, and the contribution signals visitors read as evidence. Use whenever someone says \"optimize my Gi…",
+  "affinities": [],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "samber/developer-relations-skills/github-profile-optimization",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "create-agentsmd",
+  "name": "create-agentsmd (github)",
+  "description": "Prompt for generating an AGENTS.md file for a repository",
+  "affinities": [],
+  "topics": [
+   "ai"
+  ],
+  "registry_id": "github/awesome-copilot/create-agentsmd",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "pytest-coverage",
+  "name": "pytest-coverage (github)",
+  "description": "Run pytest tests with coverage, discover lines missing coverage, and increase coverage to 100%.",
+  "affinities": [],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": "github/awesome-copilot/pytest-coverage",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "rust-patterns",
+  "name": "rust-patterns (affaan-m)",
+  "description": "Idiomatic Rust patterns, ownership, error handling, traits, concurrency, and best practices for building safe, performant applications.",
+  "affinities": [],
+  "topics": [
+   "backend"
+  ],
+  "registry_id": "affaan-m/ecc/rust-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "refactor-plan",
+  "name": "refactor-plan (github)",
+  "description": "Create a concrete plan before starting a multi-file refactor. Use when the user asks to plan, sequence, scope, or safely execute a refactor across multiple files; always investigate first, output the plan, and wait for confirmation before making code changes.",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "github/awesome-copilot/refactor-plan",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "kotlin-coroutines-flows",
+  "name": "kotlin-coroutines-flows (affaan-m)",
+  "description": "Android および KMP 向けの Kotlin コルーチンと Flow パターン — 構造化並行性、Flow オペレーター、StateFlow、エラーハンドリング、テスト。",
+  "affinities": [],
+  "topics": [
+   "backend",
+   "mobile"
+  ],
+  "registry_id": "affaan-m/ecc/kotlin-coroutines-flows",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "postgresql-code-review",
+  "name": "postgresql-code-review (github)",
+  "description": "PostgreSQL-specific code review assistant focusing on PostgreSQL best practices, anti-patterns, and unique quality standards. Covers JSONB operations, array usage, custom types, schema design, function optimization, and PostgreSQL-exclusive security features like Row Level Security (RLS).",
+  "affinities": [],
+  "topics": [
+   "databases"
+  ],
+  "registry_id": "github/awesome-copilot/postgresql-code-review",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "cargo-connection",
+  "name": "cargo-connection (getcargohq)",
+  "description": "Connects Cargo to the CRM, sequencer, warehouse and other tools a team already runs, checks what is connected, fixes authentication, and lists what each integration can do. Triggers: \\\"connect my HubSpot\\\", \\\"is Salesforce connected\\\", \\\"what integrations do you support\\\", \\\"can Cargo talk to tool\\…",
+  "affinities": [],
+  "topics": [
+   "devops"
+  ],
+  "registry_id": "getcargohq/cargo-skills/cargo-connection",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "penpot-uiux-design",
+  "name": "penpot-uiux-design (github)",
+  "description": "Comprehensive guide for creating professional UI/UX designs in Penpot using MCP tools. Use this skill when: (1) Creating new UI/UX designs for web, mobile, or desktop applications, (2) Building design systems with components and tokens, (3) Designing dashboards, forms, navigation, or landing pages,…",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "github/awesome-copilot/penpot-uiux-design",
+  "source": [
+   "skills-sh",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "memory-merger",
+  "name": "memory-merger (github)",
+  "description": "Merges mature lessons from a domain memory file into its instruction file. Syntax: `/memory-merger domain [scope]` where scope is `global` (default), `user`, `workspace`, or `ws`.",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "github/awesome-copilot/memory-merger",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "kotlin-patterns",
+  "name": "kotlin-patterns (affaan-m)",
+  "description": "Idiomatic Kotlin patterns, best practices, and conventions for building robust, efficient, and maintainable Kotlin applications with coroutines, null safety, and DSL builders.",
+  "affinities": [],
+  "topics": [
+   "backend",
+   "mobile"
+  ],
+  "registry_id": "affaan-m/ecc/kotlin-patterns",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "nextjs-turbopack",
+  "name": "nextjs-turbopack (affaan-m)",
+  "description": "Next.js 16+ and Turbopack — incremental bundling, FS caching, dev speed, and when to use Turbopack vs webpack.",
+  "affinities": [
+   {
+    "slot": "tooling.package-manager",
+    "values": [
+     "bun"
+    ]
+   }
+  ],
+  "topics": [
+   "react"
+  ],
+  "registry_id": "affaan-m/ecc/nextjs-turbopack",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "create-implementation-plan",
+  "name": "create-implementation-plan (github)",
+  "description": "Create a new implementation plan file for new features, refactoring existing code or upgrading packages, design, architecture or infrastructure.",
+  "affinities": [
+   {
+    "slot": "workflow.changes",
+    "values": [
+     "agree"
+    ],
+    "against": [
+     "disagree"
+    ]
+   }
+  ],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "github/awesome-copilot/create-implementation-plan",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "webapp-testing-github",
+  "name": "webapp-testing (github)",
+  "description": "Toolkit for interacting with and testing local web applications using Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing browser screenshots, and viewing browser logs.",
+  "affinities": [
+   {
+    "slot": "testing.levels",
+    "values": [
+     "e2e"
+    ]
+   }
+  ],
+  "topics": [
+   "testing"
+  ],
+  "registry_id": "github/awesome-copilot/webapp-testing",
+  "source": [
+   "skills-sh",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "architecture-decision-records-affaan-m",
+  "name": "architecture-decision-records (affaan-m)",
+  "description": "コーディングセッション中にアーキテクチャ決定を構造化ADRとして記録し、自動的に決定の瞬間を検出し、コンテキスト、検討された代替案、根拠を記録します。今後の開発者がコードベースの形成理由を理解するためのADRログを維持します。",
+  "affinities": [
+   {
+    "diagramKinds": [
+     "c4",
+     "component",
+     "deployment",
+     "package"
+    ]
+   }
+  ],
+  "topics": [
+   "architecture"
+  ],
+  "registry_id": "affaan-m/ecc/architecture-decision-records",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "make-repo-contribution",
+  "name": "make-repo-contribution (github)",
+  "description": "All changes to code must follow the guidance documented in the repository. Before any issue is filed, branch is made, commits generated, or pull request (or PR) created, a search must be done to ensure the right steps are followed. Whenever asked to create an issue, commit messages, to push code, o…",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "github/awesome-copilot/make-repo-contribution",
+  "source": [
+   "skills-sh",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "agentic-eval",
+  "name": "agentic-eval (github)",
+  "description": "Patterns and techniques for evaluating and improving AI agent outputs. Use this skill when: - Implementing self-critique and reflection loops - Building evaluator-optimizer pipelines for quality-critical generation - Creating test-driven code refinement workflows - Designing rubric-based or LLM-as-…",
+  "affinities": [],
+  "topics": [
+   "ai"
+  ],
+  "registry_id": "github/awesome-copilot/agentic-eval",
+  "source": [
+   "skills-sh",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "powerbi-modeling",
+  "name": "powerbi-modeling (github)",
+  "description": "Power BI semantic modeling assistant for building optimized data models. Use when working with Power BI semantic models, creating measures, designing star schemas, configuring relationships, implementing RLS, or optimizing model performance. Triggers on queries about DAX calculations, table relatio…",
+  "affinities": [],
+  "topics": [
+   "data"
+  ],
+  "registry_id": "github/awesome-copilot/powerbi-modeling",
+  "source": [
+   "skills-sh",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "meeting-minutes",
+  "name": "meeting-minutes (github)",
+  "description": "Generate concise, actionable meeting minutes for internal meetings. Includes metadata, attendees, agenda, decisions, action items (owner + due date), and follow-up steps.",
+  "affinities": [],
+  "topics": [
+   "workflow",
+   "docs"
+  ],
+  "registry_id": "github/awesome-copilot/meeting-minutes",
+  "source": [
+   "skills-sh",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "markdown-to-html",
+  "name": "markdown-to-html (github)",
+  "description": "Convert Markdown files to HTML similar to `marked.js`, `pandoc`, `gomarkdown/markdown`, or similar tools; or writing custom script to convert markdown to html and/or working on web template systems like `jekyll/jekyll`, `gohugoio/hugo`, or similar web templating systems that utilize markdown docume…",
+  "affinities": [],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "github/awesome-copilot/markdown-to-html",
+  "source": [
+   "skills-sh",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "image-manipulation-image-magick",
+  "name": "image-manipulation-image-magick (github)",
+  "description": "Process and manipulate images using ImageMagick. Supports resizing, format conversion, batch processing, and retrieving image metadata. Use when working with images, creating thumbnails, resizing wallpapers, or performing batch image operations.",
+  "affinities": [],
+  "topics": [
+   "tooling"
+  ],
+  "registry_id": "github/awesome-copilot/image-manipulation-image-magick",
+  "source": [
+   "skills-sh",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "azure-deployment-preflight",
+  "name": "azure-deployment-preflight (github)",
+  "description": "Performs comprehensive preflight validation of Bicep deployments to Azure, including template syntax validation, what-if analysis, and permission checks. Use this skill before any deployment to Azure to preview changes, identify potential issues, and ensure the deployment will succeed. Activate whe…",
+  "affinities": [],
+  "topics": [
+   "devops"
+  ],
+  "registry_id": "github/awesome-copilot/azure-deployment-preflight",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "appinsights-instrumentation",
+  "name": "appinsights-instrumentation (github)",
+  "description": "Instrument a webapp to send useful telemetry data to Azure App Insights",
+  "affinities": [],
+  "topics": [
+   "data"
+  ],
+  "registry_id": "github/awesome-copilot/appinsights-instrumentation",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "azure-resource-visualizer",
+  "name": "azure-resource-visualizer (github)",
+  "description": "Analyze Azure resource groups and generate detailed Mermaid architecture diagrams showing the relationships between individual resources. Use this skill when the user asks for a diagram of their Azure resources or help in understanding how the resources relate to each other.",
+  "affinities": [
+   {
+    "diagramKinds": [
+     "class",
+     "sequence",
+     "state",
+     "er",
+     "c4"
+    ]
+   }
+  ],
+  "topics": [
+   "devops"
+  ],
+  "registry_id": "github/awesome-copilot/azure-resource-visualizer",
+  "source": [
+   "skills-sh",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "aws-security",
+  "name": "aws-security (aws)",
+  "description": "AWS security service suitability, coverage and cost recommendations: WAF/origin overlap, AWS Network Firewall inspection coverage and policy review, VPC endpoint, Transit Gateway/Cloud WAN segmentation and DNS Firewall security-control suitability, certificate renewal ownership and monitoring, inci…",
+  "affinities": [],
+  "topics": [
+   "security"
+  ],
+  "registry_id": "aws/agent-toolkit-for-aws/aws-security",
+  "source": [
+   "skills-sh"
+  ]
+ },
+ {
+  "slug": "pdf",
+  "name": "pdf (anthropics)",
+  "description": "Use this skill whenever the user wants to do anything with PDF files. This includes reading or extracting text/tables from PDFs, combining or merging multiple PDFs into one, splitting PDFs apart, rotating pages, adding watermarks, creating new PDFs, filling PDF forms, encrypting/decrypting PDFs, ex…",
+  "affinities": [],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "anthropics/skills/pdf",
+  "source": [
+   "github",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "brand-guidelines",
+  "name": "brand-guidelines (anthropics)",
+  "description": "Applies Anthropic's official brand colors and typography to any sort of artifact that may benefit from having Anthropic's look-and-feel. Use it when brand colors or style guidelines, visual formatting, or company design standards apply.",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "anthropics/skills/brand-guidelines",
+  "source": [
+   "github",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "canvas-design",
+  "name": "canvas-design (anthropics)",
+  "description": "Create beautiful visual art in .png and .pdf documents using design philosophy. You should use this skill when the user asks to create a poster, piece of art, design, or other static piece. Create original visual designs, never copying existing artists' work to avoid copyright violations.",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "anthropics/skills/canvas-design",
+  "source": [
+   "github",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "xlsx",
+  "name": "xlsx (anthropics)",
+  "description": "Use this skill any time a spreadsheet file is the primary input or output. This means any task where the user wants to: open, read, edit, or fix an existing .xlsx, .xlsm, .xltx, .csv, or .tsv file (e.g., adding columns, computing formulas, formatting, charting, cleaning messy data); create a new sp…",
+  "affinities": [],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "anthropics/skills/xlsx",
+  "source": [
+   "github",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "analyzing-financial-statements",
+  "name": "analyzing-financial-statements (anthropics)",
+  "description": "This skill calculates key financial ratios and metrics from financial statement data for investment analysis",
+  "affinities": [],
+  "topics": [
+   "data"
+  ],
+  "registry_id": "anthropics/claude-cookbooks/analyzing-financial-statements",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "creating-financial-models",
+  "name": "creating-financial-models (anthropics)",
+  "description": "This skill provides an advanced financial modeling suite with DCF analysis, sensitivity testing, Monte Carlo simulations, and scenario planning for investment decisions",
+  "affinities": [],
+  "topics": [],
+  "registry_id": "anthropics/claude-cookbooks/creating-financial-models",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "theme-factory",
+  "name": "theme-factory (anthropics)",
+  "description": "Toolkit for styling artifacts with a theme. These artifacts can be slides, docs, reportings, HTML landing pages, etc. There are 10 pre-set themes with colors/fonts that you can apply to any artifact that has been creating, or can generate a new theme on-the-fly.",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "anthropics/skills/theme-factory",
+  "source": [
+   "github",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "azure-role-selector",
+  "name": "azure-role-selector (github)",
+  "description": "When user is asking for guidance for which role to assign to an identity given desired permissions, this agent helps them understand the role that will meet the requirements with least privilege access and how to apply that role.",
+  "affinities": [],
+  "topics": [],
+  "registry_id": "github/awesome-copilot/azure-role-selector",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "algorithmic-art",
+  "name": "algorithmic-art (anthropics)",
+  "description": "Creating algorithmic art using p5.js with seeded randomness and interactive parameter exploration. Use this when users request creating art using code, generative art, algorithmic art, flow fields, or particle systems. Create original algorithmic art rather than copying existing artists' work to av…",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "anthropics/skills/algorithmic-art",
+  "source": [
+   "github",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "code-change-verification",
+  "name": "code-change-verification (openai)",
+  "description": "Run the required final formatting, lint, type, and test checks after eligible SDK changes pass review.",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "openai/openai-agents-python/code-change-verification",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "applying-brand-guidelines",
+  "name": "applying-brand-guidelines (anthropics)",
+  "description": "This skill applies consistent corporate branding and styling to all generated documents including colors, fonts, layouts, and messaging",
+  "affinities": [],
+  "topics": [
+   "docs",
+   "frontend"
+  ],
+  "registry_id": "anthropics/claude-cookbooks/applying-brand-guidelines",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "snowflake-semanticview",
+  "name": "snowflake-semanticview (github)",
+  "description": "Create, alter, and validate Snowflake semantic views using Snowflake CLI (snow). Use when asked to build or troubleshoot semantic views/semantic layer definitions with CREATE/ALTER SEMANTIC VIEW, to validate semantic-view DDL against Snowflake via CLI, or to guide Snowflake CLI installation and con…",
+  "affinities": [],
+  "topics": [
+   "databases"
+  ],
+  "registry_id": "github/awesome-copilot/snowflake-semanticview",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "terraform-azurerm-set-diff-analyzer",
+  "name": "terraform-azurerm-set-diff-analyzer (github)",
+  "description": "Analyze Terraform plan JSON output for AzureRM Provider to distinguish between false-positive diffs (order-only changes in Set-type attributes) and actual resource changes. Use when reviewing terraform plan output for Azure resources like Application Gateway, Load Balancer, Firewall, Front Door, NS…",
+  "affinities": [],
+  "topics": [
+   "devops"
+  ],
+  "registry_id": "github/awesome-copilot/terraform-azurerm-set-diff-analyzer",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "docs-sync",
+  "name": "docs-sync (openai)",
+  "description": "Audit or update English SDK documentation against the requested implementation scope.",
+  "affinities": [],
+  "topics": [
+   "docs"
+  ],
+  "registry_id": "openai/openai-agents-python/docs-sync",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "slack-gif-creator",
+  "name": "slack-gif-creator (anthropics)",
+  "description": "Knowledge and utilities for creating animated GIFs optimized for Slack. Provides constraints, validation tools, and animation concepts. Use when users request animated GIFs for Slack like \"make me a GIF of X doing Y for Slack.\"",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "anthropics/skills/slack-gif-creator",
+  "source": [
+   "github",
+   "smithery"
+  ]
+ },
+ {
+  "slug": "azure-static-web-apps",
+  "name": "azure-static-web-apps (github)",
+  "description": "Helps create, configure, and deploy Azure Static Web Apps using the SWA CLI. Use when deploying static sites to Azure, setting up SWA local development, configuring staticwebapp.config.json, adding Azure Functions APIs to SWA, or setting up GitHub Actions CI/CD for Static Web Apps.",
+  "affinities": [],
+  "topics": [
+   "devops"
+  ],
+  "registry_id": "github/awesome-copilot/azure-static-web-apps",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "legacy-circuit-mockups",
+  "name": "legacy-circuit-mockups (github)",
+  "description": "Generate breadboard circuit mockups and visual diagrams using HTML5 Canvas drawing techniques. Use when asked to create circuit layouts, visualize electronic component placements, draw breadboard diagrams, mockup 6502 builds, generate retro computer schematics, or design vintage electronics project…",
+  "affinities": [],
+  "topics": [
+   "architecture",
+   "frontend"
+  ],
+  "registry_id": "github/awesome-copilot/legacy-circuit-mockups",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "vscode-ext-localization",
+  "name": "vscode-ext-localization (github)",
+  "description": "Guidelines for proper localization of VS Code extensions, following VS Code extension development guidelines, libraries and good practices",
+  "affinities": [],
+  "topics": [
+   "tooling"
+  ],
+  "registry_id": "github/awesome-copilot/vscode-ext-localization",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "pr-draft-summary",
+  "name": "pr-draft-summary (openai)",
+  "description": "Prepare the required local PR title, description, and branch suggestion after eligible implementation work is complete.",
+  "affinities": [],
+  "topics": [
+   "workflow"
+  ],
+  "registry_id": "openai/openai-agents-python/pr-draft-summary",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "content-creation",
+  "name": "content-creation (anthropics)",
+  "description": "Draft marketing content across channels — blog posts, social media, email newsletters, landing pages, press releases, and case studies. Use when writing any marketing content, when you need channel-specific formatting, SEO-optimized copy, headline options, or calls to action.",
+  "affinities": [],
+  "topics": [],
+  "registry_id": "anthropics/knowledge-work-plugins/content-creation",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "copilot-sdk",
+  "name": "copilot-sdk (github)",
+  "description": "Build agentic applications with the Microsoft Copilot SDK, transitioning from GitHub Copilot SDK. Use when embedding AI agents in apps, creating custom tools, implementing streaming responses, managing sessions, connecting to MCP servers, or creating custom agents. Triggers on Copilot SDK, Microsof…",
+  "affinities": [],
+  "topics": [
+   "ai"
+  ],
+  "registry_id": "github/awesome-copilot/copilot-sdk",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "vscode-ext-commands",
+  "name": "vscode-ext-commands (github)",
+  "description": "Guidelines for contributing commands in VS Code extensions. Indicates naming convention, visibility, localization and other relevant attributes, following VS Code extension development guidelines, libraries and good practices",
+  "affinities": [],
+  "topics": [
+   "tooling"
+  ],
+  "registry_id": "github/awesome-copilot/vscode-ext-commands",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "turborepo-vercel",
+  "name": "turborepo (vercel)",
+  "description": "Configure and troubleshoot Turborepo repositories. Use when working with turbo.json, task pipelines, caching, Remote Cache, the turbo CLI, filtering, environment variables, package boundaries, monorepo structure, or CI workflows.",
+  "affinities": [],
+  "topics": [],
+  "registry_id": "vercel/turborepo/turborepo",
+  "source": [
+   "smithery"
+  ]
+ },
+ {
+  "slug": "frontend-design-anthropics-2",
+  "name": "frontend-design (anthropics)",
+  "description": "Guidance for distinctive, intentional visual design when building new UI or reshaping an existing one. Helps with aesthetic direction, typography, and making choices that don't read as templated defaults.",
+  "affinities": [],
+  "topics": [
+   "frontend"
+  ],
+  "registry_id": "anthropics/skills/frontend-design",
+  "source": [
+   "github"
+  ]
+ },
+ {
+  "slug": "claude-api",
+  "name": "claude-api (anthropics)",
+  "description": "Reference for the Claude API / Anthropic SDK — model ids, pricing, params, streaming, tool use, MCP, agents, caching, token counting, model migration. TRIGGER — read BEFORE opening the target file; don't skip because it \"looks like a one-liner\" — whenever: the prompt names Claude/Anthropic in any f…",
+  "affinities": [],
+  "topics": [
+   "ai"
+  ],
+  "registry_id": "anthropics/skills/claude-api",
+  "source": [
+   "github"
+  ]
+ },
+ {
+  "slug": "discernment-nudge",
+  "name": "discernment-nudge (anthropics)",
+  "description": "After you give a substantive answer or draft that the user may act on — advice or recommendations, drafted artifacts such as goals, plans, pitches, proposals, or emails, estimates or projections, analysis or interpretation of data, factual claims they may rely on, or a multi-step argument — invoke…",
+  "affinities": [],
+  "topics": [
+   "ai"
+  ],
+  "registry_id": "anthropics/skills/discernment-nudge",
+  "source": [
+   "github"
+  ]
+ }
+]
