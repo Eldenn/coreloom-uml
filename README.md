@@ -673,7 +673,10 @@ minute per user (`llmThrottle`).
   ```
 
   Its services listen on this machine only by intent (one control port has no authentication):
-  never run it on a host reachable from outside.
+  never run it on a host reachable from outside. Its sandbox logs (ClickHouse `sandbox_logs`) are
+  kept 7 days, upstream's retention, and keep the names of a command's environment variables,
+  never their values, and the length of what is sent on standard input, never its bytes; command
+  lines (`cmd`, `args`) are kept as they are, so a value never goes in one.
 - A provider failure answers 502 `{ error, reason }`, never the provider's own error. Everything
   else (manual rules, generations) works without a provider.
 - Providers: `anthropic`, `openai`, `mistral` (fixed URLs, a key is required, a `baseUrl` is

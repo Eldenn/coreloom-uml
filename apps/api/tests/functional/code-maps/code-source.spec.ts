@@ -7,9 +7,10 @@ import { MockLanguageModelV4 } from '@coreloom-uml/llm/testing'
 import { test } from '@japa/runner'
 import type { TestContext } from '@japa/runner/core'
 import Architecture from '#app/architectures/models/architecture'
+import { REPOSITORY_SANDBOX } from '#app/assistant/constants/repository'
 import AssistantConversation from '#app/assistant/models/assistant-conversation'
 import AssistantMessage from '#app/assistant/models/assistant-message'
-import { tokenEnvs } from '#app/assistant/services/repository-commands'
+import { cloneCredential, cloneSecretFile } from '#app/assistant/services/repository-commands'
 import RepositorySandbox from '#app/assistant/services/repository-sandbox'
 import { CodeMapSuggestionStatus } from '#app/code-maps/constants/code-map'
 import CodeMap from '#app/code-maps/models/code-map'
@@ -88,8 +89,8 @@ class FakeGithubApi extends GithubApi {
   answer: (path: string) => GithubResult<string | null> = () => ({ ok: true, value: SOURCE })
 
   /** One file read in the sandbox, answered the way these tests say it: found, missing, failed. */
-  read({ repository, commit, path, authorization }: SourceRead): SourceAnswer {
-    const token = authorization === tokenEnvs(TOKEN).GIT_CONFIG_VALUE_0 ? TOKEN : undefined
+  read({ repository, commit, path, credential }: SourceRead): SourceAnswer {
+    const token = credential === cloneCredential(TOKEN) ? TOKEN : undefined
     this.reads.push({ owner: repository, commit, path, token })
     const answer = this.answer(path)
     return answer.ok ? answer.value : 'gone'
@@ -100,8 +101,9 @@ class FakeGithubApi extends GithubApi {
     return { ok: true, value: TOKEN }
   }
 
-  override async revokeInstallationToken(token: string) {
+  override async revokeInstallationToken(token: string): Promise<GithubResult<unknown>> {
     this.revoked.push(token)
+    return { ok: true, value: null }
   }
 
   access: GithubResult<boolean> = { ok: true, value: true }
@@ -341,11 +343,25 @@ test.group('Code maps - source code read for a drawing', (group) => {
     const context = await setup(client)
     await grant(context.user)
     const github = useFakeGithub()
+    const revoke = github.revokeInstallationToken.bind(github)
+    github.revokeInstallationToken = async (token) => {
+      github.sandboxes.events.push('revoke')
+      return revoke(token)
+    }
     useModel(TARGET('sequence', ['s1']), DRAWING)
     ;(await ask(client, context)).assertStatus(200)
     assert.equal(github.tokens, 1)
     assert.isTrue(github.reads.every((read) => read.token === TOKEN))
     assert.deepEqual(github.revoked, [TOKEN])
+    // Revoked as soon as the commit is in, before any file is read.
+    assert.deepEqual(github.sandboxes.events.slice(0, 3), ['fetch', 'revoke', 'read'])
+    // Through a file the fetch reads and removes, never a command line or an environment.
+    assert.deepEqual(github.sandboxes.writes, [
+      { path: cloneSecretFile(REPOSITORY_SANDBOX.root), content: cloneCredential(TOKEN) },
+    ])
+    for (const secret of [TOKEN, cloneCredential(TOKEN)]) {
+      assert.notInclude(JSON.stringify(github.sandboxes.runs), secret)
+    }
     assert.deepEqual(github.asked, ['acme/shop:octo'])
     // The token goes to the fetch of the commit only; reading a file needs none.
     assert.lengthOf(github.sandboxes.fetches, 1)
@@ -399,6 +415,23 @@ test.group('Code maps - source code read for a drawing', (group) => {
     assert.lengthOf(github.reads, 0)
     assert.equal(github.sandboxes.killed, 1)
     assert.deepEqual(github.revoked, [TOKEN, TOKEN])
+  })
+
+  test('a sandbox that does not take the credential fetches nothing, revoked and killed', async ({
+    client,
+    assert,
+  }) => {
+    const { codeMap, user } = await setup(client)
+    await grant(user)
+    const github = useFakeGithub()
+    github.sandboxes.writeFails = true
+    assert.equal((await readSource(codeMap, user, NODES))?.absence, SourceAbsence.Unreadable)
+    assert.lengthOf(github.sandboxes.writes, 1)
+    // No fetch, no read, no command: nothing ran in the sandbox.
+    assert.lengthOf(github.sandboxes.runs, 0)
+    assert.lengthOf(github.reads, 0)
+    assert.deepEqual(github.revoked, [TOKEN])
+    assert.equal(github.sandboxes.killed, 1)
   })
 
   test('a grant GitHub no longer backs reads nothing and is dropped', async ({

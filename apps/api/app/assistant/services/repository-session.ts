@@ -1,9 +1,13 @@
 import app from '@adonisjs/core/services/app'
 import redis from '@adonisjs/redis/services/main'
 import { DateTime } from 'luxon'
-import { REPOSITORY_SANDBOX } from '#app/assistant/constants/repository'
+import { ASSISTANT_SANDBOX_METADATA, REPOSITORY_SANDBOX } from '#app/assistant/constants/repository'
 import AssistantSandbox from '#app/assistant/models/assistant-sandbox'
-import { CLONE, tokenEnvs } from '#app/assistant/services/repository-commands'
+import {
+  CLONE,
+  cloneKillSeconds,
+  writeCloneCredential,
+} from '#app/assistant/services/repository-commands'
 import RepositorySandbox, {
   type OpenRepositorySandbox,
 } from '#app/assistant/services/repository-sandbox'
@@ -15,7 +19,7 @@ import { parseGithubRepository } from '#app/code-maps/services/github-repository
 import type GithubApi from '#app/github/services/github-api'
 import { isCommitId } from '#app/github/services/github-api'
 import { findGrant } from '#app/github/services/github-grants'
-import { repositoryToken } from '#app/github/services/repository-token'
+import { repositoryToken, revokeToken, TokenFlow } from '#app/github/services/repository-token'
 import { findOwnedProject } from '#app/projects/services/owned-project'
 import type User from '#app/users/models/user'
 
@@ -75,7 +79,8 @@ export async function killSandboxes(rows: readonly AssistantSandbox[]): Promise<
 export class RepositorySession {
   #opened: (OpenRepository & { row: AssistantSandbox }) | null = null
   #locked = false
-  #access: { github: GithubApi; token: string } | null = null
+  /** Tokens made for a clone that has not answered yet: `close` revokes what is left. */
+  #tokens = new Set<{ github: GithubApi; token: string }>()
   /** The files the model read in this message, in order: shown under the reply. */
   readonly read: string[] = []
   /** How many commands of its own the model ran in the sandbox in this message. */
@@ -178,29 +183,47 @@ export class RepositorySession {
   ): Promise<OpenRepository | string> {
     const parsed = parseGithubRepository(repository.url)
     if (!parsed) return REPOSITORY_SENTENCES.unreadable
-    const auth = await this.#auth(repository.url)
-    if (typeof auth === 'string') return auth
-    const sandbox = await sandboxes.create(REPOSITORY_SANDBOX.timeoutMs, 'pause')
-    if (!sandbox) return REPOSITORY_SENTENCES.unavailable
-    const clone = (filter: string, timeoutMs: number) =>
-      sandbox.run(
-        CLONE,
-        {
-          REPO_ROOT: REPOSITORY_SANDBOX.root,
-          REPO_URL: `${parsed.url}.git`,
-          REPO_BRANCH: repository.branch ?? '',
-          REPO_FILTER: filter,
-          ...auth,
-        },
-        timeoutMs,
-      )
-    // Nothing is fetched after the clone, so it takes the files of the whole history when
-    // they fit (what show and blame read), else those of the checked-out commit only.
-    // ponytail: a large repository pays the first try before the second; remember per
-    // repository which one fits if that wait shows.
-    let cloned = await clone('', REPOSITORY_SANDBOX.fullCloneTimeoutMs)
-    if (cloned.exitCode === 4 || cloned.exitCode === 124) {
-      cloned = await clone('blob:none', REPOSITORY_SANDBOX.cloneTimeoutMs)
+    const access = await this.#auth(repository.url)
+    if (typeof access === 'string') return access
+    const root = REPOSITORY_SANDBOX.root
+    let sandbox: OpenRepositorySandbox | null = null
+    let cloned: { exitCode: number; output: string }
+    try {
+      // Tagged, so the prune job finds it should the API die before its row is written.
+      sandbox = await sandboxes.create(REPOSITORY_SANDBOX.timeoutMs, 'pause', {
+        ...ASSISTANT_SANDBOX_METADATA,
+        conversationId: String(this.conversationId),
+      })
+      if (!sandbox) return REPOSITORY_SENTENCES.unavailable
+      const opened = sandbox
+      const clone = async (filter: string, timeoutMs: number) => {
+        // The line reads the credential and removes it at once: each try gets it again.
+        if (access && !(await writeCloneCredential(opened, root, access.token))) {
+          return { exitCode: REPOSITORY_SANDBOX.goneExitCode, output: '' }
+        }
+        return opened.run(
+          CLONE,
+          {
+            REPO_ROOT: root,
+            REPO_URL: `${parsed.url}.git`,
+            REPO_BRANCH: repository.branch ?? '',
+            REPO_FILTER: filter,
+            ...cloneKillSeconds(timeoutMs),
+          },
+          timeoutMs,
+        )
+      }
+      // Nothing is fetched after the clone, so it takes the files of the whole history when
+      // they fit (what show and blame read), else those of the checked-out commit only.
+      // ponytail: a large repository pays the first try before the second; remember per
+      // repository which one fits if that wait shows.
+      cloned = await clone('', REPOSITORY_SANDBOX.fullCloneTimeoutMs)
+      if (cloned.exitCode === 4 || cloned.exitCode === 124) {
+        cloned = await clone('blob:none', REPOSITORY_SANDBOX.cloneTimeoutMs)
+      }
+    } finally {
+      // The clone is in, or failed: the token has no use left.
+      if (access) await this.#revoke(access)
     }
     const commit = cloned.output.trim()
     // The model runs commands in it: no network from here on, and no token ever again.
@@ -215,7 +238,7 @@ export class RepositorySession {
       repositoryUrl: repository.url,
       branch: repository.branch,
       commitSha: commit,
-      private: this.#access !== null,
+      private: access !== null,
       lastUsedAt: DateTime.now(),
     })
     this.#opened = { sandbox, repositoryUrl: row.repositoryUrl, commit: row.commitSha, row }
@@ -223,30 +246,38 @@ export class RepositorySession {
   }
 
   /**
-   * What git needs to clone this repository, as environment variables of that one command: none
-   * for a public one, else an installation token for this one repository (after GitHub confirms
-   * the owner still reads it), revoked by `close`. Never written to a file, a row or a log, and
-   * never given to a sandbox the model ran a command in: only the clone gets it.
+   * An installation token for this one repository when the owner reads it through the GitHub
+   * App (after GitHub confirms they still do), null for a public one. Held only until its clone
+   * answered (`#revoke`, in the `finally` of `#create`); `close` revokes it only when something
+   * threw between this and that `try`. Never written to a row or a log, never put in a command
+   * line or an environment, and never given to a sandbox that ran anything but the clone: only
+   * the clone reads it (`writeCloneCredential`).
    */
-  async #auth(repositoryUrl: string): Promise<Record<string, string> | string> {
-    if (!this.#access) {
-      const parsed = parseGithubRepository(repositoryUrl)
-      if (!parsed) return REPOSITORY_SENTENCES.unreadable
-      let access: Awaited<ReturnType<typeof repositoryToken>>
-      try {
-        access = await repositoryToken(this.user.id, repositoryUrl)
-      } catch {
-        return REPOSITORY_SENTENCES.unreadable
-      }
-      if (typeof access === 'string') return REPOSITORY_SENTENCES.unreadable
-      if (!access) return {}
-      if (!(await stillGranted(access, this.user.id, parsed).catch(() => false))) {
-        await access.github.revokeInstallationToken(access.token).catch(() => {})
-        return REPOSITORY_SENTENCES.unreadable
-      }
-      this.#access = access
+  async #auth(
+    repositoryUrl: string,
+  ): Promise<{ github: GithubApi; token: string } | null | string> {
+    const parsed = parseGithubRepository(repositoryUrl)
+    if (!parsed) return REPOSITORY_SENTENCES.unreadable
+    let access: Awaited<ReturnType<typeof repositoryToken>>
+    try {
+      access = await repositoryToken(this.user.id, repositoryUrl)
+    } catch {
+      return REPOSITORY_SENTENCES.unreadable
     }
-    return tokenEnvs(this.#access.token)
+    if (typeof access === 'string') return REPOSITORY_SENTENCES.unreadable
+    if (!access) return null
+    if (!(await stillGranted(access, this.user.id, parsed).catch(() => false))) {
+      await revokeToken(access, TokenFlow.Assistant)
+      return REPOSITORY_SENTENCES.unreadable
+    }
+    this.#tokens.add(access)
+    return access
+  }
+
+  /** Revokes a token this session made, once. Never throws. */
+  async #revoke(access: { github: GithubApi; token: string }): Promise<void> {
+    if (!this.#tokens.delete(access)) return
+    await revokeToken(access, TokenFlow.Assistant)
   }
 
   /** Leaves the sandbox to rest until its next use and frees the conversation. Never throws. */
@@ -263,9 +294,7 @@ export class RepositorySession {
     } catch {
       // A sandbox that could not be told to rest ends by itself (`REPOSITORY_SANDBOX.timeoutMs`).
     } finally {
-      const access = this.#access
-      this.#access = null
-      if (access) await access.github.revokeInstallationToken(access.token).catch(() => {})
+      await Promise.all([...this.#tokens].map((access) => this.#revoke(access)))
       if (this.#locked) await redis.del(lockKey(this.conversationId)).catch(() => 0)
       this.#locked = false
     }

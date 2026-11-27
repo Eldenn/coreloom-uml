@@ -24,8 +24,12 @@ export class FakeMapSandboxes extends RepositorySandbox {
   /** Every command line run, with its environment as the sandbox would get it. */
   runs: { command: string; envs: Record<string, string> }[] = []
   killed: string[] = []
+  /** Every secret written to a sandbox (`writeSecret`), in order. */
+  writes: { path: string; content: string }[] = []
   /** False: E2B starts no sandbox. */
   available = true
+  /** True: the sandbox does not take a secret (`writeSecret` answers false). */
+  writeFails = false
   clone: Answer = { exitCode: 0, output: `${MAPPED_SHA}\n` }
   map: Answer = { exitCode: 0, output: 'main\n' }
   /** What `MAP` left in the sandbox, gzipped. */
@@ -51,6 +55,10 @@ export class FakeMapSandboxes extends RepositorySandbox {
         return { exitCode: 1, output: '' }
       },
       readFile: async () => this.graph,
+      writeSecret: async (path, content) => {
+        this.writes.push({ path, content })
+        return !this.writeFails
+      },
       isolate: async () => true,
       rest: async () => {},
     }

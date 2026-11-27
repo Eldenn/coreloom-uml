@@ -3,6 +3,7 @@ import {
   REPOSITORY_TOOL_LIMITS,
   TERMINAL_LIMITS,
 } from '#app/assistant/constants/repository'
+import type { OpenRepositorySandbox } from '#app/assistant/services/repository-sandbox'
 import { GITHUB_IMPORT_LIMITS } from '#app/code-maps/constants/code-map'
 import { GITHUB_SOURCE_LIMITS } from '#app/github/constants/github'
 
@@ -11,27 +12,53 @@ import { GITHUB_SOURCE_LIMITS } from '#app/github/constants/github'
  * for the clone: what varies (a URL, a path, a commit, line numbers, a search) comes in as an
  * environment variable of that one run, checked by the API first (`isRepositoryPath`,
  * `isCommitId`, integers), so nothing the model writes is read by the shell that starts them,
- * and nothing it writes runs. An installation token reaches git the same way (`GIT_CONFIG_*`,
- * read by that one git process): it is never written to a file of the sandbox. Each caps what it
- * answers inside the sandbox (`head`), and the API cuts it again. The repository's own code is
- * never run: no hook, filter, LFS, submodule or symbolic link. `MAP` is the one line that writes
- * besides the clone: graphify reads the clone (tree-sitter only, no model) and leaves its graph
- * beside it. Tested against this machine's bash and git
- * (`tests/unit/assistant/repository-commands.spec.ts`).
+ * and nothing it writes runs. An installation token never reaches a command line, an environment
+ * or the standard input of a run: E2B keeps all three. The API writes it to
+ * `cloneSecretFile($REPO_ROOT)` (`writeSecret`, `cloneCredential`), and the clone's line reads
+ * it, removes the file before anything else and gives it to its one fetching git process only
+ * (`GIT_CONFIG_*`). Each caps what it answers inside the sandbox (`head`), and the API cuts it
+ * again. The repository's own code is never run: no hook, filter, LFS, submodule or symbolic
+ * link. `MAP` is the one line that writes besides the clone: graphify reads the clone
+ * (tree-sitter only, no model) and leaves its graph beside it. Tested against this machine's bash
+ * and git (`tests/unit/assistant/repository-commands.spec.ts`).
  */
 
 /**
- * An installation token as git's HTTP header for github.com, for the environment of one run:
- * not `credential.helper` (refused below), not the URL (git would print and keep it), not `-c`
- * (visible to every process).
+ * Where `CLONE` and `CLONE_AT` read the credential of their fetch, beside the clone: a fixed
+ * path, never anything of the secret's. They remove it first thing, whatever happens next.
  */
-export function tokenEnvs(token: string): Record<string, string> {
-  const basic = Buffer.from(`x-access-token:${token}`).toString('base64')
-  return {
-    GIT_CONFIG_COUNT: '1',
-    GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader',
-    GIT_CONFIG_VALUE_0: `Authorization: Basic ${basic}`,
-  }
+export const cloneSecretFile = (root: string) => `${root}.auth`
+
+/**
+ * An installation token as what `CLONE` and `CLONE_AT` read from `cloneSecretFile`: the base64 of
+ * git's basic credential for github.com, one line without newline, which the line turns into
+ * git's HTTP header. Not `credential.helper` (refused below), not the URL (git would print and
+ * keep it), not `-c` (visible to every process).
+ */
+export function cloneCredential(token: string): string {
+  return Buffer.from(`x-access-token:${token}`).toString('base64')
+}
+
+/**
+ * Leaves `token` where the next `CLONE` or `CLONE_AT` run with `REPO_ROOT` = `root` reads it,
+ * and has the sandbox refuse it, and its credential, in any later line or environment. False
+ * when the sandbox did not take it.
+ */
+export function writeCloneCredential(
+  sandbox: Pick<OpenRepositorySandbox, 'writeSecret'>,
+  root: string,
+  token: string,
+): Promise<boolean> {
+  return sandbox.writeSecret(cloneSecretFile(root), cloneCredential(token), [token])
+}
+
+/**
+ * `$REPO_TIMEOUT` of a `CLONE` or `CLONE_AT` the API waits `timeoutMs` for: the line kills its
+ * git `cloneKillMarginMs` before, so nothing of the clone is left running once the API gave up.
+ */
+export function cloneKillSeconds(timeoutMs: number): { REPO_TIMEOUT: string } {
+  const seconds = Math.floor((timeoutMs - REPOSITORY_SANDBOX.cloneKillMarginMs) / 1000)
+  return { REPO_TIMEOUT: String(Math.max(1, seconds)) }
 }
 
 const cap = `head -c ${String(REPOSITORY_SANDBOX.outputMaxBytes)}`
@@ -43,6 +70,51 @@ const git = [
   '-c protocol.allow=never -c protocol.https.allow=always -c credential.helper=',
   '-c filter.lfs.smudge= -c filter.lfs.process= -c filter.lfs.required=false',
 ].join(' ')
+
+/**
+ * Reads the credential left in `cloneSecretFile($REPO_ROOT)`, when there is one, and removes the
+ * file before anything else, whatever happens next. `$C` is left holding the variables that give
+ * git's HTTP header to one process, after any `GIT_CONFIG_*` already set (its count read as a
+ * decimal, leading zeros or not); nothing for a public repository. Exits 1 when the file cannot
+ * be removed or holds anything but base64.
+ */
+const credential = [
+  `A="${cloneSecretFile('$REPO_ROOT')}"`,
+  'H=$(cat -- "$A" 2>/dev/null)',
+  'rm -f -- "$A"',
+  'test ! -e "$A" || exit 1',
+  'C=()',
+  'if test -n "$H"; then case "$H" in *[!A-Za-z0-9+/=]*) exit 1 ;; esac',
+  `N=\${GIT_CONFIG_COUNT:-0}`,
+  'case "$N" in *[!0-9]*) exit 1 ;; esac',
+  'N=$((10#$N))',
+  [
+    'C=("GIT_CONFIG_COUNT=$((N + 1))"',
+    '"GIT_CONFIG_KEY_$N=http.https://github.com/.extraheader"',
+    '"GIT_CONFIG_VALUE_$N=Authorization: Basic $H")',
+  ].join(' '),
+  'fi',
+  'unset H',
+  // A number of seconds (`cloneKillSeconds`), or nothing runs.
+  'case "$REPO_TIMEOUT" in "" | *[!0-9]*) exit 1 ;; esac',
+].join('; ')
+
+/**
+ * Runs `git <args>` with the variables of `$C` in its environment only, never in a command line
+ * (`export` in a subshell, then `exec`: `/proc/<pid>/cmdline` is readable by every user,
+ * `environ` by the same one only), and kills it, with every process it started, after
+ * `$REPO_TIMEOUT` seconds: a clone the API gave up on never goes on. Then exits 124 when it was
+ * killed (GNU `timeout` with KILL answers 137), 1 when it failed, and goes on when it succeeded.
+ * A git the kernel killed for want of memory also answers 137, so it reads as a timeout too:
+ * acceptable, since both mean the clone was too large for the sandbox, and the session's second
+ * try (the files of one commit only) is the answer to either.
+ */
+const fetching = (args: string) =>
+  [
+    `( test \${#C[@]} -eq 0 || export "\${C[@]}"; exec timeout --signal=KILL "$REPO_TIMEOUT" env ${git} ${args} ) >/dev/null 2>&1`,
+    'S=$?',
+    'case "$S" in 0) ;; 124 | 137) exit 124 ;; *) exit 1 ;; esac',
+  ].join('; ')
 
 /**
  * Fails unless `$<name>` resolves under the repository root (symbolic links and `..` resolved)
@@ -59,17 +131,38 @@ const inside = (name: string) =>
  * one). Nothing is fetched afterwards: the sandbox is cut off the network once the clone is in,
  * and a filtered clone forgets where it came from, so git fails at once on a file it lacks
  * instead of waiting for a network that is gone.
- * Exits 4 past `cloneMaxBytes`, and answers the commit.
+ * The credential of a private repository is read from `cloneSecretFile` (`credential`) and
+ * given to the clone only. Exits 4 past `cloneMaxBytes`, 124 past `$REPO_TIMEOUT` seconds
+ * (`cloneKillSeconds`), and answers the commit.
  */
-export const CLONE = `bash -o pipefail -c 'rm -rf -- "$REPO_ROOT" "$REPO_ROOT.git" && ${git} clone --quiet \${REPO_FILTER:+--filter="$REPO_FILTER"} --single-branch --no-tags --no-recurse-submodules --template= --separate-git-dir "$REPO_ROOT.git" \${REPO_BRANCH:+--branch "$REPO_BRANCH"} \${REPO_DEPTH:+--depth "$REPO_DEPTH"} -- "$REPO_URL" "$REPO_ROOT" >/dev/null 2>&1 || exit 1; test "$(du -sk -- "$REPO_ROOT" "$REPO_ROOT.git" | awk "{ s += \\$1 } END { print s }")" -le ${String(Math.floor(REPOSITORY_SANDBOX.cloneMaxBytes / 1024))} || exit 4; test -z "$REPO_FILTER" || ${git} -C "$REPO_ROOT" remote remove origin || exit 1; ${git} -C "$REPO_ROOT" rev-parse HEAD'`
+export const CLONE = `bash -o pipefail -c '${[
+  credential,
+  'rm -rf -- "$REPO_ROOT" "$REPO_ROOT.git" || exit 1',
+  fetching(
+    `clone --quiet \${REPO_FILTER:+--filter="$REPO_FILTER"} --single-branch --no-tags --no-recurse-submodules --template= --separate-git-dir "$REPO_ROOT.git" \${REPO_BRANCH:+--branch "$REPO_BRANCH"} \${REPO_DEPTH:+--depth "$REPO_DEPTH"} -- "$REPO_URL" "$REPO_ROOT"`,
+  ),
+  `test "$(du -sk -- "$REPO_ROOT" "$REPO_ROOT.git" | awk "{ s += \\$1 } END { print s }")" -le ${String(Math.floor(REPOSITORY_SANDBOX.cloneMaxBytes / 1024))} || exit 4`,
+  `test -z "$REPO_FILTER" || ${git} -C "$REPO_ROOT" remote remove origin || exit 1`,
+  `${git} -C "$REPO_ROOT" rev-parse HEAD`,
+].join('; ')}'`
 
 /**
  * The files of commit `$REPO_COMMIT` of `$REPO_URL` in `$REPO_ROOT`, and nothing of its history:
  * what a drawing or a review reads the source from, at the commit its code map was read at (a
- * full commit id: git fetches no shortened one). Same rules and same exits as `CLONE`.
+ * full commit id: git fetches no shortened one). Same rules, same credential (given to the
+ * fetch only) and same exits as `CLONE`.
  */
 // ponytail: fetches every file of the commit to read a few; a partial fetch if it gets slow.
-export const CLONE_AT = `bash -o pipefail -c 'rm -rf -- "$REPO_ROOT" "$REPO_ROOT.git" && ${git} init --quiet --template= --separate-git-dir "$REPO_ROOT.git" -- "$REPO_ROOT" >/dev/null 2>&1 && cd -- "$REPO_ROOT" && ${git} fetch --quiet --depth 1 --no-tags --no-recurse-submodules -- "$REPO_URL" "$REPO_COMMIT" >/dev/null 2>&1 && ${git} checkout --quiet --detach FETCH_HEAD >/dev/null 2>&1 || exit 1; test "$(du -sk -- "$REPO_ROOT" "$REPO_ROOT.git" | awk "{ s += \\$1 } END { print s }")" -le ${String(Math.floor(REPOSITORY_SANDBOX.cloneMaxBytes / 1024))} || exit 4; ${git} rev-parse HEAD'`
+export const CLONE_AT = `bash -o pipefail -c '${[
+  credential,
+  `rm -rf -- "$REPO_ROOT" "$REPO_ROOT.git" && ${git} init --quiet --template= --separate-git-dir "$REPO_ROOT.git" -- "$REPO_ROOT" >/dev/null 2>&1 && cd -- "$REPO_ROOT" || exit 1`,
+  fetching(
+    'fetch --quiet --depth 1 --no-tags --no-recurse-submodules -- "$REPO_URL" "$REPO_COMMIT"',
+  ),
+  `${git} checkout --quiet --detach FETCH_HEAD >/dev/null 2>&1 || exit 1`,
+  `test "$(du -sk -- "$REPO_ROOT" "$REPO_ROOT.git" | awk "{ s += \\$1 } END { print s }")" -le ${String(Math.floor(REPOSITORY_SANDBOX.cloneMaxBytes / 1024))} || exit 4`,
+  `${git} rev-parse HEAD`,
+].join('; ')}'`
 
 /**
  * The whole text file `$READ_PATH`, cut one byte past `GITHUB_SOURCE_LIMITS.fileBytes` so the
