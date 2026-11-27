@@ -53,7 +53,7 @@ Python, no uv, no Harbor, no agent CLI.
   graders. Grading is the caller's: Harbor runs with `--disable-verification`.
 - **Harbor classes**: `coreloom_harbor/`, given to Harbor by import path
   (`--env coreloom_harbor.environment:ConventionEvalsE2BEnvironment`,
-  `--agent coreloom_harbor.agents:ConventionEvals{ClaudeCode,Codex}`). The fixes a to f of the
+  `--agent coreloom_harbor.agents:ConventionEvals{ClaudeCode,Codex}`). The fixes a to g of the
   record's section 5:
   - the environment drops every credential name from the sandbox's startup environment, labels
     the sandbox (`coreloom.purpose=convention-evals`, `coreloom.run`, `coreloom.account`), keeps
@@ -65,10 +65,21 @@ Python, no uv, no Harbor, no agent CLI.
     952 MB, more than a template leaves free; the sandbox is thrown away after the trial). A
     creation the install refuses for lack of memory ("Failed to place sandbox") is tried again;
   - the Claude Code agent runs the template's CLI only (never installs one), with
-    `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` and the API key as its only credential, passed to
-    its command's environment;
-  - the Codex agent runs `codex exec` with `CODEX_API_KEY` in that one command's environment and
-    writes no `auth.json`; it lists `$CODEX_HOME` into the trial's logs before removing it.
+    `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` and the API key as its only credential;
+  - the Codex agent runs `codex exec` and writes no `auth.json`; it lists `$CODEX_HOME` into the
+    trial's logs before removing it;
+  - **the key is never in a command's envs nor its command line** (fix g): envd logs every command
+    it starts with its envs into the install's logs. Both agents start their own command through
+    `exec_with_secret` of the environment, which sends the key on that command's standard input
+    and closes it; the command's fixed first line reads it into its own environment
+    (`IFS= read -r ANTHROPIC_API_KEY; export ANTHROPIC_API_KEY; exec 0</dev/null; …`, or
+    `CODEX_API_KEY`). Every other command goes through `_dispatch_command`, which drops every
+    credential name from its envs;
+  - **the agent's user is not root**: E2B's template builder adds a user `user` with passwordless
+    sudo and leaves root's and its password empty. At setup, as root, the environment locks every
+    empty password and clears every set-id bit, then checks as `node` that `sudo` and `su` fail,
+    that no set-id file is left and that no root process's environment is readable; else the
+    trial fails.
 
   Its tests (`coreloom_harbor/tests/`, Python's `unittest`) run in the worker image:
 
