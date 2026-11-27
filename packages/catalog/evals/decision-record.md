@@ -742,6 +742,29 @@ Status after #148 (the API, built beside #147's runner):
   run; `--dry` stops after the plan. Its dry plan on the dev database: 3 tasks, 18 trials,
   estimate $2.70 to $6.75 (prices of 2026-11-27), cap $5: the upper estimate passes the cap, so
   the run may end `cancelled` at the cap with the remaining trials not started.
+- **Pilot run #371 (2026-11-27, 13:00:41 to 13:12:56 UTC, local dev install, run by the
+  owner's decision through path II only).** Admin's Claude subscription, model `sonnet`, flag on
+  for the admin alone, cap $5. Ended `done`, 18 of 18 trials, 12 min 13 s (trials run one at a
+  time: 8 to 142 s each). Tokens: input 188, cache read 104,748, cache write 97,827, output
+  15,327: an equivalent cost of $0.41 at the prices of 2026-11-27 (Sonnet 5.5), about $0.023 a
+  trial, under the estimate's low end ($2.70): the estimate is revised from these figures
+  (ticket 8). With a subscription this is quota, not money. Held n/k (success and compliance
+  apart):
+
+  | Rule | Condition | Success | Compliance |
+  |---|---|---|---|
+  | `tooling.package-manager` = `pnpm` | none | 6/6 | 4/6 |
+  | `tooling.package-manager` = `pnpm` | full | 6/6 | 3/6 |
+  | `git.commit-messages` = `conventional` | none | 3/3 | 0/3 |
+  | `git.commit-messages` = `conventional` | full | 3/3 | 3/3 |
+
+  The commit-message rule moves from 0/3 to 3/3 with the conventions. The pnpm rule does not
+  (4/6 to 3/6): its `pnpm-add` task fails compliance in 5 of 6 trials, 4 of which took about
+  140 s, which points at the task in a sandbox with no network (an install that waits, then
+  another package manager) rather than at the conventions; to read in the transcripts before the
+  figure is trusted (section 12). With k = 3 neither difference is significant. E2B listed no
+  sandbox of the run afterwards; the install's logs of the run's window hold no key pattern and
+  nothing of the subscription's files.
 
 Tickets 1 to 3 are done in #147 (section 13 has their live checks). What they changed for the
 next ones: sandboxes have 1 GB of memory, not 2 (the install's huge pages); the environment class
