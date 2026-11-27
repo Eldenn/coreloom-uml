@@ -5,6 +5,10 @@ import type { Messages } from '@/messages'
 
 type JobsMessages = Messages['jobs']
 
+export function isBusy(job: QueueJob): boolean {
+  return job.status === 'queued' || job.status === 'running'
+}
+
 function toTask(job: QueueJob, t: JobsMessages): BackgroundTask {
   return {
     id: job.id,
@@ -21,4 +25,10 @@ export function toTasks(data: QueueJobs, t: JobsMessages): BackgroundTask[] {
   const tasks = data.jobs.map((job) => toTask(job, t))
   if (data.hidden > 0) tasks.push({ id: 'more', label: t.more(data.hidden), status: 'queued' })
   return tasks
+}
+
+/** The jobs seen running or waiting in `before` that have ended in `after`, by name. */
+export function endedJobs(before: QueueJobs | undefined, after: QueueJobs): string[] {
+  const busy = new Set(before?.jobs.filter(isBusy).map((job) => job.id))
+  return after.jobs.filter((job) => busy.has(job.id) && !isBusy(job)).map((job) => job.name)
 }
