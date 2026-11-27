@@ -479,7 +479,8 @@ counts only; no Harbor trial was run for it, none being needed to change the che
 
 Whether a real provider key went through standard input before the file channel (the owner's
 check of 2026-11-27, counts only): the local install held 27 SendInput rows, 11 starting with a
-provider key prefix, 4 already masked and 12 other; all 27 were purged that day (on the SendInput
+provider key prefix, 4 already masked and 12 other, whose content was never read (the owner only
+counted them); all 27 were purged that day (on the SendInput
 predicate only, 27 to 0, no other row removed). No real provider key was ever used: the owner
 holds none, the dev database holds only test keys a script seeded, and the 11 key-shaped values
 are shorter than real keys of either provider. The hash comparison could not be run, since there
