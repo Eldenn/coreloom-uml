@@ -24,6 +24,8 @@ export const en = {
       FollowGithubPushJob: 'GitHub push',
       PruneAssistantSandboxesJob: 'Cleanup of the assistant sandboxes',
       RefreshWatchJob: 'Tech watch refresh',
+      RunConventionEvalJob: 'Convention test run',
+      PruneConventionEvalSandboxesJob: 'Cleanup of the convention test sandboxes',
     } as Record<string, string>,
     retry: (attempt: number) => `Attempt ${attempt}`,
     more: (count: number) => (count === 1 ? '1 more job waiting' : `${count} more jobs waiting`),
@@ -1979,6 +1981,8 @@ export const fr: Messages = {
       FollowGithubPushJob: 'Push GitHub',
       PruneAssistantSandboxesJob: 'Nettoyage des sandboxes de l’assistant',
       RefreshWatchJob: 'Actualisation de la veille',
+      RunConventionEvalJob: 'Test des conventions',
+      PruneConventionEvalSandboxesJob: 'Nettoyage des sandboxes des tests de conventions',
     },
     retry: (attempt: number) => `Tentative ${attempt}`,
     more: (count: number) =>
