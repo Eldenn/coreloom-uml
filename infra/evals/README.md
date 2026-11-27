@@ -107,8 +107,12 @@ provider's 401, the key in no file of the job folder, no `auth.json`, and 0 rows
 `sandbox_logs` holding it, as is or in base64 at each of its three alignments (offsets 0, 1 and
 2 of a larger base64 blob), against at least 1 for each of two controls of the same sandbox
 (`live-check/envlog_probe.py`): a canary sent as an env, found as is, and a value sent on a
-command's standard input, found in base64. It prints counts only. The controls read 0 once the
-install redacts its logs: run it before. Manual only, never in CI.
+command's standard input, found in base64. On an install that redacts its logs (the local one
+does since 2026-11-27: its log collector masks the envs and standard input envd logs), found by
+the `[redacted` marker in the probe sandbox's SendInput row, the controls must be there masked
+instead: the canary's name with `[redacted]`, exactly 1 SendInput row of that sandbox with
+`[redacted: `, and 0 rows of either value. It prints which log mode ran (`plain` or `redacted`)
+and counts only. Manual only, never in CI.
 
 ## Disk of the templates
 
