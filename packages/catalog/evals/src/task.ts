@@ -14,8 +14,6 @@ export const Condition = {
 
 export type Condition = (typeof Condition)[keyof typeof Condition]
 
-export const CONDITIONS = Object.values(Condition) as readonly Condition[]
-
 /**
  * What the graded rule asks of this task: `applies` when the task makes the rule matter,
  * `idle` when it does not and doing what the rule is about is a change nobody asked for, `flip`
@@ -55,6 +53,9 @@ export type Grader = (state: FinalState) => Grade
 /** A change made to the workspace the way an agent would, for the grader tests. */
 export type Solution = (state: FinalState) => void
 
+/** Solutions by a name that says what each one does, for the grader tests. */
+export type NamedSolutions = Readonly<Record<string, Solution>>
+
 export type EvalTask = {
   /** kebab-case, unique: also the folder name of the task once exported. */
   id: string
@@ -71,8 +72,14 @@ export type EvalTask = {
   success: Grader
   /** Whether the rule was followed; `not-applicable` when the agent did not reach that part. */
   compliance: Grader
+  /** What `compliance` answers on the untouched fixture, before the agent does anything. */
+  untouched: Verdict
   /** Done and following the rule: both graders must pass on it. */
   reference: Solution
-  /** Done but breaking the rule: `success` must pass and `compliance` must fail on it. */
-  violation: Solution
+  /** Other ways of doing it right (what a tool leaves behind, for one): both graders pass on each. */
+  alternatives: NamedSolutions
+  /** Done but breaking the rule: on each, `success` must pass and `compliance` must fail. */
+  violations: NamedSolutions
+  /** Half done: `success` must not pass on any of them, whatever `compliance` says. */
+  incomplete: NamedSolutions
 }

@@ -1,10 +1,9 @@
-import { chmodSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { chmodSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import {
   AgentFileKind,
   HOOK_SHEBANG,
-  HOOKS_PATH_COMMAND,
+  HOOKS_DIRECTORY,
   RULE_PACKS,
   renderAgentContext,
   Target,
@@ -42,11 +41,7 @@ export function conventionFiles(task: EvalTask, condition: Condition) {
  * condition the hooks are turned on with the command the catalog recommends. The rendered files
  * live in that temporary repository only, never in this one.
  */
-export function createWorkspace(
-  task: EvalTask,
-  condition: Condition,
-  parent: string = mkdtempSync(join(realpathSync(tmpdir()), 'coreloom-uml-evals-')),
-): FinalState {
+export function createWorkspace(task: EvalTask, condition: Condition, parent: string): FinalState {
   const root = join(parent, 'repo')
   const remote = join(parent, 'origin.git')
   const write = (path: string, content: string) => {
@@ -56,7 +51,7 @@ export function createWorkspace(
   for (const [path, content] of Object.entries(task.files)) write(path, content)
   const hooks: string[] = []
   for (const file of conventionFiles(task, condition)) {
-    const hook = file.path.startsWith('.githooks/')
+    const hook = file.path.startsWith(`${HOOKS_DIRECTORY}/`)
     write(file.path, hook ? `${HOOK_SHEBANG}\n${file.content}` : file.content)
     if (hook) hooks.push(file.path)
   }
@@ -67,7 +62,7 @@ export function createWorkspace(
   git(root, ['add', '--all'])
   git(root, ['commit', '--quiet', '--message', 'Initial commit'])
   if (condition === Condition.Full && hooks.length > 0) {
-    git(root, HOOKS_PATH_COMMAND.split(' ').slice(1))
+    git(root, ['config', 'core.hooksPath', HOOKS_DIRECTORY])
   }
   git(parent, ['init', '--quiet', '--bare', remote])
   git(root, ['remote', 'add', 'origin', remote])

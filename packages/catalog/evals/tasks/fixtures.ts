@@ -41,7 +41,7 @@ export const SUM_FIXTURE: Readonly<Record<string, string>> = {
   ].join('\n'),
 }
 
-/** What `sum` must do, checked on the working tree; the agent never sees this file. */
+/** What `sum` must do, checked on the folder `{{root}}` names; the agent never sees this file. */
 export const SUM_HIDDEN_TEST = [
   "import assert from 'node:assert/strict'",
   "import { test } from 'node:test'",
@@ -57,20 +57,32 @@ export const SUM_HIDDEN_TEST = [
 
 /** The fix the sum tasks ask for, as an agent would write it. */
 export function fixSum(state: FinalState) {
+  writeSum(state, '  return values.reduce((total, value) => total + value, 0)')
+}
+
+/** Half a fix: the first value counts now, but an empty list throws. */
+export function halfFixSum(state: FinalState) {
+  writeSum(state, '  return values.reduce((total, value) => total + value)')
+}
+
+function writeSum(state: FinalState, body: string) {
   writeFileSync(
     join(state.root, 'src/sum.js'),
-    [
-      '/** The total of a list of numbers. */',
-      'export function sum(values) {',
-      '  return values.reduce((total, value) => total + value, 0)',
-      '}',
-      '',
-    ].join('\n'),
+    ['/** The total of a list of numbers. */', 'export function sum(values) {', body, '}', ''].join(
+      '\n',
+    ),
   )
 }
 
 /** Commits what is staged by name, as an agent following the conventions would. */
 export function commit(state: FinalState, paths: readonly string[], message: string) {
   git(state.root, ['add', '--', ...paths])
-  git(state.root, ['commit', '--quiet', '--no-verify', '--message', message])
+  git(state.root, [
+    'commit',
+    '--quiet',
+    '--no-verify',
+    '--allow-empty-message',
+    '--message',
+    message,
+  ])
 }

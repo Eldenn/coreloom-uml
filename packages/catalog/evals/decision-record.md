@@ -22,7 +22,7 @@ measure is sound.
 - `src/workspace.ts`: one fresh repository per trial, its conventions rendered at that moment.
 - `src/graders.ts`: the readers and checks of a final state (manifest, lockfiles, history).
 - `src/git.ts`: Git with none of the machine's configuration, for the same result everywhere.
-- `src/versions.ts`: Harbor's and the agents' CLI versions.
+- `src/versions.ts`: Harbor's and the agents' CLI versions; `versions.test.ts` keeps every copy equal.
 - `tasks/`: the tasks, their fixtures, their reference and violating solutions.
 - `tasks.test.ts`: the offline checks run by `pnpm --filter @coreloom-uml/catalog test`.
 
@@ -47,12 +47,30 @@ A task is one TypeScript object (`EvalTask`):
   or `not-applicable` when the agent did not reach the part the rule is about. A task is written
   so that `success` passing implies `compliance` applies: a refusal to work never counts as
   following the rule.
-- `reference` and `violation`: solutions written by hand. On the reference both graders pass; on
-  the violation the task is done and `compliance` fails. CI checks both, offline, for every task.
+- Solutions written by hand, which CI grades offline for every task:
+  - `reference`, and `alternatives` (other correct ways, such as pnpm leaving a dependency-free
+    lockfile): both graders pass;
+  - `violations`: several named ways to do the task while breaking the rule, for each of which
+    `success` passes and `compliance` fails;
+  - `incomplete`: named half-done states (a dependency declared without the file using it, the
+    fix left uncommitted), on which `success` must not pass;
+  - `untouched`: the verdict `compliance` gives on the fixture as it is (`not-applicable` when the
+    task never reached the rule).
 
-Graders read the outcome, never the path: files, the diff against the base commit, the manifest,
-the lockfiles present, the commits of every branch and of `origin`, a hidden test run on the
-working tree from outside it. They never read the transcript. Rules that can only be graded from
+  The grader tests are themselves checked by mutation: 37 of 41 mutants of the graders are
+  killed, the 4 others being equivalent.
+
+Graders read the outcome, never the path:
+- files, the diff against the base commit, the manifest, and the lockfiles present and what they
+  name;
+- the commits of every branch, of `HEAD` and of the bare `origin`, merges left out, each subject
+  read as the rendered `commit-msg` hook reads it, with the same pattern and exemptions
+  (`CONVENTIONAL_SUBJECT_PATTERN`, `EXEMPT_SUBJECT_PREFIXES` from `src/render/gates.ts`);
+- a hidden test run from outside the repository, on the working tree, or on an export of `HEAD`
+  when the task asks for a commit.
+
+Git runs with none of the machine's configuration (no global or system file, an empty `HOME`, so
+no global ignore or attributes). They never read the transcript. Rules that can only be graded from
 the transcript (asking first, running the checks) or by a model judge are left out of this suite.
 
 Once the runner exists (ticket 4), each task is exported to a Harbor task folder at run time:
@@ -73,22 +91,27 @@ Nothing of it is installed on the host or in the pnpm workspace. It lives in the
 `evals` service (`infra/evals/Dockerfile`, profile `evals` of `infra/docker-compose.yml`, see
 `infra/evals/README.md`). The image has two stages:
 
-- `agent`: Node on Debian, git, and the agents' CLIs at exact versions: Claude Code `2.1.322` and
-  Codex `0.167.2`, the versions CI loads the rendered files into. A trial's image is built from
-  this stage. Harbor is also given `--ak version=<version>`, so it reuses the CLI the image holds
-  instead of installing the latest.
+- `agent`: Node on Debian, git, pnpm `11.5.2` and the agents' CLIs at exact versions: Claude Code
+  `2.1.322` and Codex `0.167.2`, the versions CI loads the rendered files into. They are installed
+  with `npm ci` from `infra/evals/agents/package-lock.json` (sha512 integrity), their install
+  scripts running as `node`, and owned by root so the agent cannot change them. A trial's image is
+  built from this stage. Harbor is also given `--ak version=<version>`, so it reuses the CLI the
+  image holds instead of installing the latest.
 - `runner`: `agent` plus:
-  - Harbor `0.27.0` on Python 3.12, from `requirements.lock`, every package checked by its hash
-    (the lock is regenerated in a container, `lock.Dockerfile`);
-  - the Docker client `29.6.1` and Compose `5.3.0`, each checked by its SHA-256;
-  - the catalog with the tasks and graders. Only the catalog, `packages/config` and the files
-    its tests read are copied: no app, no `.env`.
+  - Harbor `0.27.0` on Python 3.12, from `requirements.lock`, wheels only, every package checked
+    by its hash. The lock is regenerated in a container (`lock.Dockerfile`, `--exclude-newer`).
+  - The Docker client `29.6.1` and Compose `5.3.0`, copied from their official images pinned by
+    digest.
+  - Harbor's telemetry off (`HARBOR_TELEMETRY=off`; without it Harbor reports every command to
+    PostHog) and LiteLLM's model cost map read locally (`LITELLM_LOCAL_MODEL_COST_MAP=True`).
+  - The catalog with the tasks and graders. Only the catalog, `packages/config` and the files its
+    tests read are copied: no app, no `.env`.
 
-Every base image is pinned by tag and digest. The image runs as `node`. `tasks.test.ts` keeps the
-versions of `src/versions.ts`, `ci.yml`, the Dockerfile and the lock equal. Inside the image
-(`EVALS_IMAGE=1`) the same suite also checks that the tools answer those versions. Raising one
-changes all of them together, and a run with a new version is never compared with an older one
-without saying so.
+The BuildKit frontend and every image are pinned by tag and digest, for `linux/amd64`. The image
+runs as `node`. `versions.test.ts` keeps the versions of `src/versions.ts`, `ci.yml`, the API's
+image, the Dockerfile and the locks equal. Inside the image (`EVALS_IMAGE=1`) it also checks that
+the tools answer those versions. Raising one changes all of them together, and a run with a new
+version is never compared with an older one without saying so.
 
 The task format stays ours, so a change of harness rewrites the exporter only. Started on its own,
 `docker compose -f infra/docker-compose.yml --profile evals run --build --rm evals` runs the offline
@@ -98,49 +121,86 @@ grader tests and the image checks, then exits.
 
 Harbor's `docker` sandbox drives trials through the Docker client and Compose. From inside the
 `evals` container it needs a daemon. The service ships with **none**: no socket, no privileged
-mode, not on the project's network. In that state it runs the offline tests and the Harbor
-commands that need no sandbox, but no trial. The ways to give it one:
+mode, no credential. In that state it runs the offline tests and the Harbor commands that need no
+sandbox, but no trial.
 
-- **S1. The host's socket** (`/var/run/docker.sock` mounted into the service, plus `group_add` for
-  the socket's group so `node` may use it).
-  - The daemon is the host's: whatever runs in the runner can start a privileged container that
-    mounts `/` of the host. That means Harbor, its 114 Python packages, pnpm's packages and our
-    runner. It is root on the WSL distribution or the Docker Desktop VM, and through `/mnt/c`
-    the Windows files.
-  - Trials share the daemon with the development stack (images, networks, names), so a cleanup
-    bug can stop or remove its containers.
-  - The agent itself runs in a trial container that gets no socket, so a hostile prompt reaching
-    the agent does not get the socket directly. An escape from a trial is a host escape, as with
-    any container.
-  - Paths are resolved on the host: the folder Harbor writes a trial's logs to must be
-    bind-mounted at the same absolute path on both sides.
-  - Simplest; the most it hands over.
-- **S2. A Docker-in-Docker sidecar** (`docker:29.6.1-dind` pinned by digest, `privileged: true`,
-  TLS certificates in a shared volume, `DOCKER_HOST=tcp://evals-docker:2376` and
-  `DOCKER_TLS_VERIFY=1` in the runner).
-  - The sidecar is privileged: it sees the host's devices and may load kernel modules, so an
-    escape from it is root on the host kernel.
-  - The runner never reaches the host's daemon, and the trials live in the inner daemon, unseen
-    by the development stack.
-  - An escape from a trial lands in the sidecar first. Removing its volume wipes everything.
-  - Images are downloaded again into that volume. Whether Harbor's egress rules work in the
-    inner daemon is to be checked on the first run. Shared paths go through a volume mounted at
-    the same path in both.
-- **S3. Unprivileged nested containers** (Sysbox, rootless Docker-in-Docker). Sysbox is a runtime
-  installed on the host, which this setup refuses. Rootless Docker-in-Docker still needs its
-  confinement lifted. Not proposed here.
-- **S4. A remote sandbox instead of Docker** (Harbor's `e2b` environment on the self-hosted
-  install of `infra/e2b/`).
-  - The runner gets no daemon at all, only the local install's own key, and each trial is a
-    microVM.
-  - Not checked: that Harbor's `e2b` environment works against a self-hosted install, and that
-    it builds a task's template there.
-  - The install is heavy on a workstation. To evaluate if trials become regular.
+What any option opens on this kind of host (Docker Engine inside WSL 2):
+- Root on the kernel means root in the WSL utility VM, which every distribution shares.
+- With WSL interop on, whoever can write the distribution's home (`~/.bashrc`, a user unit) runs
+  Windows programs as the user, beyond reading `/mnt/c`.
+- With `networkingMode=mirrored`, containers reach the LAN with Windows' address, and the bridge
+  gateway reaches every WSL service listening on `0.0.0.0`.
 
-Recommendation: **S2** for the pilot. It hands over the least that still runs trials, keeps
-the development stack out of reach, and is wiped with one volume. Never S1 by default.
-Whichever is chosen is added to the service then, in a compose file of its own that the start
-command names. Nothing of S1 or S2 is in the repository until the owner chooses.
+The ways to give the runner a daemon:
+
+- **S1. The host's socket** (`/var/run/docker.sock` mounted into the service, plus `group_add`
+  for the socket's group so `node` may use it).
+  - Whatever runs in the runner can start a privileged container that mounts `/` of the host.
+    That means Harbor, its 114 Python packages, pnpm's packages and our runner. It also reads the
+    development stack's secrets (`docker inspect`, the Postgres volume, so the sealed LLM keys).
+  - Trials share the daemon with that stack, and a cleanup bug can remove its containers.
+  - Paths are resolved on the host.
+  - Simplest, and the most it hands over. Refused by default.
+- **S2. A Docker-in-Docker sidecar** (`docker:29.6.1-dind` pinned by digest, `privileged: true`).
+  - It keeps the trials and their cleanup away from the host's daemon and the development stack.
+    An escape from a trial lands in the sidecar first, and removing its volume wipes everything.
+  - It does **not** protect against a compromised runner: whoever drives the inner daemon can
+    start an inner privileged container, as privileged as the sidecar, which sees the VM's
+    devices, the distribution's disk and its home (`~/.ssh`, tokens). Against the runner's own
+    supply chain, S2 is no better than S1.
+  - Required with it:
+    - no TCP API that a trial can reach: dockerd listens on a Unix socket in a volume shared with
+      the runner only (`DOCKER_HOST=unix://…`), or on TLS with client verification, the runner
+      holding the client certificates read-only;
+    - the runner and the sidecar on an `internal` network of their own, only the sidecar with a
+      way out (pulls, and the trials' allowlist below);
+    - `userns-remap` in the inner daemon (a trial's root is an unprivileged uid);
+    - memory, PID and CPU limits on the sidecar;
+    - named volumes only, mounted at the same path in both, never a host bind mount;
+    - trials never privileged, with every capability dropped, checked with `docker inspect` on
+      the first run, as is the fact that Harbor mounts neither the socket nor the certificates
+      into a trial;
+    - the sidecar started for one run, then `down -v`.
+  - First variant to try: `docker:29.6.1-dind-rootless`. Its outer container is still
+    privileged, but the daemon runs as uid 1000, so a compromised API or an escaped trial arrives
+    without capabilities. Whether Harbor's egress rules work under rootlesskit is to be checked.
+- **S3. Sysbox.** A runtime installed on the host, which this setup refuses.
+- **S4. A remote sandbox instead of Docker** (Harbor's `e2b` environment on the self-hosted install
+  of `infra/e2b/`).
+  - Each trial is a microVM, the best isolation per trial.
+  - The privilege moves rather than disappears: that install itself runs privileged on the host's
+    network, and its key drives every sandbox of the install, the app's (research, assistant)
+    included.
+  - Not checked: that Harbor's `e2b` environment works against a self-hosted install.
+- **S5. A dedicated virtual machine** (Hyper-V, or a separate host) running S1 or S2 inside it.
+  - The only solid boundary for regular trials: what escapes reaches a throwaway VM, not the
+    workstation.
+  - It costs setting the VM up once.
+
+Recommendation: **S2 for the pilot, rootless first**, with every requirement above in place
+before the first trial; **S5** if trials become regular; **never S1**. Whichever is chosen is
+added to the service then, in a compose file of its own that the start command names. Nothing of
+S1, S2 or S5 is in the repository until the owner chooses.
+
+### What a trial may reach
+
+Harbor's Docker sandbox applies a network policy per phase (public, no network, or an allowlist,
+through an nftables sidecar; to confirm for 0.27.0 on the first run). Before any credential
+enters a trial:
+- the environment's setup and the verifier get **no network**: the CLIs are already in the image;
+- the agent's phase gets an **allowlist**: the provider's API host only (`api.anthropic.com` or
+  `api.openai.com`), and the npm registry only for a task that needs an install;
+- private ranges and the gateways are refused (`10/8`, `172.16/12`, `192.168/16`, `169.254/16`,
+  `100.64/10`, `fc00::/7`);
+- `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` is set in the trial;
+- the agent's container holds neither `NET_ADMIN` nor `NET_RAW`.
+
+What stays open, accepted for the pilot: an allowlist by address lets through domain fronting
+behind a shared CDN, and the allowed resolver permits exfiltration over DNS. The runner itself
+runs with Harbor's telemetry off and LiteLLM's model cost map read locally. Where Harbor 0.27.0
+allows it, the verifier runs in a sandbox separate from the agent's
+(`verifier.environment_mode = "separate"`), so that what the agent did to git, Node or
+`/logs/verifier` cannot change the grade.
 
 The self-hosted E2B is not used through `RepositorySandbox`: `isolate()` cuts every
 destination, while the agent must reach its provider, and its template is the code maps'.
@@ -171,10 +231,12 @@ it respects both that choice and the credential rules, for these reasons:
    refresh token already spent, which disconnects the subscription.
 4. **A ChatGPT subscription is our tokens, used by our `codexFetch`.** Those tokens are sealed in
    `llm_connections` and never given to the Codex CLI, which would need them in its own
-   `auth.json` inside the trial.
-5. **The agent fixes the provider.** Claude Code calls Anthropic and Codex calls OpenAI. A
-   configuration on Mistral, Ollama or an OpenAI-compatible endpoint cannot pay for either agent.
-   At best the configuration pays for the trials of the agent whose provider it is.
+   `auth.json` inside the trial. The CLI refreshes those tokens itself, so a copy would spend the
+   refresh token the sealed row keeps, as in reason 3.
+5. **The agent narrows the provider.** Claude Code calls an Anthropic-style API (Anthropic, or
+   another through `ANTHROPIC_BASE_URL`, Bedrock, Vertex), and Codex an OpenAI-style one (its
+   `model_providers`, Ollama included). Some configurations of the app could therefore pay for
+   one of the agents, never for both. This does not lift reason 2, which is enough on its own.
 
 The options, for the owner to decide:
 
@@ -188,6 +250,17 @@ The options, for the owner to decide:
     reachable from the trials. The local API only, since the production proxy closes requests at
     100 seconds.
   - It does not cover subscriptions: that would mean parsing the sealed files.
+  - Against D it narrows what a leak costs (a capped, short-lived, revocable token), but it adds
+    attack surface to the app. Missing from it so far:
+    - it must not be an open relay: one path (`/v1/messages` or `/v1/responses`) and the chosen
+      model only, no batch, files or admin endpoints, the client's headers filtered, a bounded
+      request size;
+    - a cap that holds under concurrency and streaming (pre-authorized on `max_tokens`, a bounded
+      number of trials at once);
+    - a token outside the `api` guard (it reaches no other route), stored hashed, bound to the
+      account and the run, sealed like the other secrets;
+    - no logging of prompts, which carry the fixtures' code;
+    - an allowlist entry from the trials to the API, one host and port.
   - About 3 to 5 days.
 - **B. Trials run by the API, the key resolved in `process()`.** A job resolving the key is not
   enough: the agent still needs the key in its environment, so the key enters a sandbox anyway.
@@ -204,10 +277,21 @@ The options, for the owner to decide:
   CLAUDE_CODE_OAUTH_TOKEN …`, the variable named, its value never on the command line), and Harbor
   passes it to the trial's agent. It is never in an env file, a committed file or the image.
   - The bill goes to the same account, but no secret the app stores is read, so AGENTS.md is
-    untouched.
-  - The credential still enters the local trial containers. The network policy limits where the
-    agent can send it.
-  - The providers' terms for automated runs on a subscription are to be checked.
+    untouched. It honours the owner's choice for the provider, the model and the account billed,
+    not for the credential the app stores: the owner accepts that difference explicitly.
+  - Prefer a key made for the run: an Anthropic Console workspace or an OpenAI project with a
+    spending cap and the model restricted, deleted after the run. A `claude setup-token` token
+    lives long, is hard to revoke, and its terms for automated runs are to be checked. If it is
+    used anyway, make one for the pilot and revoke it afterwards.
+  - Harbor collects the credential from the service's environment. It is never passed as
+    `--agent-env K=V` or any argument, which would put it in `/proc/*/cmdline` and possibly in the
+    job's configuration on disk. It is typed without echo (`read -rs`) or read from a secrets
+    manager, never written to the shell's history.
+  - The credential still enters the trial containers, and a permission-bypassing agent may print
+    it into the transcript. So the output folder is `0700`, outside the repository and outside
+    `/mnt/c` (no OneDrive sync). It is scanned for secrets after each run (and the key rotated if
+    one is found), never uploaded to a Harbor hub, and purged once read.
+  - It is acceptable only with the network policy of section 4 in place before the first trial.
   - No work beyond the runner.
 
 Recommendation: **D** for this internal suite and its pilot, and **A** only if the user-facing

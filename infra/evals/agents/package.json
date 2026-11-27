@@ -1,0 +1,10 @@
+{
+  "name": "coreloom-uml-evals-agents",
+  "private": true,
+  "description": "The CLIs a trial's agent runs, installed with npm ci into /opt/agents by infra/evals/Dockerfile.",
+  "dependencies": {
+    "@anthropic-ai/claude-code": "2.1.322",
+    "@openai/codex": "0.167.2",
+    "pnpm": "11.5.2"
+  }
+}

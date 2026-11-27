@@ -1,6 +1,6 @@
 /**
  * The exact versions a trial runs with. Harbor is not a dependency of the workspace: it is a
- * Python tool installed with `uv tool install harbor==<HARBOR_VERSION>` on the machine that runs
+ * Python tool pinned at `HARBOR_VERSION` in the evals image (`infra/evals/Dockerfile`), which runs
  * the trials. Each agent's CLI is installed in the trial's image at the version below (Harbor's
  * `--ak version=<version>`), the same one CI loads the rendered files into; a test keeps them equal.
  */

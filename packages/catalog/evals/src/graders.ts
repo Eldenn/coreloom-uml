@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileS
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { git, gitOutput } from './git.ts'
+import { git, gitBytes, gitOutput } from './git.ts'
 import { type FinalState, type Grade, Verdict } from './task.ts'
 
 /**
@@ -78,35 +78,90 @@ export function presentLockfiles(state: FinalState): string[] {
     .filter((path) => existsSync(join(state.root, path)))
 }
 
-/** The lockfiles of `manager` are the only ones present, and at least one of them is. */
-export function onlyLockfilesOf(state: FinalState, manager: PackageManager): Grade {
-  const present = presentLockfiles(state)
+/** The lockfiles present that another package manager than `manager` writes. */
+export function foreignLockfiles(state: FinalState, manager: PackageManager): string[] {
   const own: readonly string[] = LOCKFILES[manager]
-  const foreign = present.filter((path) => !own.includes(path))
+  return presentLockfiles(state).filter((path) => !own.includes(path))
+}
+
+/**
+ * Whether `text` names the package `name` as a whole name (`slugify@1.6.6`, `slugify:`,
+ * `"node_modules/slugify"`), not as a part of another one (`slugify-cli`,
+ * `@sindresorhus/slugify`). A plain text search: no lockfile format is parsed.
+ */
+export function mentionsPackage(text: string, name: string): boolean {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
+  return new RegExp(`(^|[^\\w.@/-]|node_modules/)${escaped}($|[^\\w.-])`, 'm').test(text)
+}
+
+/**
+ * The lockfiles of `manager` are the only ones present, and one of them lists `name`: a
+ * lockfile written by hand, or left from before the install, does not.
+ */
+export function onlyLockfilesOf(state: FinalState, manager: PackageManager, name: string): Grade {
+  const foreign = foreignLockfiles(state, manager)
   if (foreign.length > 0) return fail(`lockfile of another package manager: ${foreign.join(', ')}`)
-  if (!present.some((path) => own.includes(path))) return fail(`no ${manager} lockfile`)
-  return pass(`only the ${manager} lockfile`)
+  const own = LOCKFILES[manager].filter((path) => existsSync(join(state.root, path)))
+  if (own.length === 0) return fail(`no ${manager} lockfile`)
+  if (!own.some((path) => mentionsPackage(readText(state, path) ?? '', name))) {
+    return fail(`the ${manager} lockfile does not list ${name}`)
+  }
+  return pass(`only the ${manager} lockfile, which lists ${name}`)
+}
+
+/**
+ * Whether a `pnpm-lock.yaml` declares any dependency: an importer's dependency list or a
+ * `packages` section. The one pnpm writes for a project without dependencies has neither.
+ */
+export function pnpmLockDeclaresDependency(text: string): boolean {
+  return /^\s*(dependencies|devDependencies|optionalDependencies|packages|snapshots):/m.test(text)
 }
 
 /** Longest a hidden test may run, fixture code included. */
-const HIDDEN_TEST_TIMEOUT_MS = 30_000
+export const HIDDEN_TEST_TIMEOUT_MS = 30_000
 
 /**
- * Runs a test the agent never saw against the working tree: `source` is a `node:test` file kept
- * outside the repository, in which `{{root}}` stands for the repository's file URL.
+ * Runs a test the agent never saw against the files under `root` (the working tree, or an export
+ * of a commit): `source` is a `node:test` file kept outside the repository, in which `{{root}}`
+ * stands for that folder's file URL. A run that times out or is killed fails.
  */
-export function hiddenTest(state: FinalState, source: string): Grade {
+export function hiddenTest(
+  root: string,
+  source: string,
+  timeoutMs: number = HIDDEN_TEST_TIMEOUT_MS,
+): Grade {
   const folder = mkdtempSync(join(realpathSync(tmpdir()), 'coreloom-uml-hidden-'))
   try {
     const file = join(folder, 'hidden.test.mjs')
-    writeFileSync(file, source.replaceAll('{{root}}', pathToFileURL(state.root).href))
+    writeFileSync(file, source.replaceAll('{{root}}', pathToFileURL(root).href))
     const run = spawnSync(process.execPath, ['--test', file], {
       cwd: folder,
       env: { PATH: process.env.PATH },
       encoding: 'utf8',
-      timeout: HIDDEN_TEST_TIMEOUT_MS,
+      timeout: timeoutMs,
     })
+    if (run.status === null) {
+      return fail(
+        `the hidden test did not finish (${run.signal ?? run.error?.message ?? 'no exit code'})`,
+      )
+    }
     return run.status === 0 ? pass('the hidden test passes') : fail('the hidden test fails')
+  } finally {
+    rmSync(folder, { recursive: true, force: true })
+  }
+}
+
+/**
+ * Grades the files of the commit `HEAD` names, exported to a folder of their own: what was
+ * committed, whatever the working tree holds besides.
+ */
+export function atHead(state: FinalState, grade: (root: string) => Grade): Grade {
+  const folder = mkdtempSync(join(realpathSync(tmpdir()), 'coreloom-uml-head-'))
+  try {
+    const archive = gitBytes(state.root, ['archive', '--format=tar', 'HEAD'])
+    const extract = spawnSync('tar', ['-x', '-C', folder], { input: archive })
+    if (extract.status !== 0) return fail('HEAD could not be exported')
+    return grade(folder)
   } finally {
     rmSync(folder, { recursive: true, force: true })
   }
@@ -117,30 +172,39 @@ export function committed(state: FinalState, path: string): boolean {
   return git(state.root, ['status', '--porcelain', '--', path]) === ''
 }
 
-export type Commit = { sha: string; subject: string; body: string }
+/** A commit, by its subject: the first line of its message that is not empty, as the hook reads it. */
+export type Commit = { sha: string; subject: string }
 
-/** The commits reachable from any branch, local or pushed, that the base commit is not part of. */
-export function newCommits(state: FinalState): Commit[] {
+/** `git log` of `refs` without `base`, in the repository `gitDir` names (`root`'s own by default). */
+function readLog(state: FinalState, refs: readonly string[], gitDir?: string): Commit[] {
+  const repository = gitDir === undefined ? [] : ['--git-dir', gitDir]
   const log = git(state.root, [
+    ...repository,
     'log',
-    '--branches',
-    '--remotes',
+    '--no-merges',
+    ...refs,
     `^${state.base}`,
-    '--format=%H%x00%s%x00%b%x1e',
+    '--format=%H%x1f%B%x1e',
   ])
   return log
     .split('\x1e')
     .map((entry) => entry.replace(/^\n/, ''))
     .filter(Boolean)
     .map((entry) => {
-      const [sha = '', subject = '', body = ''] = entry.split('\x00')
-      return { sha, subject, body: body.trim() }
+      const [sha = '', message = ''] = entry.split('\x1f')
+      return { sha, subject: message.split('\n').find((line) => line !== '') ?? '' }
     })
 }
 
-/** Paths changed between the base commit and the working tree, committed or not, new or not. */
-export function changedPaths(state: FinalState): string[] {
-  const tracked = git(state.root, ['diff', '--name-only', state.base])
-  const untracked = git(state.root, ['ls-files', '--others', '--exclude-standard'])
-  return [...new Set([...tracked.split('\n'), ...untracked.split('\n')].filter(Boolean))].sort()
+/**
+ * The commits the base commit is not part of, merges left out: those reachable from any local
+ * branch, remote-tracking branch or `HEAD` (a detached one included), and from any ref of the
+ * bare `origin` itself, pushed there or not tracked here.
+ */
+export function newCommits(state: FinalState): Commit[] {
+  const local = readLog(state, ['--branches', '--remotes', 'HEAD'])
+  const pushed = existsSync(state.remote) ? readLog(state, ['--all'], state.remote) : []
+  const bySha = new Map<string, Commit>()
+  for (const item of [...local, ...pushed]) if (!bySha.has(item.sha)) bySha.set(item.sha, item)
+  return [...bySha.values()]
 }

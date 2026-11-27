@@ -17,6 +17,21 @@ export const HOOKS_PATH_COMMAND = `git config core.hooksPath ${HOOKS_DIRECTORY}`
 export const CI_WORKFLOW_FILE = '.github/workflows/agent-conventions.yml'
 
 /**
+ * The subject of a Conventional Commit, `type(scope)!: summary`, as the `commit-msg` hook checks
+ * it with `grep -E`: an extended regular expression that reads the same as a JavaScript one.
+ */
+export const CONVENTIONAL_SUBJECT_PATTERN = '^[a-z]+(\\([^()]+\\))?!?: .+'
+
+/** The subjects Git writes itself (merges, reverts, autosquash), which the hook lets through. */
+export const EXEMPT_SUBJECT_PREFIXES = [
+  'Merge ',
+  'Revert ',
+  'fixup! ',
+  'squash! ',
+  'amend! ',
+] as const
+
+/**
  * The first line of a hook file. It cannot sit inside the managed block (it must be the file's
  * first line, before the begin marker), so it is not rendered: whoever creates the file writes it
  * first, as the CLI does.
@@ -112,9 +127,9 @@ function commitMsg(input: GatesInput): GateFile | null {
     lines.push(
       `coreloom_subject=$(printf '%s\\n' "$coreloom_message" | sed -n '/./{p;q;}')`,
       'case "$coreloom_subject" in',
-      '  "Merge "* | "Revert "* | "fixup! "* | "squash! "* | "amend! "*) ;;',
+      `  ${EXEMPT_SUBJECT_PREFIXES.map((prefix) => `"${prefix}"*`).join(' | ')}) ;;`,
       '  *)',
-      `    if ! printf '%s\\n' "$coreloom_subject" | grep -Eq '^[a-z]+(\\([^()]+\\))?!?: .+'; then`,
+      `    if ! printf '%s\\n' "$coreloom_subject" | grep -Eq '${CONVENTIONAL_SUBJECT_PATTERN}'; then`,
       `      echo 'commit-msg: the subject must follow Conventional Commits, "type(scope): summary".' >&2`,
       '      exit 1',
       '    fi',
