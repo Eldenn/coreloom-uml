@@ -282,7 +282,7 @@ keys go through (I), every other kind (`claude-code`, `openai-codex`, `mistral`,
   **`none`**: no file, no block. For path I the agent's own target (Claude Code or Codex) is added
   to the targets rendered, so the CLI finds its pointer and settings.
 - **Sandbox** (`EvalSandboxes`, `app/convention-evals/services/eval-sandbox.ts`): template
-  `coreloom-uml-convention-evals-r1` built by `node ace assistant:setup` from the install's `base`
+  `coreloom-uml-convention-evals-r4` built by `node ace assistant:setup` from the install's `base`
   plus Node 26.3.0 (tarball checked by its SHA-256), pnpm 11.5.2, a Git identity and slugify 1.6.6
   in pnpm's store and metadata cache (`prefer-offline`), since a trial has no network.
   `denyOut: [ALL_TRAFFIC, RESEARCH_DENIED_RANGES]` at creation and again through `updateNetwork`
@@ -613,6 +613,24 @@ Status after #148 (the API, built beside #147's runner):
   checked against a fake endpoint only. Left: a live run with `claude-code` (the admin's
   subscription) and one with `openai-codex`, and a first build of the harness template on the
   install (its free disk recorded: Node 26 adds about 190 MB to `base`).
+- **Live checks of path II (local self-hosted E2B, scripted model, no provider call,
+  `node ace evals:smoke`, dev only):** template `coreloom-uml-convention-evals-r4` built in 25 s,
+  674 MB free in a trial sandbox (`base` alone: 836 MB). Each of the 4 tasks in `none` and `full`:
+  success and compliance `pass`, about 0.3 s to open, under 0.8 s of commands, 0.2 to 0.6 s to
+  grade. Egress: `curl https://api.anthropic.com` exits 28 (no name resolution), `getent hosts`
+  exits 2, `curl http://1.1.1.1` exits 52 (the filter answers the handshake, no data). A sandbox
+  whose process was SIGKILLed is still listed, kept by a sweep at a high age and killed by one at
+  5 s. What `sandbox_logs` keeps of a trial (35 to 41 rows): the fixed command lines and the env
+  var names `TRIAL_ROOT`, `TRIAL_ARCHIVE`, `GRADER_ROOT`, `GRADER_ARCHIVE`, `SHELL_COMMAND` (the
+  model's commands, in full), `TASK_ID`, `BASE_COMMIT`; uploads by path only; no metadata, no
+  account or run id, no convention file content. Fixed on the way: `base` ships Node 20 in
+  `/usr/local` (Node 26 now in its own folder), `pnpm init` adds a `devEngines` range that makes
+  pnpm switch to a newer pnpm whose cache the pinned one cannot read offline (seed manifest
+  written by hand), a failed template build still answers `Template.exists` (now checked by build
+  status), `Sandbox.list` refuses an empty metadata filter (400), Harbor tags its sandboxes
+  `harbor.context_id` / `harbor.trial_name`, not `harbor.job_id` (any `harbor.` key now), and
+  E2B's build gives `user` passwordless sudo back at its last step, so each trial sandbox takes it
+  away as root before anything runs (`DENY_SUDO`, checked: `sudo -n true` refused).
 
 ## 17. Superseded
 
