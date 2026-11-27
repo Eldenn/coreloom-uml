@@ -14,11 +14,12 @@ const read = (...path: string[]) => readFileSync(join(...path), 'utf8')
 const lockDockerfile = read(infra, 'lock.Dockerfile')
 const apiDockerfile = read(root, 'apps/api/Dockerfile')
 
-/** The `convention-evals` stage of the API's Dockerfile, up to the next stage. */
+/** The worker's two stages: `harbor` (Harbor and our classes) and `convention-evals` on it. */
 const workerStage = (() => {
-  const rest = apiDockerfile.slice(apiDockerfile.search(/^FROM \S+ AS convention-evals$/m))
-  const end = rest.slice(1).search(/^FROM /m)
-  return end === -1 ? rest : rest.slice(0, end + 1)
+  const rest = apiDockerfile.slice(apiDockerfile.search(/^FROM \S+ AS harbor$/m))
+  const worker = rest.search(/^FROM harbor AS convention-evals$/m)
+  const end = rest.slice(worker + 1).search(/^FROM /m)
+  return end === -1 ? rest : rest.slice(0, worker + end + 1)
 })()
 
 type Lock = {
@@ -99,7 +100,10 @@ describe('the pinned versions', () => {
 
 describe('the convention-evals stage of apps/api/Dockerfile', () => {
   it('installs Harbor from its lock by hash, from wheels only, with uv pinned by digest', () => {
-    expect(workerStage).toMatch(/^FROM node:\S+-slim AS convention-evals$/m)
+    // By tag only, like the API's other Debian stage (`skill-tagger`): the API's images pin
+    // their Node base by version, not digest; the E2B templates pin theirs by digest.
+    expect(workerStage).toMatch(/^FROM node:\S+-slim AS harbor$/m)
+    expect(workerStage).toMatch(/^FROM harbor AS convention-evals$/m)
     expect(workerStage).toContain('--require-hashes --no-build')
     expect(workerStage).toContain('-r /opt/harbor-requirements.lock')
     expect(workerStage).toMatch(/--from=ghcr\.io\/astral-sh\/uv:[\w.-]+@sha256:[0-9a-f]{64} /)
@@ -193,6 +197,8 @@ describe.each(templates)('the $agent template', (template) => {
   it('pins its Debian packages', () => {
     expect(template.dockerfile).toMatch(/git=\S+ /)
     expect(template.dockerfile).toMatch(/ca-certificates=\S+/)
+    // tune2fs, which our environment class runs at setup (record section 13).
+    expect(template.dockerfile).toMatch(/e2fsprogs=\S+/)
   })
 })
 

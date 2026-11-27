@@ -73,14 +73,14 @@ CMD ["node", "--import", "./instrumentation.js", "bin/console.js", "queue:work",
 # none on this machine, so there is no Docker client, Compose or daemon here. The Claude Code
 # binary, at the API image's version, serves the runs of a Claude subscription (path II), which
 # launch it in this worker. See infra/evals/README.md.
-FROM node:26.3.0-slim AS convention-evals
+# Stage `harbor` is Harbor and our classes alone (no API, no Claude Code): CI builds it to run the
+# classes' tests as `node`, in the very Python the worker runs.
+FROM node:26.3.0-slim AS harbor
 ARG HARBOR_VERSION=0.27.0
-ENV NODE_ENV=production
 # The E2B SDK's HTTP client reads the system's CA certificates, which node's slim image lacks.
 RUN apt-get update \
   && apt-get install --yes --no-install-recommends ca-certificates=20250419+deb13u1 \
   && rm -rf /var/lib/apt/lists/*
-RUN npm install -g @anthropic-ai/claude-code@2.1.322 && npm cache clean --force
 COPY --from=ghcr.io/astral-sh/uv:0.11.20@sha256:eaa5f1a3305307aaf9e67fe2bbba1d85ebbb2d8a63bce23af21797bfafbe0f8b /uv /usr/local/bin/uv
 COPY infra/evals/requirements.lock /opt/harbor-requirements.lock
 ENV UV_PYTHON_INSTALL_DIR=/opt/python UV_NO_CACHE=1
@@ -92,10 +92,16 @@ RUN uv python install 3.12.13 \
   && /opt/harbor/bin/python -c "import importlib.metadata as m; assert m.version('harbor') == '${HARBOR_VERSION}'"
 COPY infra/evals/coreloom_harbor /opt/harbor/lib/python3.12/site-packages/coreloom_harbor
 # Harbor sends no usage event (harbor/telemetry.py) and LiteLLM reads the model cost map it ships.
+ENV HARBOR_TELEMETRY=off LITELLM_LOCAL_MODEL_COST_MAP=True
+USER node
+
+FROM harbor AS convention-evals
+USER root
+ENV NODE_ENV=production
+RUN npm install -g @anthropic-ai/claude-code@2.1.322 && npm cache clean --force
 # The runs' folders (`CONVENTION_EVALS_DIR`) and the Claude launches' folders (`CLAUDE_CODE_HOME`)
 # are tmpfs mounts of the service.
-ENV HARBOR_TELEMETRY=off LITELLM_LOCAL_MODEL_COST_MAP=True \
-  CONVENTION_EVALS_DIR=/runs CLAUDE_CODE_HOME=/data/claude
+ENV CONVENTION_EVALS_DIR=/runs CLAUDE_CODE_HOME=/data/claude
 COPY --from=build /app /app
 RUN mkdir -p /runs /data/claude && chown node:node /runs /data/claude \
   && chmod 0700 /runs /data/claude \
