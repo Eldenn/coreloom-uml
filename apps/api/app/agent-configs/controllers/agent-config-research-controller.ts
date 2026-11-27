@@ -28,6 +28,7 @@ import { researchConfig } from '#app/research/services/research-config'
 import { acquireResearch, releaseResearch } from '#app/research/services/research-lock'
 import { readProgress, trackProgress } from '#app/research/services/research-progress'
 import ResearchSandbox, { type OpenSandbox } from '#app/research/services/research-sandbox'
+import { searchFor, webSearchOffered } from '#app/web-search/services/search-for'
 
 /**
  * `POST /agent-configs/:id/research`: the user's own model reads the web pages a request names,
@@ -41,7 +42,8 @@ import ResearchSandbox, { type OpenSandbox } from '#app/research/services/resear
  * configuration and has no tool. The key (or the connected subscription) never reaches the
  * sandbox, and the request, the pages and the findings are never logged: counts only. While it
  * runs, the addresses read and the commands run are kept in Redis for `show`, and removed at
- * the end (`research-progress.ts`).
+ * the end (`research-progress.ts`). With the web search offered to the account, the model may
+ * also search: the API runs it (`searchFor`), so the search key never enters the sandbox.
  *
  * The whole call fits in `RESEARCH_REQUEST_BUDGET_MS`, under what the production proxy allows:
  * the sandbox's start and end have their own short timeouts, the loop gets what is left
@@ -81,7 +83,16 @@ export default class AgentConfigResearchController {
     let progress: ReturnType<typeof trackProgress> | null = null
     try {
       sandbox = await (await app.container.make(ResearchSandbox)).open(sandboxConfig)
-      progress = trackProgress(user.id, sandbox.tools)
+      const tools = (await webSearchOffered(user))
+        ? {
+            ...sandbox.tools,
+            search: async (query: string, signal?: AbortSignal) => {
+              const found = await searchFor(user, query, signal)
+              return 'results' in found ? found.results : null
+            },
+          }
+        : sandbox.tools
+      progress = trackProgress(user.id, tools)
       // What the sandbox took to start comes off the model's time, not on top of the budget.
       const timeoutMs = researchTimeLeft(elapsed())
       if (timeoutMs === null) throw new LlmCallError(LlmFailureReason.Timeout)

@@ -1,4 +1,6 @@
 import app from '@adonisjs/core/services/app'
+import db from '@adonisjs/lucid/services/db'
+import redis from '@adonisjs/redis/services/main'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import {
   type LanguageModel,
@@ -16,7 +18,11 @@ import { acquireResearch, releaseResearch } from '#app/research/services/researc
 import { type ResearchStep, readProgress } from '#app/research/services/research-progress'
 import ResearchSandbox from '#app/research/services/research-sandbox'
 import User from '#app/users/models/user'
+import { searchCountKey } from '#app/web-search/services/search-for'
+import WebSearch from '#app/web-search/services/web-search'
+import { saveWebSearch } from '#app/web-search/services/web-search-settings'
 import env from '#start/env'
+import { FakeWebSearch } from '#tests/helpers/fake-web-search'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
 import { saveTestLlmKey } from '#tests/helpers/llm-key'
@@ -86,6 +92,38 @@ const READS_THE_PAGE: ModelStep[] = [
   { text: `Use pnpm (${PAGE_URL}).` },
 ]
 
+const QUERY = 'zephyr pnpm conventions'
+const SEARCHES_THEN_READS: ModelStep[] = [
+  { calls: [{ tool: 'search_web', input: { query: `  ${QUERY} ` } }] },
+  ...READS_THE_PAGE,
+]
+const RESULT = {
+  title: 'Zephyr guide',
+  url: PAGE_URL,
+  snippet: 'How Zephyr uses pnpm.',
+  publishedAt: null,
+}
+
+/** Turns the web search on for this account (flag and an instance service), with a fake client. */
+async function turnSearchOn(user: User, whileSearching?: () => Promise<void>) {
+  await updateFlag(FeatureFlagKey.WebSearch, { enabled: true, rollout: 100, rules: [] }, user)
+  await saveWebSearch('linkup', 'linkup-key-0123456789-abcd')
+  const fake = new (class extends FakeWebSearch {
+    override async search(...args: Parameters<FakeWebSearch['search']>) {
+      await whileSearching?.()
+      return super.search(...args)
+    }
+  })()
+  fake.results = [RESULT]
+  app.container.swap(WebSearch, () => fake)
+  return fake
+}
+
+/** The names of the tools the model was offered at its first call. */
+function offered(model: ReturnType<typeof toolCallingModel>): string[] {
+  return (model.doGenerateCalls[0]?.tools ?? []).map((tool) => tool.name)
+}
+
 async function makeConfig(client: Client, user: User) {
   const created = await client
     .post('/agent-configs')
@@ -119,6 +157,7 @@ test.group('Agent configs - web research', (group) => {
   group.each.teardown(() => {
     app.container.restore(LanguageModels)
     app.container.restore(ResearchSandbox)
+    app.container.restore(WebSearch)
     env.set('E2B_API_KEY' as never, '' as never)
     env.set('E2B_API_URL' as never, '' as never)
     env.set('E2B_SANDBOX_URL' as never, '' as never)
@@ -407,5 +446,64 @@ test.group('Agent configs - web research', (group) => {
     const anonymous = await client.get(`/agent-configs/${configId}/research`).headers(json)
     anonymous.assertStatus(401)
     assert.deepEqual(await readProgress(other.id), [])
+  })
+
+  test('searches through the API, shows the search as a step and logs no query', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    const configId = await makeConfig(client, user)
+    await turnOn(user)
+    const during: ResearchStep[][] = []
+    const search = await turnSearchOn(user, async () => {
+      const shown = await client
+        .get(`/agent-configs/${configId}/research`)
+        .headers(json)
+        .loginAs(user)
+      during.push(shown.body().steps)
+    })
+    const model = toolCallingModel(SEARCHES_THEN_READS)
+    useModel(model)
+    useSandbox()
+    const logs = captureLogs()
+
+    const response = await research(client, user, configId)
+    logs.restore()
+    await redis.del(searchCountKey(user.id))
+
+    response.assertStatus(200)
+    assert.include(offered(model), 'search_web')
+    assert.deepEqual(search.queries, [QUERY])
+    assert.include(JSON.stringify(model.doGenerateCalls[1]?.prompt), 'How Zephyr uses pnpm.')
+    assert.deepEqual(during, [[{ kind: 'search', label: QUERY, state: 'running' }]])
+    assert.deepEqual(await readProgress(user.id), [])
+    const line = logs.lines.find((entry) => entry.includes('"agent web research"'))
+    assert.isDefined(line)
+    assert.notInclude(logs.lines.join('\n'), 'zephyr pnpm')
+  })
+
+  test('offers no search with the flag off or no service saved', async ({ client, assert }) => {
+    const user = await makeUser()
+    const configId = await makeConfig(client, user)
+    await turnOn(user)
+    await db.from('web_search_settings').delete()
+    useSandbox()
+
+    // A service, but the flag off.
+    await saveWebSearch('linkup', 'linkup-key-0123456789-abcd')
+    const flagOff = toolCallingModel(READS_THE_PAGE)
+    useModel(flagOff)
+    ;(await research(client, user, configId)).assertStatus(200)
+    assert.notInclude(offered(flagOff), 'search_web')
+
+    // The flag on, but no service.
+    await updateFlag(FeatureFlagKey.WebSearch, { enabled: true, rollout: 100, rules: [] }, user)
+    await db.from('web_search_settings').delete()
+    const noService = toolCallingModel(READS_THE_PAGE)
+    useModel(noService)
+    ;(await research(client, user, configId)).assertStatus(200)
+    assert.notInclude(offered(noService), 'search_web')
+    assert.include(offered(noService), 'read_page')
   })
 })

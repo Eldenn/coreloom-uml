@@ -463,6 +463,42 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/admin-github-app-controller').default['destroy']>>>
     }
   }
+  'admin.web_search.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/admin/web-search'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/web-search/controllers/admin-web-search-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/web-search/controllers/admin-web-search-controller').default['show']>>>
+    }
+  }
+  'admin.web_search.update': {
+    methods: ["PUT"]
+    pattern: '/admin/web-search'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/web-search/validators/web-search-input').saveWebSearchInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/web-search/validators/web-search-input').saveWebSearchInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/web-search/controllers/admin-web-search-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/web-search/controllers/admin-web-search-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'admin.web_search.destroy': {
+    methods: ["DELETE"]
+    pattern: '/admin/web-search'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/web-search/controllers/admin-web-search-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/web-search/controllers/admin-web-search-controller').default['destroy']>>>
+    }
+  }
   'github.webhook': {
     methods: ["POST"]
     pattern: '/github/webhook'
