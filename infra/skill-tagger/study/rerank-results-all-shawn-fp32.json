@@ -1,0 +1,1220 @@
+{
+ "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+ "instruction": "Given a coding convention rule, retrieve the agent skills that help a coding agent follow it",
+ "candidates": 20,
+ "batch": 16,
+ "torch_threads": 8,
+ "cpu_ms_per_pair": 2095.0881917197453,
+ "rules": 157,
+ "methods": {
+  "qwen": {
+   "nDCG@5": 0.6515936035488921,
+   "R@5": 0.7545698924731182,
+   "MRR@20": 0.6875738956384118,
+   "threshold": {
+    "precision": {
+     "mean": 0.6951783604558791,
+     "std": 0.03507545512677845
+    },
+    "recall": {
+     "mean": 0.21040723981900453,
+     "std": 0.004410314183171473
+    },
+    "F0.5": {
+     "mean": 0.47537898830370634,
+     "std": 0.01335614136719705
+    },
+    "positive rules with no suggestion": {
+     "mean": 0.7100806451612902,
+     "std": 0.01360849760539211
+    },
+    "nothing rules suggested": {
+     "mean": 0.06212121212121206,
+     "std": 0.0066043923386980095
+    }
+   },
+   "chosen threshold": {
+    "min": 0.6379852890968323,
+    "max": 0.6611782908439636,
+    "median": 0.6560802459716797
+   }
+  },
+  "reranker": {
+   "nDCG@5": 0.6490582270122209,
+   "R@5": 0.765994623655914,
+   "MRR@20": 0.6802678280500861,
+   "threshold": {
+    "precision": {
+     "mean": 0.48388430721149867,
+     "std": 0.005073207017465378
+    },
+    "recall": {
+     "mean": 0.35814479638009045,
+     "std": 0.00611697096588043
+    },
+    "F0.5": {
+     "mean": 0.45209250792400474,
+     "std": 0.003434054287915896
+    },
+    "positive rules with no suggestion": {
+     "mean": 0.3870967741935484,
+     "std": 0.010514842589036521
+    },
+    "nothing rules suggested": {
+     "mean": 0.27272727272727265,
+     "std": 5.551115123125783e-17
+    }
+   },
+   "chosen threshold": {
+    "min": 0.9999938558253978,
+    "max": 1.0,
+    "median": 0.9999999999999982
+   }
+  }
+ },
+ "bootstrap reranker-qwen": {
+  "nDCG@5": {
+   "point": -0.00253537653667113,
+   "ci95": [
+    -0.0531026381111808,
+    0.04913600756582095
+   ]
+  },
+  "precision": {
+   "point": -0.20867756746473154,
+   "ci95": [
+    -0.33660248604131987,
+    -0.07909659247688564
+   ]
+  },
+  "recall": {
+   "point": 0.14773755656108592,
+   "ci95": [
+    0.08179584266517352,
+    0.21431902985074625
+   ]
+  },
+  "F0.5": {
+   "point": -0.022798401403056057,
+   "ci95": [
+    -0.10604838266935968,
+    0.07100448255861476
+   ]
+  },
+  "positive rules with no suggestion": {
+   "point": -0.32298387096774195,
+   "ci95": [
+    -0.3903225806451612,
+    -0.21128024193548392
+   ]
+  },
+  "nothing rules suggested": {
+   "point": 0.21060606060606057,
+   "ci95": [
+    0.12121212121212122,
+    0.4666666666666667
+   ]
+  }
+ },
+ "reranked tops": {
+  "typescript.any/agree": [
+   "python-anti-patterns",
+   "cpp-coding-standards",
+   "test-driven-development",
+   "python-patterns",
+   "python-code-style"
+  ],
+  "typescript.strict/all": [
+   "improve",
+   "coding-standards",
+   "code-review-excellence",
+   "typescript-advanced-types",
+   "javascript-typescript-jest"
+  ],
+  "react.granularity/agree": [
+   "writing-plans",
+   "architecture-patterns",
+   "refactor",
+   "nestjs-best-practices",
+   "debugging-strategies"
+  ],
+  "react.state/tanstack-query-only": [
+   "durable-objects",
+   "react-state-management",
+   "frontend-patterns",
+   "expo-data-fetching",
+   "react-composition-patterns"
+  ],
+  "react.state/zustand": [
+   "react-state-management",
+   "frontend-patterns",
+   "durable-objects",
+   "react-composition-patterns",
+   "expo-data-fetching"
+  ],
+  "react.state/redux": [
+   "react-state-management",
+   "incremental-implementation",
+   "durable-objects",
+   "react-composition-patterns",
+   "web-component-design"
+  ],
+  "react.styling/tailwind": [
+   "tailwind-css-patterns",
+   "tailwind-design-system",
+   "frontend-design-anthropics-2",
+   "ui-ux-pro-max",
+   "tailwind-4-docs"
+  ],
+  "react.effects/agree": [
+   "react-state-management",
+   "frontend-patterns",
+   "react-composition-patterns",
+   "react-best-practices",
+   "web-component-design"
+  ],
+  "testing.levels/unit": [
+   "test-driven-development",
+   "systematic-debugging",
+   "writing-plans",
+   "debugging-strategies",
+   "python-testing-patterns"
+  ],
+  "testing.levels/component": [
+   "systematic-debugging",
+   "debugging-strategies",
+   "vue-testing-best-practices",
+   "test-driven-development",
+   "writing-plans"
+  ],
+  "testing.levels/e2e": [
+   "webapp-testing",
+   "ui-ux-pro-max",
+   "systematic-debugging",
+   "writing-plans",
+   "webapp-testing-github"
+  ],
+  "style.comments/agree": [
+   "systematic-debugging",
+   "coding-standards",
+   "python-anti-patterns",
+   "debugging-strategies",
+   "agentic-eval"
+  ],
+  "workflow.changes/agree": [
+   "writing-plans",
+   "incremental-implementation",
+   "git-workflow-and-versioning",
+   "gh-stack",
+   "git-commit"
+  ],
+  "workflow.autonomy/agree": [
+   "brainstorming",
+   "architecture-decision-records",
+   "architecture-patterns",
+   "cross-critique",
+   "documentation-and-adrs"
+  ],
+  "tooling.checks/run": [
+   "systematic-debugging",
+   "code-change-verification",
+   "coding-standards",
+   "agentic-eval",
+   "verification-before-completion"
+  ],
+  "frontend.animations/agree": [
+   "gsap-react",
+   "remove-animations",
+   "apple-design",
+   "improve-animations",
+   "react-native-design"
+  ],
+  "frontend.accessibility/wcag-aa": [
+   "ui-ux-pro-max",
+   "accessibility",
+   "fixing-accessibility",
+   "better-accessibility",
+   "accessibility-compliance"
+  ],
+  "frontend.accessibility/basics": [
+   "ui-ux-pro-max",
+   "accessibility",
+   "fixing-accessibility",
+   "better-accessibility",
+   "wcag-audit-patterns"
+  ],
+  "frontend.css/tokens": [
+   "ui-ux-pro-max",
+   "tailwind-design-system",
+   "applying-brand-guidelines",
+   "penpot-uiux-design",
+   "frontend-design-anthropics-2"
+  ],
+  "frontend.css/dark-mode": [
+   "ui-ux-pro-max",
+   "frontend-design-anthropics-2",
+   "applying-brand-guidelines",
+   "penpot-uiux-design",
+   "theme-factory"
+  ],
+  "frontend.framework/next": [
+   "react-best-practices",
+   "frontend-patterns",
+   "nextjs-app-router-patterns",
+   "clerk-nextjs-patterns",
+   "react-composition-patterns"
+  ],
+  "frontend.lint-format/biome": [
+   "python-code-style",
+   "coding-standards",
+   "code-change-verification",
+   "refactor",
+   "improve"
+  ],
+  "frontend.test-runner/vitest": [
+   "vitest",
+   "vue-testing-best-practices",
+   "javascript-testing-patterns",
+   "test-driven-development",
+   "writing-plans"
+  ],
+  "frontend.test-runner/jest": [
+   "javascript-typescript-jest",
+   "javascript-testing-patterns",
+   "vitest",
+   "test-driven-development",
+   "writing-plans"
+  ],
+  "frontend.test-style/agree": [
+   "e2e-testing-patterns",
+   "playwright-best-practices",
+   "webapp-testing-github",
+   "webapp-testing",
+   "e2e-testing"
+  ],
+  "frontend.e2e-tool/playwright": [
+   "systematic-debugging",
+   "webapp-testing",
+   "clerk-testing",
+   "playwright-best-practices",
+   "e2e-testing-patterns"
+  ],
+  "frontend.browser-check/agree": [
+   "webapp-testing",
+   "webapp-testing-github",
+   "e2e-testing-patterns",
+   "ui-ux-pro-max",
+   "systematic-debugging"
+  ],
+  "frontend.platforms/react-native": [
+   "limrun-expo-development",
+   "react-native-best-practices",
+   "frontend-patterns",
+   "react-native-architecture",
+   "web-component-design"
+  ],
+  "api.style/rest": [
+   "backend-patterns",
+   "microsoft-code-reference",
+   "analyze-project",
+   "agentic-eval",
+   "lavish"
+  ],
+  "api.style/rpc": [
+   "golang-grpc",
+   "debugging-strategies",
+   "agentic-eval",
+   "architecture-patterns",
+   "backend-patterns"
+  ],
+  "database.migrations/write": [
+   "database-migrations",
+   "supabase-postgres-best-practices",
+   "neon-postgres",
+   "postgresql-optimization",
+   "golang-database"
+  ],
+  "database.query-rules/no-n-plus-one": [
+   "sql-optimization-patterns",
+   "sql-optimization",
+   "postgresql-optimization",
+   "python-anti-patterns",
+   "postgresql-code-review"
+  ],
+  "database.query-rules/indexes": [
+   "sql-optimization-patterns",
+   "sql-optimization",
+   "postgresql-table-design",
+   "postgresql-optimization",
+   "postgres-patterns"
+  ],
+  "database.query-rules/online-migrations": [
+   "golang-database",
+   "database-migrations",
+   "supabase-postgres-best-practices",
+   "neon-postgres",
+   "postgresql-optimization"
+  ],
+  "database.query-rules/constraints": [
+   "postgresql-table-design",
+   "sql-optimization",
+   "postgresql-optimization",
+   "sql-optimization-patterns",
+   "sql-code-review"
+  ],
+  "backend.auth-strategy/jwt": [
+   "auth-implementation-patterns",
+   "java-springboot",
+   "audit",
+   "verification-loop",
+   "azure-role-selector"
+  ],
+  "backend.auth-strategy/session": [
+   "auth-implementation-patterns",
+   "verification-loop",
+   "clerk-nextjs-patterns",
+   "backend-patterns",
+   "expo-data-fetching"
+  ],
+  "backend.password-hashing/argon2id": [
+   "auth-implementation-patterns",
+   "debugging-strategies",
+   "backend-patterns",
+   "python-anti-patterns",
+   "postgres-patterns"
+  ],
+  "backend.container-image/dockerfile": [
+   "multi-stage-dockerfile",
+   "deployment-pipeline-design",
+   "gitlab-ci-patterns",
+   "debugging-strategies",
+   "pnpm"
+  ],
+  "backend.model-calls/stream": [
+   "claude-api",
+   "copilot-sdk",
+   "agentic-eval",
+   "verification-loop",
+   "lavish"
+  ],
+  "llm.provider-abstraction/provider-sdk": [
+   "improve",
+   "analyze-project",
+   "claude-api",
+   "code-change-verification",
+   "microsoft-code-reference"
+  ],
+  "agents.evals/ci": [
+   "claude-api",
+   "agentic-eval",
+   "verification-loop",
+   "systematic-debugging",
+   "code-change-verification"
+  ],
+  "git.branching/worktree": [
+   "using-git-worktrees",
+   "git-advanced-workflows",
+   "git-workflow-and-versioning",
+   "subagent-driven-development",
+   "gh-stack"
+  ],
+  "git.commit-messages/conventional": [
+   "git-commit",
+   "coding-standards",
+   "git-workflow-and-versioning",
+   "refactor",
+   "requesting-code-review"
+  ],
+  "git.pull-request-size/200": [
+   "requesting-code-review",
+   "git-commit",
+   "gh-stack",
+   "code-review-excellence",
+   "code-review-expert"
+  ],
+  "git.history/disagree": [
+   "git-workflow-and-versioning",
+   "git-advanced-workflows",
+   "code-review-expert",
+   "code-review-excellence",
+   "gh-stack"
+  ],
+  "git.ci-workflow/github-actions": [
+   "coding-standards",
+   "health",
+   "make-repo-contribution",
+   "code-change-verification",
+   "requesting-code-review"
+  ],
+  "security.destructive-commands/never": [
+   "git-guardrails-claude-code",
+   "git-workflow-and-versioning",
+   "supabase-postgres-best-practices",
+   "git-advanced-workflows",
+   "health"
+  ],
+  "system.design-clarification/agree": [
+   "brainstorming",
+   "writing-plans",
+   "sql-optimization-patterns",
+   "spec-driven-implementation",
+   "debugging-strategies"
+  ],
+  "design.refactoring/small-steps": [
+   "test-driven-development",
+   "writing-plans",
+   "tdd",
+   "incremental-implementation",
+   "refactor"
+  ],
+  "design.code-structure/hexagonal": [
+   "architecture-patterns",
+   "systematic-debugging",
+   "java-springboot",
+   "improve",
+   "debugging-strategies"
+  ],
+  "design.ddd/core-only": [
+   "architecture-patterns",
+   "spec-driven-implementation",
+   "incremental-implementation",
+   "test-driven-development",
+   "durable-objects"
+  ],
+  "design.naming/agree": [
+   "coding-standards",
+   "golang-naming",
+   "debugging-strategies",
+   "agentic-eval",
+   "python-code-style"
+  ],
+  "tooling.package-manager/pnpm": [
+   "pnpm",
+   "monorepo-management",
+   "turborepo-vercel",
+   "github-actions-templates",
+   "vitest"
+  ],
+  "frontend.framework/vite-spa": [
+   "react-best-practices",
+   "web-component-design",
+   "frontend-patterns",
+   "react-composition-patterns",
+   "react-state-management"
+  ],
+  "design.paradigm/functional": [
+   "python-anti-patterns",
+   "refactor",
+   "python-patterns",
+   "systematic-debugging",
+   "debugging-strategies"
+  ],
+  "security.sandbox/host": [
+   "analyze-project",
+   "debugging-strategies",
+   "systematic-debugging",
+   "improve",
+   "health"
+  ],
+  "security.secrets/agree": [
+   "python-anti-patterns",
+   "health",
+   "deployment-pipeline-design",
+   "coding-standards",
+   "python-code-style"
+  ],
+  "design.abstraction-timing/third-case": [
+   "test-driven-development",
+   "debugging-strategies",
+   "python-patterns",
+   "writing-plans",
+   "systematic-debugging"
+  ],
+  "react.state/context": [
+   "frontend-patterns",
+   "react-composition-patterns",
+   "react-state-management",
+   "web-component-design",
+   "ui-ux-pro-max"
+  ],
+  "react.styling/styled-components": [
+   "frontend-design-anthropics-2",
+   "ui-ux-pro-max",
+   "web-component-design",
+   "react-composition-patterns",
+   "react-best-practices"
+  ],
+  "react.hooks/agree": [
+   "react-best-practices",
+   "react-composition-patterns",
+   "frontend-patterns",
+   "web-component-design",
+   "react-state-management"
+  ],
+  "frontend.rendering/server": [
+   "react-best-practices",
+   "nextjs-app-router-patterns",
+   "vue-debug-guides",
+   "frontend-patterns",
+   "react-composition-patterns"
+  ],
+  "frontend.bundler/framework": [
+   "coding-standards",
+   "web-component-design",
+   "ui-ux-pro-max",
+   "react-best-practices",
+   "frontend-patterns"
+  ],
+  "frontend.test-network/msw": [
+   "javascript-typescript-jest",
+   "systematic-debugging",
+   "javascript-testing-patterns",
+   "python-testing-patterns",
+   "backend-patterns"
+  ],
+  "frontend.e2e-tool/cypress": [
+   "e2e-testing-patterns",
+   "clerk-testing",
+   "systematic-debugging",
+   "javascript-testing-patterns",
+   "webapp-testing"
+  ],
+  "frontend.api-client/tanstack-query": [
+   "react-state-management",
+   "backend-patterns",
+   "react-composition-patterns",
+   "durable-objects",
+   "workers-development"
+  ],
+  "frontend.api-client/rtk-query": [
+   "incremental-implementation",
+   "durable-objects",
+   "backend-patterns",
+   "react-state-management",
+   "expo-data-fetching"
+  ],
+  "frontend.semantic-html/agree": [
+   "ui-ux-pro-max",
+   "fixing-accessibility",
+   "wcag-audit-patterns",
+   "accessibility-compliance",
+   "better-accessibility"
+  ],
+  "frontend.css/mobile-first": [
+   "ui-ux-pro-max",
+   "mobile-native",
+   "react-native-design",
+   "accessibility-compliance",
+   "tailwind-css-patterns"
+  ],
+  "frontend.css/flex-grid": [
+   "ui-ux-pro-max",
+   "coding-standards",
+   "frontend-design-anthropics-2",
+   "tailwind-css-patterns",
+   "penpot-uiux-design"
+  ],
+  "frontend.hosting/platform": [
+   "react-best-practices",
+   "backend-patterns",
+   "workers-development",
+   "react-composition-patterns",
+   "architecture-patterns"
+  ],
+  "frontend.preview-deploys/yes": [
+   "webapp-testing",
+   "azure-deployment-preflight",
+   "gitlab-ci-patterns",
+   "github-actions-templates",
+   "deployment-pipeline-design"
+  ],
+  "frontend.token-storage/httponly-cookie": [
+   "auth-implementation-patterns",
+   "verification-loop",
+   "backend-patterns",
+   "copilot-sdk",
+   "durable-objects"
+  ],
+  "errors.handling/central-handler": [
+   "java-springboot",
+   "debugging-strategies",
+   "vue-debug-guides",
+   "python-anti-patterns",
+   "backend-patterns"
+  ],
+  "database.access/raw-sql": [
+   "audit",
+   "postgres-patterns",
+   "sql-optimization-patterns",
+   "sql-code-review",
+   "sql-optimization"
+  ],
+  "database.transactions/agree": [
+   "golang-database",
+   "database-migrations",
+   "sql-optimization-patterns",
+   "incremental-implementation",
+   "subagent-driven-development"
+  ],
+  "database.concurrent-writes/row-lock": [
+   "golang-database",
+   "postgresql-optimization",
+   "postgresql-table-design",
+   "postgresql-code-review",
+   "supabase-postgres-best-practices"
+  ],
+  "database.json-columns/agree": [
+   "postgresql-optimization",
+   "postgresql-code-review",
+   "postgresql-table-design",
+   "postgres-patterns",
+   "sql-optimization-patterns"
+  ],
+  "database.table-splitting/partitioned": [
+   "sql-optimization",
+   "sql-optimization-patterns",
+   "postgresql-optimization",
+   "postgresql-table-design",
+   "postgres-patterns"
+  ],
+  "database.connections/agree": [
+   "python-patterns",
+   "sql-optimization-patterns",
+   "golang-database",
+   "database-migrations",
+   "neon-postgres"
+  ],
+  "database.query-rules/explicit-columns": [
+   "sql-optimization-patterns",
+   "sql-optimization",
+   "postgresql-optimization",
+   "postgresql-code-review",
+   "sql-code-review"
+  ],
+  "backend.auth-strategy/identity-provider": [
+   "auth-implementation-patterns",
+   "clerk-testing",
+   "azure-role-selector",
+   "audit",
+   "verification-loop"
+  ],
+  "backend.authorization/agree": [
+   "auth-implementation-patterns",
+   "audit",
+   "convex-reviewer",
+   "backend-patterns",
+   "requesting-code-review"
+  ],
+  "backend.password-hashing/bcrypt": [
+   "auth-implementation-patterns",
+   "backend-patterns",
+   "python-anti-patterns",
+   "coding-standards",
+   "postgres-patterns"
+  ],
+  "backend.service-shape/serverless": [
+   "architecture-patterns",
+   "backend-patterns",
+   "workers-development",
+   "durable-objects",
+   "copilot-sdk"
+  ],
+  "backend.service-shape/microservices": [
+   "architecture-patterns",
+   "backend-patterns",
+   "systematic-debugging",
+   "database-migrations",
+   "supabase-postgres-best-practices"
+  ],
+  "backend.observability/traces": [
+   "debugging-strategies",
+   "systematic-debugging",
+   "appinsights-instrumentation",
+   "architecture-patterns",
+   "workers-development"
+  ],
+  "backend.observability/metrics": [
+   "debugging-strategies",
+   "appinsights-instrumentation",
+   "kpi-dashboard-design",
+   "workers-development",
+   "agentic-eval"
+  ],
+  "backend.model-call-guards/timeouts": [
+   "expo-data-fetching",
+   "systematic-debugging",
+   "claude-api",
+   "backend-patterns",
+   "agentic-eval"
+  ],
+  "backend.model-calls/job": [
+   "claude-api",
+   "agentic-eval",
+   "copilot-sdk",
+   "subagent-driven-development",
+   "verification-loop"
+  ],
+  "git.commit-permission/commit": [
+   "git-commit",
+   "git-workflow-and-versioning",
+   "git-advanced-workflows",
+   "make-repo-contribution",
+   "gh-stack"
+  ],
+  "git.pull-request-size/400": [
+   "requesting-code-review",
+   "git-commit",
+   "gh-stack",
+   "code-review-excellence",
+   "code-review-expert"
+  ],
+  "git.commit-messages/imperative": [
+   "git-commit",
+   "systematic-debugging",
+   "refactor",
+   "incremental-implementation",
+   "requesting-code-review"
+  ],
+  "git.history/agree": [
+   "git-commit",
+   "git-workflow-and-versioning",
+   "git-advanced-workflows",
+   "incremental-implementation",
+   "refactor"
+  ],
+  "git.branching/branch": [
+   "git-workflow-and-versioning",
+   "pr-draft-summary",
+   "gh-stack",
+   "git-commit",
+   "using-git-worktrees"
+  ],
+  "security.destructive-commands/ask": [
+   "git-guardrails-claude-code",
+   "git-workflow-and-versioning",
+   "supabase-postgres-best-practices",
+   "health",
+   "git-advanced-workflows"
+  ],
+  "system.design-trade-offs/agree": [
+   "writing-plans",
+   "documentation-and-adrs",
+   "debugging-strategies",
+   "cross-critique",
+   "improve"
+  ],
+  "system.service-decomposition/modular-monolith": [
+   "architecture-patterns",
+   "nestjs-best-practices",
+   "backend-patterns",
+   "refactor",
+   "writing-plans"
+  ],
+  "system.service-protocol/grpc": [
+   "golang-grpc",
+   "architecture-patterns",
+   "incremental-implementation",
+   "durable-objects",
+   "copilot-sdk"
+  ],
+  "system.monitoring-scope/performance": [
+   "debugging-strategies",
+   "appinsights-instrumentation",
+   "workers-development",
+   "base44-troubleshooter",
+   "audit"
+  ],
+  "design.function-size/agree": [
+   "debugging-strategies",
+   "systematic-debugging",
+   "refactor",
+   "coding-standards",
+   "writing-plans"
+  ],
+  "design.immutability/agree": [
+   "improve",
+   "debugging-strategies",
+   "python-anti-patterns",
+   "golang-safety",
+   "durable-objects"
+  ],
+  "design.principles/single-responsibility": [
+   "writing-plans",
+   "refactor",
+   "architecture-patterns",
+   "improve",
+   "code-review-expert"
+  ],
+  "design.principles/dependency-inversion": [
+   "nestjs-best-practices",
+   "architecture-patterns",
+   "coding-standards",
+   "refactor",
+   "golang-patterns"
+  ],
+  "design.dependency-rule/agree": [
+   "architecture-patterns",
+   "spec-driven-implementation",
+   "coding-standards",
+   "improve",
+   "nestjs-best-practices"
+  ],
+  "design.code-structure/layered": [
+   "architecture-patterns",
+   "nestjs-best-practices",
+   "systematic-debugging",
+   "debugging-strategies",
+   "improve"
+  ],
+  "design.folder-structure/by-domain": [
+   "architecture-patterns",
+   "incremental-implementation",
+   "git-workflow-and-versioning",
+   "refactor",
+   "code-change-verification"
+  ],
+  "design.ddd/everywhere": [
+   "architecture-patterns",
+   "test-driven-development",
+   "incremental-implementation",
+   "spec-driven-implementation",
+   "writing-plans"
+  ],
+  "design.repositories/repositories": [
+   "architecture-patterns",
+   "refactor",
+   "analyze-project",
+   "java-springboot",
+   "durable-objects"
+  ],
+  "llm.streaming/stream": [
+   "copilot-sdk",
+   "claude-api",
+   "lavish",
+   "write",
+   "agentic-eval"
+  ],
+  "llm.structured-output/schema-constrained": [
+   "agentic-eval",
+   "verification-loop",
+   "analyze-project",
+   "verification-before-completion",
+   "claude-api"
+  ],
+  "llm.eval-tool/test-runner": [
+   "agentic-eval",
+   "debugging-strategies",
+   "analyze-project",
+   "audit",
+   "javascript-typescript-jest"
+  ],
+  "llm.eval-scoring/model-judge": [
+   "agentic-eval",
+   "debugging-strategies",
+   "claude-api",
+   "verification-loop",
+   "analyze-project"
+  ],
+  "llm.eval-gate/ci": [
+   "agentic-eval",
+   "code-change-verification",
+   "health",
+   "claude-api",
+   "copilot-sdk"
+  ],
+  "agents.framework/framework": [
+   "agentic-eval",
+   "documentation-and-adrs",
+   "docs-sync",
+   "health",
+   "executing-plans"
+  ],
+  "agents.self-review/agree": [
+   "agentic-eval",
+   "systematic-debugging",
+   "verification-before-completion",
+   "debugging-strategies",
+   "audit"
+  ],
+  "agents.prompt-caching/cached": [
+   "claude-api",
+   "copilot-sdk",
+   "agentic-eval",
+   "health",
+   "verification-loop"
+  ],
+  "agents.evals/manual": [
+   "systematic-debugging",
+   "debugging-strategies",
+   "agentic-eval",
+   "verification-loop",
+   "writing-plans"
+  ],
+  "perf.code-splitting/route": [
+   "react-best-practices",
+   "nextjs-app-router-patterns",
+   "next-cache-components-optimizer",
+   "nextjs-turbopack",
+   "frontend-patterns"
+  ],
+  "perf.memoization/measured": [
+   "frontend-patterns",
+   "react-best-practices",
+   "react-composition-patterns",
+   "debugging-strategies",
+   "web-component-design"
+  ],
+  "perf.long-lists/virtualized": [
+   "lavish",
+   "frontend-patterns",
+   "web-component-design",
+   "react-best-practices",
+   "ui-ux-pro-max"
+  ],
+  "perf.measure-first/agree": [
+   "debugging-strategies",
+   "agentic-eval",
+   "systematic-debugging",
+   "web-quality-audit",
+   "react-native-best-practices"
+  ],
+  "perf.vitals-targets/good": [
+   "react-best-practices",
+   "ui-ux-pro-max",
+   "web-quality-audit",
+   "wcag-audit-patterns",
+   "frontend-patterns"
+  ],
+  "perf.budget-check/lighthouse-ci": [
+   "web-quality-audit",
+   "debugging-strategies",
+   "gitlab-ci-patterns",
+   "code-change-verification",
+   "e2e-testing"
+  ],
+  "perf.image-formats/modern-files": [
+   "image-manipulation-image-magick",
+   "lavish",
+   "canvas-design",
+   "react-best-practices",
+   "app-store-screenshots"
+  ],
+  "perf.dependency-weight/agree": [
+   "react-best-practices",
+   "coding-standards",
+   "pnpm",
+   "react-native-best-practices",
+   "nextjs-turbopack"
+  ],
+  "typescript.state-modeling/agree": [
+   "agentic-eval",
+   "debugging-strategies",
+   "health",
+   "audit",
+   "python-anti-patterns"
+  ],
+  "workflow.autonomy/ask-before-writing": [
+   "spec-driven-implementation",
+   "architecture-patterns",
+   "coding-standards",
+   "documentation-and-adrs",
+   "architecture-decision-records"
+  ],
+  "react.styling/css-modules": [
+   "ui-ux-pro-max",
+   "web-component-design",
+   "frontend-design-anthropics-2",
+   "penpot-uiux-design",
+   "tailwind-css-patterns"
+  ],
+  "frontend.platforms/tauri": [
+   "web-component-design",
+   "mobile-native",
+   "webapp-testing",
+   "accessibility-compliance",
+   "frontend-patterns"
+  ],
+  "frontend.platforms/electron": [
+   "web-component-design",
+   "webapp-testing",
+   "frontend-patterns",
+   "fixing-accessibility",
+   "webapp-testing-github"
+  ],
+  "frontend.bundler/vite": [
+   "react-best-practices",
+   "web-component-design",
+   "nextjs-turbopack",
+   "react-composition-patterns",
+   "vue-debug-guides"
+  ],
+  "frontend.service-worker/offline": [
+   "expo-data-fetching",
+   "react-best-practices",
+   "react-native-architecture",
+   "mobile-native",
+   "nextjs-turbopack"
+  ],
+  "frontend.raw-html/sanitized": [
+   "lavish",
+   "fixing-accessibility",
+   "markdown-to-html",
+   "web-quality-audit",
+   "baoyu-markdown-to-html"
+  ],
+  "frontend.csp/strict": [
+   "coding-standards",
+   "convex-reviewer",
+   "improve",
+   "code-review-expert",
+   "web-quality-audit"
+  ],
+  "api.style/graphql": [
+   "agentic-eval",
+   "copilot-sdk",
+   "create-specification",
+   "backend-patterns",
+   "verification-loop"
+  ],
+  "logging.style/structured": [
+   "python-code-style",
+   "debugging-strategies",
+   "webapp-testing",
+   "durable-objects",
+   "workers-development"
+  ],
+  "backend.background-jobs/job-queue": [
+   "debugging-strategies",
+   "systematic-debugging",
+   "subagent-driven-development",
+   "durable-objects",
+   "golang-concurrency"
+  ],
+  "backend.module-system/esm": [
+   "coding-standards",
+   "nestjs-best-practices",
+   "codebase-design",
+   "pnpm",
+   "javascript-testing-patterns"
+  ],
+  "backend.graceful-shutdown/agree": [
+   "golang-concurrency",
+   "subagent-driven-development",
+   "golang-context",
+   "rust-async-patterns",
+   "architecture-patterns"
+  ],
+  "git.attribution/agree": [
+   "make-repo-contribution",
+   "git-commit",
+   "git-workflow-and-versioning",
+   "coding-standards",
+   "code-review-expert"
+  ],
+  "security.dependencies/ask": [
+   "analyze-project",
+   "health",
+   "coding-standards",
+   "debugging-strategies",
+   "create-agentsmd"
+  ],
+  "security.input-trust/agree": [
+   "golang-security",
+   "sql-code-review",
+   "python-anti-patterns",
+   "postgresql-code-review",
+   "convex-reviewer"
+  ],
+  "system.health-probes/liveness-readiness": [
+   "health",
+   "durable-objects",
+   "systematic-debugging",
+   "debugging-strategies",
+   "workers-development"
+  ],
+  "tooling.package-manager/bun": [
+   "pnpm",
+   "monorepo-management",
+   "nextjs-turbopack",
+   "health",
+   "turborepo-vercel"
+  ],
+  "frontend.browser-support/browserslist": [
+   "webapp-testing-github",
+   "webapp-testing",
+   "web-quality-audit",
+   "debugging-strategies",
+   "wcag-audit-patterns"
+  ],
+  "api.webhooks/receives": [
+   "backend-patterns",
+   "verification-before-completion",
+   "architecture-patterns",
+   "workers-development",
+   "base44-troubleshooter"
+  ],
+  "api.rate-limiting/app": [
+   "backend-patterns",
+   "durable-objects",
+   "auth-implementation-patterns",
+   "clerk-nextjs-patterns",
+   "nextjs-app-router-patterns"
+  ],
+  "backend.cache-store/shared": [
+   "debugging-strategies",
+   "durable-objects",
+   "backend-patterns",
+   "clerk-nextjs-patterns",
+   "expo-data-fetching"
+  ],
+  "system.queue-guarantees/at-least-once": [
+   "durable-objects",
+   "audit",
+   "architecture-patterns",
+   "subagent-driven-development",
+   "rust-patterns"
+  ],
+  "system.failover/active-active": [
+   "durable-objects",
+   "golang-concurrency",
+   "systematic-debugging",
+   "incremental-implementation",
+   "architecture-patterns"
+  ],
+  "llm.fine-tuning/adapters": [
+   "agentic-eval",
+   "copilot-sdk",
+   "analyze-project",
+   "health",
+   "create-specification"
+  ],
+  "llm.vector-store/pgvector": [
+   "sql-optimization",
+   "postgresql-optimization",
+   "postgresql-table-design",
+   "supabase-postgres-best-practices",
+   "sql-optimization-patterns"
+  ],
+  "llm.prompt-injection/agree": [
+   "agentic-eval",
+   "verification-loop",
+   "audit",
+   "copilot-sdk",
+   "health"
+  ],
+  "agents.long-term-memory/profile": [
+   "copilot-sdk",
+   "agentic-eval",
+   "health",
+   "debugging-strategies",
+   "subagent-driven-development"
+  ],
+  "perf.font-display/swap": [
+   "ui-ux-pro-max",
+   "frontend-design-anthropics-2",
+   "apple-design",
+   "applying-brand-guidelines",
+   "tailwind-design-system"
+  ]
+ }
+}
