@@ -4,6 +4,7 @@ import type { BullJobsOptions } from '@nemoventures/adonis-jobs/types'
 import { SKILL_TOPICS_QUEUE } from '#app/skills/constants/skill-topics'
 import { classifySkillTopics } from '#app/skills/services/skill-topics'
 import SkillsEvents from '#app/skills/services/skills-events'
+import { classifyWatchArticles } from '#app/watch/services/watch-topics'
 
 /**
  * Embeds the new and changed skills, then tags the catalog from every label
@@ -25,6 +26,9 @@ export default class ClassifySkillTopicsJob extends Job<ClassifySkillTopicsJobDa
   async process(): Promise<void> {
     const report = await classifySkillTopics()
     this.logger.info({ report }, 'skills tagged')
+    // The tech watch's articles are tagged by the same model, here only (see `watch-topics.ts`).
+    const articles = await classifyWatchArticles()
+    this.logger.info({ report: articles }, 'watch articles tagged')
     if (report.tagged > 0) {
       await (await app.container.make(SkillsEvents)).publish('catalog.updated')
     }

@@ -14,6 +14,7 @@ export const FeatureFlagKey = {
   AssistantActions: 'assistant-actions',
   AssistantRepository: 'assistant-repository',
   DesignRecords: 'design-records',
+  TechWatch: 'tech-watch',
 } as const
 
 export type FeatureFlagKey = (typeof FeatureFlagKey)[keyof typeof FeatureFlagKey]
@@ -107,6 +108,14 @@ export const FEATURE_FLAGS: readonly FeatureFlagDeclaration[] = [
     description:
       "Lets people record a project's requirements and architecture decisions, which the assistant reads before it draws.",
     tags: ['design', 'llm'],
+    defaultState: OFF,
+  },
+  {
+    key: FeatureFlagKey.TechWatch,
+    name: 'Tech watch',
+    description:
+      'Shows the Watch page: articles from the RSS feeds the admin picks, tagged by topic, which the assistant reads too.',
+    tags: ['watch'],
     defaultState: OFF,
   },
 ]
