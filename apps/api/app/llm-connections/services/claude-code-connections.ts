@@ -1,4 +1,5 @@
 import app from '@adonisjs/core/services/app'
+import logger from '@adonisjs/core/services/logger'
 import { LlmCallError, LlmFailureReason } from '@coreloom-uml/llm'
 import {
   CLAUDE_LOGIN_TIMEOUT_MS,
@@ -36,14 +37,29 @@ const logins = new Map<
   { login: ClaudeLogin; timer: NodeJS.Timeout; dir: string; submitting: boolean }
 >()
 
-/** Stops the user's sign-in and removes its folder; with `only`, only if it is still current. */
-function stopLogin(user: Person, only?: ClaudeLogin): void {
+/**
+ * Stops the user's sign-in and removes its folder; with `only`, only if it is still current. The
+ * sign-in leaves `logins` at once (no await before), and the returned promise settles once the
+ * binary has exited and then its folder is gone: removed while the binary still runs, the folder
+ * could get a file back. It never rejects: a binary that cannot be stopped or a folder that cannot
+ * be removed is logged (such a folder is purged at the next start by `importClaudeFolders`).
+ */
+function stopLogin(user: Person, only?: ClaudeLogin): Promise<void> {
   const running = logins.get(user.id)
-  if (!running || (only && running.login !== only)) return
+  if (!running || (only && running.login !== only)) return Promise.resolve()
   clearTimeout(running.timer)
-  running.login.kill()
   logins.delete(user.id)
-  void removeClaudeFolder(running.dir).catch(() => {})
+  return endLogin(user, running.login, running.dir)
+}
+
+async function endLogin(user: Person, login: ClaudeLogin, dir: string): Promise<void> {
+  const failed = (step: string) => (error: unknown) => {
+    const reason =
+      error instanceof Error ? ((error as NodeJS.ErrnoException).code ?? error.name) : 'unknown'
+    logger.warn({ userId: user.id, error: reason }, `claude sign-in ${step}`)
+  }
+  await login.kill().catch(failed('not stopped'))
+  await removeClaudeFolder(dir).catch(failed('folder not removed'))
 }
 
 /**
@@ -81,16 +97,18 @@ export async function startClaudeLogin(
   const dir = await makeClaudeFolder()
   // No await between stopping the previous sign-in and recording this one: two requests at once
   // cannot both pass the stop and leave a process running.
-  stopLogin(user)
+  const previous = stopLogin(user)
   let login: ClaudeLogin
   try {
     login = cli.login(dir)
   } catch (error) {
     await removeClaudeFolder(dir)
+    await previous
     throw error
   }
+  // Nobody waits for a sign-in left open: its stop runs on its own, still in order.
   const timer = setTimeout(
-    () => stopLogin(user, login),
+    () => void stopLogin(user, login),
     options.timeoutMs ?? CLAUDE_LOGIN_TIMEOUT_MS,
   )
   timer.unref()
@@ -105,10 +123,11 @@ export async function startClaudeLogin(
   try {
     return await Promise.race([login.url, late])
   } catch (error) {
-    stopLogin(user, login)
+    await stopLogin(user, login)
     throw error
   } finally {
     clearTimeout(urlTimer)
+    await previous
   }
 }
 
@@ -131,7 +150,7 @@ export async function submitClaudeCode(user: Person, code: string): Promise<bool
     statuses.set(user.id, { connected, at: Date.now() })
     return connected
   } finally {
-    stopLogin(user, running.login)
+    await stopLogin(user, running.login)
   }
 }
 
@@ -140,7 +159,7 @@ export async function submitClaudeCode(user: Person, code: string): Promise<bool
  * brings it back: it writes its files back only over the row it read.
  */
 export async function forgetClaude(user: Person): Promise<void> {
-  stopLogin(user)
+  await stopLogin(user)
   statuses.delete(user.id)
   await deleteClaudeState(user)
 }
@@ -150,7 +169,7 @@ export async function forgetClaude(user: Person): Promise<void> {
  * launch slot, then drops it again in case the slot stayed busy.
  */
 export async function disconnectClaude(user: Person): Promise<void> {
-  stopLogin(user)
+  await stopLogin(user)
   if (await hasClaudeState(user)) {
     const cli = await app.container.make(ClaudeCodeCli)
     await withClaudeFolder(user, (dir) => cli.logout(dir), { drop: true }).catch((error) => {
