@@ -48,6 +48,7 @@ export async function runHarness(context: HarnessContext): Promise<void> {
 
   let next = 0
   let running = 0
+  let thrown: unknown = null
   const worker = async () => {
     while (next < context.trials.length && !ledger.stopped) {
       if (ledger.wouldPassCap(running)) {
@@ -62,16 +63,22 @@ export async function runHarness(context: HarnessContext): Promise<void> {
         })
         if (!(await ledger.record(outcome))) stopAll.abort()
         await ledger.save()
+      } catch (error) {
+        // One trial that throws (a full disk, the database) stops them all: no sibling starts
+        // another, the ones under way are aborted, and the error reaches the job once they end.
+        thrown ??= error
+        stop(EvalFailureReason.RunnerFailed)
       } finally {
         running--
       }
     }
   }
   try {
-    await Promise.all(Array.from({ length: Math.max(context.concurrency, 1) }, worker))
+    await Promise.allSettled(Array.from({ length: Math.max(context.concurrency, 1) }, worker))
   } finally {
     context.deadline.removeEventListener('abort', onDeadline)
   }
+  if (thrown) throw thrown
 }
 
 async function runTrial(

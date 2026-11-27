@@ -36,7 +36,7 @@ test.group('Convention tests - the sweep', (group) => {
         // Harbor's without our metadata, old: killed.
         {
           sandboxId: 'old-harbor',
-          metadata: { 'harbor.job_id': 'job-1' },
+          metadata: { 'harbor.context_id': 'ctx-1' },
           startedAt: minutesAgo(70),
         },
         // Ours, still young: kept.

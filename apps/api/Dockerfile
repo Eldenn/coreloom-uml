@@ -65,5 +65,46 @@ WORKDIR /app/apps/api/build
 USER node
 CMD ["node", "--import", "./instrumentation.js", "bin/console.js", "queue:work", "--queues=skill-topics"]
 
+# The convention evals worker (`queue:work --queues=convention-evals`, the `convention-evals`
+# service): the API on Debian, plus Harbor 0.27.0 (with its `e2b` extra) on Python 3.12 from uv,
+# every package from `infra/evals/requirements.lock` by its hash and from a wheel only, and our
+# Harbor classes (`infra/evals/coreloom_harbor`). A run (`RunConventionEvalJob`, ticket 4 of the
+# decision record) starts `harbor run -e e2b` as a child process: each trial in an E2B sandbox,
+# none on this machine, so there is no Docker client, Compose or daemon here. The Claude Code
+# binary, at the API image's version, serves the runs of a Claude subscription (path II), which
+# launch it in this worker. See infra/evals/README.md.
+FROM node:26.3.0-slim AS convention-evals
+ARG HARBOR_VERSION=0.27.0
+ENV NODE_ENV=production
+# The E2B SDK's HTTP client reads the system's CA certificates, which node's slim image lacks.
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends ca-certificates=20250419+deb13u1 \
+  && rm -rf /var/lib/apt/lists/*
+RUN npm install -g @anthropic-ai/claude-code@2.1.322 && npm cache clean --force
+COPY --from=ghcr.io/astral-sh/uv:0.11.20@sha256:eaa5f1a3305307aaf9e67fe2bbba1d85ebbb2d8a63bce23af21797bfafbe0f8b /uv /usr/local/bin/uv
+COPY infra/evals/requirements.lock /opt/harbor-requirements.lock
+ENV UV_PYTHON_INSTALL_DIR=/opt/python UV_NO_CACHE=1
+RUN uv python install 3.12.13 \
+  && uv venv --python 3.12.13 /opt/harbor \
+  && uv pip install --python /opt/harbor/bin/python --require-hashes --no-build \
+    -r /opt/harbor-requirements.lock \
+  && rm -f /usr/local/bin/uv /opt/harbor-requirements.lock \
+  && /opt/harbor/bin/python -c "import importlib.metadata as m; assert m.version('harbor') == '${HARBOR_VERSION}'"
+COPY infra/evals/coreloom_harbor /opt/harbor/lib/python3.12/site-packages/coreloom_harbor
+# Harbor sends no usage event (harbor/telemetry.py) and LiteLLM reads the model cost map it ships.
+# The runs' folders (`CONVENTION_EVALS_DIR`) and the Claude launches' folders (`CLAUDE_CODE_HOME`)
+# are tmpfs mounts of the service.
+ENV HARBOR_TELEMETRY=off LITELLM_LOCAL_MODEL_COST_MAP=True \
+  CONVENTION_EVALS_DIR=/runs CLAUDE_CODE_HOME=/data/claude
+COPY --from=build /app /app
+RUN mkdir -p /runs /data/claude && chown node:node /runs /data/claude \
+  && chmod 0700 /runs /data/claude \
+  && claude --version \
+  && /opt/harbor/bin/harbor --help > /dev/null
+WORKDIR /app/apps/api/build
+# Never as root: it starts Harbor and Claude Code.
+USER node
+CMD ["node", "--import", "./instrumentation.js", "bin/console.js", "queue:work", "--queues=convention-evals"]
+
 # The default target stays the API's image.
 FROM runtime

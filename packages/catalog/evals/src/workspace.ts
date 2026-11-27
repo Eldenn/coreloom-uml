@@ -39,6 +39,10 @@ export function conventionFiles(task: EvalTask, condition: Condition) {
 /** Whether a rendered file is a Git hook: it is written with its `#!` line and made executable. */
 export const isHookFile = (path: string) => path.startsWith(`${HOOKS_DIRECTORY}/`)
 
+/** A hook's content as a repository holds it: its `#!` line first, added when it has none. */
+const withShebang = (content: string) =>
+  content.startsWith('#!') ? content : `${HOOK_SHEBANG}\n${content}`
+
 /**
  * Rendered files as a trial's repository holds them, by path: a Git hook with its `#!` line
  * first, as the CLI writes a hook it creates. What the app hands a runner for a condition.
@@ -49,7 +53,7 @@ export function workspaceFiles(
   return Object.fromEntries(
     files.map((file) => [
       file.path,
-      isHookFile(file.path) ? `${HOOK_SHEBANG}\n${file.content}` : file.content,
+      isHookFile(file.path) ? withShebang(file.content) : file.content,
     ]),
   )
 }
@@ -59,8 +63,9 @@ export function workspaceFiles(
  * conventions committed once on `main`, pushed to a bare `origin` beside it. In the `full`
  * condition the hooks are turned on with the command the catalog recommends. The rendered files
  * live in that temporary repository only, never in this one. `conventions` are the files of the
- * condition as `workspaceFiles` lays them out: by default the task's own rules rendered
- * (`conventionFiles`); the app passes an agent configuration's own files instead.
+ * condition by path: by default the task's own rules rendered (`conventionFiles`); the app passes
+ * an agent configuration's own files instead. A Git hook (under `.githooks/`) gets its `#!` line
+ * when it has none, and is made executable.
  */
 export function createWorkspace(
   task: EvalTask,
@@ -77,8 +82,9 @@ export function createWorkspace(
   for (const [path, content] of Object.entries(task.files)) write(path, content)
   const hooks: string[] = []
   for (const [path, content] of Object.entries(conventions)) {
-    write(path, content)
-    if (isHookFile(path)) hooks.push(path)
+    const hook = isHookFile(path)
+    write(path, hook ? withShebang(content) : content)
+    if (hook) hooks.push(path)
   }
   for (const hook of hooks) chmodSync(join(root, hook), 0o755)
 
@@ -93,4 +99,14 @@ export function createWorkspace(
   git(root, ['remote', 'add', 'origin', remote])
   git(root, ['push', '--quiet', 'origin', 'main'])
   return { root, base: git(root, ['rev-parse', 'HEAD']), remote }
+}
+
+/** `createWorkspace` with the files given first, as the Harbor exporter calls it. */
+export function createWorkspaceWithFiles(
+  task: EvalTask,
+  condition: Condition,
+  files: Readonly<Record<string, string>>,
+  parent: string,
+): FinalState {
+  return createWorkspace(task, condition, parent, files)
 }

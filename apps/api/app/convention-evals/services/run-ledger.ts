@@ -44,6 +44,23 @@ export class RunLedger {
   /** Why the run stops early, once it does: the cap, the time limit, a leak. */
   stopped: EvalFailureReason | null = null
   stored = 0
+  /** Trials stored with grades. */
+  graded = 0
+  /** How many trials ended ungraded, by reason. */
+  readonly errors = new Map<string, number>()
+
+  /** Why most ungraded trials ended: the run's reason when none was graded. */
+  get commonError(): string | null {
+    let common: string | null = null
+    let most = 0
+    for (const [reason, count] of this.errors) {
+      if (count > most) {
+        common = reason
+        most = count
+      }
+    }
+    return common
+  }
 
   constructor(
     readonly run: ConventionEvalRun,
@@ -124,6 +141,12 @@ export class RunLedger {
       return false
     }
     const max = CONVENTION_EVAL_LIMITS.reasonMaxChars
+    // A trial counts as graded only when it ran to its end: graded after a provider refusal, it
+    // measures nothing of the conventions.
+    if (outcome.grades && !outcome.errorReason) this.graded++
+    else if (outcome.errorReason) {
+      this.errors.set(outcome.errorReason, (this.errors.get(outcome.errorReason) ?? 0) + 1)
+    }
     await ConventionEvalTrial.create({
       ...base,
       successVerdict: outcome.grades?.success.verdict ?? null,

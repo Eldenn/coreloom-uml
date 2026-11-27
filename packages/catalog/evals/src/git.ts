@@ -35,18 +35,93 @@ export function gitEnv(): NodeJS.ProcessEnv {
   }
 }
 
+/**
+ * What a repository's own configuration could make Git run while it is read: the agent wrote
+ * that configuration, and the graders read the repository as root. Turned off on every command
+ * line: no file system monitor, no hook, no pager, no attributes file of ours (the graders never run
+ * `git diff`, whose `diff.external` cannot be emptied).
+ */
+const FIXED_OVERRIDES = [
+  'core.fsmonitor=false',
+  'core.hooksPath=/dev/null',
+  'core.pager=cat',
+  'core.attributesFile=/dev/null',
+] as const
+
+/** The keys of a driver (`filter.<name>.…`, `diff.<name>.…`) that name a program to run. */
+const DRIVER_KEY = /^(filter|diff)\.(.+)\.(clean|smudge|process|textconv|command)$/
+
+/**
+ * `-c` options that empty every program a filter or diff driver of the repository names (and make
+ * its filters optional), so a `.gitattributes` the agent wrote runs nothing on checkout or status.
+ * Reading the configuration runs nothing. None when `gitDir` is no repository.
+ */
+function driverOverrides(cwd: string, gitDir: string | undefined, env: NodeJS.ProcessEnv) {
+  let listed: string
+  try {
+    listed = execFileSync(
+      'git',
+      [
+        ...(gitDir === undefined ? [] : ['--git-dir', gitDir]),
+        'config',
+        '--null',
+        '--name-only',
+        '--get-regexp',
+        '^(filter|diff)\\.',
+      ],
+      { cwd, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+    )
+  } catch {
+    return []
+  }
+  const options: string[] = []
+  for (const key of new Set(listed.split('\0').filter(Boolean))) {
+    const match = DRIVER_KEY.exec(key)
+    if (!match) continue
+    options.push('-c', `${key}=`)
+    if (match[1] === 'filter') options.push('-c', `filter.${match[2]}.required=false`)
+  }
+  return options
+}
+
+/** Git's global options that take the next argument as their value. */
+const VALUED_OPTIONS = new Set(['-c', '-C', '--git-dir', '--work-tree', '--namespace'])
+
+/** The subcommand of a Git command line, after its global options. */
+function subcommandOf(args: readonly string[]): string | undefined {
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index] as string
+    if (VALUED_OPTIONS.has(arg)) index++
+    else if (!arg.startsWith('-')) return arg
+  }
+  return undefined
+}
+
 /** Runs git in `cwd` and answers its output without the trailing line break. */
 export function git(cwd: string, args: readonly string[], env: NodeJS.ProcessEnv = gitEnv()) {
   return gitOutput(cwd, args, env).trimEnd()
 }
 
-/** Runs git in `cwd` and answers its output byte for byte (a file's content, for one). */
+/**
+ * Runs git in `cwd` and answers its output byte for byte (a file's content, for one), with every
+ * program the repository's own configuration names turned off (`FIXED_OVERRIDES`, the drivers).
+ */
 export function gitOutput(
   cwd: string,
   args: readonly string[],
   env: NodeJS.ProcessEnv = gitEnv(),
 ): string {
-  return execFileSync('git', args, {
+  const at = args.indexOf('--git-dir')
+  const gitDir = at === -1 ? undefined : args[at + 1]
+  // Reading or writing a setting runs nothing, and must see the repository's own values.
+  const overrides =
+    subcommandOf(args) === 'config'
+      ? []
+      : [
+          ...FIXED_OVERRIDES.flatMap((option) => ['-c', option]),
+          ...driverOverrides(cwd, gitDir, env),
+        ]
+  return execFileSync('git', [...overrides, ...args], {
     cwd,
     env,
     encoding: 'utf8',

@@ -19,6 +19,15 @@ export const BASE_ENVS = {
 } as const
 
 /**
+ * Run as root before anything else: takes passwordless sudo away from `user`, the model's user.
+ * E2B's template build gives it back at its last step whatever the recipe did (a line of
+ * /etc/sudoers and the group `sudo`), so it is done in each sandbox. Fails unless `sudo` is then
+ * refused to `user`: with it, the model would be root and could leave a process the grading
+ * step's `kill -1` does not reach.
+ */
+export const DENY_SUDO = `bash -c 'sed -i "/^user[[:space:]]/d" /etc/sudoers && rm -f /etc/sudoers.d/user && gpasswd -d user sudo >/dev/null 2>&1; visudo -c >/dev/null && ! su -s /bin/sh user -c "sudo -n true" >/dev/null 2>&1'`
+
+/**
  * Unpacks the trial's workspace (built on the worker: the fixture, its conventions, a bare
  * `origin`) into `$TRIAL_ROOT` and points `origin` at the bare repository where it now lies.
  */
@@ -31,10 +40,12 @@ export const SETUP = `bash -c 'mkdir -p -- "$TRIAL_ROOT" && tar -xzf "$TRIAL_ARC
 export const SHELL = `bash -c 'cd -- "$TRIAL_ROOT/repo" && timeout -k 2 ${String(CONVENTION_EVAL_LIMITS.shellSeconds)} bash -c "$SHELL_COMMAND" 2>&1 < /dev/null | head -c ${String(CONVENTION_EVAL_LIMITS.shellOutputMaxBytes)}; exit "\${PIPESTATUS[0]}"'`
 
 /**
- * Run as the trial's user once the model is done: stops whatever the model left running, so
- * nothing of it changes the repository while it is graded.
+ * Run as root once the model is done: stops whatever the model's user left running (frozen first,
+ * so a fork loop cannot outrun the kill), again until none is left, at most 20 rounds. Fails when
+ * one is still there, and the trial is then not graded: nothing of the model may change the
+ * repository while root reads it.
  */
-export const STOP_AGENT = 'kill -KILL -1 2>/dev/null; true'
+export const STOP_AGENT = `bash -c 'for round in $(seq 20); do pkill -STOP -u user; pkill -KILL -u user; pgrep -u user >/dev/null || exit 0; sleep 0.1; done; exit 1'`
 
 /**
  * Run as root: hands the trial to root (no process of the model's user can touch it any more),

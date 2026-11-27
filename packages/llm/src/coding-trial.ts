@@ -23,6 +23,11 @@ export const CODING_TRIAL = {
   /** The transcript kept for the caller to filter and store. */
   transcriptChars: 60_000,
   maxOutputTokens: 4000,
+  /**
+   * Characters per token when a provider reports no usage for a step: fewer than any tokenizer
+   * gives for code and English, so the step's estimate is high and the cap fails closed.
+   */
+  unreportedCharsPerToken: 2,
 } as const
 
 export const CODING_TRIAL_INSTRUCTIONS = [
@@ -57,6 +62,25 @@ export function addUsage(a: CodingTrialUsage, b: CodingTrialUsage): CodingTrialU
     cachedInput: a.cachedInput + b.cachedInput,
     cacheWrite: a.cacheWrite + b.cacheWrite,
     output: a.output + b.output,
+  }
+}
+
+/** Whether the provider said what a step used. */
+function reported(usage: LanguageModelUsage): boolean {
+  return usage.inputTokens !== undefined || usage.outputTokens !== undefined
+}
+
+/**
+ * A step whose provider reported no usage, counted high: the whole conversation so far as
+ * uncached input at `unreportedCharsPerToken`, and the most output a step may give. The cap then
+ * stops a run that cannot be measured early rather than late.
+ */
+export function unreportedStep(contextChars: number): CodingTrialUsage {
+  return {
+    input: Math.ceil(contextChars / CODING_TRIAL.unreportedCharsPerToken),
+    cachedInput: 0,
+    cacheWrite: 0,
+    output: CODING_TRIAL.maxOutputTokens,
   }
 }
 
@@ -114,6 +138,8 @@ export async function runCodingTrial(
   let usage = NO_USAGE
   let steps = 0
   let commands = 0
+  /** What the conversation holds besides the instructions, in characters: commands, outputs. */
+  let context = 0
 
   const tools = {
     run: tool({
@@ -126,6 +152,7 @@ export async function runCodingTrial(
         commands++
         const ran = await unlessAborted(input.run(command, abortSignal), abortSignal)
         const shown = cut(ran.output, CODING_TRIAL.outputChars)
+        context += command.length + shown.length
         keep(`$ ${command}\n${shown}\n[exit ${String(ran.exitCode)}]\n`)
         return `Exit code: ${String(ran.exitCode)}\n${shown}`
       },
@@ -151,7 +178,9 @@ export async function runCodingTrial(
       telemetry: { isEnabled: false },
       onStepEnd: (step) => {
         steps++
-        const used = stepUsage(step.usage)
+        const used = reported(step.usage)
+          ? stepUsage(step.usage)
+          : unreportedStep(instructions.length + input.instruction.length + context)
         usage = addUsage(usage, used)
         if (step.text.trim()) keep(`${step.text.trim()}\n`)
         input.onUsage?.(used)

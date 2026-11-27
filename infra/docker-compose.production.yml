@@ -161,8 +161,8 @@ services:
       - './instrumentation.js'
       - 'bin/console.js'
       - 'queue:work'
-      # Every queue but `skill-scans` and `skill-topics`, which only the skill-scanner and the
-      # skill-tagger below can run.
+      # Every queue but `skill-scans`, `skill-topics` and `convention-evals`, which only the
+      # skill-scanner, the skill-tagger and the convention-evals worker below can run.
       - '--queues=default'
       - '--queues=code-maps'
     environment:
@@ -302,6 +302,59 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
     volumes:
       - 'skill-tagger-models:/models'
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Convention evals worker — the API's worker in its own image (stage
+  # `convention-evals` of apps/api/Dockerfile: Debian, Harbor with its E2B extra
+  # from a hash-locked lock, our Harbor classes, Claude Code), listening to the
+  # `convention-evals` queue only. It runs `harbor run -e e2b` for a run of an
+  # account's conventions: each trial in an E2B sandbox, with the account's
+  # saved key or subscription, which it resolves itself (hence the LLM keys'
+  # encrypter). Its own APP_KEY, and none of the GitHub, Drive or mail settings
+  # it never uses. A run's folder (/runs) is a tmpfs and the container may not
+  # swap (memswap_limit equal to mem_limit), since a key sits in Harbor's
+  # process while it runs: the host must not give the container swap another
+  # way either. See infra/evals/README.md.
+  convention-evals:
+    image: 'ghcr.io/${IMAGE_OWNER}/coreloom-uml-convention-evals:${IMAGE_TAG:-production-latest}'
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3333'
+      APP_NAME: coreloom-uml-convention-evals-production
+      LOG_LEVEL: info
+      APP_KEY: '${SERVICE_PASSWORD_64_CONVENTIONEVALSKEY}'
+      FRONTEND_URL: '${SERVICE_URL_WEB}'
+      LLM_KEYS_ENCRYPTION_KEYS: '${LLM_KEYS_ENCRYPTION_KEYS:-}'
+      DB_HOST: '${DB_HOST}'
+      DB_PORT: '${DB_PORT:-5432}'
+      DB_USER: '${DB_USER}'
+      DB_PASSWORD: '${DB_PASSWORD}'
+      DB_DATABASE: '${DB_DATABASE}'
+      DB_SSL: '${DB_SSL:-false}'
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      # Required by the API's settings, never used by the worker.
+      SMTP_HOST: localhost
+      SMTP_PORT: '587'
+      MAIL_FROM_ADDRESS: no-reply@localhost
+      E2B_API_KEY: '${E2B_API_KEY:?set E2B_API_KEY (E2B Cloud, or a self-hosted install with E2B_API_URL and E2B_SANDBOX_URL)}'
+      E2B_API_URL: '${E2B_API_URL:-}'
+      E2B_SANDBOX_URL: '${E2B_SANDBOX_URL:-}'
+      CONVENTION_EVALS_DIR: /runs
+      CLAUDE_CODE_HOME: /data/claude
+      OTEL_SERVICE_NAME: coreloom-uml-convention-evals-production
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://signoz-otel-collector:4318'
+    tmpfs:
+      - /runs:mode=0700,uid=1000,gid=1000,noexec,nosuid,nodev
+      - /data/claude:mode=0700,uid=1000,gid=1000
+    mem_limit: 4g
+    memswap_limit: 4g
     depends_on:
       redis:
         condition: service_healthy

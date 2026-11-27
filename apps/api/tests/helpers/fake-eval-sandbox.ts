@@ -1,6 +1,12 @@
 import app from '@adonisjs/core/services/app'
 import type { TrialGrades } from '@coreloom-uml/catalog/evals'
-import { GRADE, SETUP, SHELL, STOP_AGENT } from '#app/convention-evals/services/eval-commands'
+import {
+  DENY_SUDO,
+  GRADE,
+  SETUP,
+  SHELL,
+  STOP_AGENT,
+} from '#app/convention-evals/services/eval-commands'
 import EvalSandboxes, {
   type ListedSandbox,
   type OpenEvalSandbox,
@@ -76,7 +82,9 @@ export class FakeEvalSandboxes {
       sandboxId,
       run: async (command, envs, runOptions = {}) => {
         this.runs.push({ command, envs, user: runOptions.user ?? 'user' })
-        if (command === SETUP || command === STOP_AGENT) return { exitCode: 0, output: '' }
+        if (command === SETUP || command === STOP_AGENT || command === DENY_SUDO) {
+          return { exitCode: 0, output: '' }
+        }
         if (command === GRADE) {
           const grades = this.options.grades === undefined ? PASSING_GRADES : this.options.grades
           return grades

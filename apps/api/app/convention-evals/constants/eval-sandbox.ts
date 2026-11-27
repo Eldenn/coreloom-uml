@@ -20,32 +20,44 @@ export const EVAL_TEMPLATE = {
   gitUser: { name: 'Trial', email: 'trial@example.com' },
   cpuCount: 2,
   memoryMB: 1024,
-  revision: 1,
+  revision: 4,
 } as const
 
 export const EVAL_TEMPLATE_NAME = `coreloom-uml-convention-evals-r${String(EVAL_TEMPLATE.revision)}`
 
-/** The build steps, as the root user of the template; tested for their pins only. */
+/**
+ * The build steps, as the root user of the template. `base` ships its own Node (20) in
+ * `/usr/local`: extracting another over it mixes two npm installs, and npm then fails. So Node
+ * goes to a folder of its own and its binaries are linked over the old ones.
+ */
 export function evalTemplateCommands(): string[] {
   const { version, sha256 } = EVAL_TEMPLATE.node
   const archive = `node-v${version}-linux-x64.tar.xz`
+  const home = `/opt/node-v${version}`
   return [
     `curl -fsSL -o /tmp/${archive} https://nodejs.org/dist/v${version}/${archive}`,
     `echo "${sha256}  /tmp/${archive}" | sha256sum -c -`,
-    `tar -xJf /tmp/${archive} -C /usr/local --strip-components=1 --no-same-owner`,
+    `mkdir -p ${home} && tar -xJf /tmp/${archive} -C ${home} --strip-components=1 --no-same-owner`,
     `rm -f /tmp/${archive}`,
-    `npm install -g pnpm@${EVAL_TEMPLATE.pnpm}`,
+    `for bin in node npm npx corepack; do ln -sf ${home}/bin/$bin /usr/local/bin/$bin; done`,
+    `${home}/bin/npm install -g --prefix ${home} pnpm@${EVAL_TEMPLATE.pnpm}`,
+    `ln -sf ${home}/bin/pnpm /usr/local/bin/pnpm && ln -sf ${home}/bin/pnpx /usr/local/bin/pnpx`,
+    'node --version && pnpm --version',
   ]
 }
 
-/** The build steps as the trial's user: its Git identity and pnpm's offline cache. */
+/**
+ * The build steps as the trial's user: its Git identity and pnpm's offline cache. The seed's
+ * manifest is written by hand: `pnpm init` adds a `devEngines.packageManager` range that makes
+ * pnpm download a newer pnpm, whose cache format the pinned one cannot read offline.
+ */
 export function evalTemplateUserCommands(): string[] {
   const { name, email } = EVAL_TEMPLATE.gitUser
   return [
     `git config --global user.name "${name}"`,
     `git config --global user.email "${email}"`,
     'git config --global init.defaultBranch main',
-    `mkdir -p /tmp/seed && cd /tmp/seed && pnpm init >/dev/null && pnpm add ${EVAL_TEMPLATE.cachedPackages.join(' ')} && cd / && rm -rf /tmp/seed`,
+    `mkdir -p /tmp/seed && cd /tmp/seed && echo '{"name":"seed","version":"1.0.0","private":true}' > package.json && pnpm add ${EVAL_TEMPLATE.cachedPackages.join(' ')} && cd / && rm -rf /tmp/seed`,
     'pnpm config set prefer-offline true --location=global',
     'npm config set prefer-offline true',
   ]

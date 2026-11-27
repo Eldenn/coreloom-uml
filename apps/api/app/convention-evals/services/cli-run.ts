@@ -19,6 +19,7 @@ import {
   openTrialSandbox,
   packWorkspace,
 } from '#app/convention-evals/services/trial-sandbox'
+import { researchConfig } from '#app/research/services/research-config'
 
 export type CliContext = {
   agent: HarborAgent
@@ -44,6 +45,7 @@ export class HarborRunError extends Error {
 
 /** Harbor's error class names a trial's error reason is reduced to; any other is `agent_error`. */
 const HARBOR_ERRORS: Readonly<Record<string, EvalFailureReason>> = {
+  AgentAuthenticationError: EvalFailureReason.ProviderAuth,
   AgentTimeoutError: EvalFailureReason.AgentTimeout,
   EnvironmentStartTimeoutError: EvalFailureReason.SandboxUnavailable,
   VerifierTimeoutError: EvalFailureReason.GradingFailed,
@@ -79,10 +81,19 @@ export async function runCli(context: CliContext): Promise<void> {
     accountId: context.accountId,
   })
 
+  const e2b = researchConfig()
+  if (!e2b) throw new HarborRunError()
   const child = harbor.start({
     file: command.file,
     args: command.args,
-    env: { ...command.env, [module.credentialEnvName(context.agent)]: context.credential },
+    // The E2B settings and the credential go to this child only, never to a sandbox's command.
+    env: {
+      ...command.env,
+      E2B_API_KEY: e2b.e2bApiKey,
+      ...(e2b.e2bApiUrl ? { E2B_API_URL: e2b.e2bApiUrl } : {}),
+      ...(e2b.e2bSandboxUrl ? { E2B_SANDBOX_URL: e2b.e2bSandboxUrl } : {}),
+      [module.credentialEnvName(context.agent)]: context.credential,
+    },
   })
   await watch(child, context, () => module.readHarborJob(command.jobDir))
 
@@ -90,8 +101,9 @@ export async function runCli(context: CliContext): Promise<void> {
   // Harbor answered nothing and nothing stopped it: the runner failed, the run did not pass.
   if (results.length === 0 && !ledger.stopped) throw new HarborRunError()
   for (const result of results) {
-    if (ledger.stopped === EvalFailureReason.Leaked) break
+    // Every trial's tokens were spent, stored or not: the cost counts them all, a leak or not.
     if (result.usage) ledger.addUsage(result.usage)
+    if (ledger.stopped === EvalFailureReason.Leaked) continue
     const task = context.tasks.find((item) => item.id === result.taskId)
     if (!task) continue
     const outcome = await gradeResult(context, task, result)
