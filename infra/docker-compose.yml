@@ -146,6 +146,27 @@ services:
         condition: service_healthy
 
   # -----------------------------------------------
+  # Agent convention evals — the runner of packages/catalog/evals/ (Harbor, the
+  # agents' CLIs, the Docker client and the catalog, all pinned; see
+  # infra/evals/README.md). Behind a profile; started on its own, it runs the
+  # offline grader tests and checks its own tools, then exits:
+  #   docker compose -f infra/docker-compose.yml --profile evals run --build --rm evals
+  # It gets no env file, no credential and no Docker socket: how it reaches a
+  # Docker daemon and how a trial is paid are the owner's decisions (decision
+  # record, packages/catalog/evals/decision-record.md).
+  # -----------------------------------------------
+  evals:
+    profiles: ["evals"]
+    build:
+      context: ..
+      dockerfile: infra/evals/Dockerfile
+      target: runner
+    image: coreloom-uml-evals:local
+    # Not on the project's network: it has nothing to reach among the other services.
+    network_mode: bridge
+    restart: "no"
+
+  # -----------------------------------------------
   # Mailpit — local SMTP catch-all (dev only). Password reset and email
   # verification land here instead of a real inbox; nothing leaves the machine.
   # SMTP:    mailpit:1025 (as seen by the api container)

@@ -1,7 +1,7 @@
 # Decision record: evals of the agent conventions
 
-Status: accepted for the format, the harness and the metric; **open** for how a trial is paid
-(section 5), which waits for the owner. Date: 2026-11-27. Follows the decision plan of issue #140;
+Status: accepted for the format, the harness and the metric; **open** for how the runner reaches
+a Docker daemon (section 4) and how a trial is paid (section 5), which wait for the owner. Date: 2026-11-27. Follows the decision plan of issue #140;
 implemented by issue #142.
 
 ## 1. Context
@@ -25,6 +25,8 @@ measure is sound.
 - `src/versions.ts`: Harbor's and the agents' CLI versions.
 - `tasks/`: the tasks, their fixtures, their reference and violating solutions.
 - `tasks.test.ts`: the offline checks run by `pnpm --filter @coreloom-uml/catalog test`.
+
+The runner's image and service are in `infra/evals/` and `infra/docker-compose.yml` (section 4).
 
 The rendered files (AGENTS.md, CLAUDE.md, settings, hooks) exist only in the temporary repository
 of a trial, never in this one: no fixture holds a generated file.
@@ -57,21 +59,94 @@ Once the runner exists (ticket 4), each task is exported to a Harbor task folder
 `instruction.md`, `task.toml`, `environment/` built from `createWorkspace`, and `tests/test.sh`
 running the two graders and writing `/logs/verifier/reward.json`.
 
-## 4. Harness: Harbor, pinned
+## 4. Harness: Harbor, pinned, in a service of the compose file
 
-Harbor (Apache-2.0, Python 3.12 or later) runs the trials: one container per trial, the built-in
-`claude-code` and `codex` agents, `-k` attempts, a network policy per sandbox, recorded
-trajectories, an oracle agent that proves a task can be solved. It is not a dependency of the
-workspace: `uv tool install harbor==0.27.0` on the machine that runs the trials. The agents' CLIs
-are installed in the trial's image at exact versions with `--ak version=<version>` (otherwise
-Harbor installs the latest): Claude Code `2.1.322` and Codex `0.167.2`, the versions CI loads the
-rendered files into; `tasks.test.ts` keeps `src/versions.ts` equal to `ci.yml`. Raising one is a
-change to both files, and a run with a new version is never compared with an older one without
-saying so. The task format stays ours, so a change of harness rewrites the exporter only.
+Harbor runs the trials. It is Apache-2.0 and needs Python 3.12 or later. It gives us:
+- one container per trial;
+- the built-in `claude-code` and `codex` agents;
+- `-k` attempts;
+- a network policy per sandbox;
+- recorded trajectories;
+- an oracle agent that proves a task can be solved.
 
-Trials run in Harbor's local `docker` sandbox, network limited to the model provider's hosts. The
-self-hosted E2B (`infra/e2b/`, `RepositorySandbox`) is not used: `isolate()` cuts every
+Nothing of it is installed on the host or in the pnpm workspace. It lives in the image of the
+`evals` service (`infra/evals/Dockerfile`, profile `evals` of `infra/docker-compose.yml`, see
+`infra/evals/README.md`). The image has two stages:
+
+- `agent`: Node on Debian, git, and the agents' CLIs at exact versions: Claude Code `2.1.322` and
+  Codex `0.167.2`, the versions CI loads the rendered files into. A trial's image is built from
+  this stage. Harbor is also given `--ak version=<version>`, so it reuses the CLI the image holds
+  instead of installing the latest.
+- `runner`: `agent` plus:
+  - Harbor `0.27.0` on Python 3.12, from `requirements.lock`, every package checked by its hash
+    (the lock is regenerated in a container, `lock.Dockerfile`);
+  - the Docker client `29.6.1` and Compose `5.3.0`, each checked by its SHA-256;
+  - the catalog with the tasks and graders. Only the catalog, `packages/config` and the files
+    its tests read are copied: no app, no `.env`.
+
+Every base image is pinned by tag and digest. The image runs as `node`. `tasks.test.ts` keeps the
+versions of `src/versions.ts`, `ci.yml`, the Dockerfile and the lock equal. Inside the image
+(`EVALS_IMAGE=1`) the same suite also checks that the tools answer those versions. Raising one
+changes all of them together, and a run with a new version is never compared with an older one
+without saying so.
+
+The task format stays ours, so a change of harness rewrites the exporter only. Started on its own,
+`docker compose -f infra/docker-compose.yml --profile evals run --build --rm evals` runs the offline
+grader tests and the image checks, then exits.
+
+### Reaching a Docker daemon (open: the owner decides)
+
+Harbor's `docker` sandbox drives trials through the Docker client and Compose. From inside the
+`evals` container it needs a daemon. The service ships with **none**: no socket, no privileged
+mode, not on the project's network. In that state it runs the offline tests and the Harbor
+commands that need no sandbox, but no trial. The ways to give it one:
+
+- **S1. The host's socket** (`/var/run/docker.sock` mounted into the service, plus `group_add` for
+  the socket's group so `node` may use it).
+  - The daemon is the host's: whatever runs in the runner can start a privileged container that
+    mounts `/` of the host. That means Harbor, its 114 Python packages, pnpm's packages and our
+    runner. It is root on the WSL distribution or the Docker Desktop VM, and through `/mnt/c`
+    the Windows files.
+  - Trials share the daemon with the development stack (images, networks, names), so a cleanup
+    bug can stop or remove its containers.
+  - The agent itself runs in a trial container that gets no socket, so a hostile prompt reaching
+    the agent does not get the socket directly. An escape from a trial is a host escape, as with
+    any container.
+  - Paths are resolved on the host: the folder Harbor writes a trial's logs to must be
+    bind-mounted at the same absolute path on both sides.
+  - Simplest; the most it hands over.
+- **S2. A Docker-in-Docker sidecar** (`docker:29.6.1-dind` pinned by digest, `privileged: true`,
+  TLS certificates in a shared volume, `DOCKER_HOST=tcp://evals-docker:2376` and
+  `DOCKER_TLS_VERIFY=1` in the runner).
+  - The sidecar is privileged: it sees the host's devices and may load kernel modules, so an
+    escape from it is root on the host kernel.
+  - The runner never reaches the host's daemon, and the trials live in the inner daemon, unseen
+    by the development stack.
+  - An escape from a trial lands in the sidecar first. Removing its volume wipes everything.
+  - Images are downloaded again into that volume. Whether Harbor's egress rules work in the
+    inner daemon is to be checked on the first run. Shared paths go through a volume mounted at
+    the same path in both.
+- **S3. Unprivileged nested containers** (Sysbox, rootless Docker-in-Docker). Sysbox is a runtime
+  installed on the host, which this setup refuses. Rootless Docker-in-Docker still needs its
+  confinement lifted. Not proposed here.
+- **S4. A remote sandbox instead of Docker** (Harbor's `e2b` environment on the self-hosted
+  install of `infra/e2b/`).
+  - The runner gets no daemon at all, only the local install's own key, and each trial is a
+    microVM.
+  - Not checked: that Harbor's `e2b` environment works against a self-hosted install, and that
+    it builds a task's template there.
+  - The install is heavy on a workstation. To evaluate if trials become regular.
+
+Recommendation: **S2** for the pilot. It hands over the least that still runs trials, keeps
+the development stack out of reach, and is wiped with one volume. Never S1 by default.
+Whichever is chosen is added to the service then, in a compose file of its own that the start
+command names. Nothing of S1 or S2 is in the repository until the owner chooses.
+
+The self-hosted E2B is not used through `RepositorySandbox`: `isolate()` cuts every
 destination, while the agent must reach its provider, and its template is the code maps'.
+
+The service never gets a credential from an env file, a committed file or the image. It gets one
+only through the way section 5 settles, once the owner has accepted it.
 
 ## 5. Who pays: the owner's LLM configuration (open)
 
@@ -123,9 +198,11 @@ The options, for the owner to decide:
   "never returned", the rule that keeps a stolen session from taking a key. Not recommended.
 - **D. The app's choice of provider and model, the same account's credential given on the machine
   that runs the trials.** The runner takes the provider and the model as arguments, read by the
-  owner on the settings page. The credential is the account's own, given to Harbor on that
-  machine: `claude setup-token` for the subscription, or the account's API key in the shell, and
-  `codex login` or the key for Codex.
+  owner on the settings page. The credential is the account's own: a token from
+  `claude setup-token` for the subscription, or the account's API key, and a key for Codex. It is
+  handed to the `evals` service for one run only, from the owner's shell (`docker compose run -e
+  CLAUDE_CODE_OAUTH_TOKEN …`, the variable named, its value never on the command line), and Harbor
+  passes it to the trial's agent. It is never in an env file, a committed file or the image.
   - The bill goes to the same account, but no secret the app stores is read, so AGENTS.md is
     untouched.
   - The credential still enters the local trial containers. The network policy limits where the
