@@ -40,9 +40,9 @@ no Python, no uv, no Harbor, no agent CLI.
   `coreloom-uml-evals:local`. Started on its own, it runs the offline grader tests and checks that
   its tools are the pinned ones (`EVALS_IMAGE=1`), then exits.
 - **What it holds**: no env file, no credential, no Docker socket, and it is not on the project's
-  network. Two questions stay open until the owner decides them (decision record, sections 4 and 5):
-  - how the runner reaches a Docker daemon to start one container per trial;
-  - how a trial is paid.
+  network. How trials run and are paid (E2B sandboxes driven by a `convention-evals` worker of the
+  API, with the user's saved key) is settled in the decision record (sections 4 to 9 and 14);
+  until its tickets land, this image runs the offline tests only.
 
 ## Running it
 

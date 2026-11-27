@@ -1,355 +1,468 @@
 # Decision record: evals of the agent conventions
 
-Status: accepted for the format, the harness and the metric; **open** for how the runner reaches
-a Docker daemon (section 4) and how a trial is paid (section 5), which wait for the owner. Date: 2026-11-27. Follows the decision plan of issue #140;
-implemented by issue #142.
+Status: accepted for the task format, the graders, the conditions and the metric (sections 3,
+10, 11, 12); accepted by the owner's decisions of 2026-11-27 for the path of a test (trials in
+E2B sandboxes driven by Harbor, launched from the app, paid with the user's saved key, behind the
+`convention-evals` flag, opened only after an admin pilot). **Open, the owner decides**: the text
+of the AGENTS.md rule (section 5), the way subscriptions are served (section 8), the pilot's
+budget (section 16), a separate E2B team or key before opening (sections 13 and 15), a larger
+disk on the install only if a template does not fit (section 13), and the written acceptance of
+the install's log collector for the pilot if the 192.0.2.1 canary lands (section 13). Date:
+2026-11-27. Follows issue #140; issue #142, PR #143.
 
 ## 1. Context
 
-`e2e/generated-files.test.ts` proves that what `renderAgentContext` writes is well formed: the
-settings load into Claude Code and Codex, the Git hooks run on real commits, the workflow reads
-as YAML. Nothing measures whether a coding agent that reads those files follows the ready-made
-rules. This suite measures that, for the rules a program can grade on the final state of a
-repository. It is internal to the catalog: what it finds changes the rules' lines, the gates or
-`APPLIED_RULES`. A user-facing "test my conventions" waits until this suite has shown that the
-measure is sound.
+`e2e/generated-files.test.ts` proves that what `renderAgentContext` writes is well formed. Nothing
+measures whether a coding agent that reads those files follows the ready-made rules. This suite
+measures that, for the rules a program can grade on the final state of a repository. It serves two
+readers: the catalog (what it finds changes the rules' lines, the gates or `APPLIED_RULES`) and,
+behind `convention-evals`, the owner of an agent configuration, who runs a short test of their own
+rendered files from the app with their own saved key.
 
 ## 2. Where it lives
 
-`packages/catalog/evals/`, beside `src/` and `e2e/`, in the package that renders what it measures:
+`packages/catalog/evals/`, in the package that renders what it measures:
 
 - `src/task.ts`: the format (`EvalTask`, `Condition`, `Polarity`, `Verdict`).
 - `src/workspace.ts`: one fresh repository per trial, its conventions rendered at that moment.
 - `src/graders.ts`: the readers and checks of a final state (manifest, lockfiles, history).
-- `src/git.ts`: Git with none of the machine's configuration, for the same result everywhere.
+- `src/git.ts`: Git with none of the machine's configuration.
 - `src/versions.ts`: Harbor's and the agents' CLI versions; `versions.test.ts` keeps every copy equal.
 - `tasks/`: the tasks, their fixtures, their reference and violating solutions.
 - `tasks.test.ts`: the offline checks run by `pnpm --filter @coreloom-uml/catalog test`.
 
-The runner's image and service are in `infra/evals/` and `infra/docker-compose.yml` (section 4).
-
-The rendered files (AGENTS.md, CLAUDE.md, settings, hooks) exist only in the temporary repository
-of a trial, never in this one: no fixture holds a generated file.
+The rendered files exist only in a trial's repository, never in this one: no fixture holds a
+generated file. What runs the trials moves to a worker of the API (sections 4 and 14).
 
 ## 3. Task format
 
 A task is one TypeScript object (`EvalTask`):
 
-- `rule`: the ready-made rule graded (slot and rule id of the catalog, checked with
-  `acceptedProblem`); `context`: other rules held and not graded.
+- `rule`: the ready-made rule graded (slot and rule id, checked with `acceptedProblem`);
+  `context`: other rules held and not graded.
 - `polarity`: `applies` (the task makes the rule matter), `idle` (it does not, and acting on the
-  rule is a change nobody asked for) or `flip` (the other rule of the slot, against the usual habit).
-  Every graded slot has an `applies` task and an `idle` or `flip` one.
+  rule is a change nobody asked for) or `flip` (the other rule of the slot, against the usual
+  habit). Every graded slot has an `applies` task and an `idle` or `flip` one.
 - `instruction`: what a user who says nothing of the conventions would ask.
 - `files`: a neutral fixture (no lockfile, no `packageManager`, one `Initial commit`) committed once
   on `main` and pushed to a bare `origin`.
 - `success` and `compliance`: two graders of the final state. `compliance` answers `pass`, `fail`
-  or `not-applicable` when the agent did not reach the part the rule is about. A task is written
-  so that `success` passing implies `compliance` applies: a refusal to work never counts as
-  following the rule.
-- Solutions written by hand, which CI grades offline for every task:
-  - `reference`, and `alternatives` (other correct ways, such as pnpm leaving a dependency-free
-    lockfile): both graders pass;
-  - `violations`: several named ways to do the task while breaking the rule, for each of which
-    `success` passes and `compliance` fails;
-  - `incomplete`: named half-done states (a dependency declared without the file using it, the
-    fix left uncommitted), on which `success` must not pass;
-  - `untouched`: the verdict `compliance` gives on the fixture as it is (`not-applicable` when the
-    task never reached the rule).
+  or `not-applicable`. A task is written so that `success` passing implies `compliance` applies: a
+  refusal to work never counts as following the rule.
+- Solutions written by hand, graded offline in CI for every task: `reference` and `alternatives`
+  (both graders pass), `violations` (`success` passes, `compliance` fails), `incomplete` (`success`
+  does not pass), `untouched` (the verdict on the fixture as it is). The grader tests are checked
+  by mutation: 44 of 47 mutants are killed, the 3 others are equivalent.
 
-  The grader tests are themselves checked by mutation: 44 of 47 mutants of the graders are
-  killed; the 3 others are equivalent (another check already gives the same verdict, only the
-  reason differs).
+Graders read the outcome, never the path or the transcript: the files, the diff against the base
+commit, the manifest and the lockfiles; the commits of every branch, of every remote's
+remote-tracking branches, of `HEAD` and of the bare `origin`, merges included, each subject read
+as the rendered `commit-msg` hook reads it (`CONVENTIONAL_SUBJECT_PATTERN`,
+`EXEMPT_SUBJECT_PREFIXES`); a hidden test run from outside the repository. Git runs with no global
+or system configuration. Rules gradable only from a transcript or by a model judge are left out.
 
-Graders read the outcome, never the path:
-- files, the diff against the base commit, the manifest, and the lockfiles present and what they
-  name;
-- the commits of every branch, of every remote's remote-tracking branches, of `HEAD` and of the
-  bare `origin`, merges included (the hook checks theirs too), each subject read as the rendered
-  `commit-msg` hook reads it, with the same pattern and exemptions
-  (`CONVENTIONAL_SUBJECT_PATTERN`, `EXEMPT_SUBJECT_PREFIXES` from `src/render/gates.ts`);
-- a hidden test run from outside the repository, on the working tree, or on a checkout of `HEAD`
-  (with an index of its own) when the task asks for a commit.
+At run time each task is exported to a Harbor task folder: `instruction.md`, `task.toml`,
+`environment/` (the agent's template, section 13) and `tests/test.sh` running the two graders and
+writing `/logs/verifier/reward.json`. The condition's files are written at setup, not in the
+Dockerfile, so there is one template per agent, not per task and condition.
 
-Git runs with none of the machine's configuration (no global or system file, a `HOME` that does
-not exist, so no global ignore or attributes). They never read the transcript. Rules that can
-only be graded from the transcript (asking first, running the checks) or by a model judge are left
-out of this suite.
+## 4. The path of a test
 
-Once the runner exists (ticket 4), each task is exported to a Harbor task folder at run time:
-`instruction.md`, `task.toml`, `environment/` built from `createWorkspace`, and `tests/test.sh`
-running the two graders and writing `/logs/verifier/reward.json`.
+```mermaid
+sequenceDiagram
+  participant W as Screen (agent configuration)
+  participant A as API
+  participant Q as Queue convention-evals
+  participant R as Worker convention-evals
+  participant H as harbor run -e e2b
+  participant E as E2B (one sandbox per trial)
+  W->>A: POST /agent-configs/:id/evals (after the estimate is confirmed)
+  A-->>W: 202 { runId } (account lock taken, 409 if one runs)
+  A->>Q: RunConventionEvalJob { runId, configId, userId }
+  Q->>R: process(): resolveCredential, tasks exported to a tmpfs
+  R->>H: child process, no shell, key in its env only
+  H->>E: per trial: create, setup (no network), agent (provider host only), verifier (no network), kill
+  R->>A: filtered results into convention_eval_runs / convention_eval_trials
+  W->>A: GET /agent-configs/:id/evals/:runId (polled)
+```
 
-## 4. Harness: Harbor, pinned, in a service of the compose file
+1. **Screen.** On an agent configuration, behind `convention-evals` (`useFeature`). It lists the
+   held ready-made rules that have a task, the agent the connection serves and the estimated cost
+   (section 9). The button is disabled, with a message, when no held rule is testable or the
+   connection cannot drive an agent. Confirming sends the request.
+2. **Route.** `POST /agent-configs/:id/evals` (owner only, `assertOwner`, 404 otherwise) checks
+   the flag, the connection kind and the account lock, creates a `convention_eval_runs` row
+   (`queued`) and answers **202 with the run id at once**: a test lasts minutes and production
+   closes a request at 100 s (Cloudflare). One run at a time per account: a Redis key of the
+   account, taken by the route, expiring by itself after the job's hard limit plus a margin
+   (50 min), released by the job's `finally`; 409 otherwise.
+3. **Job.** `RunConventionEvalJob` on the queue `convention-evals`. Its data holds ids only. The
+   key is resolved in `process()` with `resolveCredential`.
+4. **Worker.** The `convention-evals` worker (section 14) exports the tasks of the run to Harbor
+   task folders in a per-run tmpfs folder (0700, RAM, `noexec`), runs `harbor run -e e2b` as a
+   child process started without a shell, the key in that process's environment only, with
+   `HARBOR_TELEMETRY=off` and no hub upload.
+5. **Trials.** One E2B sandbox per trial on our self-hosted install, with the network of each
+   phase set by our environment class (section 5) and the timeouts of section 7.
+6. **Graders.** `tests/test.sh` runs `success` and `compliance` and writes the reward.
+7. **Storage.** The worker reads Harbor's job folder from the tmpfs, filters every output
+   (section 5), and stores per trial: grades, verdicts, counts, durations, token usage and cost,
+   and the filtered, capped agent output. The folder is removed in a `finally`.
+8. **Results.** The screen polls `GET /agent-configs/:id/evals/:runId` (TanStack Query
+   `refetchInterval`) until the run is `done`, `failed`, `cancelled` (cap reached) or `leaked`.
 
-Harbor runs the trials. It is Apache-2.0 and needs Python 3.12 or later. It gives us:
-- one container per trial;
-- the built-in `claude-code` and `codex` agents;
-- `-k` attempts;
-- a network policy per sandbox;
-- recorded trajectories;
-- an oracle agent that proves a task can be solved.
+## 5. Credentials
 
-Nothing of it is installed on the host or in the pnpm workspace. It lives in the image of the
-`evals` service (`infra/evals/Dockerfile`, profile `evals` of `infra/docker-compose.yml`, see
-`infra/evals/README.md`). The image has two stages:
+The owner decided that the real key enters the sandbox, with an exception written in AGENTS.md,
+the proxy being rejected. The rule below is a proposal.
 
-- `agent`: Node on Debian, git, pnpm `11.5.2` and the agents' CLIs at exact versions: Claude Code
-  `2.1.322` and Codex `0.167.2`, the versions CI loads the rendered files into. They are installed
-  with `npm ci` from `infra/evals/agents/package-lock.json` (sha512 integrity), their install
-  scripts running as `node`, and owned by root so the agent cannot change them. A trial's image is
-  built from this stage. Harbor is also given `--ak version=<version>`, so it reuses the CLI the
-  image holds instead of installing the latest.
-- `runner`: `agent` plus:
-  - Harbor `0.27.0` on Python 3.12, from `requirements.lock`, wheels only, every package checked
-    by its hash. The lock is regenerated in a container (`lock.Dockerfile`, `--exclude-newer`).
-  - The Docker client `29.6.1` and Compose `5.3.0`, copied from their official images pinned by
-    digest.
-  - Harbor's telemetry off (`HARBOR_TELEMETRY=off`; without it Harbor reports every command to
-    PostHog) and LiteLLM's model cost map read locally (`LITELLM_LOCAL_MODEL_COST_MAP=True`).
-  - The catalog with the tasks and graders. Only the catalog, `packages/config` and the files its
-    tests read are copied: no app, no `.env`.
+### Proposed AGENTS.md rule (the owner validates it)
 
-The BuildKit frontend and every image are pinned by tag and digest, for `linux/amd64`. The image
-runs as `node`. `versions.test.ts` keeps the versions of `src/versions.ts`, `ci.yml`, the API's
-image, the Dockerfile and the locks equal. Inside the image (`EVALS_IMAGE=1`) it also checks that
-the tools answer those versions. Raising one changes all of them together, and a run with a new
-version is never compared with an older one without saying so.
+> - **Convention tests: `app/convention-evals/`, the one place a saved key enters a sandbox.**
+>   Behind the `convention-evals` flag (404 while off), the owner of an agent configuration runs
+>   its rendered files against a coding agent's CLI in E2B sandboxes (`POST
+>   /agent-configs/:id/evals`, 202 with a run id; `GET /agent-configs/:id/evals/:runId`). That CLI
+>   calls the model itself, so for this feature only, and for saved API keys of kinds `anthropic`
+>   and `openai` only (never a subscription, a key of another kind, or any other secret), the key
+>   enters exactly one E2B sandbox per trial, for that trial's agent command. `RunConventionEvalJob`
+>   (queue `convention-evals`, its data ids only) resolves it in `process()` through
+>   `resolveCredential` and hands it to Harbor, a child process started without a shell, as an
+>   environment variable of that process only. Harbor passes it on only as an environment variable
+>   of the agent's own command (`exec(env=)`), never as a startup env of the sandbox, `--ae K=V`,
+>   `--ee`, a value in `task.toml`, a file (in the sandbox or anywhere else), an argument, a
+>   template build or a job's data; our Harbor environment class drops key names from the startup
+>   envs and a test fails if a task or a command line names one. Codex runs through an agent class
+>   of ours that passes `CODEX_API_KEY` per command and writes no `auth.json`. The agent's command
+>   runs as a user other than root (the task's `[agent] user`). Harbor's job folder is a per-run
+>   tmpfs (0700, on a worker with no swap), removed in a `finally`. What the agent itself prints or
+>   writes stays in the sandbox and that tmpfs until it is filtered. Every transcript, trajectory,
+>   verifier output, log and error is filtered in memory, before anything is stored or logged, for
+>   the key's exact value, its base64, base64url, hex and URL-encoded forms, and `SECRET_PATTERNS`;
+>   a Harbor or provider error is reduced to a `LlmFailureReason` first. A trial with a match is
+>   stored as `leaked` with no output at all, the run stops, and the owner is told to rotate the
+>   key. Rows hold grades, counts, durations, token usage and the filtered, capped output. During
+>   the agent phase the sandbox reaches the provider's API host only (`allow_out` that host,
+>   `deny_out` all other traffic, `RESEARCH_DENIED_RANGES`, `169.254.0.0/16` and `192.0.2.0/24`),
+>   the final policy asserted before the agent starts; setup and the verifier get no network. The
+>   sandbox is killed in a `finally`, E2B's timeout ends it otherwise, and
+>   `PruneConventionEvalSandboxesJob` kills any that E2B still lists with
+>   `coreloom.purpose=convention-evals` or any `harbor.job_id`, running or paused. Only the
+>   `convention-evals` worker runs Harbor. The screen says, before confirming, that the key enters
+>   a sandbox and recommends a key with a spending cap. Every other rule about keys still holds: a
+>   key is never returned, logged, traced, or put in a job's data, Redis, a row or a file on a disk
+>   of ours.
 
-The task format stays ours, so a change of harness rewrites the exporter only. Started on its own,
-`docker compose -f infra/docker-compose.yml --profile evals run --build --rm evals` runs the offline
-grader tests and the image checks, then exits.
+`SECRET_PATTERNS` does not exist yet: it is the list of key shapes (Anthropic, OpenAI, E2B, GitHub
+tokens) the filter looks for beside the exact value, written with the filter (ticket 4).
 
-### Reaching a Docker daemon (open: the owner decides)
+Other AGENTS.md sentences that change with it:
+- The general key rule ("never returned, logged, traced or put in an error, a job's data, Redis
+  or a sandbox") ends with "or a sandbox (but the convention tests, below)", so the two rules do
+  not contradict.
+- "`ResearchSandbox` … with `RepositorySandbox` …, the only files that import `e2b`" also names
+  the file of `PruneConventionEvalSandboxesJob` (JS `e2b`) and Harbor in the `convention-evals`
+  worker (Python `e2b`).
+- "Nothing of a credential is kept on a disk" holds only with a worker with no swap: the tmpfs and
+  the partial redaction Harbor may write in `config.json` (fix b) both go with the tmpfs.
 
-Harbor's `docker` sandbox drives trials through the Docker client and Compose. From inside the
-`evals` container it needs a daemon. The service ships with **none**: no socket, no privileged
-mode, no credential. In that state it runs the offline tests and the Harbor commands that need no
-sandbox, but no trial.
+### Where Harbor 0.27.0 would break it, and what we do
 
-What any option opens on this kind of host (Docker Engine inside WSL 2):
-- Root on the kernel means root in the WSL utility VM, which every distribution shares.
-- With WSL interop on, whoever can write the distribution's home (`~/.bashrc`, a user unit) runs
-  Windows programs as the user, beyond reading `/mnt/c`.
-- With `networkingMode=mirrored`, containers reach the LAN with Windows' address, and the bridge
-  gateway reaches every WSL service listening on `0.0.0.0`.
+| | What Harbor does (code read, live checks 4 and 5) | What we do |
+|---|---|---|
+| a | `_startup_env` is the task env plus `--ee`: a key there becomes a startup env of the sandbox. Agent credentials (`agent.extra_env`) go per command. | Key through the agent's env only. An environment subclass drops key names from `_startup_env` (Harbor's `superserve.py` does the same). A test of the exporter fails if `task.toml` or the command line names a key variable. |
+| b | Its `config.json` files serialise env through `templatize_sensitive_env`: `${KEY}` when the value equals its own `os.environ` (check 4: the fake value was in no file of the job folder), else a partial redaction (first 4 and last 3 characters). | The key is in Harbor's process env only, never a literal value. The filter reads the written JSON too. |
+| c | The built-in Codex agent writes `$CODEX_HOME/auth.json` holding `OPENAI_API_KEY` (check 5). | An agent subclass running `codex exec` with `CODEX_API_KEY` per command, no auth file; a test lists `$CODEX_HOME` after a trial. |
+| d | The job folder holds `trial.log`, `job.log`, the agent's output, sessions, trajectories and the verifier's output, written before we can filter. | Per-run tmpfs, filtered from there, removed in a `finally`; stale folders purged at worker start. |
+| e | `add_inference_hosts` adds the agent's inference host by itself; a task's allowlist can widen egress. | The environment subclass asserts the final policy equals `[provider host]` before the agent phase, else the trial fails. |
+| f | Only `harbor.job_id` and `harbor.trial_name` as metadata; `stop()` treats a failed kill as a warning. | The subclass adds `coreloom.purpose=convention-evals` and `coreloom.account=<id>`; after the run the worker kills whatever E2B still lists with the run's `harbor.job_id`; the sweep of section 7 catches the rest. |
 
-The ways to give the runner a daemon:
+Not observed yet: whether the key persists inside the sandbox after the agent phase (check 4
+stopped at an authentication error, so no verifier ran). A pilot task asking the agent to print
+its environment and to write it to a file must end `leaked` (section 15).
 
-- **S1. The host's socket** (`/var/run/docker.sock` mounted into the service, plus `group_add`
-  for the socket's group so `node` may use it).
-  - Whatever runs in the runner can start a privileged container that mounts `/` of the host.
-    That means Harbor, its 114 Python packages, pnpm's packages and our runner. It also reads the
-    development stack's secrets (`docker inspect`, the Postgres volume, so the sealed LLM keys).
-  - Trials share the daemon with that stack, and a cleanup bug can remove its containers.
-  - Paths are resolved on the host.
-  - Simplest, and the most it hands over. Refused by default.
-- **S2. A Docker-in-Docker sidecar** (`docker:29.6.1-dind` pinned by digest, `privileged: true`).
-  - It keeps the trials and their cleanup away from the host's daemon and the development stack.
-    An escape from a trial lands in the sidecar first, and removing its volume wipes everything.
-  - It does **not** protect against a compromised runner: whoever drives the inner daemon can
-    start an inner privileged container, as privileged as the sidecar, which sees the VM's
-    devices, the distribution's disk and its home (`~/.ssh`, tokens). Against the runner's own
-    supply chain, S2 is no better than S1.
-  - Required with it:
-    - no TCP API that a trial can reach: dockerd listens on a Unix socket in a volume shared with
-      the runner only (`DOCKER_HOST=unix://…`), or on TLS with client verification, the runner
-      holding the client certificates read-only;
-    - the runner and the sidecar on an `internal` network of their own, only the sidecar with a
-      way out (pulls, and the trials' allowlist below);
-    - `userns-remap` in the inner daemon (a trial's root is an unprivileged uid);
-    - memory, PID and CPU limits on the sidecar;
-    - named volumes only, mounted at the same path in both, never a host bind mount;
-    - trials never privileged, with every capability dropped, checked with `docker inspect` on
-      the first run, as is the fact that Harbor mounts neither the socket nor the certificates
-      into a trial;
-    - the sidecar started for one run, then `down -v`.
-  - First variant to try: `docker:29.6.1-dind-rootless`. Its outer container is still
-    privileged, but the daemon runs as uid 1000, so a compromised API or an escaped trial arrives
-    without capabilities. Whether Harbor's egress rules work under rootlesskit is to be checked.
-- **S3. Sysbox.** A runtime installed on the host, which this setup refuses.
-- **S4. A remote sandbox instead of Docker** (Harbor's `e2b` environment on the self-hosted install
-  of `infra/e2b/`).
-  - Each trial is a microVM, the best isolation per trial.
-  - The privilege moves rather than disappears: that install itself runs privileged on the host's
-    network, and its key drives every sandbox of the install, the app's (research, assistant)
-    included.
-  - Not checked: that Harbor's `e2b` environment works against a self-hosted install.
-- **S5. A dedicated virtual machine** (Hyper-V, or a separate host) running S1 or S2 inside it.
-  - The only solid boundary for regular trials: what escapes reaches a throwaway VM, not the
-    workstation.
-  - It costs setting the VM up once.
+## 6. Network
 
-Recommendation: **S2 for the pilot, rootless first**, with every requirement above in place
-before the first trial; **S5** if trials become regular; **never S1**. Whichever is chosen is
-added to the service then, in a compose file of its own that the start command names. Nothing of
-S1, S2 or S5 is in the repository until the owner chooses.
+- Setup and verifier: no network (the CLIs are in the template).
+- Agent phase: `allow_out: [api.anthropic.com]` or `[api.openai.com]`, `deny_out` all traffic,
+  `RESEARCH_DENIED_RANGES`, `169.254.0.0/16` and `192.0.2.0/24`. No npm registry: the tasks need
+  no install from the network (what pnpm needs is in the template; a task that needs more is not
+  added).
+- The agent's command runs as a user other than root (`[agent] user` in the exported
+  `task.toml`): root reads every process's `/proc/*/environ`, envd's included.
+- `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` for Claude Code.
+- Live check 2: a non-allowed host is refused by SNI (TLS reset), private ranges time out. The
+  residuals are in section 13.
 
-### What a trial may reach
+## 7. Cleanup
 
-Harbor's Docker sandbox applies a network policy per phase (public, no network, or an allowlist,
-through an nftables sidecar; to confirm for 0.27.0 on the first run). Before any credential
-enters a trial:
-- the environment's setup and the verifier get **no network**: the CLIs are already in the image;
-- the agent's phase gets an **allowlist**: the provider's API host only (`api.anthropic.com` or
-  `api.openai.com`), and the npm registry only for a task that needs an install;
-- private ranges and the gateways are refused (`10/8`, `172.16/12`, `192.168/16`, `169.254/16`,
-  `100.64/10`, `fc00::/7`);
-- `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` is set in the trial;
-- the agent's container holds neither `NET_ADMIN` nor `NET_RAW`.
+Durations (settled 2026-11-27):
 
-What stays open, accepted for the pilot: an allowlist by address lets through domain fronting
-behind a shared CDN, and the allowed resolver permits exfiltration over DNS. The runner itself
-runs with Harbor's telemetry off and LiteLLM's model cost map read locally. Where Harbor 0.27.0
-allows it, the verifier runs in a sandbox separate from the agent's
-(`verifier.environment_mode = "separate"`), so that what the agent did to git, Node or
-`/logs/verifier` cannot change the grade.
+| What | Value |
+|---|---|
+| `sandbox_timeout_sec` | 300, renewed every 60 s while the trial runs: an orphan dies at most 5 min after renewal stops |
+| Agent timeout per trial | 600 s |
+| Verifier timeout | 120 s |
+| Job | 45 min, hard (the job kills Harbor's process group, then the run's sandboxes) |
+| `PruneConventionEvalSandboxesJob` | every 10 min: kills every sandbox, running or paused, that E2B lists with `coreloom.purpose=convention-evals` or any `harbor.job_id` and that is older than 50 min, driven by E2B's list, not by rows (so it still catches a sandbox if our metadata subclass failed) |
+| Tmpfs job folder | removed in the job's `finally`; stale ones purged when the worker starts |
 
-The self-hosted E2B is not used through `RepositorySandbox`: `isolate()` cuts every
-destination, while the agent must reach its provider, and its template is the code maps'.
+The sweep is scheduled by the setup command that schedules the other periodic jobs. The daily,
+row-driven `PruneAssistantSandboxesJob` is not reused: it is far too slow for a key, and a sandbox
+Harbor created has no row of ours.
 
-The service never gets a credential from an env file, a committed file or the image. It gets one
-only through the way section 5 settles, once the owner has accepted it.
+What proves deletion: `kill()` returns (false: already gone); after the run, E2B's list filtered on
+the run's `harbor.job_id`, running and paused, is empty (check 6: empty after 5 runs); a `connect`
+answers 404; an orphan dies by E2B's timeout on the self-hosted install (check 6: a runner killed
+with SIGKILL, timeout 60 s, renewal 20 s: still running at 45 s, gone at 81 s). Harbor never
+pauses a sandbox, so no memory or disk snapshot is kept; to check once on the install.
 
-## 5. Who pays: the owner's LLM configuration (open)
+What remains nowhere: no job folder (tmpfs, removed); nothing in Redis beyond ids (the job's data)
+and the account lock; nothing in rows beyond the filtered results; the `harbor-<hash>` templates
+hold no secret (no build argument or file names a key, a lint test of the exporter checks it).
 
-The owner chose that trials are paid by the LLM configuration chosen in the app's settings (the
-provider and model, with the saved key or the subscription). As AGENTS.md stands, no way of doing
-it respects both that choice and the credential rules, for these reasons:
+## 8. Subscriptions
 
-1. **The agent is what calls the model, inside the trial's container.** Harbor hands the
-   credential to the agent's environment (`ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` or
-   `CLAUDE_CODE_OAUTH_TOKEN` for Claude Code; `OPENAI_API_KEY` or `CODEX_API_KEY` for Codex), and
-   the agent runs with its permissions bypassed: it can read that variable. A credential of the
-   app's there is a credential in a sandbox, which AGENTS.md forbids.
-2. **A saved key never leaves the API.** It is read only by `resolveCredential`, never returned,
-   logged, traced, put in a job's data, Redis or a sandbox. No route can hand it to a runner on a
-   development machine, and the provider and model the owner chose live in the browser
-   (`localStorage`, `llm-provider`), where no script reads them.
-3. **A Claude subscription is the binary's own files.** They are sealed in `claude_code_states`
-   and only ever borrowed by `withClaudeFolder`, under `withClaudeLock`, by the unmodified binary
-   in the API. Our code never parses them, so it cannot extract a token for
-   `CLAUDE_CODE_OAUTH_TOKEN`. Copying the files into a trial would put a credential on a disk
-   outside the lock: the binary in the trial refreshes its tokens, and the sealed row keeps a
-   refresh token already spent, which disconnects the subscription.
-4. **A ChatGPT subscription is our tokens, used by our `codexFetch`.** Those tokens are sealed in
-   `llm_connections` and never given to the Codex CLI, which would need them in its own
-   `auth.json` inside the trial. The CLI refreshes those tokens itself, so a copy would spend the
-   refresh token the sealed row keeps, as in reason 3.
-5. **The agent narrows the provider.** Claude Code calls an Anthropic-style API (Anthropic, or
-   another through `ANTHROPIC_BASE_URL`, Bedrock, Vertex), and Codex an OpenAI-style one (its
-   `model_providers`, Ollama included). Some configurations of the app could therefore pay for
-   one of the agents, never for both. This does not lift reason 2, which is enough on its own.
+The owner requires subscriptions to be usable for tests as for the assistant. Two architectures:
 
-The options, for the owner to decide:
+| | (I) The agent's CLI in the sandbox | (II) Our loop in the API, the sandbox runs commands |
+|---|---|---|
+| Kinds covered | `anthropic` (Claude Code), `openai` (Codex); `openai-codex` only with an access token alone; `claude-code` only by copying `claude_code_states` or a new `claude setup-token` credential; `openai-compatible` only for a public endpoint speaking the tool's API; never `mistral`, `ollama` | Every kind, through `resolveCredential`; `claude-code` in its one-action mode (one launch a step, under the owner's lock, so serial); `openai-codex` after a fix (below) |
+| Risk | Copied subscription files: the CLI rotates the refresh token and the sealed row keeps one already spent (disconnects the subscription); `withClaudeLock` (180 s) held for minutes, blocking the assistant; a long-lived refresh token readable by a permission-bypassing agent, with no spending cap; a file on the worker for Codex | No credential enters the sandbox; residuals: injection from fixtures steering tool calls (contained by `isolate`, no secret), cost per step, contention on the Claude lock |
+| Validity | Full: the real tool reads AGENTS.md, CLAUDE.md, its settings and hooks | "Model + our harness": CLAUDE.md, the tools' settings, permissions and their own hooks do nothing; `none` keeps its meaning, `full` reduces to our AGENTS.md injection plus Git hooks |
+| Effort | Keys: the path of sections 4 to 7; `openai-codex` +1.5 d; `claude-code` file copy +2 d (refused) | 5 to 7 d, plus 1 to 2 d for `openai-codex` |
+| Refused kinds | "Convention tests run Claude Code or Codex with your connection. A Mistral connection cannot drive either. Connect an Anthropic or OpenAI key." For Ollama: "Your Ollama server is on a private network the test sandbox cannot reach." | None by kind |
 
-- **A. Credential-injecting proxy in the API (saved keys only).** The trial gets a short-lived
-  token of its own, capped in spend and revoked at the end of the run, and a base URL
-  (`ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL`) pointing at an API route. That route resolves the
-  saved key with `resolveCredential` and forwards the call.
-  - The key never leaves the API, but a token that spends the account's money enters a container
-    whose agent runs with its permissions bypassed.
-  - It needs new rules in AGENTS.md (the token, its cap, the route), a security review, and an API
-    reachable from the trials. The local API only, since the production proxy closes requests at
-    100 seconds.
-  - It does not cover subscriptions: that would mean parsing the sealed files.
-  - Against D it narrows what a leak costs (a capped, short-lived, revocable token), but it adds
-    attack surface to the app. Missing from it so far:
-    - it must not be an open relay: one path (`/v1/messages` or `/v1/responses`) and the chosen
-      model only, no batch, files or admin endpoints, the client's headers filtered, a bounded
-      request size;
-    - a cap that holds under concurrency and streaming (pre-authorized on `max_tokens`, a bounded
-      number of trials at once);
-    - a token outside the `api` guard (it reaches no other route), stored hashed, bound to the
-      account and the run, sealed like the other secrets;
-    - no logging of prompts, which carry the fixtures' code;
-    - an allowlist entry from the trials to the API, one host and port.
-  - About 3 to 5 days.
-- **B. Trials run by the API, the key resolved in `process()`.** A job resolving the key is not
-  enough: the agent still needs the key in its environment, so the key enters a sandbox anyway.
-  Running the agent inside the worker would put a permission-bypassing agent next to
-  `LLM_KEYS_ENCRYPTION_KEYS`. It would also need Harbor (Python) and Docker in the API's image.
-  Not viable on its own: at best it is the orchestrator of A.
-- **C. A documented exception: an admin export of the admin's own key for local runs.** It breaks
-  "never returned", the rule that keeps a stolen session from taking a key. Not recommended.
-- **D. The app's choice of provider and model, the same account's credential given on the machine
-  that runs the trials.** The runner takes the provider and the model as arguments, read by the
-  owner on the settings page. The credential is the account's own: a token from
-  `claude setup-token` for the subscription, or the account's API key, and a key for Codex. It is
-  handed to the `evals` service for one run only, from the owner's shell (`docker compose run -e
-  CLAUDE_CODE_OAUTH_TOKEN …`, the variable named, its value never on the command line), and Harbor
-  passes it to the trial's agent. It is never in an env file, a committed file or the image.
-  - The bill goes to the same account, but no secret the app stores is read, so AGENTS.md is
-    untouched. It honours the owner's choice for the provider, the model and the account billed,
-    not for the credential the app stores: the owner accepts that difference explicitly.
-  - Prefer a key made for the run: an Anthropic Console workspace or an OpenAI project with a
-    spending cap and the model restricted, deleted after the run. A `claude setup-token` token
-    lives long, is hard to revoke, and its terms for automated runs are to be checked. If it is
-    used anyway, make one for the pilot and revoke it afterwards.
-  - Harbor collects the credential from the service's environment. It is never passed as
-    `--agent-env K=V` or any argument, which would put it in `/proc/*/cmdline` and possibly in the
-    job's configuration on disk. It is typed without echo (`read -rs`) or read from a secrets
-    manager, never written to the shell's history.
-  - The credential still enters the trial containers, and a permission-bypassing agent may print
-    it into the transcript. So the output folder is `0700`, outside the repository and outside
-    `/mnt/c` (no OneDrive sync). It is scanned for secrets after each run (and the key rotated if
-    one is found), never uploaded to a Harbor hub, and purged once read.
-  - It is acceptable only with the network policy of section 4 in place before the first trial.
-  - No work beyond the runner.
+`openai-codex` under (II): today it cannot carry a tool call from one step to the next (422 in
+research), because the endpoint is called with `store: false`. Two ways: send the earlier items
+inline with `include: ["reasoning.encrypted_content"]` (1 to 2 d, to verify), or reuse the
+one-action JSON adapter of `createClaudeCodeModel` (about 1 d).
 
-Recommendation: **D** for this internal suite and its pilot, and **A** only if the user-facing
-"test my conventions" goes ahead. That is where the app must pay with a user's saved key, and it
-warrants its own review. Nothing of tickets 1 and 2 depends on this choice.
+What is left for Harbor under (II): the task and verifier format only. A Harbor agent driving
+`environment.exec` from outside would need its model calls routed into the API, which is the
+rejected proxy; so the API drives E2B itself with the JS `e2b` SDK (`RepositorySandbox`'s way),
+reading the exported task folders.
 
-## 6. Conditions
+Options, **open: the owner decides**:
 
-Each task runs in three conditions, the same fixture each time:
+- **A. Keys through (I), subscriptions through (II)**, results labelled "model + your conventions
+  through Coreloom's harness" and never mixed with a CLI's. Recommended: it meets the requirement
+  within the existing rules. (I) would spend the refresh tokens the sealed rows keep, need
+  `withClaudeLock` held for minutes, and put a long-lived token in a permission-bypassing sandbox.
+  The exception stays as drafted (saved keys only).
+- **B. (I) for `openai-codex` with an access token only**: the API refreshes the tokens under a
+  lock and writes no refresh token into the sandbox; the access token's lifetime is to be
+  measured, and the provider's terms for automated runs checked. The exception widens to "a
+  short-lived ChatGPT access token, never a refresh token", with a lock and a written-file rule for
+  Codex's `auth.json`. `claude-code` stays out or goes through (II).
+- **C. A new credential kind from `claude setup-token`, run through (I)**: a new stored secret
+  (sealed by `llmKeys`, bound to its owner), new rules, Anthropic's terms for automated runs to
+  check, a token that lives long and is hard to revoke. The exception widens to that kind.
+- **D. Subscriptions left out**: the button is disabled for them with a message. The exception
+  stays as drafted; the requirement is not met.
+
+## 9. Short default test and its cost
+
+- Agent: one, the one the connection serves (`anthropic`: Claude Code; `openai`: Codex).
+- Rules: the held ready-made rules that have a task. Today `git.commit-messages` (`conventional`:
+  `applies`; `imperative`: `flip`) and `tooling.package-manager` (`pnpm`: `applies` and `idle`).
+  None held: the button is disabled with "None of your rules can be tested yet. Testable now:
+  commit messages, pnpm."
+- Conditions: `none` against `full` (their rendered files).
+- k = 3. Trials = tasks (1 to 3) × 2 × 3: 6 to 18, at most 18. Three trials at once.
+- Wall clock: one trial 2 to 4 min (p95 about 6); 18 trials 15 to 25 min, plus up to 8 min the
+  first time a template is built.
+
+Cost per trial, from estimated tokens (the tasks are tiny: fixture about 300 tokens, instruction
+about 40, rendered AGENTS.md 1 to 3k, 8 to 12 turns) and the prices checked on 2026-11-27:
+Claude Sonnet 5.5 $2 input, $2.50 5-minute cache write, $0.10 cache hit, $10 output per MTok;
+GPT-5-Codex $1.25 input, $0.125 cached, $10 output per MTok.
+
+| Agent | Tokens per trial (estimate) | Per trial | 18 trials (p50) | p90 (2.5×, unmeasured) | No cache at all, 18 trials |
+|---|---|---|---|---|---|
+| Claude Code | 220k input (198k cache hits, 22k cache writes), 3k output | 0.0198 + 0.055 + 0.030 = $0.105 | $1.9 | $4.7 | 18 × (220k × $2 + 3k × $10) = $8.5 |
+| Codex | 150k input (120k cached, 30k uncached), 5k output with reasoning | 0.015 + 0.0375 + 0.050 = $0.10 | $1.8 | $4.6 | 18 × (150k × $1.25 + 5k × $10) = $4.3 |
+
+The screen shows a range [p50, p90] computed from a price table in code (`as const`, with the date
+its prices were checked) and the per-trial token figures: Σ over tasks of k × conditions × Σ over
+token types (tokens × price). Beside it, a hard cap per test, set by the admin (default $5 for
+users; the pilot's cap is the budget the owner approves; the default is revised from the pilot's
+measured p90, ticket 8): after
+each trial the worker adds its measured cost, and when the next wave could cross the cap it
+cancels the remaining trials and reports partial results (`cancelled`). The worst overshoot is
+concurrency × one trial's p99. Per trial, `--max-turns` for Claude Code and the agent timeout for
+both bound the spend.
+
+The pilot measures, per agent and task: median and p90 of uncached input, cache write, cache read
+and output tokens, and the turns (Claude Code's `stream-json` `usage`, `modelUsage`,
+`total_cost_usd`; Codex's `--json` `turn.completed` usage; Harbor's AgentContext token fields, to
+confirm on 0.27.0), cross-checked against the provider's console for the pilot key. Those figures
+replace the estimates above; until then the screen exists for the admin only.
+
+Results are shown as "held n/k" per rule and condition, `success` and `compliance` apart (a
+failure of capability is not a failure of compliance), never as a "works" badge: 3 out of 3 has a
+Wilson lower bound of 44 %, which cannot tell two conditions apart. The screen says that two small
+tasks on one fixture say nothing of the user's own repository.
+
+## 10. Conditions
+
+The internal suite runs each task in three conditions, the same fixture each time:
 
 - `none`: no convention file.
-- `instructions`: AGENTS.md and the pointer each tool reads it through (CLAUDE.md), rendered for
-  Claude Code and Codex. Nothing a tool enforces.
-- `full`: every file the catalog renders for those tools (settings, rules, Git hooks), with the
-  hooks turned on by the command the catalog recommends (`git config core.hooksPath .githooks`).
+- `instructions`: AGENTS.md and the pointer each tool reads it through (CLAUDE.md). Nothing a tool
+  enforces.
+- `full`: every file the catalog renders for those tools (settings, rules, Git hooks), hooks on
+  (`git config core.hooksPath .githooks`).
 
-`instructions` against `none` measures what the text does; `full` against `instructions`, what
-the settings and hooks add. An `idle` task that passes in `none` and fails in `instructions`
-means the conventions caused a change nobody asked for.
+`instructions` against `none` measures what the text does; `full` against `instructions`, what the
+settings and hooks add. An `idle` task that passes in `none` and fails in `instructions` means the
+conventions caused a change nobody asked for. A user's test keeps `none` and `full` only.
 
-## 7. Metric
+## 11. Metric
 
 - A trial passes when `success` and `compliance` both pass.
-- Each task runs k = 5 times per agent and condition. The main figure is **pass^k**: the share
-  of tasks whose k trials all pass, since a convention is worth something only when it holds every
-  time.
-- Beside it, per condition and agent:
-  - the pass rate per trial, with a 95 % Wilson interval;
-  - the `success` rate alone, so a failure of capability is not read as a failure of compliance;
-  - the `compliance` rate over the trials where it applies.
-- A difference between conditions is reported only with its intervals. With some 80 trials per
-  condition and agent for the full lot, only differences of 15 to 20 points or more show.
-- A run's report names the catalog version, the agent's CLI version, the model and Harbor's
-  version. Two runs are compared only when they differ in one of these.
+- Internal suite: k = 5 per agent and condition; the main figure is pass^k (the share of tasks
+  whose k trials all pass). Beside it, per condition and agent: the pass rate with a 95 % Wilson
+  interval, the `success` rate alone, the `compliance` rate where it applies. A difference between
+  conditions is reported only with its intervals (with some 80 trials per condition and agent,
+  only 15 to 20 points or more show).
+- A user's test: "held n/k" (section 9).
+- A run names the catalog version, the agent's CLI version, the model and Harbor's version; two
+  runs are compared only when they differ in one of these.
 
-## 8. Clean trials and traces
+## 12. Clean trials and traces
 
-- Every trial starts from a new container and a new repository, built by `createWorkspace` with
-  fixed dates. The base commit is the same on every machine, and nothing of an earlier trial
-  remains.
-- Hidden tests are written outside the repository, run against it, and never shown to the agent.
-- Transcripts (Harbor's trajectories, Claude Code's `stream-json`, Codex's `--json`) and the
-  verifier's output are kept with the grades, outside this repository (under the runner's output
-  folder), and never committed.
-- Every failure, and a sample of passes, is read before a score is trusted: a task that fails
-  every time is first suspected of being broken.
+- Every trial starts from a new sandbox and a new repository built by `createWorkspace` with fixed
+  dates; nothing of an earlier trial remains.
+- Hidden tests are written outside the repository and never shown to the agent.
+- Transcripts and the verifier's output live only in the run's tmpfs until filtered. What is kept
+  is the filtered, capped output in the trial's row; nothing is committed.
+- Every failure, and a sample of passes, is read before a score is trusted. For the pilot every
+  transcript is read.
+- Never in CI: no test calls a provider. The internal lot runs through the same path, from the
+  admin's account, when a `CATALOG_VERSION` touching a rule of the lot, a pinned CLI or a default
+  model changes.
 
-## 9. Where and when it runs
+## 13. Harbor with our self-hosted E2B
 
-- Never in CI: no test calls a provider. CI runs `tasks.test.ts` offline (formats, graders,
-  reference and violating solutions, version pins).
-- Trials run by hand, or at night on a development machine, when one of their inputs changes:
-  - a `CATALOG_VERSION` that touches a rule of the lot;
-  - a new pinned CLI;
-  - a new default model.
-- The paid pilot (one pair, the three conditions, k = 3, one agent: 18 trials) waits for the
-  owner's approval of its budget. The rest of the lot is written only if the pilot shows a
-  measurable difference between conditions.
+What works (live checks of 2026-11-27, no model call):
+- Harbor 0.27.0 `-e e2b` reaches the self-hosted install through `E2B_API_URL` and
+  `E2B_SANDBOX_URL` with no patch: template built, oracle trial passed, reward 1.0, 1 min 3 s with
+  the build (check 1).
+- The allowlist holds: the provider host reached, others refused by SNI, private ranges refused;
+  the agent command's environment holds no variable of ours (check 2).
+- The built-in Claude Code agent with a fake key: the version pinned by `--ak version=` reused,
+  the provider answered 401, the value in no file of the job folder (check 4).
+- Sandboxes are gone after runs, and an orphan dies by its timeout (check 6).
+
+What does not: disk (check 3). The install keeps about 931 MB of root disk per sandbox; a template
+with Claude Code, curl, git and procps did not build ("No space left on device"), Claude Code alone
+on node slim did. So one small template per agent (Node slim, git, pnpm, that agent's CLI), built
+from the `agent` stage; whether Codex's template fits is unchecked (ticket 2). The other way is a
+larger disk on the install, an operational change of the vendored `infra/e2b/` (open: the owner
+decides, only if a template does not fit).
+
+Residuals, and what ticket 7 must prove for each:
+- **MMDS** (169.254.169.254, Firecracker's metadata service) answers despite deny-all; with a
+  token it gives a hash, the envd log address, the env and instance ids, not a token. Not a
+  blocker. Prove that it still answers with `169.254.0.0/16` denied (it is served inside
+  Firecracker, not routed), that no path returns a token or another sandbox's data, and that a
+  write from inside the sandbox is refused.
+- **The install's log collector** (`http://192.0.2.1/logs`) is reachable whatever the policy.
+  **A pilot blocker.** Send a POST in envd's own format with a canary value and record whether it
+  reaches `e2b-vector-1` or any other sink. If it lands, the key could be written into the
+  install's logs, which breaks "never logged": either that ingestion is turned off for these
+  sandboxes, or the owner accepts it in writing for the pilot only and the install's logs are
+  scanned for the pilot key afterwards. Before opening, a real fix.
+- **DNS**: recorded before the pilot, a blocker before opening. Record the resolver of
+  `/etc/resolv.conf`; check whether `dig @1.1.1.1`, DoH and DoT are refused; look up a unique name
+  under a domain we own and read its authoritative query log. If names that are not allowed are
+  forwarded upstream, DNS is an open way out: before opening, a resolver that answers the allowed
+  host only, or a written acceptance by the owner.
+- **Domain fronting**, not a blocker: send TLS with SNI `api.anthropic.com` and a `Host:` of
+  another domain, and record that the provider's edge refuses it. The output filter and a capped
+  key are what holds otherwise.
+- **The shared E2B key**: the worker holds the install's E2B key, which drives every sandbox of
+  the install, the assistant's and the research's included. Not a blocker for the pilot (our
+  worker, the admin's run); a blocker before opening: a separate E2B team or key, or the owner's
+  written acceptance (section 15).
+
+Fallback if Harbor's `e2b` environment stops fitting (a version that breaks a fix of section 5,
+templates it cannot keep small): our own runner in the worker with the JS `e2b` SDK the API already
+uses (`ResearchSandbox`, `RepositorySandbox`), Harbor's task format kept, so the exporter and the
+graders stay.
+
+## 14. What PR #143 keeps, changes and drops
+
+- Keeps: the task format, the graders, the two task pairs, the offline tests, the version checks.
+- Changes (later tickets): `requirements.in` becomes `harbor[e2b]==0.27.0` with a new lock (e2b
+  2.66.0); no Docker client, Compose or daemon any more; the `agent` stage becomes the source of
+  the per-agent E2B templates.
+- Drops (later tickets): the standalone `evals` compose service. It becomes the worker
+  `convention-evals`, a stage of `apps/api/Dockerfile` on Debian like `skill-tagger` (Harbor and
+  Python 3.12 from the hash-locked lock, run as `node`), running only `queue:work
+  --queues=convention-evals`, with every other worker naming its queues without it
+  (`config/queue.ts`, the `queue:work` script, the `queue-worker` services).
+- Done in #143: only this record and the line of `infra/evals/README.md` that pointed to the open
+  questions. Everything else is in the tickets of section 16.
+
+## 15. Security review
+
+Top threats (security review of 2026-11-27):
+1. Exfiltration through the allowed host: a convention, a skill or a fixture tells the agent to
+   call the provider with an attacker's key and send the victim's key in the prompt. Only the
+   owner's own text and our fixtures enter a trial, skills are left out of the first version, the
+   filter runs, the key is capped and the owner advised to rotate it.
+2. DNS exfiltration and domain fronting (section 13).
+3. The key left in the sandbox (env read by the agent, `/proc`, a file): per-command env only, one
+   sandbox per trial, kill and sweep.
+4. The key in our storage: tmpfs, filter, checks on `config.json`.
+5. Another account's sandbox on the same install: a microVM per trial, no shared volume, denied
+   ranges, sweep by metadata.
+6. The install's E2B key in the worker: a dedicated worker and image with no other secret; a
+   separate E2B team or key before opening.
+7. Cost abuse: one run per account, the cap per test, `--max-turns`, the model from the
+   allowlist, a daily cap per account.
+8. The admin pilot's key, the most valuable target: a dedicated project key with a spending cap,
+   deleted after the pilot.
+
+Before the pilot: the owner validates the rule of section 5; fixes a to f in place with tests; the
+egress checked live (a non-allowed host fails, MMDS and domain fronting recorded, DNS recorded);
+the 192.0.2.1 canary does not land in the install's logs, or that ingestion is off for these
+sandboxes, or the owner accepts it in writing for the pilot only and the logs are scanned for the
+pilot key afterwards; the agent's command runs as a user other than root; deletion proved by the
+list after a run and by a sweep test; tmpfs on a worker with no swap and the filter tested with a
+canary key, encoded forms included; a "print and write your environment" task ends `leaked`; the
+dedicated worker; a capped pilot key.
+
+Before opening: the pilot's transcripts read; threat 1 mitigated (no third-party text); caps and
+lock live; a real fix for 192.0.2.1 if the canary landed; DNS answering the allowed host only, or
+the owner's written acceptance; a separate E2B team or key, or the owner's written acceptance of
+the shared one; the screen's warning about the key; a runbook for `leaked`; subscriptions as the
+owner decides (section 8).
+
+## 16. Tickets
+
+| # | Ticket | Days | Acceptance check | AGENTS.md text by the owner |
+|---|---|---|---|---|
+| 1 | Worker `convention-evals`: Debian stage of `apps/api/Dockerfile`, `harbor[e2b]==0.27.0` lock, Docker client and Compose removed, `evals` service replaced by the worker service (behind a profile locally), queue in `config/queue.ts`, other workers without it | 2 to 3 | image builds; `versions.test.ts` passes in it; `harbor run -a oracle -e e2b` passes on `infra/e2b/` for every task, no key | yes: the worker rule (like the skill scanner's) |
+| 2 | Per-agent templates from `agent`, and the exporter of `EvalTask` to Harbor folders (condition files at setup) | 2 to 3 | oracle passes with both templates; free disk recorded; Codex's template builds; lint test: no build argument or task env names a key | no |
+| 3 | Harbor classes of ours: environment (startup envs, metadata, policy assertion, timeouts), Codex agent without `auth.json`; fixes a to f | 3 to 4 | tests with a fake key: value in no file of the job folder and in no startup env, policy equals `[provider host]`, no `auth.json` after a Codex trial | no (covered by ticket 4's rule) |
+| 4 | API: flag `convention-evals`, `convention_eval_runs` / `convention_eval_trials`, the two routes, `RunConventionEvalJob` (tmpfs, child process, filter, `leaked`, `SECRET_PATTERNS`), account lock, cap | 4 to 5 | functional specs with Harbor swapped: 202, 409, 404 off flag, `leaked` on a canary, no key in the job's data, cancellation at the cap | yes: the rule of section 5 and the domain rule |
+| 5 | `PruneConventionEvalSandboxesJob`, tmpfs purge at start, scheduling | 1 to 1.5 | spec with a fake E2B list; live: worker killed mid-trial, sandbox gone, list empty | no (in ticket 4's rule) |
+| 6 | Screen: testable rules, agent, estimate range with its date, confirmation with the key warning, polling, "held n/k" | 2 to 3 | disabled state and message; success and compliance apart; strings in `messages.ts` (`en`, `fr`) | no |
+| 7 | Live security checks (section 13): egress, MMDS with `169.254.0.0/16` denied, the 192.0.2.1 canary in envd's format (pilot blocker), DNS, domain fronting, non-root agent user, "print and write your environment" task | 1 to 1.5 | each result written in this record; the canary lands nowhere, or its ingestion is off, or the owner accepts it in writing for the pilot | no (the owner's written acceptance if the canary lands) |
+| M | **Milestone: admin pilot** from the app, admin's capped key, behind the flag; waits for the owner's approval of its budget | 1 | every transcript read; token figures of section 9 measured | no |
+| 8 | Prices and estimates from the pilot's figures; the users' default cap revised from the measured p90 | 0.5 to 1 | the screen's range comes from measured p50 / p90 | no |
+| 9 | Subscriptions, as the owner decides (option A: runner (II) in the API, `openai-codex` fix), after the milestone. Claude-subscription runs under (II) are serial (one launch a step under the owner's lock, 30 to 45 min for 18 trials): they need a job limit of their own or a smaller format | 6 to 9 (A) | a `claude-code` and an `openai-codex` test end with results labelled as section 8 says | yes, under A, B or C |
+| 10 | Before opening: separate E2B team or key, daily cap per account, `leaked` runbook | 1.5 to 2 | the conditions of section 15 met | yes if the shared E2B key is accepted instead |
+
+Total: 18 to 25 days to opening with saved keys (tickets 1 to 8, 10 and the pilot), 24 to 34 with
+subscriptions under option A.
+
+## 17. Superseded
+
+The earlier sections on how the runner reaches a Docker daemon (S1 to S5) and on who pays (options
+A to D: proxy, job, admin export, a credential given on the runner's machine) were superseded by
+the owner's decisions of 2026-11-27: trials in E2B sandboxes, launched from the app, paid with the
+user's saved key entering the sandbox under a written exception. The credential-injecting proxy
+was rejected.
