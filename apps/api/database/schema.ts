@@ -1043,3 +1043,22 @@ export class WatchFeedSchema extends BaseModel {
   @column()
   declare url: string
 }
+
+export class WebSearchSettingSchema extends BaseModel {
+  static $columns = ['createdAt', 'id', 'keyHint', 'kind', 'sealedKey', 'updatedAt', 'verifiedAt'] as const
+  $columns = WebSearchSettingSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare keyHint: string
+  @column()
+  declare kind: string
+  @column()
+  declare sealedKey: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column.dateTime()
+  declare verifiedAt: DateTime
+}

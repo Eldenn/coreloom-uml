@@ -19,6 +19,7 @@ import { client } from '@/lib/client'
 import { useFeature } from '@/lib/feature-flags'
 import { useT } from '@/lib/locale'
 import { LlmProviderSection } from '@/llm/llm-provider-section'
+import { WebSearchSection } from '@/web-search/web-search-section'
 
 export const Route = createFileRoute('/_authed/settings')({
   staticData: { crumb: (t) => t.nav.settings },
@@ -50,6 +51,7 @@ function SettingsPage() {
       <ApiTokensSection />
       <LlmProviderSection />
       {user.isAdmin && codeMaps ? <GithubAppSection /> : null}
+      {user.isAdmin ? <WebSearchSection /> : null}
       <SettingsSection title={t.settings.appearance}>
         <SettingsRow label={t.settings.theme}>
           <ThemeMenu />

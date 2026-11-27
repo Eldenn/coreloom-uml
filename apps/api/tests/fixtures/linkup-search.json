@@ -1,0 +1,31 @@
+{
+  "results": [
+    {
+      "type": "text",
+      "name": "Conventional Commits 1.0.0",
+      "url": "https://www.conventionalcommits.org/en/v1.0.0/",
+      "content": "A specification for adding human and machine readable meaning to commit messages.",
+      "favicon": "https://www.conventionalcommits.org/favicon.ico",
+      "publishedAt": "2024-03-01"
+    },
+    {
+      "type": "text",
+      "name": "A very long title ________________________________________________________________________________________________________________________________________________________________________________________________ end",
+      "url": "http://example.com/long",
+      "content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. end",
+      "favicon": ""
+    },
+    {
+      "type": "image",
+      "name": "A diagram",
+      "url": "https://example.com/diagram.png"
+    },
+    {
+      "type": "text",
+      "name": "Not a web page",
+      "url": "javascript:alert(1)",
+      "content": "Never kept.",
+      "favicon": ""
+    }
+  ]
+}

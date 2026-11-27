@@ -1,5 +1,6 @@
 import app from '@adonisjs/core/services/app'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
+import { AssistantToolKind } from '@coreloom-uml/llm'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import { WATCH_ACTIONS } from '#app/assistant/actions/watch-actions'
@@ -220,10 +221,10 @@ test.group('Tech watch', (group) => {
   }) => {
     const user = await User.create({ email: 'reader@example.com', password: PASSWORD })
     const action = WATCH_ACTIONS.find((entry) => entry.name === 'find_articles')
-    assert.isDefined(action)
-    assert.isFalse(await action!.available!(user))
+    if (action?.kind !== AssistantToolKind.Read || !action.available) throw new Error('No read')
+    assert.isFalse(await action.available(user))
     await updateFlag(FeatureFlagKey.TechWatch, ON, user)
-    assert.isTrue(await action!.available!(user))
+    assert.isTrue(await action.available(user))
 
     const base = {
       excerpt: 'x'.repeat(500),
@@ -260,7 +261,7 @@ test.group('Tech watch', (group) => {
         hidden: false,
       },
     ])
-    const found = (await action!.read!(
+    const found = (await action.read(
       { topic: 'security', query: 'agents' },
       user,
       {} as never,

@@ -15,6 +15,7 @@ import {
   withFile,
 } from '@coreloom-uml/llm'
 import { actionTools } from '#app/assistant/actions/registry'
+import { SEARCH_WEB } from '#app/assistant/actions/web-search-actions'
 import {
   AssistantRole,
   AssistantTargetKind,
@@ -282,8 +283,13 @@ export default class AssistantMessagesController {
     let unfinished: boolean
     try {
       const tools = (
-        await actionTools(user, recorded, { conversationId: conversation.id, read, repository })
-      ).filter((tool) => tool.kind === AssistantToolKind.Read)
+        await actionTools(user, recorded, {
+          conversationId: conversation.id,
+          read,
+          repository,
+          web: { searches: 0 },
+        })
+      ).filter((tool) => tool.kind === AssistantToolKind.Read && tool.name !== SEARCH_WEB)
       // The project is what its code, maps and repository are read from.
       const page = await resolvePage(
         architecture.projectId === null

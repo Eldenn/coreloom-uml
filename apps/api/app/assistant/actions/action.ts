@@ -63,6 +63,8 @@ export type ActionContext = {
   read(file: AssistantFile): Promise<string>
   /** The conversation's repository sandbox, opened by the first repository tool called. */
   repository: RepositorySession
+  /** How many web searches the message ran (a count for the reply's note, never a query). */
+  web: { searches: number }
 }
 
 type ActionBase<S extends z.ZodType> = {

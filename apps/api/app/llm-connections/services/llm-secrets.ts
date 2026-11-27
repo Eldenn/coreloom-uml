@@ -6,6 +6,9 @@ import env from '#start/env'
 /** The account a stored LLM secret belongs to. */
 type Owner = { id: number }
 
+/** The owner of an instance-wide secret (the web search key): no account has id 0. */
+export const INSTANCE_OWNER = { id: 0 } as const
+
 /**
  * Why no LLM secret can be sealed or opened here, or `null`: production has no fallback key, so
  * it needs `LLM_KEYS_ENCRYPTION_KEYS`. Pure, so it is tested without a production process.
