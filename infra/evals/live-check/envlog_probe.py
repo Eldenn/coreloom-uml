@@ -1,8 +1,10 @@
-"""Live check only (infra/evals/live-check/run.sh), never in the worker: our environment with a
-positive control for the install's log collector. Before the sandbox is killed it starts one
+"""Live check only (infra/evals/live-check/run.sh), never in the worker: our environment with two
+positive controls for the install's log collector. Before the sandbox is killed it starts one
 command whose envs hold a made-up canary (``COREL_ENVLOG_CANARY``, not a credential name, so our
-class keeps it), then waits for envd to ship its buffered lines. The canary must land in
-``sandbox_logs``; the fake key must not."""
+class keeps it), and one command that is sent another made-up value on its standard input
+(``ENVLOG_STDIN_CONTROL``), then waits for envd to ship its buffered lines. The canary must land
+in ``sandbox_logs`` as is and the standard input control in base64 (envd logs both); the fake key,
+written to its file only, must be in no row, neither as is nor in base64."""
 
 import asyncio
 import os
@@ -19,6 +21,14 @@ class ProbeEnvironment(ConventionEvalsE2BEnvironment):
                 await self._sandbox.commands.run(
                     "true", envs={"COREL_ENVLOG_CANARY": os.environ["ENVLOG_CANARY"]}, timeout=10
                 )
+                handle = await self._sandbox.commands.run(
+                    "cat > /dev/null", background=True, stdin=True, timeout=20
+                )
+                await self._sandbox.commands.send_stdin(
+                    handle.pid, os.environ["ENVLOG_STDIN_CONTROL"]
+                )
+                await self._sandbox.commands.close_stdin(handle.pid)
+                await handle.wait()
                 await asyncio.sleep(SHIP_WAIT_SEC)
         finally:
             await super().stop(delete)

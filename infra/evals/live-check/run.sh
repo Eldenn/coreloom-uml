@@ -7,8 +7,11 @@
 # <agent>: claude-code | codex. <mode>:
 #   oracle  every exported task, Harbor's oracle agent, no key: each trial must pass both graders.
 #   fake    one task with a fake key: the provider must answer 401, the key must be in no file of
-#           the job folder and in no row of the install's `sandbox_logs`, while a control canary
-#           sent as an env of the same sandbox is in one; no `auth.json` after a Codex trial.
+#           the job folder and in no row of the install's `sandbox_logs`, neither as is nor in
+#           base64 at any of its three alignments (envd logs a process's standard input in
+#           base64), while two controls of the same sandbox are: a canary sent as an env (as is)
+#           and a value sent on a command's standard input (in base64). No `auth.json` after a
+#           Codex trial. Prints counts only, never a value.
 #
 # The E2B settings come from the environment only and reach the container by name, never on a
 # command line. IMAGE (default coreloom-uml-dev-convention-evals, built by the `evals` profile)
@@ -42,7 +45,8 @@ oracle=0
 node "$here/export.ts" "$run" "$agent" "$oracle" 1 "$only" > "$run/command.json"
 
 export ENVLOG_CANARY="envlog-canary-$stamp"
-extra=(-e E2B_API_KEY -e E2B_API_URL -e E2B_SANDBOX_URL -e ENVLOG_CANARY)
+export ENVLOG_STDIN_CONTROL="envlog-stdin-control-$stamp"
+extra=(-e E2B_API_KEY -e E2B_API_URL -e E2B_SANDBOX_URL -e ENVLOG_CANARY -e ENVLOG_STDIN_CONTROL)
 [ -n "$key_name" ] && { export "$key_name=$fake"; extra+=(-e "$key_name"); }
 # The exported command, run in the image: its env as -e pairs, then Harbor's arguments (in the
 # fake mode with the probe class in place of ours, which it extends).
@@ -89,9 +93,35 @@ if [ "$mode" = fake ]; then
       --user "${CLICKHOUSE_USER:-clickhouse}" --password "${CLICKHOUSE_PASSWORD:-clickhouse}" \
       -q "select count() from sandbox_logs where position(raw, '$1') > 0"
   }
-  key_rows="$(query "$fake")"
-  canary_rows="$(query "$ENVLOG_CANARY")"
-  echo "sandbox_logs: fake key rows=$key_rows control canary rows=$canary_rows"
-  [ "$key_rows" = 0 ] && [ "$canary_rows" -ge 1 ] || exit 1
+  b64() { printf '%s' "$1" | base64 -w 0; }
+  # What of base64(value) is the same whatever bytes surround it in a larger base64 blob (a
+  # whole request body), at each of the three alignments: at offset 0 all of it but its last
+  # group, at offsets 1 and 2 the middle of base64(padding + value).
+  aligned() {
+    local value="$1" k encoded
+    encoded="$(b64 "$value")"
+    printf '%s\n' "${encoded:0:${#encoded}-4}"
+    for k in 1 2; do
+      encoded="$(b64 "$(printf '%*s' "$k" '' | tr ' ' x)$value")"
+      printf '%s\n' "${encoded:4:${#encoded}-8}"
+    done
+  }
+  failed=0
+  count() { # <label> <value> <expected: zero | some>
+    local rows
+    rows="$(query "$2")"
+    echo "sandbox_logs: $1 rows=$rows (expected $3)"
+    if [ "$3" = zero ]; then [ "$rows" = 0 ] || failed=1; else [ "$rows" -ge 1 ] || failed=1; fi
+  }
+  count "fake key, as is" "$fake" zero
+  offset=0
+  while IFS= read -r part; do
+    count "fake key, base64 at offset $offset" "$part" zero
+    offset=$((offset + 1))
+  done < <(aligned "$fake")
+  count "env canary, as is" "$ENVLOG_CANARY" some
+  count "stdin control, base64" "$(b64 "$ENVLOG_STDIN_CONTROL")" some
+  count "stdin control, base64 at offset 0" "$(aligned "$ENVLOG_STDIN_CONTROL" | head -n 1)" some
+  [ "$failed" = 0 ] || exit 1
 fi
 echo "live check passed: $agent $mode ($run)"
