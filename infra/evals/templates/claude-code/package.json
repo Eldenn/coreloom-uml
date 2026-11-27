@@ -1,0 +1,9 @@
+{
+  "name": "coreloom-uml-evals-claude-code",
+  "private": true,
+  "description": "The CLI of the claude-code template of the convention evals and pnpm, installed with npm ci by its Dockerfile.",
+  "dependencies": {
+    "@anthropic-ai/claude-code": "2.1.322",
+    "pnpm": "11.5.2"
+  }
+}

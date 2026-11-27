@@ -42,6 +42,23 @@ export function conventionFiles(task: EvalTask, condition: Condition) {
  * live in that temporary repository only, never in this one.
  */
 export function createWorkspace(task: EvalTask, condition: Condition, parent: string): FinalState {
+  const files = Object.fromEntries(
+    conventionFiles(task, condition).map((file) => [file.path, file.content]),
+  )
+  return createWorkspaceWithFiles(task, condition, files, parent)
+}
+
+/**
+ * The same repository with convention files given by the caller (a configuration's own rendered
+ * files, by path) instead of the task's rule rendered here. A Git hook (under `.githooks/`) is
+ * written as the catalog renders it, its `#!` line added when it has none, and made executable.
+ */
+export function createWorkspaceWithFiles(
+  task: EvalTask,
+  condition: Condition,
+  files: Readonly<Record<string, string>>,
+  parent: string,
+): FinalState {
   const root = join(parent, 'repo')
   const remote = join(parent, 'origin.git')
   const write = (path: string, content: string) => {
@@ -50,10 +67,10 @@ export function createWorkspace(task: EvalTask, condition: Condition, parent: st
   }
   for (const [path, content] of Object.entries(task.files)) write(path, content)
   const hooks: string[] = []
-  for (const file of conventionFiles(task, condition)) {
-    const hook = file.path.startsWith(`${HOOKS_DIRECTORY}/`)
-    write(file.path, hook ? `${HOOK_SHEBANG}\n${file.content}` : file.content)
-    if (hook) hooks.push(file.path)
+  for (const [path, content] of Object.entries(files)) {
+    const hook = path.startsWith(`${HOOKS_DIRECTORY}/`)
+    write(path, hook && !content.startsWith('#!') ? `${HOOK_SHEBANG}\n${content}` : content)
+    if (hook) hooks.push(path)
   }
   for (const hook of hooks) chmodSync(join(root, hook), 0o755)
 

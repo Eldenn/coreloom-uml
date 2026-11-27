@@ -1,0 +1,9 @@
+{
+  "name": "coreloom-uml-evals-codex",
+  "private": true,
+  "description": "The CLI of the codex template of the convention evals and pnpm, installed with npm ci by its Dockerfile.",
+  "dependencies": {
+    "@openai/codex": "0.167.2",
+    "pnpm": "11.5.2"
+  }
+}
