@@ -357,9 +357,41 @@ What works (live checks of 2026-11-27, no model call):
 What does not: disk (check 3). The install keeps about 931 MB of root disk per sandbox; a template
 with Claude Code, curl, git and procps did not build ("No space left on device"), Claude Code alone
 on node slim did. So one small template per agent (Node slim, git, pnpm, that agent's CLI), built
-from the `agent` stage; whether Codex's template fits is unchecked (ticket 2). The other way is a
-larger disk on the install, an operational change of the vendored `infra/e2b/` (open: the owner
-decides, only if a template does not fit).
+from the `agent` stage. The other way is a larger disk on the install, an operational change of
+the vendored `infra/e2b/` (open: the owner decides, only if a template does not fit).
+
+Tickets 1 to 3, live on the local install (2026-11-27, `#147`; no model credential: Harbor's
+oracle agent, and the real agents with a fake key `sk-ant-api03-CANARYFAKE-…` /
+`sk-proj-CANARYFAKE-…` the providers answered with 401):
+- **Both templates build** in the install (`infra/evals/templates/{claude-code,codex}`), each once
+  for every task of its agent. The sandbox's root file system is 952 MB, of which ext4 reserves
+  256 MB for root: with both templates nothing was left to the `node` user (`cp: No space left on
+  device` in the oracle). The environment class now gives those blocks back at setup
+  (`tune2fs -r 0`), and the templates were trimmed (git's Perl and manual removed, no install
+  script, npm's cache in `/dev/shm`, Codex's voice host removed). Free disk then: Claude Code
+  720 MB used, 216 MB free; Codex 783 MB used, 153 MB free. Codex fits; no larger disk needed.
+- **Memory**: the install's host holds sandboxes in huge pages; with 2 GB per sandbox the
+  template build failed (`Internal VMM error … Device not found`) and three trials at once were
+  refused (`Failed to place sandbox: this node cannot allocate … in hugepages`). Sandboxes now have
+  1 GB (`SANDBOX_RESOURCES`), and the environment class tries a refused creation again while room
+  frees up: seen once in the last run, which then passed.
+- **Oracle**: every exported task passes, both graders, in both templates (8 trials each,
+  `harbor run --agent oracle -e coreloom_harbor.environment:ConventionEvalsE2BEnvironment
+  --n-concurrent 3`, the final workspace downloaded as the `/work` artifact and graded from
+  `readHarborJob`).
+- **Fake key, Claude Code** (`package-manager-pnpm-add--full`): 401, `AgentAuthenticationError`;
+  the value in no file of the job folder (`grep -r` of the whole run folder: only the command file
+  of the test harness); the policy read back before the agent started was `allow_out =
+  ['api.anthropic.com']`, `deny_out` = `0.0.0.0/0` plus `RESEARCH_DENIED_RANGES`,
+  `169.254.0.0/16`, `192.0.2.0/24`.
+- **Fake key, Codex** (same task, `api.openai.com`): 401, `AgentAuthenticationError`; the value in
+  no file of the job folder; no `auth.json` anywhere, and the `$CODEX_HOME` listing the agent
+  writes into its logs shows none.
+- **Startup environment**: an oracle whose solution writes `env` out, run with a fake key in the
+  worker's environment, saw no variable holding it and no provider or E2B variable but E2B's own
+  (`E2B_SANDBOX`, `E2B_SANDBOX_ID`, `E2B_TEMPLATE_ID`, `E2B_EVENTS_ADDRESS`), as user `node`.
+- **Cleanup**: after each run, `Sandbox.list` (running and paused) holds no sandbox with
+  `coreloom.purpose=convention-evals`.
 
 Residuals, and what ticket 7 must prove for each:
 - **MMDS** (169.254.169.254, Firecracker's metadata service) answers despite deny-all; with a
@@ -394,14 +426,16 @@ graders stay.
 ## 14. What PR #143 keeps, changes and drops
 
 - Keeps: the task format, the graders, the two task pairs, the offline tests, the version checks.
-- Changes (later tickets): `requirements.in` becomes `harbor[e2b]==0.27.0` with a new lock (e2b
-  2.66.0); no Docker client, Compose or daemon any more; the `agent` stage becomes the source of
-  the per-agent E2B templates.
-- Drops (later tickets): the standalone `evals` compose service. It becomes the worker
-  `convention-evals`, a stage of `apps/api/Dockerfile` on Debian like `skill-tagger` (Harbor and
-  Python 3.12 from the hash-locked lock, run as `node`), running only `queue:work
-  --queues=convention-evals`, with every other worker naming its queues without it
-  (`config/queue.ts`, the `queue:work` script, the `queue-worker` services).
+- Changed in #147 (tickets 1 to 3): `requirements.in` is `harbor[e2b]==0.27.0` with a new lock
+  (e2b 2.66.0); no Docker client, Compose or daemon any more; the `agent` stage became the two
+  per-agent templates of `infra/evals/templates/`, and `infra/evals/Dockerfile` with its
+  `agents/` lock is removed. The exporter and reader are `packages/catalog/evals/src/harbor/`, our
+  Harbor classes `infra/evals/coreloom_harbor/`.
+- Dropped in #147: the standalone `evals` compose service. It is the worker `convention-evals`, a
+  stage of `apps/api/Dockerfile` on Debian like `skill-tagger` (Harbor and Python 3.12 from the
+  hash-locked lock, run as `node`), running only `queue:work --queues=convention-evals`, with every
+  other worker naming its queues without it (`config/queue.ts`, the `queue:work` script, the
+  `queue-worker` services). Its job (`RunConventionEvalJob`) is ticket 4.
 - Done in #143: only this record and the line of `infra/evals/README.md` that pointed to the open
   questions. Everything else is in the tickets of section 16.
 
@@ -458,6 +492,14 @@ owner decides (section 8).
 
 Total: 18 to 25 days to opening with saved keys (tickets 1 to 8, 10 and the pilot), 24 to 34 with
 subscriptions under option A.
+
+Tickets 1 to 3 are done in #147 (section 13 has their live checks). What they changed for the
+next ones: sandboxes have 1 GB of memory, not 2 (the install's huge pages); the environment class
+releases the root file system's reserved blocks at setup; the queue `convention-evals` and its
+script `queue:evals` exist, with no job on it yet (ticket 4). Not checked live: the worker image
+running a trial itself (the live checks ran Harbor from that image with `docker run`, outside
+compose), and `versions.test.ts` inside it (the image holds the API's build, not the catalog's
+tests).
 
 ## 17. Superseded
 
