@@ -3,6 +3,19 @@
 // Add a language: copy `en`, translate it, and register it in src/lib/locale.tsx.
 import type { CodeMapStatus } from '@/lib/code-maps'
 
+/** A convention test's tokens, each already written for the reader's language. */
+interface TokenFigures {
+  total: string
+  input: string
+  cached: string
+  written: string
+  output: string
+}
+
+/** Counts written the way each language writes them (`1,234` and `1 234`). */
+const enNumber = (value: number) => new Intl.NumberFormat('en').format(value)
+const frNumber = (value: number) => new Intl.NumberFormat('fr').format(value)
+
 export const en = {
   brand: 'Coreloom UML',
   nav: {
@@ -1955,6 +1968,137 @@ export const en = {
     importRules: 'Rules of your own',
     importNoRules: 'Nothing else in the file to turn into rules.',
     rulesFull: 'The rule list is full: remove a rule before accepting another.',
+  },
+  evals: {
+    title: 'Test these conventions',
+    intro:
+      'A coding agent does small tasks in a sandbox, without your conventions and then with them, and each attempt is graded. You pay the model calls with your own provider.',
+    caveat:
+      'Two small tasks on one sample repository say nothing of your own repository, and 3 attempts out of 3 cannot tell two conditions apart: read these figures as a first look.',
+    loading: 'Reading what a test would run…',
+    planFailed: 'The test plan could not be read.',
+    retry: 'Try again',
+    agent: 'What is measured',
+    agentLabel: {
+      'claude-code': 'Claude Code + your conventions',
+      codex: 'Codex + your conventions',
+      harness: 'your model + your conventions',
+    },
+    ruleTitle: (group: string, rule: string) => `${group}: ${rule}`,
+    pathCli: 'The coding agent’s own CLI, with your saved key',
+    pathHarness: 'Your model, driven by Coreloom’s harness',
+    rules: 'Rules tested',
+    noRules: 'None',
+    trials: 'Trials',
+    trialsText: (trials: number, tasks: number, conditions: number, attempts: number) =>
+      `${enNumber(trials)} trials: ${enNumber(tasks)} ${tasks === 1 ? 'task' : 'tasks'} × ${enNumber(conditions)} conditions × ${enNumber(attempts)} attempts`,
+    estimate: 'Estimated cost',
+    estimateRange: (low: string, high: string) => `${low} to ${high}`,
+    estimateHint: (range: string, cap: string) => `Estimated ${range} · capped at ${cap}`,
+    estimateNone: 'No price for this provider: the test is capped in tokens instead.',
+    pricesCheckedOn: (date: string) => `Prices checked on ${date}.`,
+    subscriptionCost:
+      'Your subscription is not charged per token: this is what a key would have paid, and the cap applies to it.',
+    cap: 'Cap',
+    capUsd: (amount: string) =>
+      `${amount}: the remaining trials are cancelled before it is passed.`,
+    capTokens: (tokens: string) =>
+      `${tokens} tokens: the remaining trials are cancelled before it is passed.`,
+    unverified:
+      'Tests with the ChatGPT subscription have not been checked against the real service yet: a failure may come from the connection rather than from your conventions.',
+    start: 'Test these conventions',
+    noProvider: 'Choose a model provider in your settings to run a test.',
+    providerUnavailable:
+      'This provider cannot be used for a test here. Choose another one in your settings.',
+    refusal: {
+      no_testable_rule: (testable: string) =>
+        `None of your rules can be tested yet. Testable now: ${testable}.`,
+      no_credential:
+        'This provider has no saved key or connected subscription: add one in your settings.',
+      provider_settings: 'These provider settings cannot be called: check them in your settings.',
+      over_cap: 'Even the lower estimate of this test passes its cost cap.',
+      cli_path_unavailable: 'This test runs your key in a sandbox, which is not available yet.',
+    },
+    openSettings: 'Open the settings',
+    confirmTitle: 'Start a convention test?',
+    confirmCost: (range: string, cap: string) =>
+      `It should cost ${range}, and stops before it passes ${cap}.`,
+    confirmTokens: (cap: string) => `It stops before it passes ${cap} tokens.`,
+    confirmKey:
+      'Your saved key enters a sandbox for the length of the test, where the coding agent calls the provider with it. A key with a spending limit is recommended.',
+    confirmHarness:
+      'Your model is called from our server; the sandbox only runs its commands and never gets your key.',
+    confirmDuration: 'A test takes 15 to 30 minutes. You can leave this page meanwhile.',
+    cancel: 'Cancel',
+    confirm: 'Start the test',
+    started: 'Test started.',
+    busy: 'A test is already running for this account: wait for it to end.',
+    startFailed: 'The test could not be started.',
+    status: {
+      queued: 'Waiting to start',
+      running: 'Running',
+      done: 'Done',
+      failed: 'Failed',
+      cancelled: 'Stopped',
+      leaked: 'Output withheld',
+    },
+    runTitle: (date: string) => `Test of ${date}`,
+    close: 'Close',
+    runLoadFailed: 'This test could not be read.',
+    progress: (done: number, total: number) =>
+      `${enNumber(done)} of ${enNumber(total)} trials done`,
+    measuredCost: 'Measured cost',
+    equivalentCost: 'Equivalent cost',
+    noCost: 'Not priced',
+    tokens: 'Tokens',
+    tokensText: (n: TokenFigures) =>
+      `${n.total} (input ${n.input}, cache read ${n.cached}, cache write ${n.written}, output ${n.output})`,
+    duration: 'Duration',
+    notStarted: 'Not started',
+    model: 'Model',
+    revision: (revision: number, catalog: string) =>
+      `Configuration revision ${enNumber(revision)}, catalog ${catalog}`,
+    results: 'Results',
+    resultsHint:
+      'Per rule, task and condition: how many attempts finished the task, and how many followed the rule. A task done is not a rule followed.',
+    noResults: 'No trial has ended yet.',
+    rule: 'Rule',
+    task: 'Task',
+    condition: 'Condition',
+    conditionName: { none: 'Without conventions', full: 'With your conventions' },
+    success: 'Task done',
+    compliance: 'Rule followed',
+    held: (held: number, graded: number) => `held ${enNumber(held)}/${enNumber(graded)}`,
+    noneGraded: 'No attempt graded',
+    notApplicable: (count: number) => `${enNumber(count)} not applicable`,
+    ungraded: (count: number) => `${enNumber(count)} not graded`,
+    reason: {
+      cap_reached: 'The cost cap was reached: the remaining trials were cancelled.',
+      time_limit: 'The time limit was reached: the remaining trials were cancelled.',
+      leaked: 'A trial’s output held a secret: nothing of it was kept.',
+      interrupted: 'The test was interrupted on the server.',
+      sandbox_unavailable: 'No sandbox could be started.',
+      runner_failed: 'The test runner failed.',
+      grading_failed: 'The attempt could not be graded.',
+      agent_error: 'The agent stopped with an error.',
+      agent_timeout: 'The agent ran out of time.',
+      credential_unavailable: 'Your key or subscription could not be read.',
+      nothing_to_test: 'There was nothing left to test.',
+    },
+    reasonOther: 'The test failed.',
+    leakedTitle: 'Output withheld',
+    leakedText: 'A trial’s output held a secret, so no output of this test was kept.',
+    leakedRotate: 'Rotate the key you saved for this provider: it may have been exposed.',
+    cancelledTitle: 'Stopped before the end',
+    failedTitle: 'The test failed',
+    history: 'Past tests',
+    historyEmpty: 'No test of these conventions yet.',
+    historyFailed: 'The past tests could not be read.',
+    open: 'Open',
+    openRun: (title: string) => `Open: ${title}`,
+    runEnded: (status: string) => `${status}: the results are below.`,
+    opened: 'Shown',
+    page: (page: number, last: number) => `Page ${enNumber(page)} of ${enNumber(last)}`,
   },
 }
 
@@ -3970,5 +4114,139 @@ export const fr: Messages = {
     importRules: 'Règles à vous',
     importNoRules: 'Rien d’autre à transformer en règles dans le fichier.',
     rulesFull: 'La liste des règles est pleine : retirez une règle avant d’en accepter une autre.',
+  },
+  evals: {
+    title: 'Tester ces conventions',
+    intro:
+      'Un agent de code fait de petites tâches dans un bac à sable, sans vos conventions puis avec, et chaque essai est noté. Vous payez les appels au modèle avec votre propre fournisseur.',
+    caveat:
+      'Deux petites tâches sur un dépôt d’exemple ne disent rien de votre propre dépôt, et 3 essais sur 3 ne départagent pas deux conditions : lisez ces chiffres comme un premier aperçu.',
+    loading: 'Lecture de ce qu’un test lancerait…',
+    planFailed: 'Le plan du test n’a pas pu être lu.',
+    retry: 'Réessayer',
+    agent: 'Ce qui est mesuré',
+    agentLabel: {
+      'claude-code': 'Claude Code + vos conventions',
+      codex: 'Codex + vos conventions',
+      harness: 'votre modèle + vos conventions',
+    },
+    ruleTitle: (group: string, rule: string) => `${group} : ${rule}`,
+    pathCli: 'Le CLI de l’agent de code, avec votre clé enregistrée',
+    pathHarness: 'Votre modèle, piloté par le harnais de Coreloom',
+    rules: 'Règles testées',
+    noRules: 'Aucune',
+    trials: 'Essais',
+    trialsText: (trials: number, tasks: number, conditions: number, attempts: number) =>
+      `${frNumber(trials)} essais : ${frNumber(tasks)} ${tasks === 1 ? 'tâche' : 'tâches'} × ${frNumber(conditions)} conditions × ${frNumber(attempts)} tentatives`,
+    estimate: 'Coût estimé',
+    estimateRange: (low: string, high: string) => `${low} à ${high}`,
+    estimateHint: (range: string, cap: string) => `Estimé de ${range} · plafond ${cap}`,
+    estimateNone: 'Pas de tarif pour ce fournisseur : le test est plafonné en jetons.',
+    pricesCheckedOn: (date: string) => `Tarifs vérifiés le ${date}.`,
+    subscriptionCost:
+      'Votre abonnement n’est pas facturé au jeton : c’est ce qu’une clé aurait payé, et le plafond s’y applique.',
+    cap: 'Plafond',
+    capUsd: (amount: string) =>
+      `${amount} : les essais restants sont annulés avant de le dépasser.`,
+    capTokens: (tokens: string) =>
+      `${tokens} jetons : les essais restants sont annulés avant de le dépasser.`,
+    unverified:
+      'Les tests avec l’abonnement ChatGPT n’ont pas encore été vérifiés avec le vrai service : un échec peut venir de la connexion plutôt que de vos conventions.',
+    start: 'Tester ces conventions',
+    noProvider: 'Choisissez un fournisseur de modèle dans vos paramètres pour lancer un test.',
+    providerUnavailable:
+      'Ce fournisseur ne peut pas servir à un test ici. Choisissez-en un autre dans vos paramètres.',
+    refusal: {
+      no_testable_rule: (testable: string) =>
+        `Aucune de vos règles ne peut encore être testée. Testables aujourd’hui : ${testable}.`,
+      no_credential:
+        'Ce fournisseur n’a ni clé enregistrée ni abonnement connecté : ajoutez-en un dans vos paramètres.',
+      provider_settings:
+        'Ces réglages de fournisseur ne peuvent pas être appelés : vérifiez-les dans vos paramètres.',
+      over_cap: 'Même l’estimation basse de ce test dépasse son plafond de coût.',
+      cli_path_unavailable:
+        'Ce test exécute votre clé dans un bac à sable, ce qui n’est pas encore disponible.',
+    },
+    openSettings: 'Ouvrir les paramètres',
+    confirmTitle: 'Lancer un test des conventions ?',
+    confirmCost: (range: string, cap: string) =>
+      `Il devrait coûter ${range}, et s’arrête avant de dépasser ${cap}.`,
+    confirmTokens: (cap: string) => `Il s’arrête avant de dépasser ${cap} jetons.`,
+    confirmKey:
+      'Votre clé enregistrée entre dans un bac à sable le temps du test, où l’agent de code appelle le fournisseur avec. Une clé avec une limite de dépenses est recommandée.',
+    confirmHarness:
+      'Votre modèle est appelé depuis notre serveur ; le bac à sable ne fait qu’exécuter ses commandes et ne reçoit jamais votre clé.',
+    confirmDuration: 'Un test dure de 15 à 30 minutes. Vous pouvez quitter cette page entre-temps.',
+    cancel: 'Annuler',
+    confirm: 'Lancer le test',
+    started: 'Test lancé.',
+    busy: 'Un test est déjà en cours pour ce compte : attendez qu’il se termine.',
+    startFailed: 'Le test n’a pas pu être lancé.',
+    status: {
+      queued: 'En attente',
+      running: 'En cours',
+      done: 'Terminé',
+      failed: 'Échec',
+      cancelled: 'Arrêté',
+      leaked: 'Sortie retenue',
+    },
+    runTitle: (date: string) => `Test du ${date}`,
+    close: 'Fermer',
+    runLoadFailed: 'Ce test n’a pas pu être lu.',
+    progress: (done: number, total: number) =>
+      `${frNumber(done)} essais terminés sur ${frNumber(total)}`,
+    measuredCost: 'Coût mesuré',
+    equivalentCost: 'Coût équivalent',
+    noCost: 'Sans tarif',
+    tokens: 'Jetons',
+    tokensText: (n: TokenFigures) =>
+      `${n.total} (entrée ${n.input}, lecture de cache ${n.cached}, écriture de cache ${n.written}, sortie ${n.output})`,
+    duration: 'Durée',
+    notStarted: 'Pas commencé',
+    model: 'Modèle',
+    revision: (revision: number, catalog: string) =>
+      `Révision ${frNumber(revision)} de la configuration, catalogue ${catalog}`,
+    results: 'Résultats',
+    resultsHint:
+      'Par règle, tâche et condition : combien d’essais ont fini la tâche, et combien ont suivi la règle. Une tâche faite n’est pas une règle suivie.',
+    noResults: 'Aucun essai n’est encore terminé.',
+    rule: 'Règle',
+    task: 'Tâche',
+    condition: 'Condition',
+    conditionName: { none: 'Sans conventions', full: 'Avec vos conventions' },
+    success: 'Tâche faite',
+    compliance: 'Règle suivie',
+    held: (held: number, graded: number) => `tenu ${frNumber(held)}/${frNumber(graded)}`,
+    noneGraded: 'Aucun essai noté',
+    notApplicable: (count: number) => `${frNumber(count)} sans objet`,
+    ungraded: (count: number) => `${frNumber(count)} non noté${count > 1 ? 's' : ''}`,
+    reason: {
+      cap_reached: 'Le plafond de coût a été atteint : les essais restants ont été annulés.',
+      time_limit: 'La limite de temps a été atteinte : les essais restants ont été annulés.',
+      leaked: 'La sortie d’un essai contenait un secret : rien n’en a été gardé.',
+      interrupted: 'Le test a été interrompu sur le serveur.',
+      sandbox_unavailable: 'Aucun bac à sable n’a pu démarrer.',
+      runner_failed: 'Le lanceur de tests a échoué.',
+      grading_failed: 'L’essai n’a pas pu être noté.',
+      agent_error: 'L’agent s’est arrêté sur une erreur.',
+      agent_timeout: 'L’agent a manqué de temps.',
+      credential_unavailable: 'Votre clé ou votre abonnement n’a pas pu être lu.',
+      nothing_to_test: 'Il ne restait rien à tester.',
+    },
+    reasonOther: 'Le test a échoué.',
+    leakedTitle: 'Sortie retenue',
+    leakedText:
+      'La sortie d’un essai contenait un secret : aucune sortie de ce test n’a été gardée.',
+    leakedRotate: 'Renouvelez la clé enregistrée pour ce fournisseur : elle a pu être exposée.',
+    cancelledTitle: 'Arrêté avant la fin',
+    failedTitle: 'Le test a échoué',
+    history: 'Tests précédents',
+    historyEmpty: 'Aucun test de ces conventions pour l’instant.',
+    historyFailed: 'Les tests précédents n’ont pas pu être lus.',
+    open: 'Ouvrir',
+    openRun: (title: string) => `Ouvrir : ${title}`,
+    runEnded: (status: string) => `${status} : les résultats sont ci-dessous.`,
+    opened: 'Affiché',
+    page: (page: number, last: number) => `Page ${frNumber(page)} sur ${frNumber(last)}`,
   },
 }
