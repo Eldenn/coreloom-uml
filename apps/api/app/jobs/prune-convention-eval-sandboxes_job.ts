@@ -39,8 +39,9 @@ export async function sweepEvalSandboxes(maxAgeMs: number): Promise<number> {
         .map((item) => item.sandboxId),
     ),
   ]
-  await Promise.all(stale.map((id) => sandboxes.kill(id)))
-  return stale.length
+  // One kill that fails (E2B answering 500) leaves the others killed, and the next sweep retries.
+  const kills = await Promise.allSettled(stale.map((id) => sandboxes.kill(id)))
+  return kills.filter((kill) => kill.status === 'fulfilled').length
 }
 
 /**
@@ -63,26 +64,41 @@ export default class PruneConventionEvalSandboxesJob extends Job<
   }
 
   async process(): Promise<void> {
+    // The runs first: a sandbox list E2B cannot give never keeps a dead worker's run open.
+    const interrupted = await endAbandonedRuns()
     const killed = await sweepEvalSandboxes(EVAL_SWEEP_SCHEDULE.maxAgeMs)
-
-    const limit = Math.max(...Object.values(CONVENTION_EVAL_LIMITS.hardLimitMs))
-    const abandoned = await ConventionEvalRun.query()
-      .whereIn('status', [EvalRunStatus.Queued, EvalRunStatus.Running])
-      .where(
-        'createdAt',
-        '<',
-        DateTime.now()
-          .minus({ milliseconds: limit + CONVENTION_EVAL_LIMITS.lockMarginMs })
-          .toSQL() ?? '',
-      )
-      .update({
-        status: EvalRunStatus.Failed,
-        failureReason: EvalFailureReason.Interrupted,
-        endedAt: DateTime.now().toSQL(),
-      })
-    this.logger.info(
-      { killed, interrupted: Number(abandoned[0] ?? 0) },
-      'convention test sandboxes swept',
-    )
+    this.logger.info({ killed, interrupted }, 'convention test sandboxes swept')
   }
+}
+
+/**
+ * Ends the runs a dead worker left behind (`interrupted`): a `running` one past its path's hard
+ * limit and margin since it started, a `queued` one past the longest of them since it was asked
+ * for. Answers how many.
+ */
+export async function endAbandonedRuns(): Promise<number> {
+  const now = DateTime.now()
+  const ago = (ms: number) => now.minus({ milliseconds: ms }).toSQL() ?? ''
+  const margin = CONVENTION_EVAL_LIMITS.lockMarginMs
+  const longest = Math.max(...Object.values(CONVENTION_EVAL_LIMITS.hardLimitMs))
+  const updated = await ConventionEvalRun.query()
+    .where((query) => {
+      query.where((queued) => {
+        queued.where('status', EvalRunStatus.Queued).where('createdAt', '<', ago(longest + margin))
+      })
+      for (const [path, limit] of Object.entries(CONVENTION_EVAL_LIMITS.hardLimitMs)) {
+        query.orWhere((running) => {
+          running
+            .where('status', EvalRunStatus.Running)
+            .where('path', path)
+            .whereRaw('coalesce(started_at, created_at) < ?', [ago(limit + margin)])
+        })
+      }
+    })
+    .update({
+      status: EvalRunStatus.Failed,
+      failureReason: EvalFailureReason.Interrupted,
+      endedAt: now.toSQL(),
+    })
+  return Number(updated[0] ?? 0)
 }
