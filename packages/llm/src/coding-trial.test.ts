@@ -1,10 +1,13 @@
+import { MockLanguageModelV4 } from 'ai/test'
 import { describe, expect, it } from 'vitest'
 import {
+  CODING_TRIAL,
   CODING_TRIAL_INSTRUCTIONS,
   type CodingTrialUsage,
   projectInstructionsBlock,
   runCodingTrial,
   stepUsage,
+  unreportedStep,
 } from './coding-trial.ts'
 import { APICallError, failingModel, toolCallingModel } from './testing/mock-model.ts'
 
@@ -120,5 +123,33 @@ describe('runCodingTrial', () => {
         totalTokens: undefined,
       }),
     ).toEqual({ input: 40, cachedInput: 60, cacheWrite: 0, output: 0 })
+  })
+
+  it('counts a step with no usage reported high, so the cap fails closed', async () => {
+    const silent = new MockLanguageModelV4({
+      doGenerate: async () => ({
+        content: [{ type: 'text', text: 'Done.' }],
+        finishReason: { unified: 'stop', raw: 'stop' },
+        usage: {
+          inputTokens: {
+            total: undefined,
+            noCache: undefined,
+            cacheRead: undefined,
+            cacheWrite: undefined,
+          },
+          outputTokens: { total: undefined, text: undefined, reasoning: undefined },
+        },
+        warnings: [],
+      }),
+    })
+    const instruction = 'Fix sum and commit.'
+    const result = await runCodingTrial(silent, { instruction, agentsMd: null, run: sandbox().run })
+    expect(result.usage).toEqual(
+      unreportedStep(CODING_TRIAL_INSTRUCTIONS.length + instruction.length),
+    )
+    expect(result.usage.output).toBe(CODING_TRIAL.maxOutputTokens)
+    expect(result.usage.input).toBeGreaterThan(
+      (CODING_TRIAL_INSTRUCTIONS.length + instruction.length) / 4,
+    )
   })
 })
