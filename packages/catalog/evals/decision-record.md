@@ -708,6 +708,28 @@ Status after #148 (the API, built beside #147's runner):
   `harbor.context_id` / `harbor.trial_name`, not `harbor.job_id` (any `harbor.` key now), and
   E2B's build gives `user` passwordless sudo back at its last step, so each trial sandbox takes it
   away as root before anything runs (`DENY_SUDO`, checked: `sudo -n true` refused).
+- **Path I is off until #153.** `CONVENTION_EVALS_CLI_PATH` (`start/env.ts`, off unless `enabled`)
+  is read by the plan and the route, which refuse a saved `anthropic` or `openai` key with
+  `cli_path_unavailable` (422 on start), and again by the worker, which ends a path I run queued
+  before it was turned off as `failed` with that reason without starting Harbor. The live checks
+  with a fake key turned it on for their own process only.
+- **The pilot** (`node ace evals:pilot`, dev only, `commands/evals-pilot.ts` and
+  `app/convention-evals/services/eval-pilot.ts`): path II only, with the admin's configured
+  provider, the Claude subscription (`claude-code`, model `sonnet`, the catalog's first
+  suggestion for the kind, as the browser sends it), within the $5 cap (with a subscription, the
+  equivalent cost of the quota used). `--enable-flag` sets `convention-evals` through `updateFlag`
+  to the admin's email alone (rollout 0, rule `pilot-admin`) and checks it reads on for the admin
+  and off for another account. `--prepare` creates or reuses the admin's "Convention tests pilot"
+  configuration, outside any project, through the routes' services, holding
+  `git.commit-messages` = `conventional` and `tooling.package-manager` = `pnpm`. `--run --config
+  <id> --kind claude-code` plans the test (it refuses anything but path II), starts it through
+  `startConventionEval` (the route's own start: the run row, the account lock, job data with ids
+  and kinds only) and runs `RunConventionEvalJob.process()` in its own process, printing each
+  trial stored (verdicts, tokens), then held n/k per rule and condition (success and compliance
+  apart), the tokens, the equivalent cost, the duration and the sandboxes E2B still lists for the
+  run; `--dry` stops after the plan. Its dry plan on the dev database: 3 tasks, 18 trials,
+  estimate $2.70 to $6.75 (prices of 2026-11-27), cap $5: the upper estimate passes the cap, so
+  the run may end `cancelled` at the cap with the remaining trials not started.
 
 Tickets 1 to 3 are done in #147 (section 13 has their live checks). What they changed for the
 next ones: sandboxes have 1 GB of memory, not 2 (the install's huge pages); the environment class
