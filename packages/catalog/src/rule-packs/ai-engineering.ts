@@ -99,6 +99,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'unchecked',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Not checked',
             fr: 'Non vérifiée',
@@ -143,6 +144,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'stateless',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing: each call stands alone',
             fr: 'Rien : chaque appel est indépendant',
@@ -261,6 +263,7 @@ export const aiEngineering: RulePack = {
       rules: [
         {
           id: 'single',
+          noAutomaticSuggestion: true,
           label: {
             en: 'One model for everything',
             fr: 'Un seul modèle pour tout',
@@ -322,6 +325,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'defaults',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nowhere: the provider’s defaults apply',
             fr: 'Nulle part : les valeurs par défaut du fournisseur s’appliquent',
@@ -352,6 +356,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Leave the output length at its default unless the provider requires one; still check the stop reason before parsing a structured answer, since a truncated one is invalid.',
           ],
@@ -439,6 +444,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nowhere: no embeddings',
             fr: 'Nulle part : pas d’embeddings',
@@ -576,6 +582,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'full-context',
+          noAutomaticSuggestion: true,
           label: {
             en: 'No retrieval: the whole corpus fits in the context',
             fr: 'Aucune recherche : tout le corpus tient dans le contexte',
@@ -586,6 +593,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Not used',
             fr: 'Non utilisé',
@@ -630,6 +638,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'whole',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Not at all: one vector per document',
             fr: 'Pas du tout : un vecteur par document',
@@ -822,6 +831,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'never',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Never does',
             fr: 'Ne le fait jamais',
@@ -872,6 +882,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'The project does not rely on prompt caching: order the context for clarity, and do not add cache markers or reorder a prompt for caching unasked.',
           ],
@@ -919,6 +930,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'not-applicable',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Has no long conversation',
             fr: 'N’a pas de longue conversation',
@@ -950,6 +962,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'complete',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Sent once complete',
             fr: 'Envoyée une fois complète',
@@ -1062,6 +1075,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'free-text',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Free text: code never reads it',
             fr: 'Du texte libre : le code ne la lit jamais',
@@ -1116,6 +1130,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Does not use it',
             fr: 'Ne l’utilise pas',
@@ -1160,6 +1175,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'not-applicable',
+          noAutomaticSuggestion: true,
           label: {
             en: 'There is none',
             fr: 'Il n’y en a pas',
@@ -1276,6 +1292,7 @@ export const aiEngineering: RulePack = {
       rules: [
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Is not used',
             fr: 'N’est pas utilisé',
@@ -1347,6 +1364,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing: there are none yet',
             fr: 'Rien : il n’y en a pas encore',
@@ -1453,6 +1471,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Not systematically',
             fr: 'Pas systématiquement',
@@ -1504,6 +1523,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing',
             fr: 'Rien',
@@ -1586,6 +1606,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Token usage is not tracked per call: do not add usage tables or cost dashboards unasked, but say when a change multiplies the number or the size of model calls.',
           ],
@@ -1656,6 +1677,7 @@ export const aiEngineering: RulePack = {
         },
         {
           id: 'no-provider',
+          noAutomaticSuggestion: true,
           label: {
             en: 'No outside provider is used',
             fr: 'Aucun fournisseur externe n’est utilisé',

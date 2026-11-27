@@ -1,0 +1,124 @@
+{
+ "agents.long-term-memory/both": {
+  "skills": [],
+  "refusal": false
+ },
+ "agents.system-prompt/goal": {
+  "skills": [],
+  "refusal": false
+ },
+ "api.cors/same-origin": {
+  "skills": [],
+  "refusal": false
+ },
+ "backend.cpu-work/jobs": {
+  "skills": [],
+  "refusal": false
+ },
+ "backend.model-calls/sync": {
+  "skills": [],
+  "refusal": false
+ },
+ "backend.reverse-proxy/behind-proxy": {
+  "skills": [],
+  "refusal": false
+ },
+ "database.other-stores/document": {
+  "skills": [],
+  "refusal": false
+ },
+ "design.paradigm/object-oriented": {
+  "skills": [],
+  "refusal": false
+ },
+ "design.visibility/disagree": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.preview-deploys/no": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.routing/none": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.runtime-validation/zod": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.token-storage/memory": {
+  "skills": [
+   "auth-implementation-patterns"
+  ],
+  "refusal": false
+ },
+ "llm.grounding/disagree": {
+  "skills": [],
+  "refusal": false
+ },
+ "llm.mcp-role/client": {
+  "skills": [],
+  "refusal": false
+ },
+ "llm.resilience/fallback": {
+  "skills": [],
+  "refusal": false
+ },
+ "llm.tracing/opentelemetry": {
+  "skills": [],
+  "refusal": false
+ },
+ "perf.css-rules/css-import": {
+  "skills": [],
+  "refusal": false
+ },
+ "perf.font-hosting/font-service": {
+  "skills": [],
+  "refusal": false
+ },
+ "perf.memoization/compiler": {
+  "skills": [],
+  "refusal": false
+ },
+ "perf.unused-css/build": {
+  "skills": [],
+  "refusal": false
+ },
+ "security.network/registry": {
+  "skills": [],
+  "refusal": false
+ },
+ "security.version-pins/ranges": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.cache-layers/in-process": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.design-clarification/disagree": {
+  "skills": [],
+  "refusal": true
+ },
+ "system.messaging-patterns/none": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.service-discovery/registry": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.session-state/sticky": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.tenant-isolation/single-tenant": {
+  "skills": [],
+  "refusal": false
+ },
+ "tooling.package-manager/npm": {
+  "skills": [],
+  "refusal": false
+ }
+}

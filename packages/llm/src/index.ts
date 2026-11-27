@@ -247,8 +247,11 @@ export {
   RESEARCH_TOOL_RESULT_MAX_LENGTH,
   type ResearchPage,
   type ResearchResult,
+  type ResearchSearchResult,
   type ResearchTools,
+  researchInstructions,
   researchWeb,
+  WEB_SEARCH_QUERY_MAX_LENGTH,
 } from './research.ts'
 export {
   cleanSkillReview,

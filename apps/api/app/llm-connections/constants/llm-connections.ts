@@ -65,5 +65,6 @@ export const LlmSecretPurpose = {
   ApiKey: 'llm-api-key',
   Connection: 'llm-connection',
   ClaudeState: 'claude-code-state',
+  WebSearchKey: 'web-search-key',
 } as const
 export type LlmSecretPurpose = (typeof LlmSecretPurpose)[keyof typeof LlmSecretPurpose]

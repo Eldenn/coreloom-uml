@@ -13,6 +13,14 @@ export function labelOf(labels: Record<string, string>, value: string) {
   return Object.hasOwn(labels, value) ? labels[value] : value
 }
 
+/** `next` in the order its values were picked: those already in `picked` keep their place. */
+export function inPickOrder<T extends string>(picked: T[], next: string[]): T[] {
+  return [
+    ...picked.filter((topic) => next.includes(topic)),
+    ...(next.filter((t) => !(picked as string[]).includes(t)) as T[]),
+  ]
+}
+
 export function topicLabel(t: Messages['skills'], topic: string) {
   return labelOf(t.topics, topic)
 }

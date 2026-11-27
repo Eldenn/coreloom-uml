@@ -10,20 +10,12 @@ import { toast } from '@/components/ui/sonner'
 import { useT } from '@/lib/locale'
 import { type ReviewedTopics, useReviewSkillTopics } from '@/lib/skill-versions'
 import type { SkillDetail } from '@/lib/skills'
-import { topicLabel } from '@/skills/skill-values'
+import { inPickOrder, topicLabel } from '@/skills/skill-values'
 
 /** The API's bound (`SKILL_TOPIC_LIMITS.maxTopics`). */
 const MAX_TOPICS = 3
 
 type Topics = NonNullable<ReviewedTopics>
-
-/** `next` in the order its values were picked: those already in `picked` keep their place. */
-function inPickOrder(picked: Topics, next: string[]): Topics {
-  return [
-    ...picked.filter((topic) => next.includes(topic)),
-    ...(next.filter((t) => !(picked as string[]).includes(t)) as Topics),
-  ]
-}
 
 export function SkillTopicsEditor({ skill }: { skill: SkillDetail }) {
   const t = useT().skills

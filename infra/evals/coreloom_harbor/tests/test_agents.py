@@ -26,8 +26,8 @@ CLAUDE_KEY = "sk-ant-api03-" + "CANARYFAKE-unit-claude"
 
 
 class FakeEnvironment:
-    """What the agents call on our environment: every command, its envs and the secret sent on
-    its standard input are recorded."""
+    """What the agents call on our environment: every command, its envs and the secret handed
+    to it through ``exec_with_secret`` are recorded."""
 
     def __init__(self, version_output: str) -> None:
         self.default_user = "node"
@@ -65,9 +65,9 @@ class AgentsTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.tmp.cleanup()
 
-    def assert_key_only_on_stdin(self, environment: FakeEnvironment, key: str, mark: str):
-        """Fix g: the key is in no command line and no command's envs; it is sent on the
-        standard input of the agent's own command, and of that command only."""
+    def assert_key_to_agent_command_only(self, environment: FakeEnvironment, key: str, mark: str):
+        """Fix g: the key is in no command line and no command's envs; it is handed to the
+        agent's own command through ``exec_with_secret`` (a file), and to that command only."""
         for command, env, _, _ in environment.commands:
             self.assertNotIn(key, command)
             self.assertNotIn(key, repr(env))
@@ -88,12 +88,12 @@ class AgentsTest(unittest.TestCase):
             _ = agent.model_connection
         return agent
 
-    def test_codex_gets_its_key_on_stdin_and_writes_no_auth_file(self):  # fixes c and g
+    def test_codex_gets_its_key_through_its_file_and_writes_no_auth_file(self):  # fixes c and g
         agent = self.codex()
         environment = FakeEnvironment(f"codex-cli {CODEX_VERSION}")
         with mock.patch.dict(os.environ, {"CODEX_API_KEY": CODEX_KEY, "HOME": self.tmp.name}):
             asyncio.run(agent.run("Fix the bug.", environment, AgentContext()))
-        command, _, _, (name, _) = self.assert_key_only_on_stdin(
+        command, _, _, (name, _) = self.assert_key_to_agent_command_only(
             environment, CODEX_KEY, "codex exec"
         )
         self.assertEqual(name, "CODEX_API_KEY")
@@ -148,14 +148,14 @@ class AgentsTest(unittest.TestCase):
             agent._resolved_env_vars["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"], "1"
         )
 
-    def test_claude_code_gets_its_key_on_stdin_and_no_auth_file(self):  # fix g
+    def test_claude_code_gets_its_key_through_its_file_and_no_auth_file(self):  # fix g
         with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": CLAUDE_KEY, "HOME": self.tmp.name}):
             agent = ConventionEvalsClaudeCode(
                 logs_dir=self.logs, model_name="anthropic/claude-sonnet-5-5"
             )
             environment = FakeEnvironment(f"{CLAUDE_CODE_VERSION} (Claude Code)")
             asyncio.run(agent.run("Fix the bug.", environment, AgentContext()))
-        command, env, _, (name, _) = self.assert_key_only_on_stdin(
+        command, env, _, (name, _) = self.assert_key_to_agent_command_only(
             environment, CLAUDE_KEY, ConventionEvalsClaudeCode.AGENT_COMMAND_MARK
         )
         self.assertEqual(name, "ANTHROPIC_API_KEY")

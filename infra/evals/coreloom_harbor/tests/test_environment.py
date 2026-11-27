@@ -21,6 +21,10 @@ from coreloom_harbor.environment import (
     AGENT_USER_CHECK,
     HARDEN_SANDBOX,
     KILL_AGENT_PROCESSES,
+    PREPARE_SECRET_DIR,
+    REMOVE_SECRET_FILE,
+    SECRET_DIR,
+    SECRET_FILE,
     ConventionEvalsE2BEnvironment,
     ConventionEvalsOptions,
 )
@@ -32,7 +36,7 @@ from coreloom_harbor.policy import (
     agent_phase_update,
     check_agent_phase_info,
     drop_credentials,
-    stdin_secret_command,
+    secret_file_command,
 )
 
 HOST = "api.anthropic.com"
@@ -69,17 +73,21 @@ class FakeHandle:
 
 
 class FakeCommands:
-    """E2B's ``sandbox.commands``: what each command was started with, and what went to stdin."""
+    """E2B's ``sandbox.commands``: what each command was started with, and what went to stdin
+    (envd logs all three)."""
 
     def __init__(self, exit_codes: dict[str, int]) -> None:
         self.exit_codes = exit_codes
         self.runs: list[dict] = []
         self.stdin: list[tuple[int, str]] = []
-        self.fail_stdin = False
+        #: A command line holding this text fails to start (envd went away).
+        self.fail_start: str | None = None
         self.killed = False
 
     async def run(self, cmd, background=False, envs=None, user=None, cwd=None, timeout=None,
                   stdin=False, **_):
+        if self.fail_start is not None and self.fail_start in cmd:
+            raise ConnectionError("envd went away")
         pid = len(self.runs) + 100
         self.runs.append(
             {"cmd": cmd, "envs": envs or {}, "user": user, "stdin": stdin, "pid": pid}
@@ -87,12 +95,24 @@ class FakeCommands:
         return FakeHandle(self, pid, self.exit_codes.get(cmd, 0))
 
     async def send_stdin(self, pid: int, data: str) -> None:
-        if self.fail_stdin:
-            raise ConnectionError("envd went away")
         self.stdin.append((pid, data))
 
     async def close_stdin(self, pid: int) -> None:
         self.stdin.append((pid, "close"))
+
+
+class FakeFiles:
+    """E2B's ``sandbox.files``: every upload, its content and its user (envd logs the path and
+    the user only)."""
+
+    def __init__(self) -> None:
+        self.written: list[tuple[str, str, object]] = []
+        self.fail = False
+
+    async def write(self, path, data, user=None, request_timeout=None, **_):
+        if self.fail:
+            raise ConnectionError("envd went away")
+        self.written.append((path, data, user))
 
 
 class EnvironmentTest(unittest.TestCase):
@@ -249,9 +269,19 @@ class EnvironmentTest(unittest.TestCase):
     def sandbox_with_commands(self, exit_codes: dict[str, int] | None = None) -> FakeSandbox:
         environment_sandbox = FakeSandbox(None)
         environment_sandbox.commands = FakeCommands(exit_codes or {})  # type: ignore[attr-defined]
+        environment_sandbox.files = FakeFiles()  # type: ignore[attr-defined]
         return environment_sandbox
 
-    def test_sends_the_key_on_stdin_never_in_envs_or_the_command(self):  # fix g
+    def assert_no_key_in_any_request(self, environment) -> None:
+        """Fix g: the key is in no command line, no env value and no standard input."""
+        commands = environment._sandbox.commands
+        for run in commands.runs:
+            self.assertNotIn(FAKE_KEY, run["cmd"])
+            self.assertNotIn(FAKE_KEY, repr(run["envs"]))
+            self.assertFalse(run["stdin"])
+        self.assertEqual(commands.stdin, [])
+
+    def test_writes_the_key_to_its_file_never_in_envs_the_command_or_stdin(self):  # fix g
         environment = self.make()
         environment._sandbox = self.sandbox_with_commands()
         result = asyncio.run(
@@ -264,29 +294,158 @@ class EnvironmentTest(unittest.TestCase):
             )
         )
         self.assertEqual(result.return_code, 0)
+        self.assert_no_key_in_any_request(environment)
         commands = environment._sandbox.commands
-        (run,) = commands.runs
-        self.assertTrue(run["stdin"])
-        self.assertNotIn(FAKE_KEY, run["cmd"])
-        self.assertNotIn(FAKE_KEY, repr(run["envs"]))
+        prepare, run, remove = commands.runs
+        self.assertEqual((prepare["cmd"], prepare["user"]), (PREPARE_SECRET_DIR, "node"))
+        self.assertEqual((remove["cmd"], remove["user"]), (REMOVE_SECRET_FILE, "node"))
+        self.assertEqual(run["user"], "node")
         self.assertNotIn("ANTHROPIC_API_KEY", run["envs"])
         self.assertEqual(run["envs"]["ANTHROPIC_MODEL"], "claude-sonnet-5-5")
         self.assertEqual(run["envs"]["LANG"], "C.UTF-8")
-        self.assertTrue(run["cmd"].startswith("IFS= read -r ANTHROPIC_API_KEY || exit 97; "))
+        self.assertTrue(
+            run["cmd"].startswith(f"IFS= read -r ANTHROPIC_API_KEY 2> /dev/null < {SECRET_FILE}; ")
+        )
         self.assertTrue(run["cmd"].endswith("exec 0</dev/null; claude --print"))
-        self.assertEqual(commands.stdin, [(run["pid"], f"{FAKE_KEY}\n"), (run["pid"], "close")])
+        # The key is in one request only: the upload of its file, as the agent's user.
+        self.assertEqual(
+            environment._sandbox.files.written, [(SECRET_FILE, f"{FAKE_KEY}\n", "node")]
+        )
+        self.assertTrue(SECRET_FILE.startswith(f"{SECRET_DIR}/"))
+        self.assertTrue(SECRET_DIR.startswith(f"/home/{AGENT_USER}/"))
 
-    def test_kills_the_command_when_the_key_cannot_be_sent(self):  # fix g
+    def test_runs_nothing_when_the_key_cannot_be_written(self):  # fix g
         environment = self.make()
         environment._sandbox = self.sandbox_with_commands()
-        environment._sandbox.commands.fail_stdin = True
+        environment._sandbox.files.fail = True
         with self.assertRaises(ConnectionError):
             asyncio.run(
                 environment.exec_with_secret(
                     "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY, user="node"
                 )
             )
-        self.assertTrue(environment._sandbox.commands.killed)
+        cmds = [run["cmd"] for run in environment._sandbox.commands.runs]
+        self.assertEqual(cmds, [PREPARE_SECRET_DIR, REMOVE_SECRET_FILE])
+
+    def test_writes_nothing_when_the_folder_cannot_be_prepared(self):  # fix g
+        environment = self.make()
+        environment._sandbox = self.sandbox_with_commands({PREPARE_SECRET_DIR: 1})
+        with self.assertRaises(PolicyViolation):
+            asyncio.run(
+                environment.exec_with_secret(
+                    "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY, user="node"
+                )
+            )
+        self.assertEqual(environment._sandbox.files.written, [])
+        cmds = [run["cmd"] for run in environment._sandbox.commands.runs]
+        self.assertEqual(cmds, [PREPARE_SECRET_DIR])
+
+    def test_removes_the_file_when_the_command_cannot_start(self):  # fix g
+        environment = self.make()
+        environment._sandbox = self.sandbox_with_commands()
+        environment._sandbox.commands.fail_start = "claude"
+        with self.assertRaises(ConnectionError):
+            asyncio.run(
+                environment.exec_with_secret(
+                    "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY, user="node"
+                )
+            )
+        cmds = [run["cmd"] for run in environment._sandbox.commands.runs]
+        self.assertEqual(cmds, [PREPARE_SECRET_DIR, REMOVE_SECRET_FILE])
+
+    def test_fails_when_the_file_is_still_there_after_the_command(self):  # fix g
+        environment = self.make()
+        environment._sandbox = self.sandbox_with_commands({REMOVE_SECRET_FILE: 1})
+        with self.assertRaises(PolicyViolation):
+            asyncio.run(
+                environment.exec_with_secret(
+                    "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY, user="node"
+                )
+            )
+
+    def test_a_file_left_after_a_failed_command_keeps_the_first_error(self):  # security R3-8
+        environment = self.make()
+        environment._sandbox = self.sandbox_with_commands({REMOVE_SECRET_FILE: 1})
+        environment._sandbox.commands.fail_start = "claude"
+        with self.assertLogs(level="WARNING") as logs:
+            with self.assertRaises(PolicyViolation) as raised:
+                asyncio.run(
+                    environment.exec_with_secret(
+                        "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY, user="node"
+                    )
+                )
+        self.assertIsInstance(raised.exception.__cause__, ConnectionError)
+        self.assertIn("ConnectionError", "\n".join(logs.output))
+        self.assertNotIn(FAKE_KEY, "\n".join(logs.output))
+
+    def test_a_removal_that_cannot_run_keeps_the_first_error(self):  # security R3-8
+        environment = self.make()
+        environment._sandbox = self.sandbox_with_commands()
+        environment._sandbox.files.fail = True
+        environment._sandbox.commands.fail_start = REMOVE_SECRET_FILE
+        with self.assertLogs(level="WARNING"):
+            with self.assertRaises(ConnectionError) as raised:
+                asyncio.run(
+                    environment.exec_with_secret(
+                        "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY, user="node"
+                    )
+                )
+        # The removal's own failure, raised from the upload's.
+        self.assertIsInstance(raised.exception.__cause__, ConnectionError)
+        self.assertIsNot(raised.exception, raised.exception.__cause__)
+
+    def test_a_file_left_after_a_cancellation_or_an_interrupt_raises_it_unchanged(self):  # R4-1
+        for first in (asyncio.CancelledError(), KeyboardInterrupt()):
+            environment = self.make()
+            environment._sandbox = self.sandbox_with_commands({REMOVE_SECRET_FILE: 1})
+
+            async def attempt():
+                try:
+                    await environment.exec_with_secret(
+                        "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY, user="node"
+                    )
+                except BaseException as error:
+                    return error
+                return None
+
+            write = mock.AsyncMock(side_effect=first)
+            with (
+                mock.patch.object(environment._sandbox.files, "write", write),
+                self.assertLogs(level="WARNING") as logs,
+            ):
+                raised = asyncio.run(attempt())
+            self.assertIs(raised, first)
+            self.assertIn(type(first).__name__, "\n".join(logs.output))
+            self.assertNotIn(FAKE_KEY, "\n".join(logs.output))
+            cmds = [run["cmd"] for run in environment._sandbox.commands.runs]
+            self.assertEqual(cmds, [PREPARE_SECRET_DIR, REMOVE_SECRET_FILE])
+
+    def test_a_cancelled_trial_ends_cancelled_when_its_file_is_left(self):  # security R4-1
+        environment = self.make()
+        environment._sandbox = self.sandbox_with_commands({REMOVE_SECRET_FILE: 1})
+        started = asyncio.Event()
+
+        async def write(*_args, **_kwargs):
+            started.set()
+            await asyncio.Event().wait()
+
+        async def cancel_it():
+            task = asyncio.create_task(
+                environment.exec_with_secret(
+                    "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY, user="node"
+                )
+            )
+            await started.wait()
+            task.cancel()
+            await asyncio.wait([task])
+            return task
+
+        with (
+            mock.patch.object(environment._sandbox.files, "write", write),
+            self.assertLogs(level="WARNING"),
+        ):
+            task = asyncio.run(cancel_it())
+        self.assertTrue(task.cancelled())
 
     def test_refuses_a_key_that_is_not_one_line_and_a_name_that_is_not_a_credential(self):
         environment = self.make()
@@ -297,6 +456,7 @@ class EnvironmentTest(unittest.TestCase):
                     environment.exec_with_secret("true", secret_name=name, secret=secret, user="node")
                 )
         self.assertEqual(environment._sandbox.commands.runs, [])
+        self.assertEqual(environment._sandbox.files.written, [])
 
     def test_refuses_a_command_carrying_the_key_by_value(self):  # security I2, QA 3
         environment = self.make()
@@ -312,7 +472,8 @@ class EnvironmentTest(unittest.TestCase):
                 )
             )
         self.assertEqual(environment._sandbox.commands.runs, [])
-        # Once sent, the value is refused in any later command's line or env value.
+        self.assertEqual(environment._sandbox.files.written, [])
+        # Once handed over, the value is refused in any later command's line or env value.
         asyncio.run(
             environment.exec_with_secret(
                 "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY, user="node"
@@ -321,7 +482,8 @@ class EnvironmentTest(unittest.TestCase):
         for command, env in ((f"echo {FAKE_KEY}", {}), ("true", {"X": f"a{FAKE_KEY}b"})):
             with self.assertRaises(PolicyViolation):
                 asyncio.run(environment.exec(command, env=env, user="node"))
-        self.assertEqual(len(environment._sandbox.commands.runs), 1)
+        self.assertEqual(len(environment._sandbox.commands.runs), 3)
+        self.assert_no_key_in_any_request(environment)
 
     def test_sends_the_key_to_the_agents_user_only(self):  # security I1
         environment = self.make()
@@ -334,6 +496,7 @@ class EnvironmentTest(unittest.TestCase):
                     )
                 )
         self.assertEqual(environment._sandbox.commands.runs, [])
+        self.assertEqual(environment._sandbox.files.written, [])
 
     def test_reads_back_the_no_network_phases(self):  # code review 4
         for network in (None, {"allow_out": [HOST], "deny_out": ["0.0.0.0/0"]}, {"deny_out": []}):
@@ -381,24 +544,72 @@ class EnvironmentTest(unittest.TestCase):
         self.assertEqual(run["envs"]["TZ"], "UTC")
         self.assertFalse(run["stdin"])
 
-    def test_the_shell_line_reads_the_key_into_the_command_only(self):  # fix g
-        script = stdin_secret_command(
-            "CODEX_API_KEY", 'printf "%s|" "$CODEX_API_KEY"; cat; printf "|done"'
-        )
-        ran = subprocess.run(
+    def run_line(self, script: str) -> subprocess.CompletedProcess:
+        """``script`` run by this machine's bash, as envd runs a command line."""
+        return subprocess.run(
             ["bash", "-c", script],
-            input=f"{FAKE_KEY}\nleft on stdin\n",
+            input="left on stdin\n",
             capture_output=True,
             text=True,
             env={"PATH": os.environ["PATH"]},
             check=False,
         )
-        # The key is in the command's environment, and nothing after it can be read from stdin.
-        self.assertEqual((ran.returncode, ran.stdout), (0, f"{FAKE_KEY}||done"))
-        empty = subprocess.run(
-            ["bash", "-c", script], input="", capture_output=True, text=True, check=False
-        )
-        self.assertEqual(empty.returncode, NO_SECRET_EXIT)
+
+    def test_the_fixed_line_gives_the_key_to_the_command_and_removes_its_file(self):  # fix g
+        with tempfile.TemporaryDirectory() as folder:
+            key_file = Path(folder) / "key"
+            key_file.write_text(f"{FAKE_KEY}\n")
+            script = secret_file_command(
+                "CODEX_API_KEY",
+                str(key_file),
+                f'[ -e "{key_file}" ] && printf "left|"; printf "%s|" "${{status-unset}}"; '
+                "bash -c 'printf \"%s|\" \"$CODEX_API_KEY\"'; cat; printf \"|done\"",
+            )
+            ran = self.run_line(script)
+            # Set in a child process of the command, the file gone before the command ran, and
+            # nothing left on its standard input.
+            self.assertEqual((ran.returncode, ran.stdout), (0, f"unset|{FAKE_KEY}||done"))
+            self.assertFalse(key_file.exists())
+
+    def test_the_fixed_line_runs_nothing_without_its_file_or_when_it_stays(self):  # fix g
+        with tempfile.TemporaryDirectory() as folder:
+            key_file = Path(folder) / "key"
+            missing = self.run_line(secret_file_command("CODEX_API_KEY", str(key_file), "echo ran"))
+            self.assertEqual((missing.returncode, missing.stdout), (NO_SECRET_EXIT, ""))
+            key_file.write_text("")
+            empty = self.run_line(secret_file_command("CODEX_API_KEY", str(key_file), "echo ran"))
+            self.assertEqual((empty.returncode, empty.stdout), (NO_SECRET_EXIT, ""))
+            self.assertFalse(key_file.exists())
+            if os.geteuid() != 0:  # root removes a file of a read-only folder all the same
+                key_file.write_text(f"{FAKE_KEY}\n")
+                os.chmod(folder, 0o500)
+                try:
+                    kept = self.run_line(
+                        secret_file_command("CODEX_API_KEY", str(key_file), "echo ran")
+                    )
+                finally:
+                    os.chmod(folder, 0o700)
+                self.assertEqual((kept.returncode, kept.stdout), (NO_SECRET_EXIT, ""))
+
+    def test_prepares_a_private_folder_and_removes_a_file_left_there(self):  # fix g
+        with tempfile.TemporaryDirectory() as home:
+            folder = Path(home) / "secret"
+            prepare = PREPARE_SECRET_DIR.replace(SECRET_DIR, str(folder))
+            remove = REMOVE_SECRET_FILE.replace(SECRET_DIR, str(folder))
+            self.assertEqual(self.run_line(prepare).returncode, 0)
+            self.assertEqual(folder.stat().st_mode & 0o777, 0o700)
+            (folder / "key").write_text("stale\n")
+            os.chmod(folder, 0o755)
+            self.assertEqual(self.run_line(prepare).returncode, 0)
+            self.assertEqual(folder.stat().st_mode & 0o777, 0o700)
+            self.assertFalse((folder / "key").exists())
+            (folder / "key").write_text("stale\n")
+            self.assertEqual(self.run_line(remove).returncode, 0)
+            self.assertFalse((folder / "key").exists())
+            folder.rmdir()
+            (Path(home) / "elsewhere").mkdir()
+            folder.symlink_to(Path(home) / "elsewhere")
+            self.assertNotEqual(self.run_line(prepare).returncode, 0)
 
     def test_fails_the_trial_when_the_agent_user_may_act_as_root(self):  # record section 13
         for failing in ("root", "node"):

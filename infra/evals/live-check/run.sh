@@ -7,8 +7,15 @@
 # <agent>: claude-code | codex. <mode>:
 #   oracle  every exported task, Harbor's oracle agent, no key: each trial must pass both graders.
 #   fake    one task with a fake key: the provider must answer 401, the key must be in no file of
-#           the job folder and in no row of the install's `sandbox_logs`, while a control canary
-#           sent as an env of the same sandbox is in one; no `auth.json` after a Codex trial.
+#           the job folder and in no row of the install's `sandbox_logs`, neither as is nor in
+#           base64 at any of its three alignments (envd logs a process's standard input in
+#           base64), while two controls of the same sandbox are: a canary sent as an env (as is)
+#           and a value sent on a command's standard input (in base64). On an install that
+#           redacts its logs (found by the "[redacted" marker in the probe sandbox's SendInput
+#           row), the controls' rows must be there with their values masked instead: the canary's
+#           name with "[redacted]", one SendInput row with "[redacted: ", and 0 rows of either
+#           value. Prints which log mode ran. No `auth.json` after a Codex trial. Prints counts
+#           only, never a value.
 #
 # The E2B settings come from the environment only and reach the container by name, never on a
 # command line. IMAGE (default coreloom-uml-dev-convention-evals, built by the `evals` profile)
@@ -42,7 +49,10 @@ oracle=0
 node "$here/export.ts" "$run" "$agent" "$oracle" 1 "$only" > "$run/command.json"
 
 export ENVLOG_CANARY="envlog-canary-$stamp"
-extra=(-e E2B_API_KEY -e E2B_API_URL -e E2B_SANDBOX_URL -e ENVLOG_CANARY)
+export ENVLOG_STDIN_CONTROL="envlog-stdin-control-$stamp"
+export ENVLOG_SANDBOX_FILE="$run/probe-sandbox"
+extra=(-e E2B_API_KEY -e E2B_API_URL -e E2B_SANDBOX_URL -e ENVLOG_CANARY -e ENVLOG_STDIN_CONTROL
+  -e ENVLOG_SANDBOX_FILE)
 [ -n "$key_name" ] && { export "$key_name=$fake"; extra+=(-e "$key_name"); }
 # The exported command, run in the image: its env as -e pairs, then Harbor's arguments (in the
 # fake mode with the probe class in place of ours, which it extends).
@@ -84,14 +94,66 @@ if [ "$mode" = fake ]; then
     echo "a Codex trial left an auth.json" >&2; exit 1
   fi
   sleep 20
-  query() {
+  sandbox="$(cat "$run/probe-sandbox" 2> /dev/null || true)"
+  if ! [[ "$sandbox" =~ ^[a-z0-9-]+$ ]]; then echo "the probe left no sandbox id" >&2; exit 1; fi
+  rows() { # <where clause>: a count, never a value
     docker exec "${CLICKHOUSE_CONTAINER:-e2b-clickhouse-1}" clickhouse-client \
       --user "${CLICKHOUSE_USER:-clickhouse}" --password "${CLICKHOUSE_PASSWORD:-clickhouse}" \
-      -q "select count() from sandbox_logs where position(raw, '$1') > 0"
+      -q "select count() from sandbox_logs where $1"
   }
-  key_rows="$(query "$fake")"
-  canary_rows="$(query "$ENVLOG_CANARY")"
-  echo "sandbox_logs: fake key rows=$key_rows control canary rows=$canary_rows"
-  [ "$key_rows" = 0 ] && [ "$canary_rows" -ge 1 ] || exit 1
+  query() { rows "position(raw, '$1') > 0"; }
+  of_probe="sandbox_id = '$sandbox'"
+  send_input="$of_probe and JSONExtractString(raw, 'method') = 'POST /process.Process/SendInput'"
+  b64() { printf '%s' "$1" | base64 -w 0; }
+  # What of base64(value) is the same whatever bytes surround it in a larger base64 blob (a
+  # whole request body), at each of the three alignments: at offset 0 all of it but its last
+  # group, at offsets 1 and 2 the middle of base64(padding + value).
+  aligned() {
+    local value="$1" k encoded
+    encoded="$(b64 "$value")"
+    printf '%s\n' "${encoded:0:${#encoded}-4}"
+    for k in 1 2; do
+      encoded="$(b64 "$(printf '%*s' "$k" '' | tr ' ' x)$value")"
+      printf '%s\n' "${encoded:4:${#encoded}-8}"
+    done
+  }
+  failed=0
+  check() { # <label> <rows> <expected: zero | some | one>
+    echo "sandbox_logs: $1 rows=$2 (expected $3)"
+    case "$3" in
+      zero) [ "$2" = 0 ] || failed=1 ;;
+      one) [ "$2" = 1 ] || failed=1 ;;
+      *) [ "$2" -ge 1 ] || failed=1 ;;
+    esac
+  }
+  count() { check "$1" "$(query "$2")" "$3"; } # <label> <value> <expected>
+  # An install whose log collector masks envd's process requests keeps the names of a
+  # command's envs and the length of its standard input only: the probe's SendInput row then
+  # reads "[redacted: N bytes]".
+  check "probe sandbox, any" "$(rows "$of_probe")" some
+  if [ "$(rows "$send_input and position(raw, '[redacted') > 0")" -ge 1 ]; then logs=redacted
+  else logs=plain; fi
+  echo "log mode: $logs"
+  count "fake key, as is" "$fake" zero
+  offset=0
+  while IFS= read -r part; do
+    count "fake key, base64 at offset $offset" "$part" zero
+    offset=$((offset + 1))
+  done < <(aligned "$fake")
+  if [ "$logs" = plain ]; then
+    count "env canary, as is" "$ENVLOG_CANARY" some
+    count "stdin control, base64" "$(b64 "$ENVLOG_STDIN_CONTROL")" some
+    count "stdin control, base64 at offset 0" "$(aligned "$ENVLOG_STDIN_CONTROL" | head -n 1)" some
+  else
+    # The controls' rows are there, with their values masked.
+    check "env canary name, value masked" \
+      "$(rows "$of_probe and position(raw, 'COREL_ENVLOG_CANARY') > 0 and position(raw, '[redacted]') > 0")" some
+    check "stdin control, masked SendInput" "$(rows "$send_input and position(raw, '[redacted: ') > 0")" one
+    count "env canary, as is" "$ENVLOG_CANARY" zero
+    count "stdin control, as is" "$ENVLOG_STDIN_CONTROL" zero
+    count "stdin control, base64" "$(b64 "$ENVLOG_STDIN_CONTROL")" zero
+    count "stdin control, base64 at offset 0" "$(aligned "$ENVLOG_STDIN_CONTROL" | head -n 1)" zero
+  fi
+  [ "$failed" = 0 ] || exit 1
 fi
-echo "live check passed: $agent $mode ($run)"
+echo "live check passed: $agent $mode, logs ${logs:-not read} ($run)"

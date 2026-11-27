@@ -463,6 +463,42 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/github/controllers/admin-github-app-controller').default['destroy']>>>
     }
   }
+  'admin.web_search.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/admin/web-search'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/web-search/controllers/admin-web-search-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/web-search/controllers/admin-web-search-controller').default['show']>>>
+    }
+  }
+  'admin.web_search.update': {
+    methods: ["PUT"]
+    pattern: '/admin/web-search'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/web-search/validators/web-search-input').saveWebSearchInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/web-search/validators/web-search-input').saveWebSearchInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/web-search/controllers/admin-web-search-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/web-search/controllers/admin-web-search-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'admin.web_search.destroy': {
+    methods: ["DELETE"]
+    pattern: '/admin/web-search'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/web-search/controllers/admin-web-search-controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/web-search/controllers/admin-web-search-controller').default['destroy']>>>
+    }
+  }
   'github.webhook': {
     methods: ["POST"]
     pattern: '/github/webhook'
@@ -1363,6 +1399,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skills-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'admin.jobs.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/admin/jobs'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/queue-jobs/controllers/admin-queue-jobs-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/queue-jobs/controllers/admin-queue-jobs-controller').default['index']>>>
+    }
+  }
   'admin.skill_sources.index': {
     methods: ["GET","HEAD"]
     pattern: '/admin/skill-sources'
@@ -1421,6 +1469,126 @@ export interface Registry {
       query: ExtractQuery<InferInput<(typeof import('#app/skills/validators/skills-input').reviewSkillTopicsInput)>>
       response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-topics-controller').default['update']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-topics-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'watch.articles.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/watch/articles'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/watch/validators/watch-input').listWatchArticlesInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/watch-articles-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/watch-articles-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'admin.watch.sources.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/admin/watch/sources'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['sources']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['sources']>>>
+    }
+  }
+  'admin.watch.sources.store': {
+    methods: ["POST"]
+    pattern: '/admin/watch/sources'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/watch/validators/watch-input').createWatchSourceInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/watch/validators/watch-input').createWatchSourceInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['storeSource']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['storeSource']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'admin.watch.sources.update': {
+    methods: ["PATCH"]
+    pattern: '/admin/watch/sources/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/watch/validators/watch-input').updateWatchSourceInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/watch/validators/watch-input').updateWatchSourceInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['updateSource']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['updateSource']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'admin.watch.sources.destroy': {
+    methods: ["DELETE"]
+    pattern: '/admin/watch/sources/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['destroySource']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['destroySource']>>>
+    }
+  }
+  'admin.watch.refresh': {
+    methods: ["POST"]
+    pattern: '/admin/watch/refresh'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['refresh']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['refresh']>>>
+    }
+  }
+  'admin.watch.articles.update': {
+    methods: ["PATCH"]
+    pattern: '/admin/watch/articles/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/watch/validators/watch-input').updateWatchArticleInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/watch/validators/watch-input').updateWatchArticleInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['updateArticle']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['updateArticle']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'admin.watch.blocked_sites.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/admin/watch/blocked-sites'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['blockedSites']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['blockedSites']>>>
+    }
+  }
+  'admin.watch.blocked_sites.store': {
+    methods: ["POST"]
+    pattern: '/admin/watch/blocked-sites'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/watch/validators/watch-input').blockWatchSiteInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/watch/validators/watch-input').blockWatchSiteInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['blockSite']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['blockSite']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'admin.watch.blocked_sites.destroy': {
+    methods: ["DELETE"]
+    pattern: '/admin/watch/blocked-sites/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['unblockSite']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['unblockSite']>>>
     }
   }
   'architectures.index': {

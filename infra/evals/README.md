@@ -68,13 +68,19 @@ Python, no uv, no Harbor, no agent CLI.
     `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` and the API key as its only credential;
   - the Codex agent runs `codex exec` and writes no `auth.json`; it lists `$CODEX_HOME` into the
     trial's logs before removing it;
-  - **the key is never in a command's envs nor its command line** (fix g): envd logs every command
-    it starts with its envs into the install's logs. Both agents start their own command through
-    `exec_with_secret` of the environment, which sends the key on that command's standard input
-    and closes it; the command's fixed first line reads it into its own environment
-    (`IFS= read -r ANTHROPIC_API_KEY; export ANTHROPIC_API_KEY; exec 0</dev/null; …`, or
-    `CODEX_API_KEY`). Every other command goes through `_dispatch_command`, which drops every
-    credential name from its envs;
+  - **the key is never in a command's envs, its command line nor its standard input** (fix g):
+    envd logs every command it starts with its line and envs, and what is sent to its standard
+    input (in base64), into the install's logs. Both agents start their own command through
+    `exec_with_secret` of the environment, which, as `node`, makes `/home/node/.coreloom-secret`
+    a 0700 folder of `node`'s, writes the key to `key` in it with E2B's file upload
+    (`files.write`, logged with the path and the user only), then runs the command behind a fixed
+    line that reads the file into the command's own environment, removes it, and runs nothing
+    unless it is gone (`IFS= read -r ANTHROPIC_API_KEY < <file>; rm -f -- <file>; … export
+    ANTHROPIC_API_KEY; exec 0</dev/null; …`, or `CODEX_API_KEY`). Fail closed: no write when the
+    folder cannot be prepared, no run when the write fails, and the file removed and checked gone
+    once the command is over or failed to start. Every other command goes through
+    `_dispatch_command`, which drops every credential name from its envs, and the key is refused
+    by value in any later command line or env;
   - **the agent's user is not root**: E2B's template builder adds a user `user` with passwordless
     sudo and leaves root's and its password empty. At setup, as root, the environment locks every
     empty password and clears every set-id bit, then checks as `node` that `sudo` and `su` fail,
@@ -98,8 +104,15 @@ Python, no uv, no Harbor, no agent CLI.
 (`E2B_API_KEY`, `E2B_API_URL`, `E2B_SANDBOX_URL`) and a made-up key it generates: `oracle` runs
 every exported task with Harbor's oracle agent, `fake` one trial with the fake key, then checks the
 provider's 401, the key in no file of the job folder, no `auth.json`, and 0 rows of the install's
-`sandbox_logs` holding it against 1 for a control canary sent as an env of the same sandbox
-(`live-check/envlog_probe.py`). Manual only, never in CI.
+`sandbox_logs` holding it, as is or in base64 at each of its three alignments (offsets 0, 1 and
+2 of a larger base64 blob), against at least 1 for each of two controls of the same sandbox
+(`live-check/envlog_probe.py`): a canary sent as an env, found as is, and a value sent on a
+command's standard input, found in base64. On an install that redacts its logs (the local one
+does since 2026-11-27: its log collector masks the envs and standard input envd logs), found by
+the `[redacted` marker in the probe sandbox's SendInput row, the controls must be there masked
+instead: the canary's name with `[redacted]`, exactly 1 SendInput row of that sandbox with
+`[redacted: `, and 0 rows of either value. It prints which log mode ran (`plain` or `redacted`)
+and counts only. Manual only, never in CI.
 
 ## Disk of the templates
 

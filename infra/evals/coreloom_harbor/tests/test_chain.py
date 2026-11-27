@@ -26,7 +26,7 @@ from coreloom_harbor.agents import (
     ConventionEvalsClaudeCode,
     ConventionEvalsCodex,
 )
-from coreloom_harbor.environment import ConventionEvalsE2BEnvironment
+from coreloom_harbor.environment import SECRET_FILE, ConventionEvalsE2BEnvironment
 
 CLAUDE_KEY = "sk-ant-api03-" + "QACANARY-chain-claude"
 CODEX_KEY = "sk-proj-" + "QACANARY-chain-codex"
@@ -46,7 +46,8 @@ class Handle:
 
 
 class Commands:
-    """envd's Process/Start as the install logs it: the command line and its envs."""
+    """envd's Process/Start and Process/SendInput as the install logs them: the command line,
+    its envs and what is written to its standard input."""
 
     def __init__(self, version: str) -> None:
         self.version = version
@@ -73,11 +74,12 @@ class Commands:
 
 class Files:
     def __init__(self) -> None:
-        self.written: list[tuple[str, bytes]] = []
+        self.written: list[tuple[str, bytes, object]] = []
 
-    async def write(self, path, data, *_, **__):
+    async def write(self, path, data, *_, user=None, **__):
         raw = data if isinstance(data, bytes) else getattr(data, "read", lambda: data)()
-        self.written.append((str(path), raw if isinstance(raw, bytes) else str(raw).encode()))
+        encoded = raw if isinstance(raw, bytes) else str(raw).encode()
+        self.written.append((str(path), encoded, user))
 
     async def make_dir(self, *_, **__):
         return True
@@ -120,7 +122,7 @@ class ChainTest(unittest.TestCase):
         environment.default_user = "node"
         return environment
 
-    def assert_only_on_stdin(self, environment, key: str, mark: str) -> None:
+    def assert_only_in_its_file(self, environment, key: str, mark: str) -> None:
         commands: Commands = environment._sandbox.commands
         self.assertTrue(commands.started, "the agent started no command")
         for started in commands.started:
@@ -128,15 +130,19 @@ class ChainTest(unittest.TestCase):
             self.assertNotIn(key, repr(started["envs"]))
             for name in CREDENTIAL_NAMES:
                 self.assertNotIn(name, started["envs"], started["cmd"][:80])
-        with_stdin = [s for s in commands.started if s["stdin"]]
-        self.assertEqual(len(with_stdin), 1)
-        self.assertIn(mark, with_stdin[0]["cmd"])
-        self.assertEqual([data for _, data in commands.stdin], [f"{key}\n", "<close>"])
-        for path, data in environment._sandbox.files.written:
-            self.assertNotIn(key.encode(), data, path)
+        # Nothing goes to any command's standard input, which envd logs too.
+        self.assertEqual([s for s in commands.started if s["stdin"]], [])
+        self.assertEqual(commands.stdin, [])
+        # The key is in one upload only: its fixed file, as the agent's user.
+        files = environment._sandbox.files.written
+        with_key = [(path, data, user) for path, data, user in files if key.encode() in data]
+        self.assertEqual(with_key, [(SECRET_FILE, f"{key}\n".encode(), "node")])
+        reading = [s for s in commands.started if SECRET_FILE in s["cmd"] and mark in s["cmd"]]
+        self.assertEqual(len(reading), 1)
+        for path, _, _ in files:
             self.assertFalse(path.endswith("auth.json"), path)
 
-    def test_claude_code_chain_sends_the_key_on_stdin_only(self):
+    def test_claude_code_chain_hands_the_key_through_its_file_only(self):
         with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": CLAUDE_KEY, "HOME": self.tmp.name}):
             agent = ConventionEvalsClaudeCode(
                 logs_dir=self.root / "logs", model_name="anthropic/claude-sonnet-5-5"
@@ -148,11 +154,11 @@ class ChainTest(unittest.TestCase):
                 {"ANTHROPIC_API_KEY": CLAUDE_KEY, "LANG": "C.UTF-8"},
             )
             asyncio.run(agent.run("Fix the bug.", environment, AgentContext()))
-        self.assert_only_on_stdin(
+        self.assert_only_in_its_file(
             environment, CLAUDE_KEY, ConventionEvalsClaudeCode.AGENT_COMMAND_MARK
         )
 
-    def test_codex_chain_sends_the_key_on_stdin_only_and_writes_no_auth_file(self):
+    def test_codex_chain_hands_the_key_through_its_file_only_and_writes_no_auth_file(self):
         with mock.patch.dict(os.environ, {"CODEX_API_KEY": CODEX_KEY, "HOME": self.tmp.name}):
             agent = ConventionEvalsCodex(
                 logs_dir=self.root / "logs", model_name="openai/gpt-5-codex"
@@ -163,7 +169,7 @@ class ChainTest(unittest.TestCase):
                 {"CODEX_API_KEY": CODEX_KEY, "LANG": "C.UTF-8"},
             )
             asyncio.run(agent.run("Fix the bug.", environment, AgentContext()))
-        self.assert_only_on_stdin(environment, CODEX_KEY, "codex exec")
+        self.assert_only_in_its_file(environment, CODEX_KEY, "codex exec")
 
 
 if __name__ == "__main__":
