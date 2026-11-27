@@ -10,7 +10,7 @@
   "scripts": {
     "lint": "biome check .",
     "check-types": "tsc --noEmit",
-    "test": "vitest run --dir src",
+    "test": "vitest run --dir src && vitest run --dir evals",
     "test:e2e": "vitest run --dir e2e"
   },
   "dependencies": {
