@@ -140,8 +140,8 @@ export const EVAL_SANDBOX_METADATA = {
   purpose: 'convention-evals',
   runKey: 'coreloom.run',
   accountKey: 'coreloom.account',
-  /** Set by Harbor on every sandbox it creates (path I). */
-  harborJobKey: 'harbor.job_id',
+  /** Set by Harbor on every sandbox it creates (path I): any key with this prefix. */
+  harborPrefix: 'harbor.',
 } as const
 
 /** The sweep: every ten minutes, it kills what E2B still lists past `maxAgeMs`. */

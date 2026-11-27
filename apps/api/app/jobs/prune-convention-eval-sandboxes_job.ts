@@ -13,13 +13,41 @@ import ConventionEvalRun from '#app/convention-evals/models/convention-eval-run'
 import EvalSandboxes from '#app/convention-evals/services/eval-sandbox'
 
 /**
- * Kills every sandbox of the convention tests E2B still lists, running or paused, older than
- * `EVAL_SWEEP_SCHEDULE.maxAgeMs`: those carrying `coreloom.purpose=convention-evals` (the
- * harness's, and Harbor's through our environment class) and those carrying any `harbor.job_id`
- * (Harbor's, should our metadata be missing). Driven by E2B's list, never by rows: a sandbox
- * Harbor created has no row of ours. It also ends the runs a dead worker left `queued` or
- * `running` past their hard limit (`interrupted`). Every ten minutes, scheduled by
- * `node ace assistant:setup`; on the default queue, so a long test never delays it.
+ * Kills every sandbox of the convention tests E2B still lists, running or paused, started more
+ * than `maxAgeMs` ago: those carrying `coreloom.purpose=convention-evals` (the harness's, and
+ * Harbor's through our environment class) and those carrying any `harbor.*` key (Harbor's,
+ * should our metadata be missing). Driven by E2B's list, never by rows: a sandbox Harbor created
+ * has no row of ours. Answers how many it killed. The job passes `EVAL_SWEEP_SCHEDULE.maxAgeMs`;
+ * `node ace evals:smoke --sweep` a lower age.
+ */
+export async function sweepEvalSandboxes(maxAgeMs: number): Promise<number> {
+  const sandboxes = await app.container.make(EvalSandboxes)
+  const cutoff = Date.now() - maxAgeMs
+  const ours = await sandboxes.list({
+    [EVAL_SANDBOX_METADATA.purposeKey]: EVAL_SANDBOX_METADATA.purpose,
+  })
+  // E2B filters on a metadata value, not on a key alone: every sandbox, then read the keys here.
+  // Harbor's own keys vary by version (`harbor.job_id`, `harbor.context_id`, `harbor.trial_name`).
+  const all = await sandboxes.list({})
+  const harbor = all.filter((item) =>
+    Object.keys(item.metadata).some((key) => key.startsWith(EVAL_SANDBOX_METADATA.harborPrefix)),
+  )
+  const stale = [
+    ...new Set(
+      [...ours, ...harbor]
+        .filter((item) => item.startedAt.getTime() < cutoff)
+        .map((item) => item.sandboxId),
+    ),
+  ]
+  await Promise.all(stale.map((id) => sandboxes.kill(id)))
+  return stale.length
+}
+
+/**
+ * The sweep of the convention tests (`sweepEvalSandboxes`, at `EVAL_SWEEP_SCHEDULE.maxAgeMs`). It
+ * also ends the runs a dead worker left `queued` or `running` past their hard limit
+ * (`interrupted`). Every ten minutes, scheduled by `node ace assistant:setup`; on the default
+ * queue, so a long test never delays it.
  */
 export type PruneConventionEvalSandboxesJobData = Record<string, never>
 
@@ -35,22 +63,7 @@ export default class PruneConventionEvalSandboxesJob extends Job<
   }
 
   async process(): Promise<void> {
-    const sandboxes = await app.container.make(EvalSandboxes)
-    const cutoff = Date.now() - EVAL_SWEEP_SCHEDULE.maxAgeMs
-    const ours = await sandboxes.list({
-      [EVAL_SANDBOX_METADATA.purposeKey]: EVAL_SANDBOX_METADATA.purpose,
-    })
-    // E2B filters on a metadata value, not on a key alone: every sandbox, then read the key here.
-    const all = await sandboxes.list({})
-    const harbor = all.filter((item) => EVAL_SANDBOX_METADATA.harborJobKey in item.metadata)
-    const stale = [
-      ...new Set(
-        [...ours, ...harbor]
-          .filter((item) => item.startedAt.getTime() < cutoff)
-          .map((item) => item.sandboxId),
-      ),
-    ]
-    await Promise.all(stale.map((id) => sandboxes.kill(id)))
+    const killed = await sweepEvalSandboxes(EVAL_SWEEP_SCHEDULE.maxAgeMs)
 
     const limit = Math.max(...Object.values(CONVENTION_EVAL_LIMITS.hardLimitMs))
     const abandoned = await ConventionEvalRun.query()
@@ -68,7 +81,7 @@ export default class PruneConventionEvalSandboxesJob extends Job<
         endedAt: DateTime.now().toSQL(),
       })
     this.logger.info(
-      { killed: stale.length, interrupted: Number(abandoned[0] ?? 0) },
+      { killed, interrupted: Number(abandoned[0] ?? 0) },
       'convention test sandboxes swept',
     )
   }
