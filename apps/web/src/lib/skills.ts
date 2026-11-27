@@ -67,12 +67,12 @@ export type SkillSource = Awaited<
   ReturnType<typeof client.api.admin.skillSources.index>
 >['data'][number]
 
-const sourceKeys = { all: ['skill-sources'] as const }
+export const skillSourceKeys = { all: ['skill-sources'] as const }
 
 /** The admin's: where the weekly search looks for skills, with how each last run went. */
 export function useSkillSources() {
   return useQuery({
-    queryKey: sourceKeys.all,
+    queryKey: skillSourceKeys.all,
     queryFn: async () => (await client.api.admin.skillSources.index({})).data,
   })
 }
@@ -82,7 +82,7 @@ function useSourcesChanged() {
   const queryClient = useQueryClient()
   return () =>
     Promise.all([
-      queryClient.invalidateQueries({ queryKey: sourceKeys.all }),
+      queryClient.invalidateQueries({ queryKey: skillSourceKeys.all }),
       queryClient.invalidateQueries({ queryKey: skillKeys.all }),
     ])
 }
