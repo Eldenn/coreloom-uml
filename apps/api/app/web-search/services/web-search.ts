@@ -14,17 +14,16 @@ const LINKUP = {
   balance: 'https://api.linkup.so/v1/credits/balance',
 } as const
 
-/** The fields read of a `searchResults` answer; an image result has no `content`. */
-const linkupBody = z.object({
-  results: z.array(
-    z.object({
-      type: z.string(),
-      name: z.string(),
-      url: z.string(),
-      content: z.string().optional(),
-      publishedAt: z.string().nullish(),
-    }),
-  ),
+/** A `searchResults` answer: its items are read one by one, so one odd item drops only itself. */
+const linkupBody = z.object({ results: z.array(z.unknown()) })
+
+/** The fields read of one result; an image result has no `content`. */
+const linkupResult = z.object({
+  type: z.string(),
+  name: z.string(),
+  url: z.string().max(WEB_SEARCH_LIMITS.urlMaxLength),
+  content: z.string().optional(),
+  publishedAt: z.string().nullish(),
 })
 
 function isWebAddress(url: string): boolean {
@@ -37,19 +36,25 @@ function isWebAddress(url: string): boolean {
 }
 
 /**
- * The text results of a Linkup `searchResults` answer whose address is a web page, each cut to
- * the limits; `null` when the body is not of that shape.
+ * The first `WEB_SEARCH_LIMITS.results` text results of a Linkup `searchResults` answer whose
+ * address is a web page within `urlMaxLength`, each cut to the limits (an item that does not read
+ * is dropped); `null` when the body is not of that shape.
  */
 export function readLinkupResults(body: unknown): WebSearchResult[] | null {
   const parsed = linkupBody.safeParse(body)
   if (!parsed.success) return null
   return parsed.data.results
+    .flatMap((item) => {
+      const result = linkupResult.safeParse(item)
+      return result.success ? [result.data] : []
+    })
     .filter((result) => result.type === 'text' && isWebAddress(result.url))
+    .slice(0, WEB_SEARCH_LIMITS.results)
     .map((result) => ({
       title: result.name.slice(0, WEB_SEARCH_LIMITS.titleMaxLength),
       url: result.url,
       snippet: (result.content ?? '').slice(0, WEB_SEARCH_LIMITS.snippetMaxLength),
-      publishedAt: result.publishedAt ?? null,
+      publishedAt: result.publishedAt?.slice(0, WEB_SEARCH_LIMITS.publishedAtMaxLength) ?? null,
     }))
 }
 
@@ -103,7 +108,10 @@ export default class WebSearch {
       signal,
     )
     if ('failure' in response) return response
-    if (response.status !== HttpStatus.Ok) return { failure: failureOf(response.status) }
+    if (response.status !== HttpStatus.Ok) {
+      await response.body?.cancel()
+      return { failure: failureOf(response.status) }
+    }
     const results = readLinkupResults(await response.json().catch(() => null))
     return results ? { results } : { failure: WebSearchFailure.Unavailable }
   }

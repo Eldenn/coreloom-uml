@@ -8,11 +8,13 @@ import {
   webSearchKey,
   webSearchReady,
 } from '#app/web-search/services/web-search-settings'
+import { keepWebSearchSetting } from '#tests/helpers/web-search-setting'
 
 const KEY = 'lk-test-abcd'
 const TABLE = 'web_search_settings'
 
 test.group('Web search - the instance setting', (group) => {
+  group.setup(() => keepWebSearchSetting())
   group.each.setup(() => deleteWebSearch())
 
   test('saves the key sealed and answers its hint, the key and readiness', async ({ assert }) => {

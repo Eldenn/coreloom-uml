@@ -11,10 +11,18 @@ test.group('readLinkupResults', () => {
     const results = readLinkupResults(body)
 
     if (!results) return assert.fail('the fixture is read')
+    // An item that does not read (`content: null`) and an address past its bound are dropped,
+    // not the whole answer; past `results`, the rest is left out.
     assert.deepEqual(
       results.map((result) => result.url),
-      ['https://www.conventionalcommits.org/en/v1.0.0/', 'http://example.com/long'],
+      [
+        'https://www.conventionalcommits.org/en/v1.0.0/',
+        'http://example.com/long',
+        ...[1, 2, 3, 4, 5, 6].map((n) => `https://example.com/page-${n}`),
+      ],
     )
+    assert.lengthOf(results, WEB_SEARCH_LIMITS.results)
+    assert.lengthOf(results[2].publishedAt ?? '', WEB_SEARCH_LIMITS.publishedAtMaxLength)
     assert.deepEqual(results[0], {
       title: 'Conventional Commits 1.0.0',
       url: 'https://www.conventionalcommits.org/en/v1.0.0/',

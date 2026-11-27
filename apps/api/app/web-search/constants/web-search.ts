@@ -1,3 +1,5 @@
+import { WEB_SEARCH_QUERY_MAX_LENGTH } from '@coreloom-uml/llm'
+
 /** The web search services the admin can save for the instance. */
 export const WebSearchKind = { Linkup: 'linkup' } as const
 export type WebSearchKind = (typeof WebSearchKind)[keyof typeof WebSearchKind]
@@ -8,7 +10,10 @@ export const WEB_SEARCH_LIMITS = {
   timeoutMs: 10_000,
   snippetMaxLength: 500,
   titleMaxLength: 200,
-  queryMaxLength: 200,
+  /** A longer address is dropped, never cut: a cut address is another one. */
+  urlMaxLength: 2048,
+  publishedAtMaxLength: 40,
+  queryMaxLength: WEB_SEARCH_QUERY_MAX_LENGTH,
   perAccountPerDay: 50,
 } as const
 

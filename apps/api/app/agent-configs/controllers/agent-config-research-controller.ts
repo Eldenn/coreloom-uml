@@ -41,7 +41,8 @@ import { searchFor, webSearchOffered } from '#app/web-search/services/search-for
  * gets the request and nothing of the configuration; the import that follows reads the
  * configuration and has no tool. The key (or the connected subscription) never reaches the
  * sandbox, and the request, the pages and the findings are never logged: counts only. While it
- * runs, the addresses read and the commands run are kept in Redis for `show`, and removed at
+ * runs, the addresses read, the commands run and the queries searched are kept in Redis for
+ * `show`, and removed at
  * the end (`research-progress.ts`). With the web search offered to the account, the model may
  * also search: the API runs it (`searchFor`), so the search key never enters the sandbox.
  *
@@ -127,8 +128,8 @@ export default class AgentConfigResearchController {
 
   /**
    * `GET /agent-configs/:id/research`: what the account's running research has done so far (the
-   * addresses read and the commands run, never their results), for the screen to show while the
-   * `POST` is pending. Empty when none runs: the steps go with the research.
+   * addresses read, the commands run and the queries searched, never their results), for the
+   * screen to show while the `POST` is pending. Empty when none runs: the steps go with the research.
    */
   async show({ params, auth, response }: HttpContext) {
     const user = auth.getUserOrFail()

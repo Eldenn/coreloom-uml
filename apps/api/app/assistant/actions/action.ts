@@ -42,8 +42,9 @@ export type ActionApplied =
 /**
  * One tool call as the owner follows it while the reply is written (a `data-activity` part of
  * the stream, the same `id` replacing the one before): which tool, whether it still runs and,
- * for a repository tool only, what it asked of the sandbox (`detail`: a path, a query, a
- * command) and what a command printed. Shown live, never stored or logged.
+ * for a repository tool, what it asked of the sandbox (`detail`: a path, a query, a command)
+ * and what a command printed, or for `search_web`, its query (`detail`, never a result). No
+ * other tool adds anything. Shown live, never stored or logged.
  */
 export type ToolActivity = {
   id: string
@@ -58,7 +59,10 @@ export type ActionContext = {
   conversationId: number
   /** Sends a tool call's activity to the owner's screen; absent when nothing is streamed. */
   activity?: (activity: ToolActivity) => void
-  /** Adds to the activity of the call that runs (set by `actionTools` for each call). */
+  /**
+   * Adds to the activity of the call that runs (set by `actionTools` for each call): by the
+   * repository tools and by `search_web` (its query) only.
+   */
   show?: (more: Pick<ToolActivity, 'detail' | 'output' | 'exitCode'>) => void
   read(file: AssistantFile): Promise<string>
   /** The conversation's repository sandbox, opened by the first repository tool called. */

@@ -122,8 +122,8 @@ let calls = 0
 
 /**
  * Runs one tool call and tells the owner's screen it started and ended (its name only; a
- * repository tool adds what it asks of the sandbox through `show`). Nothing when no reply is
- * streamed.
+ * repository tool adds what it asks of the sandbox through `show`, and `search_web` its query).
+ * Nothing when no reply is streamed.
  */
 async function followed<T>(
   tool: string,

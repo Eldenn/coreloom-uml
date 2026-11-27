@@ -16,6 +16,7 @@ import { saveWebSearch } from '#app/web-search/services/web-search-settings'
 import { FakeWebSearch } from '#tests/helpers/fake-web-search'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs } from '#tests/helpers/leaks'
+import { keepWebSearchSetting } from '#tests/helpers/web-search-setting'
 
 /**
  * `searchFor` is the only caller of the search client: it counts each account's searches of the
@@ -32,6 +33,7 @@ function makeUser() {
 }
 
 test.group('searchFor', (group) => {
+  group.setup(() => keepWebSearchSetting())
   let fake: FakeWebSearch
   const users: User[] = []
   group.each.setup(async () => {

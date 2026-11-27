@@ -13,6 +13,7 @@ import { Popconfirm } from '@/components/ui/popconfirm'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
 import { getErrorMessage } from '@/lib/client'
+import { LLM_API_KEY_MIN_LENGTH } from '@/lib/llm-provider-body'
 import { useLocale, useT } from '@/lib/locale'
 import {
   useDeleteWebSearch,
@@ -114,6 +115,7 @@ function SaveKey({ replacing }: { replacing: boolean }) {
           .string()
           .trim()
           .min(1, t.webSearch.apiKeyRequired)
+          .min(LLM_API_KEY_MIN_LENGTH, t.webSearch.apiKeyTooShort(LLM_API_KEY_MIN_LENGTH))
           .max(API_KEY_MAX_LENGTH, t.webSearch.apiKeyTooLong),
       }),
     },
