@@ -1,7 +1,9 @@
 import testUtils from '@adonisjs/core/services/test_utils'
 import { test } from '@japa/runner'
 import queue from '@nemoventures/adonis-jobs/services/main'
+import { CONVENTION_EVALS_QUEUE } from '#app/convention-evals/constants/queue'
 import ClassifySkillTopicsJob from '#app/jobs/classify-skill-topics_job'
+import RunConventionEvalJob from '#app/jobs/run-convention-eval_job'
 import SendMailJob from '#app/jobs/send-mail_job'
 import type { QueueJobsOutput } from '#app/queue-jobs/validators/queue-jobs-output'
 import { SKILL_TOPICS_QUEUE } from '#app/skills/constants/skill-topics'
@@ -75,5 +77,33 @@ test.group('Admin queue jobs', (group) => {
       jobs.map((listed) => listed.name),
       SendMailJob.jobName,
     )
+  })
+
+  test('lists a convention test run by name and state, never its run or provider', async ({
+    assert,
+    client,
+  }) => {
+    const admin = await User.create({ email: ADMIN, password: PASSWORD })
+    const data = { runId: 424_242, provider: { kind: 'mistral', model: 'mistral-small-2603' } }
+    // Delayed, so a worker of the development stack sharing this Redis never takes it.
+    const added = await queue
+      .useQueue(CONVENTION_EVALS_QUEUE)
+      .add(RunConventionEvalJob.jobName, data, { delay: 60_000 })
+    try {
+      const response = await client.get('/admin/jobs').headers(json).loginAs(admin)
+      response.assertStatus(200)
+      const { jobs }: QueueJobsOutput = response.body()
+      const job = jobs.find((listed) => listed.id === `${CONVENTION_EVALS_QUEUE}:${added.id}`)
+      assert.containsSubset(job, {
+        queue: CONVENTION_EVALS_QUEUE,
+        name: RunConventionEvalJob.jobName,
+        status: 'queued',
+      })
+      assert.notProperty(job, 'data')
+      assert.notInclude(JSON.stringify(response.body()), 'mistral-small-2603')
+      assert.notInclude(JSON.stringify(response.body()), String(data.runId))
+    } finally {
+      await added.remove()
+    }
   })
 })

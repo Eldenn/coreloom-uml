@@ -250,6 +250,12 @@ export interface ApiDefinition {
     imports: {
       store: typeof routes['agent_configs.imports.store']
     }
+    evals: {
+      plan: typeof routes['agent_configs.evals.plan']
+      index: typeof routes['agent_configs.evals.index']
+      show: typeof routes['agent_configs.evals.show']
+      store: typeof routes['agent_configs.evals.store']
+    }
   }
   llm: {
     providers: typeof routes['llm.providers']

@@ -21,6 +21,7 @@
       "!**/packages/catalog/e2e/schemas",
       "!**/packages/catalog/src/roles/presets/agency-agents.ts",
       "!**/packages/codemap/fixtures",
+      "!**/packages/catalog/evals/fixtures",
       "!**/infra/skill-tagger/study",
       "!**/apps/web"
     ]

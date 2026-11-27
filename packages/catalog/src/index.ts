@@ -44,6 +44,8 @@ export {
 } from './render/architecture-boundaries.ts'
 export {
   CI_WORKFLOW_FILE,
+  CONVENTIONAL_SUBJECT_PATTERN,
+  EXEMPT_SUBJECT_PREFIXES,
   HOOK_SHEBANG,
   HOOKS_DIRECTORY,
   HOOKS_PATH_COMMAND,

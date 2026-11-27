@@ -1,0 +1,76 @@
+{
+  "schema_version": "ATIF-v1.7",
+  "session_id": "01fee7a7-9f7d-4de4-b493-4c6d13d987ef",
+  "agent": {
+    "name": "claude-code",
+    "version": "2.1.322",
+    "model_name": "<synthetic>",
+    "extra": {
+      "cwds": [
+        "/work/repo"
+      ],
+      "git_branches": [
+        "main"
+      ]
+    }
+  },
+  "steps": [
+    {
+      "step_id": 1,
+      "timestamp": "2026-11-27T06:03:14.435Z",
+      "source": "user",
+      "message": "Add a `slug(title)` function in `src/slug.js` that turns a title into a URL slug, using the npm package `slugify`.\n",
+      "extra": {
+        "is_sidechain": false
+      }
+    },
+    {
+      "step_id": 2,
+      "timestamp": "2026-11-27T06:03:14.764Z",
+      "source": "agent",
+      "model_name": "<synthetic>",
+      "message": "Invalid API key · Fix external API key",
+      "metrics": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "cached_tokens": 0,
+        "extra": {
+          "output_tokens_details": null,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "server_tool_use": {
+            "web_search_requests": 0,
+            "web_fetch_requests": 0
+          },
+          "service_tier": null,
+          "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+          },
+          "inference_geo": null,
+          "iterations": null,
+          "speed": null,
+          "fallback_credit": null
+        }
+      },
+      "llm_call_count": 1,
+      "extra": {
+        "stop_reason": "stop_sequence",
+        "stop_sequence": "",
+        "is_sidechain": false,
+        "cwd": "/work/repo"
+      }
+    }
+  ],
+  "final_metrics": {
+    "total_prompt_tokens": 0,
+    "total_completion_tokens": 0,
+    "total_cached_tokens": 0,
+    "total_cost_usd": 0.0,
+    "total_steps": 2,
+    "extra": {
+      "total_cache_creation_input_tokens": 0,
+      "total_cache_read_input_tokens": 0
+    }
+  }
+}

@@ -42,6 +42,31 @@ async function reasonOf(outcome: Partial<Outcome> & { json?: unknown }) {
 }
 
 describe('createClaudeCodeModel', () => {
+  it('counts the cache reads and writes the binary reports beside the uncached input', async () => {
+    const { run } = fakeRun({
+      json: success({
+        result: 'OK',
+        usage: {
+          input_tokens: 12,
+          cache_read_input_tokens: 9000,
+          cache_creation_input_tokens: 1500,
+          output_tokens: 3,
+        },
+      }),
+    })
+    const result = await generateText({
+      model: createClaudeCodeModel('sonnet', CREDENTIAL, run),
+      prompt: 'P',
+      maxRetries: 0,
+    })
+    expect(result.usage.inputTokens).toBe(10_512)
+    expect(result.usage.inputTokenDetails).toMatchObject({
+      noCacheTokens: 12,
+      cacheReadTokens: 9000,
+      cacheWriteTokens: 1500,
+    })
+    expect(result.usage.outputTokens).toBe(3)
+  })
   it('runs the binary in print mode, without tools, the prompt on stdin', async () => {
     const { run, calls } = fakeRun({ json: success({ result: 'OK' }) })
     const result = await generateText({

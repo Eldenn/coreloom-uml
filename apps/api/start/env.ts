@@ -223,4 +223,22 @@ export default await Env.create(new URL('../', import.meta.url), {
   E2B_API_KEY: Env.schema.string.optional(),
   E2B_API_URL: Env.schema.string.optional({ format: 'url', tld: false }),
   E2B_SANDBOX_URL: Env.schema.string.optional({ format: 'url', tld: false }),
+
+  /*
+  | Convention tests: each run gets a private folder (0700) under this path for
+  | its trials' workspaces and, on the CLI path, Harbor's job folder, removed
+  | when the run ends. It must be a tmpfs on a worker with no swap, since that
+  | folder holds what an agent wrote before it is filtered. Defaults to
+  | `tmp/convention-evals` inside the app.
+  */
+  CONVENTION_EVALS_DIR: Env.schema.string.optional(),
+
+  /*
+  | Convention tests through a saved Anthropic or OpenAI key (path I: Harbor runs
+  | the provider's coding agent CLI in a sandbox with the key). Off unless
+  | `enabled`: until #153 lifts it, the plan and the route refuse such a key
+  | (`cli_path_unavailable`) and the worker refuses to run one. Subscriptions and
+  | the other kinds (path II) do not read it.
+  */
+  CONVENTION_EVALS_CLI_PATH: Env.schema.enum.optional(['enabled', 'disabled'] as const),
 })

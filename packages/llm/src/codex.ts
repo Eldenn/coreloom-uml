@@ -1,5 +1,10 @@
 import { createOpenAI } from '@ai-sdk/openai'
-import { type LanguageModel, simulateStreamingMiddleware, wrapLanguageModel } from 'ai'
+import {
+  type LanguageModel,
+  type LanguageModelMiddleware,
+  simulateStreamingMiddleware,
+  wrapLanguageModel,
+} from 'ai'
 import { fetchWithoutRedirects } from './fetch.ts'
 
 /**
@@ -299,6 +304,23 @@ function codexFetch(fetch: typeof globalThis.fetch): typeof globalThis.fetch {
   }
 }
 
+/**
+ * The Codex endpoint keeps nothing (`store: false`, which `codexFetch` forces), so an earlier
+ * step cannot be named by its id. Told so, the SDK sends each earlier item whole (the tool call,
+ * its result, and a reasoning item with its encrypted content, which it then asks for): a tool
+ * call is carried from one step to the next.
+ */
+const unstoredItems: LanguageModelMiddleware = {
+  specificationVersion: 'v4',
+  transformParams: async ({ params }) => ({
+    ...params,
+    providerOptions: {
+      ...params.providerOptions,
+      openai: { ...params.providerOptions?.openai, store: false },
+    },
+  }),
+}
+
 /** A model of the user's ChatGPT subscription. */
 export function createCodexModel(
   model: string,
@@ -316,5 +338,8 @@ export function createCodexModel(
     fetch: codexFetch(fetch),
   }).responses(model)
   // `codexFetch` reads the endpoint's stream back into one answer: a stream gets it as one delta.
-  return wrapLanguageModel({ model: responses, middleware: simulateStreamingMiddleware() })
+  return wrapLanguageModel({
+    model: responses,
+    middleware: [unstoredItems, simulateStreamingMiddleware()],
+  })
 }

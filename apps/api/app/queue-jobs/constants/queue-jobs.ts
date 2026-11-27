@@ -1,4 +1,5 @@
 import { CODE_MAPS_QUEUE } from '#app/code-maps/constants/code-map'
+import { CONVENTION_EVALS_QUEUE } from '#app/convention-evals/constants/queue'
 import { SKILL_SCANS_QUEUE } from '#app/skills/constants/skill-scan'
 import { SKILL_TOPICS_QUEUE } from '#app/skills/constants/skill-topics'
 
@@ -8,6 +9,7 @@ export const WATCHED_QUEUES = [
   CODE_MAPS_QUEUE,
   SKILL_SCANS_QUEUE,
   SKILL_TOPICS_QUEUE,
+  CONVENTION_EVALS_QUEUE,
 ] as const
 
 /** What the admin's view says of a job (BullMQ's waiting, delayed and prioritized are all `queued`). */

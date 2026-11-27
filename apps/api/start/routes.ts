@@ -480,6 +480,29 @@ router
   .as('agent_configs.imports.store')
   .where('id', router.matchers.number())
   .use([middleware.auth(), llmThrottle])
+/*
+| Convention tests: the owner runs the configuration's rendered files against a coding agent in
+| E2B sandboxes, paid with their own provider. Behind the `convention-evals` flag and E2B_API_KEY
+| (404 without either). Starting one answers 202 with the run id; the screen then polls the run.
+| Session only, one test at a time per account.
+*/
+const conventionEvalsController = () =>
+  import('#app/convention-evals/controllers/convention-evals-controller')
+router
+  .group(() => {
+    router.get('/plan', [conventionEvalsController, 'plan']).as('agent_configs.evals.plan')
+    router.get('/', [conventionEvalsController, 'index']).as('agent_configs.evals.index')
+    router.get('/:runId', [conventionEvalsController, 'show']).as('agent_configs.evals.show')
+  })
+  .prefix('/agent-configs/:id/evals')
+  .where('id', router.matchers.number())
+  .where('runId', router.matchers.number())
+  .use(middleware.auth())
+router
+  .post('/agent-configs/:id/evals', [conventionEvalsController, 'store'])
+  .as('agent_configs.evals.store')
+  .where('id', router.matchers.number())
+  .use([middleware.auth(), llmThrottle])
 router
   .get('/llm/providers', [() => import('#app/llm/controllers/llm-providers-controller'), 'index'])
   .as('llm.providers')

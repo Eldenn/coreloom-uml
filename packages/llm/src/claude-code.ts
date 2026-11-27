@@ -51,7 +51,12 @@ type PrintResult = {
   is_error?: unknown
   result?: unknown
   structured_output?: unknown
-  usage?: { input_tokens?: unknown; output_tokens?: unknown }
+  usage?: {
+    input_tokens?: unknown
+    output_tokens?: unknown
+    cache_read_input_tokens?: unknown
+    cache_creation_input_tokens?: unknown
+  }
 }
 
 function parse(stdout: string): PrintResult | null {
@@ -213,7 +218,14 @@ export function createClaudeCodeModel(
           : wantsJson
             ? jsonFromText(raw)
             : raw
-      const input = tokens(result.usage?.input_tokens)
+      // As the Messages API counts them: `input_tokens` are the uncached ones, beside the cache's.
+      const noCache = tokens(result.usage?.input_tokens)
+      const cacheRead = tokens(result.usage?.cache_read_input_tokens)
+      const cacheWrite = tokens(result.usage?.cache_creation_input_tokens)
+      const input =
+        noCache === undefined && cacheRead === undefined && cacheWrite === undefined
+          ? undefined
+          : (noCache ?? 0) + (cacheRead ?? 0) + (cacheWrite ?? 0)
       const output = tokens(result.usage?.output_tokens)
       const content: LanguageModelV4Content[] = tools.length
         ? actionContent(parse(text), tools)
@@ -225,12 +237,7 @@ export function createClaudeCodeModel(
           ? { unified: 'tool-calls', raw: 'tool-calls' }
           : { unified: 'stop', raw: 'stop' },
         usage: {
-          inputTokens: {
-            total: input,
-            noCache: input,
-            cacheRead: undefined,
-            cacheWrite: undefined,
-          },
+          inputTokens: { total: input, noCache, cacheRead, cacheWrite },
           outputTokens: { total: output, text: output, reasoning: undefined },
         },
         warnings: [],
