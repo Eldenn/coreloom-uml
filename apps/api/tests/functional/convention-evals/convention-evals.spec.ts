@@ -1,135 +1,48 @@
 import { mkdtempSync, readdirSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { Logger } from '@adonisjs/core/logger'
 import app from '@adonisjs/core/services/app'
 import { Condition, createWorkspace } from '@coreloom-uml/catalog/evals'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
-import type { LanguageModel } from '@coreloom-uml/llm'
 import { MockLanguageModelV4 } from '@coreloom-uml/llm/testing'
 import { test } from '@japa/runner'
-import type { TestContext } from '@japa/runner/core'
-import { EvalFailureReason, EvalRunStatus } from '#app/convention-evals/constants/convention-evals'
+import {
+  CONVENTION_EVAL_LIMITS,
+  EvalFailureReason,
+  EvalRunStatus,
+} from '#app/convention-evals/constants/convention-evals'
 import ConventionEvalRun from '#app/convention-evals/models/convention-eval-run'
 import ConventionEvalTrial from '#app/convention-evals/models/convention-eval-trial'
 import { DENY_SUDO } from '#app/convention-evals/services/eval-commands'
 import { evalsHome } from '#app/convention-evals/services/eval-folders'
-import { acquireEvalLock, releaseEvalLock } from '#app/convention-evals/services/eval-lock'
 import HarborRunner, {
-  type HarborModule,
   type HarborRunInput,
   type HarborTrialResult,
 } from '#app/convention-evals/services/harbor-runner'
 import { updateFlag } from '#app/feature-flags/services/feature-flags'
-import RunConventionEvalJob, {
-  type RunConventionEvalJobData,
-} from '#app/jobs/run-convention-eval_job'
+import type { RunConventionEvalJobData } from '#app/jobs/run-convention-eval_job'
 import LanguageModels from '#app/llm/services/language-models'
 import { saveApiKey } from '#app/llm-connections/services/llm-api-keys'
-import User from '#app/users/models/user'
+import {
+  ANTHROPIC_KEY,
+  anthropic,
+  CANARY,
+  freeLock,
+  json,
+  lockIsFree,
+  makeConfig,
+  makeUser,
+  runJob,
+  start,
+  turnOn,
+  useHarbor,
+  useModel,
+} from '#tests/helpers/convention-evals'
 import { FakeEvalSandboxes } from '#tests/helpers/fake-eval-sandbox'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
-import { saveTestLlmKey } from '#tests/helpers/llm-key'
-
-type Client = TestContext['client']
-
-const json = { accept: 'application/json' }
-/** A saved Anthropic key of the fixture: built so no file holds it whole. */
-const ANTHROPIC_KEY = ['sk-ant-api03', 'fixture', 'Q'.repeat(32)].join('-')
-/** What a model must never get to print: the shape of a key, nowhere in the account. */
-const CANARY = ['sk-ant-api03', 'canary', 'Z'.repeat(32)].join('-')
-const mistral = { kind: 'mistral', model: 'mistral-small-2603' }
-const anthropic = { kind: 'anthropic', model: 'claude-sonnet-5-5' }
 
 const tmp = mkdtempSync(join(realpathSync(tmpdir()), 'coreloom-uml-evals-spec-'))
-
-async function makeUser() {
-  const user = await User.create({
-    email: `evals-${Math.random().toString(36).slice(2)}@example.com`,
-    password: 'a-very-strong-passphrase',
-  })
-  await saveTestLlmKey(user)
-  return user
-}
-
-async function turnOn(user: User) {
-  await updateFlag(FeatureFlagKey.ConventionEvals, { enabled: true, rollout: 100, rules: [] }, user)
-}
-
-/** A configuration holding Conventional Commits (one task) and, when asked, pnpm (two more). */
-async function makeConfig(client: Client, user: User, rules: 'commits' | 'both' | 'none') {
-  const created = await client
-    .post('/agent-configs')
-    .headers(json)
-    .loginAs(user)
-    .json({ name: 'Storefront', targets: ['generic'] })
-  created.assertStatus(201)
-  const id = created.body().config.id as number
-  const put = (slot: string, rule: string) =>
-    client
-      .put(`/agent-configs/${id}/ready-rules/${slot}`)
-      .headers(json)
-      .loginAs(user)
-      .json({ rules: [{ rule }] })
-  if (rules !== 'none') (await put('git.commit-messages', 'conventional')).assertStatus(200)
-  if (rules === 'both') (await put('tooling.package-manager', 'pnpm')).assertStatus(200)
-  return id
-}
-
-function useModel(model: LanguageModel) {
-  app.container.swap(LanguageModels, () => {
-    const fake = new LanguageModels()
-    fake.create = () => model
-    return fake
-  })
-}
-
-/** Replaces the job's `dispatch` until restored; `sent` holds the data it got. */
-function stubDispatch() {
-  const sent: RunConventionEvalJobData[] = []
-  const own = Object.getOwnPropertyDescriptor(RunConventionEvalJob, 'dispatch')
-  Object.defineProperty(RunConventionEvalJob, 'dispatch', {
-    configurable: true,
-    writable: true,
-    value: async (data: RunConventionEvalJobData) => {
-      sent.push(data)
-    },
-  })
-  return {
-    sent,
-    restore: () => {
-      if (own) Object.defineProperty(RunConventionEvalJob, 'dispatch', own)
-      else delete (RunConventionEvalJob as unknown as Record<string, unknown>).dispatch
-    },
-  }
-}
-
-/** Starts a test through the route, the job stubbed: answers the run id and the job's data. */
-async function start(client: Client, user: User, configId: number, provider = mistral) {
-  const stub = stubDispatch()
-  try {
-    const response = await client
-      .post(`/agent-configs/${configId}/evals`)
-      .headers(json)
-      .loginAs(user)
-      .json({ provider })
-    return { response, sent: stub.sent }
-  } finally {
-    stub.restore()
-  }
-}
-
-/** Runs the job as the worker does. */
-async function runJob(data: RunConventionEvalJobData) {
-  const job = new RunConventionEvalJob()
-  job.data = data
-  job.logger = { info: () => {}, warn: () => {}, error: () => {} } as unknown as Logger
-  await job.process()
-  const run = await ConventionEvalRun.findOrFail(data.runId)
-  const trials = await ConventionEvalTrial.query().where('runId', run.id).orderBy('id')
-  return { run, trials }
-}
 
 /** A model that fixes and commits, then says so, in every trial; its usage is tiny. */
 const COMMITS = () =>
@@ -176,41 +89,6 @@ function costlyModel() {
       warnings: [],
     }),
   })
-}
-
-/** Harbor as the runner of path I exports it, recording what it was given. */
-function useHarbor(results: (input: HarborRunInput) => HarborTrialResult[]) {
-  const seen = {
-    prepared: [] as HarborRunInput[],
-    started: [] as { file: string; args: readonly string[]; env: Record<string, string> }[],
-  }
-  let last: HarborRunInput | null = null
-  const module: HarborModule = {
-    async prepareHarborRun(input) {
-      seen.prepared.push(input)
-      last = input
-      return {
-        file: '/usr/bin/harbor',
-        args: ['run', '-e', 'e2b'],
-        env: { PATH: '/usr/bin' },
-        jobDir: join(input.dir, 'job'),
-      }
-    },
-    credentialEnvName: (agent) => (agent === 'codex' ? 'CODEX_API_KEY' : 'ANTHROPIC_API_KEY'),
-    async readHarborJob() {
-      return last ? results(last) : []
-    },
-  }
-  app.container.swap(HarborRunner, () => {
-    const fake = new HarborRunner()
-    fake.load = async () => module
-    fake.start = (command) => {
-      seen.started.push(command)
-      return { exited: Promise.resolve(0), kill: () => {} }
-    }
-    return fake
-  })
-  return seen
 }
 
 /** One Harbor result per trial asked, each with a real final state to grade. */
@@ -384,7 +262,7 @@ test.group('Convention tests - routes', (group) => {
       assert.equal(list.body().meta.total, 1)
       assert.notInclude(await dumpDatabase(), ANTHROPIC_KEY.slice(20))
     } finally {
-      await releaseEvalLock(user.id)
+      await freeLock(user.id)
       sandboxes.restore()
     }
   })
@@ -441,10 +319,42 @@ test.group('Convention tests - the job', (group) => {
       assert.equal(first?.user, 'root')
       assert.deepEqual(first?.envs, {})
       // The lock is free and the run's folder gone.
-      assert.isTrue(await acquireEvalLock(user.id, 'harness'))
-      await releaseEvalLock(user.id)
+      assert.isTrue(await lockIsFree(user.id))
       assert.deepEqual(readdirSync(evalsHome()), [])
     } finally {
+      sandboxes.restore()
+    }
+  })
+
+  test('a trial that throws stops its siblings: no trial starts after it, the run fails', async ({
+    client,
+    assert,
+  }) => {
+    const sandboxes = new FakeEvalSandboxes().install()
+    const own = Object.getOwnPropertyDescriptor(ConventionEvalTrial, 'create')
+    try {
+      const user = await makeUser()
+      await turnOn(user)
+      const configId = await makeConfig(client, user, 'both')
+      useModel(COMMITS())
+      const { sent } = await start(client, user, configId)
+      // The database refuses the first trial stored: the others under way end, none starts.
+      Object.defineProperty(ConventionEvalTrial, 'create', {
+        configurable: true,
+        writable: true,
+        value: async () => {
+          throw new Error('the database is gone')
+        },
+      })
+      const { run } = await runJob(sent[0] as RunConventionEvalJobData)
+      assert.equal(run.status, EvalRunStatus.Failed)
+      assert.equal(run.failureReason, EvalFailureReason.RunnerFailed)
+      assert.isAtMost(sandboxes.created.length, CONVENTION_EVAL_LIMITS.concurrency)
+      assert.equal(sandboxes.killed.length, sandboxes.created.length)
+      assert.isTrue(await lockIsFree(user.id))
+    } finally {
+      if (own) Object.defineProperty(ConventionEvalTrial, 'create', own)
+      else delete (ConventionEvalTrial as unknown as Record<string, unknown>).create
       sandboxes.restore()
     }
   })
@@ -569,8 +479,7 @@ test.group('Convention tests - the job', (group) => {
       const { run } = await runJob(sent[0] as RunConventionEvalJobData)
       assert.equal(run.status, EvalRunStatus.Failed)
       assert.equal(run.failureReason, EvalFailureReason.CredentialUnavailable)
-      assert.isTrue(await acquireEvalLock(user.id, 'cli'))
-      await releaseEvalLock(user.id)
+      assert.isTrue(await lockIsFree(user.id, 'cli'))
     } finally {
       sandboxes.restore()
     }
