@@ -12,11 +12,37 @@ import {
   trainingLabels,
 } from '#app/skills/services/skill-topics'
 import { type LabelledVector, trainTopicHead } from '#app/skills/services/topic-head'
+import { WATCH_TAGGER } from '#app/watch/constants/watch'
 import WatchArticle from '#app/watch/models/watch-article'
 
 /** What the tagger reads of an article: its title and excerpt, cut. */
 export function articleText(article: Pick<WatchArticle, 'title' | 'excerpt'>): string {
   return `${article.title}\n${article.excerpt}`.slice(0, SKILL_TOPIC_LIMITS.textMaxLength)
+}
+
+/**
+ * An article's tags as everything reads them: the admin's, else, while the tagger is not trusted
+ * on articles yet (`WATCH_TAGGER.minArticleLabels`), its source's when it has some, else the
+ * tagger's; once trusted, the tagger's before the source's (`effectiveTopics`).
+ */
+export function articleTopics(
+  article: Pick<WatchArticle, 'sourceTopics' | 'reviewedTopics'>,
+  tagger: string[] | null,
+  trusted: boolean,
+): string[] {
+  if (trusted || article.sourceTopics.length === 0) {
+    return effectiveTopics(article.sourceTopics, tagger, article.reviewedTopics)
+  }
+  return effectiveTopics(article.sourceTopics, null, article.reviewedTopics)
+}
+
+/** Whether the tagger is trusted on articles: the admin tagged enough of them. */
+export async function articleTaggerTrusted(): Promise<boolean> {
+  const [{ count }] = await db
+    .from('watch_articles')
+    .whereRaw(`jsonb_array_length(coalesce(reviewed_topics, '[]'::jsonb)) > 0`)
+    .count('* as count')
+  return Number(count) >= WATCH_TAGGER.minArticleLabels
 }
 
 export type ArticleTopicsReport = {
@@ -33,7 +59,7 @@ export type ArticleTopicsReport = {
  * `classifySkillTopics` in `ClassifySkillTopicsJob`): embeds every article whose text changed
  * (`watch_article_embeddings`, keyed by `embeddingHash`), fits the head on the skills' labels plus
  * the main tag the admin set on articles, and writes each article's `tagger_topics` and `topics`
- * (`effectiveTopics`: the admin's, else the tagger's, else the feed's).
+ * (`articleTopics`).
  */
 export async function classifyWatchArticles(): Promise<ArticleTopicsReport> {
   const report: ArticleTopicsReport = { embedded: 0, labels: 0, tagged: 0 }
@@ -91,11 +117,16 @@ export async function classifyWatchArticles(): Promise<ArticleTopicsReport> {
       labels.push({ vector: row.vector, topic: skillLabels.get(row.skill_id) as Topic })
     }
   }
+  let articleLabels = 0
   for (const article of articles) {
     const topic = article.reviewedTopics?.find(isTopic)
     const vector = articleVectors.get(article.id)
-    if (topic && vector) labels.push({ vector, topic })
+    if (topic && vector) {
+      labels.push({ vector, topic })
+      articleLabels += 1
+    }
   }
+  const trusted = articleLabels >= WATCH_TAGGER.minArticleLabels
   if (
     labels.length < SKILL_TOPIC_LIMITS.minLabels ||
     new Set(labels.map((label) => label.topic)).size < 2
@@ -115,13 +146,14 @@ export async function classifyWatchArticles(): Promise<ArticleTopicsReport> {
           ]),
         ]
       : null
-    if (JSON.stringify(topics) === JSON.stringify(article.taggerTopics)) continue
-    await article
-      .merge({
-        taggerTopics: topics,
-        topics: effectiveTopics(article.sourceTopics, topics, article.reviewedTopics),
-      })
-      .save()
+    const shown = articleTopics(article, topics, trusted)
+    if (
+      JSON.stringify(topics) === JSON.stringify(article.taggerTopics) &&
+      JSON.stringify(shown) === JSON.stringify(article.topics)
+    ) {
+      continue
+    }
+    await article.merge({ taggerTopics: topics, topics: shown }).save()
     report.tagged += 1
   }
   return report

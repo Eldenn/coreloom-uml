@@ -68,22 +68,34 @@ const NAMED_ENTITIES: Record<string, string> = {
   ldquo: '“',
 }
 
+/** Elements whose content is never text: a feed that inlines its styles or scripts. */
+const HIDDEN_ELEMENT = /^(style|script)\b/i
+const HIDDEN_ELEMENT_END = /^\/(style|script)\b/i
+
 /**
- * A description (often escaped HTML) as plain text: tags dropped, the common entities decoded,
- * spaces folded, cut to `max`. One pass over the text, no expression that can rescan.
+ * A description (often escaped HTML) as plain text: tags dropped with what `<style>` and
+ * `<script>` hold, the common entities decoded, spaces folded, cut to `max`. One pass over the
+ * text, no expression that can rescan.
  */
 export function plainText(html: string, max: number): string {
   let out = ''
   let inTag = false
+  let tag = ''
+  let hidden = false
   for (const char of html) {
     if (inTag) {
       if (char === '>') {
         inTag = false
+        if (HIDDEN_ELEMENT_END.test(tag)) hidden = false
+        else if (HIDDEN_ELEMENT.test(tag)) hidden = true
         out += ' '
+      } else if (tag.length < 8) {
+        tag += char
       }
     } else if (char === '<') {
       inTag = true
-    } else {
+      tag = ''
+    } else if (!hidden) {
       out += char
     }
     if (out.length > max * 4) break

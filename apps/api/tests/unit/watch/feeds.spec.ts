@@ -75,6 +75,16 @@ test.group('Watch - feeds', () => {
     )
   })
 
+  test('drops what <style> and <script> hold', ({ assert }) => {
+    assert.equal(
+      plainText(
+        '<style>.body { overflow-x: auto; }</style><p>Choose values</p><script>x()</script> for tests',
+        100,
+      ),
+      'Choose values for tests',
+    )
+  })
+
   test('cuts the text it keeps, and reads a hostile one in one pass', ({ assert }) => {
     assert.lengthOf(plainText('word '.repeat(1000), WATCH_LIMITS.excerptMaxLength), 500)
     const hostile = `${'<'.repeat(200_000)}${'&#'.repeat(200_000)}`

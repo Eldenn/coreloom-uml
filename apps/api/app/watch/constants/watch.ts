@@ -87,3 +87,13 @@ export const WATCH_ASSISTANT_LIMITS = {
 } as const
 
 export const WATCH_NOT_FOUND = { error: { message: 'Not found' } } as const
+
+/**
+ * When the skill tagger's tags win over a source's on articles: once the admin tagged
+ * `minArticleLabels` articles. Measured on 106 articles of 14 feeds tagged by hand (main tag
+ * right: 0.64 from the skills' labels alone, 0.67 with the other feeds' articles added, each feed
+ * held out in turn; `infra/skill-tagger/README.md`): below the 0.7 the plan asked for, so until
+ * then (a guess past the 106 measured: measure again before lowering it) an article keeps its
+ * source's tags and takes the tagger's only when its source has none.
+ */
+export const WATCH_TAGGER = { minArticleLabels: 200 } as const

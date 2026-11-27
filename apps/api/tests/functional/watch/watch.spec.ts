@@ -12,7 +12,7 @@ import WatchSource from '#app/watch/models/watch-source'
 import FeedFetcher from '#app/watch/services/feed-fetch'
 import { refreshWatch } from '#app/watch/services/watch-refresh'
 import { releaseWatchRefresh } from '#app/watch/services/watch-refresh-lock'
-import { classifyWatchArticles } from '#app/watch/services/watch-topics'
+import { articleTopics, classifyWatchArticles } from '#app/watch/services/watch-topics'
 import WebSearch from '#app/web-search/services/web-search'
 import { saveWebSearch } from '#app/web-search/services/web-search-settings'
 import env from '#start/env'
@@ -314,15 +314,34 @@ test.group('Tech watch', (group) => {
       await make(n, 'a secret leaked', ['security'])
       await make(n, 'how we test', ['testing'])
     }
-    const unknown = await make(0, 'one more secret', null, ['ai'])
+    const fromTaggedSource = await make(0, 'one more secret', null, ['ai'])
+    const fromUntaggedSource = await make(0, 'another secret', null, [])
 
     const report = await classifyWatchArticles()
-    assert.equal(report.embedded, 13)
+    assert.equal(report.embedded, 14)
     assert.isAtLeast(report.labels, 12)
-    await unknown.refresh()
-    assert.deepEqual(unknown.taggerTopics, ['security'])
-    assert.deepEqual(unknown.topics, ['security'])
+    // Not trusted on articles yet: the source's tags stay; a source without tags takes the tagger's.
+    await fromTaggedSource.refresh()
+    assert.deepEqual(fromTaggedSource.taggerTopics, ['security'])
+    assert.deepEqual(fromTaggedSource.topics, ['ai'])
+    await fromUntaggedSource.refresh()
+    assert.deepEqual(fromUntaggedSource.topics, ['security'])
     assert.equal((await classifyWatchArticles()).embedded, 0)
+
+    // Once the admin tagged enough articles, the tagger's tags win over the source's.
+    assert.deepEqual(articleTopics(fromTaggedSource, ['security'], true), ['security'])
+    assert.deepEqual(
+      articleTopics(
+        {
+          ...fromTaggedSource.serialize(),
+          sourceTopics: ['ai'],
+          reviewedTopics: ['docs'],
+        } as never,
+        ['security'],
+        true,
+      ),
+      ['docs'],
+    )
   })
 
   test('a search source runs on the instance key, since its last run, without blocked sites', async ({

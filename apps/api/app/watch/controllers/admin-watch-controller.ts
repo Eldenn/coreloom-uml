@@ -2,7 +2,6 @@ import type { HttpContext } from '@adonisjs/core/http'
 import db from '@adonisjs/lucid/services/db'
 import ClassifySkillTopicsJob from '#app/jobs/classify-skill-topics_job'
 import RefreshWatchJob from '#app/jobs/refresh-watch_job'
-import { effectiveTopics } from '#app/skills/services/skill-topics'
 import { WATCH_LIMITS, WATCH_NOT_FOUND, WatchSourceKind } from '#app/watch/constants/watch'
 import WatchArticle from '#app/watch/models/watch-article'
 import WatchBlockedSite from '#app/watch/models/watch-blocked-site'
@@ -14,6 +13,7 @@ import {
 import { normalizeUrl } from '#app/watch/services/feed-parse'
 import { watchEnabled } from '#app/watch/services/watch-query'
 import { acquireWatchRefresh } from '#app/watch/services/watch-refresh-lock'
+import { articleTaggerTrusted, articleTopics } from '#app/watch/services/watch-topics'
 import {
   blockWatchSiteInput,
   createWatchSourceInput,
@@ -105,7 +105,7 @@ export default class AdminWatchController {
     if (hidden !== undefined) article.hidden = hidden
     if (topics !== undefined) {
       article.reviewedTopics = topics
-      article.topics = effectiveTopics(article.sourceTopics, article.taggerTopics, topics)
+      article.topics = articleTopics(article, article.taggerTopics, await articleTaggerTrusted())
     }
     await article.save()
     if (topics !== undefined) await ClassifySkillTopicsJob.dispatch({})
