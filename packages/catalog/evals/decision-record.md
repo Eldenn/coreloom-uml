@@ -57,21 +57,24 @@ A task is one TypeScript object (`EvalTask`):
   - `untouched`: the verdict `compliance` gives on the fixture as it is (`not-applicable` when the
     task never reached the rule).
 
-  The grader tests are themselves checked by mutation: 37 of 41 mutants of the graders are
-  killed, the 4 others being equivalent.
+  The grader tests are themselves checked by mutation: 44 of 47 mutants of the graders are
+  killed; the 3 others are equivalent (another check already gives the same verdict, only the
+  reason differs).
 
 Graders read the outcome, never the path:
 - files, the diff against the base commit, the manifest, and the lockfiles present and what they
   name;
-- the commits of every branch, of `HEAD` and of the bare `origin`, merges left out, each subject
-  read as the rendered `commit-msg` hook reads it, with the same pattern and exemptions
+- the commits of every branch, of every remote's remote-tracking branches, of `HEAD` and of the
+  bare `origin`, merges included (the hook checks theirs too), each subject read as the rendered
+  `commit-msg` hook reads it, with the same pattern and exemptions
   (`CONVENTIONAL_SUBJECT_PATTERN`, `EXEMPT_SUBJECT_PREFIXES` from `src/render/gates.ts`);
-- a hidden test run from outside the repository, on the working tree, or on an export of `HEAD`
-  when the task asks for a commit.
+- a hidden test run from outside the repository, on the working tree, or on a checkout of `HEAD`
+  (with an index of its own) when the task asks for a commit.
 
-Git runs with none of the machine's configuration (no global or system file, an empty `HOME`, so
-no global ignore or attributes). They never read the transcript. Rules that can only be graded from
-the transcript (asking first, running the checks) or by a model judge are left out of this suite.
+Git runs with none of the machine's configuration (no global or system file, a `HOME` that does
+not exist, so no global ignore or attributes). They never read the transcript. Rules that can
+only be graded from the transcript (asking first, running the checks) or by a model judge are left
+out of this suite.
 
 Once the runner exists (ticket 4), each task is exported to a Harbor task folder at run time:
 `instruction.md`, `task.toml`, `environment/` built from `createWorkspace`, and `tests/test.sh`

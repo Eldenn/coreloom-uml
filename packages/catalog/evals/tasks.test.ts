@@ -26,8 +26,8 @@ import {
   findRuleGroup,
   RULE_PACKS,
 } from '../src/index.ts'
-import { git, gitEnv } from './src/git.ts'
-import { hiddenTest } from './src/graders.ts'
+import { git, gitEnv, NO_HOME } from './src/git.ts'
+import { hiddenTest, newCommits, subjectOf } from './src/graders.ts'
 import { Condition, type EvalTask, type NamedSolutions, Polarity, Verdict } from './src/task.ts'
 import { createWorkspace } from './src/workspace.ts'
 import { commitMessagesConventional, isConventionalSubject } from './tasks/commit-messages.ts'
@@ -199,30 +199,66 @@ describe('the workspace', () => {
     'grades commit subjects as the rendered commit-msg hook checks them',
     () => {
       const { root } = workspace(commitMessagesConventional, Condition.Full)
-      const message = join(root, '.git', 'TEST_MSG')
-      const subjects = [
+      const file = join(root, '.git', 'TEST_MSG')
+      const messages = [
         'fix(sum): count the first value',
         'feat!: drop the old flag',
         'Count the first value in sum',
         'Fix: count the first value',
         'fix:count the first value',
         "Merge branch 'topic'",
+        'Bring the sum fix in',
         'Revert "fix: x"',
         'fixup! fix: x',
         'squash! fix: x',
         'amend! fix: x',
         'Mergeable: not a merge',
+        '# A comment first\n\nfix: x',
+        '# A comment first\nCount the first value',
+        '\n\nfix: x after blank lines',
+        '# ------------------------ >8 ------------------------\nfix: x below the scissors',
       ]
-      for (const subject of subjects) {
-        writeFileSync(message, `${subject}\n`)
-        const hook = spawnSync('sh', ['.githooks/commit-msg', message], { cwd: root })
-        expect(isConventionalSubject(subject), subject).toBe(hook.status === 0)
+      for (const message of messages) {
+        writeFileSync(file, `${message}\n`)
+        const hook = spawnSync('sh', ['.githooks/commit-msg', file], { cwd: root })
+        expect(isConventionalSubject(subjectOf(message)), message).toBe(hook.status === 0)
       }
     },
   )
 
+  it('grades merge commits as the rendered commit-msg hook checks them', () => {
+    const state = workspace(commitMessagesConventional, Condition.Full)
+    const run = (args: readonly string[]) =>
+      spawnSync('git', args, { cwd: state.root, env: gitEnv(), encoding: 'utf8' })
+    expect(run(['switch', '--quiet', '--create', 'topic'])).toMatchObject({ status: 0 })
+    commitMessagesConventional.reference(state)
+    expect(run(['switch', '--quiet', 'main'])).toMatchObject({ status: 0 })
+
+    const named = run(['merge', '--no-ff', '--message', 'Bring the sum fix in', 'topic'])
+    expect(named.status).not.toBe(0)
+    expect(named.stderr).toContain('commit-msg: the subject must follow')
+    expect(isConventionalSubject('Bring the sum fix in')).toBe(false)
+    expect(run(['merge', '--abort'])).toMatchObject({ status: 0 })
+
+    expect(run(['merge', '--no-ff', '--no-edit', 'topic'])).toMatchObject({ status: 0 })
+    expect(newCommits(state).map((item) => item.subject)).toContain("Merge branch 'topic'")
+    expect(commitMessagesConventional.compliance(state)).toMatchObject({ verdict: Verdict.Pass })
+  })
+
   it('starts from the same base commit on every machine', () => {
     expect(workspace(task, Condition.None).base).toBe(workspace(task, Condition.None).base)
+  })
+
+  it("grades HEAD without touching the repository's index", () => {
+    const state = workspace(commitMessagesConventional, Condition.Instructions)
+    commitMessagesConventional.reference(state)
+    // A staged change to a file HEAD holds: a checkout of HEAD through this index would undo it.
+    writeFileSync(join(state.root, 'test/sum.test.js'), '// Staged, not committed.\n')
+    git(state.root, ['add', 'test/sum.test.js'])
+    const staged = git(state.root, ['diff', '--cached', '--name-only'])
+    expect(commitMessagesConventional.success(state)).toMatchObject({ verdict: Verdict.Pass })
+    expect(git(state.root, ['diff', '--cached', '--name-only'])).toBe(staged)
+    expect(staged).toBe('test/sum.test.js')
   })
 
   it("reads none of the machine's Git ignore or attributes", () => {
@@ -242,6 +278,8 @@ describe('the workspace', () => {
       expect(state.base).toBe(clean.base)
       commitMessagesConventional.reference(state)
       expect(commitMessagesConventional.success(state)).toMatchObject({ verdict: Verdict.Pass })
+      // Git was given a home that does not exist, and none was created.
+      expect(existsSync(NO_HOME)).toBe(false)
     } finally {
       for (const [key, value] of Object.entries(saved)) {
         if (value === undefined) delete process.env[key]

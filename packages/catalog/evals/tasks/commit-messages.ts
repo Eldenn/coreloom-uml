@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { CONVENTIONAL_SUBJECT_PATTERN, EXEMPT_SUBJECT_PREFIXES } from '../../src/index.ts'
 import { git } from '../src/git.ts'
 import {
@@ -29,11 +29,12 @@ export const isConventionalSubject = (subject: string) =>
 
 /**
  * Any prefix before the sentence, whatever its case: a `type:` or `type(scope)!:` one (with or
- * without a space, a ticket key included), a `[scope]`, a gitmoji or its `:shortcode:`.
+ * without a space, a ticket key or a path such as `src/sum.js:` included), a `[scope]`, a gitmoji
+ * or its `:shortcode:`.
  */
 const PREFIXED_SUBJECT = new RegExp(
   [
-    String.raw`^[\w-]+(\([^()]*\))?!?:`,
+    String.raw`^[\w./-]+(\([^()]*\))?!?:`,
     String.raw`^\[[^\]]*\]`,
     String.raw`^:[\w+-]+:`,
     String.raw`^\p{Extended_Pictographic}`,
@@ -82,12 +83,30 @@ const fixWith = (message: string) => (state: FinalState) => {
   commit(state, ['src/sum.js'], message)
 }
 
-/** The fix committed on a topic branch, merged into `main` by a merge commit named `message`. */
-const mergedWith = (subject: string, message: string) => (state: FinalState) => {
+/** The fix, committed with `message` kept as it is written, `#` lines included. */
+const fixVerbatim = (message: string) => (state: FinalState) => {
+  fixSum(state)
+  git(state.root, ['add', '--', 'src/sum.js'])
+  git(state.root, ['commit', '--quiet', '--no-verify', '--cleanup=verbatim', '--message', message])
+}
+
+/**
+ * The fix committed on a topic branch, merged into `main` by a merge commit named `message`, or
+ * by the message Git writes itself (`Merge branch 'topic'`) without one.
+ */
+const mergedWith = (subject: string, message?: string) => (state: FinalState) => {
   git(state.root, ['switch', '--quiet', '--create', 'topic'])
   fixWith(subject)(state)
   git(state.root, ['switch', '--quiet', 'main'])
-  git(state.root, ['merge', '--quiet', '--no-ff', '--no-verify', '--message', message, 'topic'])
+  const named = message === undefined ? ['--no-edit'] : ['--message', message]
+  git(state.root, ['merge', '--quiet', '--no-ff', '--no-verify', ...named, 'topic'])
+}
+
+/** The fix committed, and a `.gitattributes` that keeps every source file out of an archive. */
+const fixWithExportIgnore = (subject: string) => (state: FinalState) => {
+  fixSum(state)
+  writeFileSync(join(state.root, '.gitattributes'), 'src/** export-ignore\n')
+  commit(state, ['src/sum.js', '.gitattributes'], subject)
 }
 
 /** The fix committed on a detached `HEAD`, on no branch. */
@@ -96,19 +115,38 @@ const detachedWith = (subject: string) => (state: FinalState) => {
   fixWith(subject)(state)
 }
 
+/** A commit named `pushed` on a branch `elsewhere`, besides the fix committed with `subject`. */
+function commitElsewhere(state: FinalState, subject: string, pushed: string) {
+  fixWith(subject)(state)
+  git(state.root, ['switch', '--quiet', '--create', 'elsewhere'])
+  writeFileSync(join(state.root, 'NOTES.md'), 'Notes.\n')
+  commit(state, ['NOTES.md'], pushed)
+}
+
 /**
  * The fix committed and pushed with `subject`, then a commit named `pushed` sent to a branch of
  * `origin` that this clone no longer knows: only the bare remote holds it.
  */
 const pushedOnlyWith = (subject: string, pushed: string) => (state: FinalState) => {
-  fixWith(subject)(state)
-  git(state.root, ['switch', '--quiet', '--create', 'elsewhere'])
-  writeFileSync(join(state.root, 'NOTES.md'), 'Notes.\n')
-  commit(state, ['NOTES.md'], pushed)
+  commitElsewhere(state, subject, pushed)
   git(state.root, ['push', '--quiet', 'origin', 'elsewhere'])
   git(state.root, ['switch', '--quiet', 'main'])
   git(state.root, ['branch', '--quiet', '--delete', '--force', 'elsewhere'])
   git(state.root, ['update-ref', '-d', 'refs/remotes/origin/elsewhere'])
+}
+
+/**
+ * The fix committed with `subject`, then a commit named `pushed` sent to a second remote the
+ * agent added, its local branch deleted: only `refs/remotes/other/*` holds it here.
+ */
+const pushedToOtherRemoteWith = (subject: string, pushed: string) => (state: FinalState) => {
+  const other = join(dirname(state.remote), 'other.git')
+  git(state.root, ['init', '--quiet', '--bare', other])
+  git(state.root, ['remote', 'add', 'other', other])
+  commitElsewhere(state, subject, pushed)
+  git(state.root, ['push', '--quiet', 'other', 'elsewhere'])
+  git(state.root, ['switch', '--quiet', 'main'])
+  git(state.root, ['branch', '--quiet', '--delete', '--force', 'elsewhere'])
 }
 
 /** Half-done work, the commits named with `subject`: `success` must fail on each. */
@@ -168,8 +206,10 @@ export const commitMessagesConventional: EvalTask = {
       writeFileSync(join(state.root, 'NOTES.md'), 'Notes.\n')
       commit(state, ['NOTES.md'], `fixup! ${CONVENTIONAL}`)
     },
-    'merged by a merge commit named otherwise': mergedWith(CONVENTIONAL, 'Bring the sum fix in'),
+    'merged with the message Git writes': mergedWith(CONVENTIONAL),
     'on a detached HEAD': detachedWith(CONVENTIONAL),
+    'a comment line kept before the subject': fixVerbatim(`# Fixes the sum\n${CONVENTIONAL}`),
+    'a .gitattributes that keeps the sources out of an archive': fixWithExportIgnore(CONVENTIONAL),
   },
   violations: {
     'a plain subject': fixWith(IMPERATIVE),
@@ -177,7 +217,12 @@ export const commitMessagesConventional: EvalTask = {
     'no space after the colon': fixWith('fix:count the first value'),
     'an empty subject': fixWith(''),
     'on a detached HEAD, a plain subject': detachedWith(IMPERATIVE),
+    'merged by a merge commit named otherwise': mergedWith(CONVENTIONAL, 'Bring the sum fix in'),
     'a plain subject pushed to origin only': pushedOnlyWith(CONVENTIONAL, 'Add some notes'),
+    'a plain subject pushed to another remote only': pushedToOtherRemoteWith(
+      CONVENTIONAL,
+      'Add some notes',
+    ),
   },
   incomplete: incomplete(CONVENTIONAL),
 }
@@ -199,7 +244,7 @@ export const commitMessagesImperative: EvalTask = {
   reference: fixWith(IMPERATIVE),
   alternatives: {
     'a colon later in the sentence': fixWith('Count the first value: sum skipped it'),
-    'merged by a merge commit named otherwise': mergedWith(IMPERATIVE, 'chore: merge the sum fix'),
+    'merged with the message Git writes': mergedWith(IMPERATIVE),
     'on a detached HEAD': detachedWith(IMPERATIVE),
   },
   violations: {
@@ -208,11 +253,18 @@ export const commitMessagesImperative: EvalTask = {
     'a breaking marker': fixWith('feat!: count the first value'),
     'no space after the colon': fixWith('fix:count the first value'),
     'a ticket key': fixWith('SUM-12: count the first value'),
+    'a file name': fixWith('sum.js: count the first value'),
+    'a path': fixWith('src/sum: count the first value'),
     'a bracketed scope': fixWith('[sum] Count the first value'),
     'a gitmoji': fixWith('🐛 Count the first value'),
     'a gitmoji shortcode': fixWith(':bug: Count the first value'),
     'an empty subject': fixWith(''),
+    'merged by a merge commit named otherwise': mergedWith(IMPERATIVE, 'chore: merge the sum fix'),
     'a prefixed subject pushed to origin only': pushedOnlyWith(IMPERATIVE, 'docs: add some notes'),
+    'a prefixed subject pushed to another remote only': pushedToOtherRemoteWith(
+      IMPERATIVE,
+      'docs: add some notes',
+    ),
   },
   incomplete: incomplete(IMPERATIVE),
 }

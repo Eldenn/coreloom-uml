@@ -1,9 +1,17 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { git, gitBytes, gitOutput } from './git.ts'
+import { git, gitEnv, gitOutput } from './git.ts'
 import { type FinalState, type Grade, Verdict } from './task.ts'
 
 /**
@@ -152,16 +160,38 @@ export function hiddenTest(
 }
 
 /**
- * Grades the files of the commit `HEAD` names, exported to a folder of their own: what was
- * committed, whatever the working tree holds besides.
+ * Grades the files of the commit `HEAD` names, checked out whole into a folder of their own (with
+ * an index of its own, so the repository's index is left as it is, and no hook): what was
+ * committed, whatever the working tree holds besides. Unlike `git archive`, no `export-ignore` or
+ * `export-subst` attribute changes what is checked out.
  */
 export function atHead(state: FinalState, grade: (root: string) => Grade): Grade {
   const folder = mkdtempSync(join(realpathSync(tmpdir()), 'coreloom-uml-head-'))
   try {
-    const archive = gitBytes(state.root, ['archive', '--format=tar', 'HEAD'])
-    const extract = spawnSync('tar', ['-x', '-C', folder], { input: archive })
-    if (extract.status !== 0) return fail('HEAD could not be exported')
-    return grade(folder)
+    const tree = join(folder, 'tree')
+    mkdirSync(tree)
+    const gitDir = git(state.root, ['rev-parse', '--absolute-git-dir'])
+    try {
+      git(
+        tree,
+        [
+          '-c',
+          'core.hooksPath=/dev/null',
+          '--git-dir',
+          gitDir,
+          '--work-tree',
+          tree,
+          'checkout',
+          'HEAD',
+          '--',
+          '.',
+        ],
+        { ...gitEnv(), GIT_INDEX_FILE: join(folder, 'index') },
+      )
+    } catch {
+      return fail('HEAD could not be checked out')
+    }
+    return grade(tree)
   } finally {
     rmSync(folder, { recursive: true, force: true })
   }
@@ -172,8 +202,22 @@ export function committed(state: FinalState, path: string): boolean {
   return git(state.root, ['status', '--porcelain', '--', path]) === ''
 }
 
-/** A commit, by its subject: the first line of its message that is not empty, as the hook reads it. */
+/**
+ * A commit, by its subject, read as the rendered `commit-msg` hook reads it: the message up to a
+ * scissors line, without its `#` lines, then its first line that is not empty.
+ */
 export type Commit = { sha: string; subject: string }
+
+/** The subject of a message, as the hook's `sed` lines and `sed -n '/./{p;q;}'` find it. */
+export function subjectOf(message: string): string {
+  const lines = message.split('\n')
+  const scissors = lines.findIndex((line) => /^# -* >8 -*$/.test(line))
+  return (
+    (scissors === -1 ? lines : lines.slice(0, scissors))
+      .filter((line) => !line.startsWith('#'))
+      .find((line) => line !== '') ?? ''
+  )
+}
 
 /** `git log` of `refs` without `base`, in the repository `gitDir` names (`root`'s own by default). */
 function readLog(state: FinalState, refs: readonly string[], gitDir?: string): Commit[] {
@@ -181,7 +225,6 @@ function readLog(state: FinalState, refs: readonly string[], gitDir?: string): C
   const log = git(state.root, [
     ...repository,
     'log',
-    '--no-merges',
     ...refs,
     `^${state.base}`,
     '--format=%H%x1f%B%x1e',
@@ -192,14 +235,15 @@ function readLog(state: FinalState, refs: readonly string[], gitDir?: string): C
     .filter(Boolean)
     .map((entry) => {
       const [sha = '', message = ''] = entry.split('\x1f')
-      return { sha, subject: message.split('\n').find((line) => line !== '') ?? '' }
+      return { sha, subject: subjectOf(message) }
     })
 }
 
 /**
- * The commits the base commit is not part of, merges left out: those reachable from any local
- * branch, remote-tracking branch or `HEAD` (a detached one included), and from any ref of the
- * bare `origin` itself, pushed there or not tracked here.
+ * The commits the base commit is not part of, merges included (the `commit-msg` hook checks
+ * theirs too): those reachable from any local branch, remote-tracking branch of any remote or
+ * `HEAD` (a detached one included), and from any ref of the bare `origin` itself, pushed there or
+ * not tracked here.
  */
 export function newCommits(state: FinalState): Commit[] {
   const local = readLog(state, ['--branches', '--remotes', 'HEAD'])
