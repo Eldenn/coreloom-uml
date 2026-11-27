@@ -22,6 +22,7 @@ import { toast } from '@/components/ui/sonner'
 import { Switch } from '@/components/ui/switch'
 import { getErrorMessage, TuyauError } from '@/lib/client'
 import { useT } from '@/lib/locale'
+import { parseSourceUrl } from '@/lib/skill-source-url'
 import {
   type SkillSource,
   useAddSkillSource,
@@ -29,12 +30,6 @@ import {
   useSkillSources,
   useUpdateSkillSource,
 } from '@/lib/skills'
-
-/** Same rules as the API (`app/skills/validators/skill-sources-input.ts`). */
-const OWNER = /^[A-Za-z0-9-]{1,39}$/
-const REPO = /^(?!\.{1,2}$)[A-Za-z0-9._-]{1,100}$/
-const FOLDER = /^(?!(?:.*\/)?\.{1,2}(?:\/|$))\/?[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\/?$/
-const PATH_MAX = 200
 
 /** The admin's button that opens the sources. */
 export function SkillSourcesButton() {
@@ -155,25 +150,17 @@ function AddSourceForm() {
   const t = useT().skills.sources
   const add = useAddSkillSource()
   const form = useAppForm({
-    defaultValues: { owner: '', repo: '', path: '' },
+    defaultValues: { url: '' },
     validators: {
       onSubmit: z.object({
-        owner: z.string().trim().regex(OWNER, t.ownerInvalid),
-        repo: z.string().trim().regex(REPO, t.repoInvalid),
-        path: z
-          .string()
-          .trim()
-          .max(PATH_MAX)
-          .refine((path) => path === '' || FOLDER.test(path), t.pathInvalid),
+        url: z.string().refine((url) => parseSourceUrl(url) !== null, t.urlInvalid),
       }),
     },
     onSubmit: async ({ value, formApi }) => {
+      const location = parseSourceUrl(value.url)
+      if (!location) return
       try {
-        await add.mutateAsync({
-          owner: value.owner.trim(),
-          repo: value.repo.trim(),
-          path: value.path.trim() || undefined,
-        })
+        await add.mutateAsync(location)
         toast.success(t.added)
         formApi.reset()
       } catch (error) {
@@ -199,19 +186,16 @@ function AddSourceForm() {
         <p className="m-0 text-sm text-muted-foreground">{t.addHelp}</p>
       </div>
       <form.AppForm>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <form.AppField name="owner">
-            {(field) => (
-              <field.TextField label={t.owner} placeholder="anthropics" autoComplete="off" />
-            )}
-          </form.AppField>
-          <form.AppField name="repo">
-            {(field) => <field.TextField label={t.repo} placeholder="skills" autoComplete="off" />}
-          </form.AppField>
-          <form.AppField name="path">
-            {(field) => <field.TextField label={t.path} placeholder="skills" autoComplete="off" />}
-          </form.AppField>
-        </div>
+        <form.AppField name="url">
+          {(field) => (
+            <field.TextField
+              label={t.url}
+              placeholder="https://github.com/owner/repository"
+              autoComplete="off"
+              inputMode="url"
+            />
+          )}
+        </form.AppField>
         <div className="flex justify-end">
           <form.SubmitButton>{t.add}</form.SubmitButton>
         </div>
