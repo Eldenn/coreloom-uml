@@ -73,3 +73,27 @@ the rare tags raised it from 0.776 to 0.830.
 - **transformers.js** (`@huggingface/transformers` in `apps/api/package.json`, and the
   onnxruntime it brings): build the `skill-tagger` image and run `node ace skills:classify` in it
   before relying on it, since only that shows the binary loads.
+
+## Articles of the tech watch
+
+The same worker tags the Watch page's articles (`classifyWatchArticles`,
+`apps/api/app/watch/services/watch-topics.ts`, run by `ClassifySkillTopicsJob` after the skills):
+each article's title and excerpt is embedded once (`watch_article_embeddings`), and the head is
+fitted on the skills' labels plus the main tag the admin set on articles.
+
+Measured on 2026-11-27 on 106 articles from 14 public feeds (AI, architecture, security,
+databases, TypeScript, React, Kubernetes, CSS, Android...), main tag set by hand, six left
+without one (gift guides, conference calls):
+
+| Head fitted on | Skill instruction | Article instruction |
+| --- | --- | --- |
+| the skills' 224 labels only | 0.642 (in the first two: 0.745) | 0.557 |
+| the skills plus the other feeds' articles, each feed held out | 0.670 | 0.698 |
+
+Shuffled 5-fold folds gave 0.82 to 0.86, but articles of one feed then sit on both sides: the
+held-out-feed figure is the one to trust. Misses are mostly general AI essays read as
+`workflow` or `docs`, and modernization or incident posts. Below the 0.7 the plan asked for, so
+an article keeps its source's tags and takes the tagger's only when its source has none, until
+the admin has tagged `WATCH_TAGGER.minArticleLabels` articles (`articleTopics`); the instruction
+stays the skills' one (the article instruction is no better within this sample). Measure again,
+leaving each feed out, before lowering that threshold or changing the instruction.

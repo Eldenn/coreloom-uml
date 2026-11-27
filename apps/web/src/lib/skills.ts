@@ -4,6 +4,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import * as React from 'react'
 
 import { apiBaseUrl, client } from '@/lib/client'
+import { jobLaunched } from '@/lib/queue-jobs'
 
 export type SkillsList = Awaited<ReturnType<typeof client.api.skills.index>>
 export type SkillSummary = SkillsList['data'][number]
@@ -46,7 +47,10 @@ export function useSkillsStats() {
 
 /** The admin's: runs the skills.sh search now (409 while one asked earlier has not ended). */
 export function useRefreshSkills() {
-  return useMutation({ mutationFn: () => client.api.admin.skills.refresh({}) })
+  return useMutation({
+    mutationFn: () => client.api.admin.skills.refresh({}),
+    onSuccess: jobLaunched,
+  })
 }
 
 /** The admin's: stops suggesting a skill, with why, or suggests it again. */

@@ -3,9 +3,12 @@ import { describe, expect, it } from 'vitest'
 import { LlmCallError } from './failure.ts'
 import {
   RESEARCH_FINDINGS_MAX_LENGTH,
+  RESEARCH_INSTRUCTIONS,
   RESEARCH_TOOL_RESULT_MAX_LENGTH,
   type ResearchPage,
+  type ResearchSearchResult,
   type ResearchTools,
+  researchInstructions,
   researchWeb,
 } from './research.ts'
 import { failingModel, type ModelStep, toolCallingModel } from './testing/mock-model.ts'
@@ -230,5 +233,100 @@ describe('researchWeb', () => {
     expect(await reasonOf(researchWeb(failingModel(error), { request: 'r', tools }))).toBe(
       'unauthorized',
     )
+  })
+
+  describe('with a search engine', () => {
+    const search = (query: string): ModelStep => ({
+      calls: [{ tool: 'search_web', input: { query } }],
+    })
+    const found: ResearchSearchResult = {
+      title: 'Style guide',
+      url: 'https://a.example/',
+      snippet: 'Use pnpm.',
+      publishedAt: null,
+    }
+
+    function searchingTools(pages: Record<string, ResearchPage | null> = {}) {
+      const { tools, calls } = fakeTools(pages)
+      const searchingOnes: ResearchTools = {
+        ...tools,
+        async search(query) {
+          calls.push(`search ${query}`)
+          return query === 'broken' ? null : query === 'nothing' ? [] : [found]
+        },
+      }
+      return { tools: searchingOnes, calls }
+    }
+
+    const instructionsOf = (model: ReturnType<typeof toolCallingModel>) =>
+      JSON.stringify(model.doGenerateCalls[0]?.prompt.filter((m) => m.role === 'system'))
+
+    it('offers no search_web and keeps the instructions without one', async () => {
+      const { tools } = fakeTools({ 'https://a.example/': page('x') })
+      const model = toolCallingModel([read('https://a.example/'), { text: 'x' }])
+
+      await researchWeb(model, { request: 'r', tools })
+
+      expect(model.doGenerateCalls[0]?.tools?.map((tool) => tool.name)).not.toContain('search_web')
+      expect(RESEARCH_INSTRUCTIONS).toBe(researchInstructions(false))
+      expect(RESEARCH_INSTRUCTIONS).toContain('You have no search engine.')
+      expect(instructionsOf(model)).toContain('You have no search engine.')
+    })
+
+    it('searches, then answers the page read alone as a source', async () => {
+      const { tools, calls } = searchingTools({ 'https://a.example/': page('Use pnpm.') })
+      const model = toolCallingModel([
+        search('pnpm conventions'),
+        read('https://a.example/'),
+        { text: 'Use pnpm (https://a.example/).' },
+      ])
+
+      const result = await researchWeb(model, { request: 'r', tools })
+
+      expect(calls).toEqual(['search pnpm conventions', 'read https://a.example/'])
+      expect(result.sources).toEqual([{ url: 'https://a.example/', title: 'A page' }])
+      expect(model.doGenerateCalls[0]?.tools?.map((tool) => tool.name).sort()).toEqual([
+        'read_page',
+        'run',
+        'search_web',
+      ])
+      const shown = toolResults(model)
+      expect(shown).toContain('Style guide')
+      expect(shown).toContain('Use pnpm.')
+      expect(instructionsOf(model)).toContain('Use search_web to find pages')
+      expect(instructionsOf(model)).not.toContain('You have no search engine.')
+    })
+
+    it('tells the model when a search failed or found nothing', async () => {
+      const { tools } = searchingTools({ 'https://a.example/': page('x') })
+      const model = toolCallingModel([
+        search('broken'),
+        search('nothing'),
+        read('https://a.example/'),
+        { text: 'x' },
+      ])
+
+      await researchWeb(model, { request: 'r', tools })
+
+      expect(toolResults(model)).toContain('The search failed.')
+      expect(toolResults(model)).toContain('No result.')
+    })
+
+    it('fails with tools_unused when the model only searched', async () => {
+      const { tools } = searchingTools()
+      const model = toolCallingModel([search('pnpm'), { text: 'Snippets say: use pnpm.' }])
+
+      expect(await reasonOf(researchWeb(model, { request: 'r', tools }))).toBe('tools_unused')
+    })
+
+    it('refuses a query of spaces', async () => {
+      const { tools, calls } = searchingTools({ 'https://a.example/': page('x') })
+      const model = toolCallingModel([search('   '), read('https://a.example/'), { text: 'x' }])
+
+      await researchWeb(model, { request: 'r', tools })
+
+      expect(calls).toEqual(['read https://a.example/'])
+      expect(toolResults(model)).toContain('InvalidToolInputError')
+    })
   })
 })

@@ -13,8 +13,8 @@ import {
   SKILL_BLOCK_REASON_MAX_LENGTH,
   SKILL_SOURCE_LIMITS,
   SKILLS_SEARCH_LIMITS,
-  SkillSourceKind,
   SkillStatus,
+  TRUSTING_SOURCE_KINDS,
 } from '#app/skills/constants/skill'
 import CatalogSkill from '#app/skills/models/catalog-skill'
 import SkillSnapshot from '#app/skills/models/skill-snapshot'
@@ -160,13 +160,13 @@ function toSearchSource(source: SkillSource): SearchSource {
   }
 }
 
-/** For each skill, the enabled GitHub sources that listed it at their last run that answered. */
+/** For each skill, the enabled trusting sources that listed it at their last run that answered. */
 async function trustedBy(): Promise<Map<number, number[]>> {
   const pairs: { skill_id: number; skill_source_id: number }[] = await db
     .from('skill_source_skills')
     .join('skill_sources', 'skill_sources.id', 'skill_source_skills.skill_source_id')
     .where('skill_sources.enabled', true)
-    .where('skill_sources.kind', SkillSourceKind.Github)
+    .whereIn('skill_sources.kind', [...TRUSTING_SOURCE_KINDS])
     .select('skill_source_skills.skill_id', 'skill_source_skills.skill_source_id')
   const trust = new Map<number, number[]>()
   for (const pair of pairs) {

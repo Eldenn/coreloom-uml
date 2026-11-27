@@ -550,10 +550,13 @@ links only, never as a command to run, marked as third-party resources not check
 
 The catalog grows on its own and keeps everything it finds. Every Monday at 06:00 UTC the
 `RefreshSkillsJob` (BullMQ, run by the `queue:work` worker) reads every source the administrator
-keeps switched on in the Skills screen's **Sources**: [skills.sh](https://skills.sh) by default,
-and any GitHub repository of a trusted publisher, whose folders holding a `SKILL.md` are listed
-whole (at most 100 per source) and need no installs or audit to be suggested (a bad skills.sh audit
-still counts; the copy is scanned and approved like any other). skills.sh is searched
+keeps switched on in the Skills screen's **Sources**: two registries, [skills.sh](https://skills.sh)
+and [Smithery](https://smithery.ai/skills) (its top skills, only those of a verified publisher with
+a quality score of at least 0.8), and any GitHub repository of a trusted publisher, whose folders
+holding a `SKILL.md` are listed whole, or, when it has a `.claude-plugin/marketplace.json`, the
+skills of the plugins that marketplace lists, those of other repositories included (at most 100
+per source). What Smithery or a trusted repository lists needs no installs or audit to be suggested
+(a bad skills.sh audit still counts; the copy is scanned and approved like any other). skills.sh is searched
 for each query of `packages/catalog/src/skill-search-plan.ts`, each with a topic and, for the ones
 that fit a question or a diagram kind, the affinity its results get. Every skill found is kept in
 the `skills` table, with its installs, audits, licence, topics and when it was first and last seen,
@@ -670,7 +673,10 @@ minute per user (`llmThrottle`).
   ```
 
   Its services listen on this machine only by intent (one control port has no authentication):
-  never run it on a host reachable from outside.
+  never run it on a host reachable from outside. Its sandbox logs (ClickHouse `sandbox_logs`) are
+  kept 7 days, upstream's retention, and keep the names of a command's environment variables,
+  never their values, and the length of what is sent on standard input, never its bytes; command
+  lines (`cmd`, `args`) are kept as they are, so a value never goes in one.
 - A provider failure answers 502 `{ error, reason }`, never the provider's own error. Everything
   else (manual rules, generations) works without a provider.
 - Providers: `anthropic`, `openai`, `mistral` (fixed URLs, a key is required, a `baseUrl` is

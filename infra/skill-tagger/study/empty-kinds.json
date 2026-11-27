@@ -1,0 +1,23 @@
+{
+ "_doc": "The 60 rules of truth.json that expect no skill. refusal = the rule declines an approach or tool the catalog's skills cover (negation, to be flagged in the catalog); nothing = the catalog simply holds no skill for it.",
+ "refusal": [
+  "testing.levels/none", "frontend.accessibility/none", "frontend.platforms/browser-only", "backend.container-image/none",
+  "git.branching/trunk", "llm.vector-store/none", "agents.mcp/not-used", "backend.model-calls/none", "api.contract/none",
+  "backend.password-hashing/none", "frontend.test-runner/none", "database.migrations/never", "security.network/none",
+  "design.refactoring/leave", "frontend.e2e-tool/none", "api.webhooks/none", "backend.observability/none", "llm.retrieval/none",
+  "agents.long-term-memory/none", "backend.background-jobs/none", "perf.budget-check/none", "frontend.service-worker/none",
+  "llm.eval-tool/none", "frontend.csp/none", "frontend.browser-check/disagree", "workflow.changes/disagree",
+  "git.pull-request-size/no-limit"
+ ],
+ "nothing": [
+  "frontend.framework/vite-spa", "design.paradigm/functional", "security.sandbox/host", "security.secrets/agree",
+  "design.abstraction-timing/third-case", "react.styling/css-modules", "frontend.platforms/tauri", "frontend.platforms/electron",
+  "frontend.bundler/vite", "frontend.service-worker/offline", "frontend.raw-html/sanitized", "frontend.csp/strict",
+  "api.style/graphql", "logging.style/structured", "backend.background-jobs/job-queue", "backend.module-system/esm",
+  "backend.graceful-shutdown/agree", "git.attribution/agree", "security.dependencies/ask", "security.input-trust/agree",
+  "system.health-probes/liveness-readiness", "tooling.package-manager/bun", "frontend.browser-support/browserslist",
+  "api.webhooks/receives", "api.rate-limiting/app", "backend.cache-store/shared", "system.queue-guarantees/at-least-once",
+  "system.failover/active-active", "llm.fine-tuning/adapters", "llm.vector-store/pgvector", "llm.prompt-injection/agree",
+  "agents.long-term-memory/profile", "perf.font-display/swap"
+ ]
+}

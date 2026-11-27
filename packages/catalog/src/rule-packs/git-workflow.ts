@@ -47,6 +47,7 @@ export const gitWorkflow: RulePack = {
         },
         {
           id: 'trunk',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Directly on the main branch',
             fr: 'Directement sur la branche principale',
@@ -106,6 +107,7 @@ export const gitWorkflow: RulePack = {
       rules: [
         {
           id: 'nothing',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Neither commit nor push',
             fr: 'Ni committer ni pousser',
@@ -175,6 +177,7 @@ export const gitWorkflow: RulePack = {
         },
         {
           id: 'no-limit',
+          noAutomaticSuggestion: true,
           label: {
             en: 'No limit',
             fr: 'Pas de limite',

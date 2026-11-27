@@ -89,6 +89,11 @@ export interface ApiDefinition {
       store: typeof routes['admin.github_app.store']
       destroy: typeof routes['admin.github_app.destroy']
     }
+    webSearch: {
+      show: typeof routes['admin.web_search.show']
+      update: typeof routes['admin.web_search.update']
+      destroy: typeof routes['admin.web_search.destroy']
+    }
     skillVersions: {
       index: typeof routes['admin.skill_versions.index']
       store: typeof routes['admin.skill_versions.store']
@@ -103,11 +108,31 @@ export interface ApiDefinition {
       update: typeof routes['admin.skills.update']
       topics: typeof routes['admin.skills.topics']
     }
+    jobs: {
+      index: typeof routes['admin.jobs.index']
+    }
     skillSources: {
       index: typeof routes['admin.skill_sources.index']
       store: typeof routes['admin.skill_sources.store']
       update: typeof routes['admin.skill_sources.update']
       destroy: typeof routes['admin.skill_sources.destroy']
+    }
+    watch: {
+      sources: {
+        index: typeof routes['admin.watch.sources.index']
+        store: typeof routes['admin.watch.sources.store']
+        update: typeof routes['admin.watch.sources.update']
+        destroy: typeof routes['admin.watch.sources.destroy']
+      }
+      refresh: typeof routes['admin.watch.refresh']
+      articles: {
+        update: typeof routes['admin.watch.articles.update']
+      }
+      blockedSites: {
+        index: typeof routes['admin.watch.blocked_sites.index']
+        store: typeof routes['admin.watch.blocked_sites.store']
+        destroy: typeof routes['admin.watch.blocked_sites.destroy']
+      }
     }
     featureFlags: {
       index: typeof routes['admin.feature_flags.index']
@@ -262,6 +287,11 @@ export interface ApiDefinition {
     events: typeof routes['skills.events']
     show: typeof routes['skills.show']
     copy: typeof routes['skills.copy']
+  }
+  watch: {
+    articles: {
+      index: typeof routes['watch.articles.index']
+    }
   }
   mcp: typeof routes['mcp']
   assistant: {

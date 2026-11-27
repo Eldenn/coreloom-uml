@@ -6,7 +6,8 @@ import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
 import type { ApiClient } from '@japa/api-client'
 import { test } from '@japa/runner'
 import queue from '@nemoventures/adonis-jobs/services/main'
-import { tokenEnvs } from '#app/assistant/services/repository-commands'
+import { REPOSITORY_SANDBOX } from '#app/assistant/constants/repository'
+import { cloneCredential, cloneSecretFile } from '#app/assistant/services/repository-commands'
 import {
   CODE_MAPS_QUEUE,
   CodeMapSource,
@@ -128,8 +129,11 @@ class FakeGithubApi extends GithubApi {
     return this.tokenAnswer
   }
 
+  revokeAnswer: GithubResult<unknown> = { ok: true, value: null }
+
   override async revokeInstallationToken(token: string) {
     this.calls.push(`revoke-installation:${token === INSTALLATION_TOKEN ? 'token' : 'other'}`)
+    return this.revokeAnswer
   }
 }
 
@@ -640,6 +644,12 @@ test.group('GitHub App: private repositories and follows', (group) => {
 
   test('reads a private repository with a token made for it, then revoked', async ({ assert }) => {
     const github = useFakeGithub()
+    let revokedAfter = -1
+    const revoke = github.revokeInstallationToken.bind(github)
+    github.revokeInstallationToken = async (token) => {
+      revokedAfter = sandboxes.runs.length
+      return revoke(token)
+    }
     const { user, project } = await setup()
     await grant(user)
     const codeMap = await pendingMap(user, project)
@@ -650,9 +660,19 @@ test.group('GitHub App: private repositories and follows', (group) => {
       logs.restore()
     }
     assert.deepEqual(github.calls, ['installation-token:77:9001', 'revoke-installation:token'])
-    // The clone's environment only: graphify never gets the token.
-    assert.deepInclude(sandboxes.cloned, tokenEnvs(INSTALLATION_TOKEN))
-    assert.notInclude(JSON.stringify(sandboxes.runs[1]?.envs), 'GIT_CONFIG')
+    // Revoked as soon as the clone answered, before graphify ran.
+    assert.equal(revokedAfter, 1)
+    // A file the clone reads and removes: never a command line or an environment.
+    assert.deepEqual(sandboxes.writes, [
+      {
+        path: cloneSecretFile(REPOSITORY_SANDBOX.root),
+        content: cloneCredential(INSTALLATION_TOKEN),
+      },
+    ])
+    for (const secret of [INSTALLATION_TOKEN, cloneCredential(INSTALLATION_TOKEN)]) {
+      assert.notInclude(JSON.stringify(sandboxes.runs), secret)
+    }
+    assert.notInclude(JSON.stringify(sandboxes.runs.map((run) => run.envs)), 'GIT_CONFIG')
     assert.equal((await CodeMap.findOrFail(codeMap.id)).status, CodeMapStatus.Ready)
     assert.notInclude(await dumpDatabase(), INSTALLATION_TOKEN)
     assert.notInclude(logs.lines.join('\n'), INSTALLATION_TOKEN)
@@ -665,6 +685,7 @@ test.group('GitHub App: private repositories and follows', (group) => {
     assert.isNull(await runImport(codeMap.id))
     assert.deepEqual(github.calls, [])
     assert.notInclude(JSON.stringify(sandboxes.runs.map((run) => run.envs)), 'GIT_CONFIG')
+    assert.lengthOf(sandboxes.writes, 0)
   })
 
   test('the token is revoked when the sandbox fails too', async ({ assert }) => {
@@ -676,6 +697,60 @@ test.group('GitHub App: private repositories and follows', (group) => {
     await runImport(codeMap.id)
     assert.include(github.calls, 'revoke-installation:token')
     assert.equal((await CodeMap.findOrFail(codeMap.id)).status, CodeMapStatus.Failed)
+  })
+
+  test('a sandbox that does not take the credential is tried again, the token revoked', async ({
+    assert,
+  }) => {
+    const github = useFakeGithub()
+    const { user, project } = await setup()
+    await grant(user)
+    const codeMap = await pendingMap(user, project)
+    sandboxes.writeFails = true
+    const failed = await runImport(codeMap.id)
+    // BullMQ tries again: the map stays running until the last attempt.
+    assert.instanceOf(failed, Error)
+    assert.equal((await CodeMap.findOrFail(codeMap.id)).status, CodeMapStatus.Running)
+    assert.lengthOf(sandboxes.writes, 1)
+    // No clone and no graphify: nothing ran in the sandbox, which is killed.
+    assert.lengthOf(sandboxes.runs, 0)
+    assert.deepEqual(sandboxes.killed, ['sbx-map'])
+    assert.deepEqual(github.calls, ['installation-token:77:9001', 'revoke-installation:token'])
+
+    // The next attempt makes a token of its own, and reads the map.
+    sandboxes.writeFails = false
+    assert.isNull(await runImport(codeMap.id, 2))
+    assert.equal((await CodeMap.findOrFail(codeMap.id)).status, CodeMapStatus.Ready)
+    assert.lengthOf(sandboxes.writes, 2)
+    assert.deepEqual(github.calls.slice(2), [
+      'installation-token:77:9001',
+      'revoke-installation:token',
+    ])
+  })
+
+  test('a revocation GitHub refuses is logged with its flow and reason, never the token', async ({
+    assert,
+  }) => {
+    const github = useFakeGithub()
+    github.revokeAnswer = { ok: false, failure: GithubFailure.Unreachable }
+    const { user, project } = await setup()
+    await grant(user)
+    const codeMap = await pendingMap(user, project)
+    const logs = captureLogs()
+    try {
+      assert.isNull(await runImport(codeMap.id))
+    } finally {
+      logs.restore()
+    }
+    // Revoked once, right after the clone; the way out does not ask again.
+    assert.deepEqual(github.calls, ['installation-token:77:9001', 'revoke-installation:token'])
+    const failed = logs.lines.filter((line) => line.includes('installation token not revoked'))
+    assert.deepEqual(failed, [
+      JSON.stringify([{ flow: 'import', reason: 'unreachable' }, 'installation token not revoked']),
+    ])
+    for (const secret of [INSTALLATION_TOKEN, cloneCredential(INSTALLATION_TOKEN)]) {
+      assert.notInclude(logs.lines.join('\n'), secret)
+    }
   })
 
   test('fails the map when GitHub refuses the token, retries when it is down', async ({

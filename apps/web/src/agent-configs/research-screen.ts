@@ -17,12 +17,14 @@ function plain(label: string): string {
 /**
  * The steps of a research as the screen of a terminal (ANSI): one prompt line per step, then how
  * it ended, or a cursor while it runs. A page is read with curl in the sandbox, so it is shown as
- * one (the options of the real command line are left out).
+ * one (the options of the real command line are left out); a search, run by the API, as `search`
+ * and its query.
  */
 export function researchScreen(steps: readonly ResearchStep[], failed: string): string {
   return steps
     .map((step) => {
-      const command = plain(step.kind === 'page' ? `curl ${step.label}` : step.label)
+      const prefix = { page: 'curl ', search: 'search ', command: '' }[step.kind]
+      const command = plain(`${prefix}${step.label}`)
       const end = {
         running: '▍',
         done: `${GREEN}✓${RESET}`,

@@ -60,6 +60,7 @@
     "@vinejs/vine": "4.4.0",
     "bullmq": "5.81.4",
     "e2b": "2.64.0",
+    "fast-xml-parser": "5.12.1",
     "luxon": "3.7.2",
     "pg": "8.21.0",
     "reflect-metadata": "0.2.2",

@@ -5,14 +5,15 @@ import {
   RESEARCH_STEP_LABEL_MAX_LENGTH,
   RESEARCH_STEPS_MAX,
 } from '#app/research/constants/research'
+import { cleanQuery } from '#app/web-search/services/search-for'
 
-export const ResearchStepKind = { Page: 'page', Command: 'command' } as const
+export const ResearchStepKind = { Page: 'page', Command: 'command', Search: 'search' } as const
 export type ResearchStepKind = (typeof ResearchStepKind)[keyof typeof ResearchStepKind]
 
 export const ResearchStepState = { Running: 'running', Done: 'done', Failed: 'failed' } as const
 export type ResearchStepState = (typeof ResearchStepState)[keyof typeof ResearchStepState]
 
-/** One thing the model did in the sandbox: the address read or the command run, never its result. */
+/** One thing the model did: the address read, the command run or the query searched, never its result. */
 export type ResearchStep = { kind: ResearchStepKind; label: string; state: ResearchStepState }
 
 function progressKey(userId: number): string {
@@ -27,7 +28,7 @@ export async function readProgress(userId: number): Promise<ResearchStep[]> {
 
 /**
  * The same tools, each call noted for the owner to follow on the screen while the research runs.
- * The one place an address or a command of a research is kept: in Redis, for the account that
+ * The one place an address, a command or a query of a research is kept: in Redis, for the account that
  * asked, until `clear` (the research's `finally`) or `RESEARCH_LOCK_SECONDS` at the latest.
  * A note that cannot be written never fails the research.
  */
@@ -36,10 +37,14 @@ export function trackProgress(
   tools: ResearchTools,
 ): { tools: ResearchTools; clear(): Promise<void> } {
   const steps: ResearchStep[] = []
-  const save = () =>
-    redis
+  // Set by `clear`: a call that settles after the research ended writes nothing back.
+  let closed = false
+  const save = async () => {
+    if (closed) return
+    await redis
       .set(progressKey(userId), JSON.stringify(steps), 'EX', RESEARCH_LOCK_SECONDS)
       .catch(() => null)
+  }
 
   async function noted<T>(
     kind: ResearchStepKind,
@@ -67,6 +72,7 @@ export function trackProgress(
     }
   }
 
+  const search = tools.search?.bind(tools)
   return {
     tools: {
       readPage: (url, signal) =>
@@ -83,8 +89,18 @@ export function trackProgress(
           () => tools.run(command, signal),
           (outcome) => outcome.exitCode === 0,
         ),
+      ...(search && {
+        search: (query: string, signal?: AbortSignal) =>
+          noted(
+            ResearchStepKind.Search,
+            cleanQuery(query),
+            () => search(query, signal),
+            (results) => results !== null,
+          ),
+      }),
     },
     async clear() {
+      closed = true
       await redis.del(progressKey(userId)).catch(() => null)
     },
   }
