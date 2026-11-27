@@ -365,7 +365,7 @@ test.group('Tech watch', (group) => {
       await client
         .post('/admin/watch/sources')
         .headers(json)
-        .json({ search: 'Prompt injection in coding agents' })
+        .json({ search: '  Prompt   injection in coding\tagents ' })
         .loginAs(admin)
     ).assertStatus(409)
     ;(

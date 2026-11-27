@@ -2,6 +2,7 @@ import { TOPICS } from '@coreloom-uml/catalog'
 import vine from '@vinejs/vine'
 import { SKILL_TOPIC_LIMITS } from '#app/skills/constants/skill-topics'
 import { WATCH_ASSISTANT_LIMITS, WATCH_LIMITS } from '#app/watch/constants/watch'
+import { WEB_SEARCH_LIMITS } from '#app/web-search/constants/web-search'
 
 /** A host as typed by the admin: letters, digits, hyphens and dots, lower-cased. */
 const HOST = /^(?=.{1,253}$)(?!-)[a-z0-9-]+(?:\.[a-z0-9-]+)+$/
@@ -49,7 +50,7 @@ export const createWatchSourceInput = vine.create(
       .string()
       .trim()
       .minLength(3)
-      .maxLength(WATCH_LIMITS.queryMaxLength)
+      .maxLength(WEB_SEARCH_LIMITS.queryMaxLength)
       .optional()
       .requiredIfMissing('url'),
     topics: topics().optional(),

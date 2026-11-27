@@ -21,6 +21,7 @@ import {
   updateWatchSourceInput,
 } from '#app/watch/validators/watch-input'
 import type { WatchBlockedSiteOutput, WatchSourcesOutput } from '#app/watch/validators/watch-output'
+import { cleanQuery } from '#app/web-search/services/search-for'
 import { webSearchReady } from '#app/web-search/services/web-search-settings'
 
 /**
@@ -51,7 +52,7 @@ export default class AdminWatchController {
     }
     const target = normalized
       ? { kind: WatchSourceKind.Rss, url: normalized.href, query: null }
-      : { kind: WatchSourceKind.Linkup, url: null, query: search as string }
+      : { kind: WatchSourceKind.Linkup, url: null, query: cleanQuery(search as string) }
     const existing = await WatchSource.query()
       .if(target.url, (q) => q.where('url', target.url as string))
       .if(target.query, (q) => q.whereRaw('lower(query) = lower(?)', [target.query as string]))

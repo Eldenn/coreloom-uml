@@ -28,7 +28,6 @@ export const WATCH_LIMITS = {
   hostMaxLength: 253,
   sourceTitleMaxLength: 200,
   errorMaxLength: 300,
-  queryMaxLength: 200,
 } as const
 
 /**

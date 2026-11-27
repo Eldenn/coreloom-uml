@@ -1,5 +1,6 @@
 import { BaseSchema } from '@adonisjs/lucid/schema'
 import { WATCH_SOURCE_KINDS, WATCH_LIMITS } from '#app/watch/constants/watch'
+import { WEB_SEARCH_LIMITS } from '#app/web-search/constants/web-search'
 
 /**
  * The tech watch (`app/watch/`), shared by the whole instance. `watch_sources` are what the admin
@@ -15,7 +16,7 @@ export default class extends BaseSchema {
       table.increments('id').notNullable()
       table.enum('kind', [...WATCH_SOURCE_KINDS]).notNullable()
       table.string('url', WATCH_LIMITS.urlMaxLength).nullable().unique()
-      table.string('query', WATCH_LIMITS.queryMaxLength).nullable().unique()
+      table.string('query', WEB_SEARCH_LIMITS.queryMaxLength).nullable().unique()
       table.string('title', WATCH_LIMITS.sourceTitleMaxLength).nullable()
       table.jsonb('topics').notNullable().defaultTo('[]')
       table.boolean('enabled').notNullable().defaultTo(true)
