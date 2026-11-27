@@ -24,11 +24,8 @@ export async function withEmptySkillsCatalog() {
   const rollback = await testUtils.db().withGlobalTransaction()
   await db.from('skill_snapshots').delete()
   await db.from('skills').delete()
-  // Back to its one default source, skills.sh, as it was when created.
-  await db.from('skill_sources').whereNot('kind', 'skills-sh').delete()
-  await db
-    .from('skill_sources')
-    .where('kind', 'skills-sh')
-    .update({ enabled: true, last_run_at: null, last_error: null })
+  // Back to its registries, skills.sh and Smithery, as their migrations created them.
+  await db.from('skill_sources').where('kind', 'github').delete()
+  await db.from('skill_sources').update({ enabled: true, last_run_at: null, last_error: null })
   return rollback
 }

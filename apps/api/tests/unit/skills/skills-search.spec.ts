@@ -20,7 +20,11 @@ import {
   routes,
   SHA,
   SKILLS_SH_SOURCE,
+  SMITHERY_PAGE,
+  SMITHERY_SOURCE,
   skillMd,
+  smitheryPages,
+  smitherySkill,
 } from '#tests/unit/skills/skills-search-fixtures'
 
 function run(
@@ -648,6 +652,203 @@ test.group('searchSkills when a source is down', () => {
     assert.deepInclude(bySlug(records).get('browser-tests'), {
       registryId: 'acme/skills/browser-tests',
       foundBy: [1, 2],
+    })
+  })
+})
+
+const ACME_TREE = `https://api.github.com/repos/acme/skills/git/trees/${SHA}?recursive=1`
+const MARKETPLACE = `https://raw.githubusercontent.com/acme/skills/${SHA}/.claude-plugin/marketplace.json`
+
+/** `acme/skills` with a `.claude-plugin/marketplace.json` listing `plugins`. */
+function marketplace(plugins: unknown[]): Record<string, Route> {
+  const tree = (routes()[ACME_TREE]?.body as { tree: unknown[] }).tree
+  return {
+    [ACME_TREE]: {
+      body: {
+        tree: [
+          ...tree,
+          { path: '.claude-plugin/marketplace.json', type: 'blob', sha: '9'.repeat(40) },
+        ],
+      },
+    },
+    [MARKETPLACE]: { body: { name: 'acme', plugins } },
+  }
+}
+
+const rawSkill = (owner: string, folder: string) => ({
+  [`https://raw.githubusercontent.com/${owner}/skills/${SHA}/${folder}/SKILL.md`]: {
+    body: skillMd(folder.split('/').at(-1) as string, 'A skill from a marketplace.'),
+  },
+})
+
+test.group('searchSkills with Smithery', () => {
+  test('lists the verified skills of good quality, trusted like a repository', async ({
+    assert,
+  }) => {
+    const tree = 'https://github.com/acme/skills/tree/main/skills'
+    const network = routes(
+      smitheryPages([
+        smitherySkill(`${tree}/lint-rules`),
+        smitherySkill(`${tree}/c4-docs`, { verified: false }),
+        smitherySkill(`${tree}/browser-tests`, { qualityScore: 0.5 }),
+        smitherySkill('https://gitlab.com/acme/skills/tree/main/skills/elsewhere'),
+      ]),
+    )
+    const { result, calls } = run([], network, { sources: [SMITHERY_SOURCE] })
+    const { records, sources } = await result
+    assert.deepEqual(
+      records.map((record) => record.slug),
+      ['lint-rules'],
+    )
+    assert.deepInclude(records[0], {
+      registryId: 'acme/skills/lint-rules',
+      source: 'acme/skills',
+      foundBy: [4],
+      trusted: true,
+      eligible: true,
+      installs: 0,
+      url: `https://github.com/acme/skills/tree/${SHA}/skills/lint-rules`,
+    })
+    assert.deepEqual(sources, [{ sourceId: 4, ok: true, complete: true, error: null }])
+    assert.isFalse(calls.some((call) => call.url.includes('skills.sh')))
+  })
+
+  test('a page that fails keeps the pages before it, as a partial run', async ({ assert }) => {
+    const network = routes({
+      ...smitheryPages(
+        [smitherySkill('https://github.com/acme/skills/tree/main/skills/lint-rules')],
+        [],
+      ),
+      [`${SMITHERY_PAGE}2`]: down(),
+    })
+    const { records, sources } = await run([], network, { sources: [SMITHERY_SOURCE] }).result
+    assert.deepInclude(bySlug(records).get('lint-rules'), { foundBy: [4] })
+    assert.deepEqual(sources, [{ sourceId: 4, ok: true, complete: false, error: 'page 2 failed' }])
+  })
+
+  test('Smithery down does not stop skills.sh', async ({ assert }) => {
+    const network = routes({ [`${SMITHERY_PAGE}1`]: down() })
+    const { records, sources } = await run([], network, {
+      sources: [SKILLS_SH_SOURCE, SMITHERY_SOURCE],
+    }).result
+    assert.deepInclude(sources[1], { sourceId: 4, ok: false })
+    assert.deepInclude(bySlug(records).get('browser-tests'), { eligible: true })
+  })
+
+  test('a skill whose repository moved is ineligible, and the run goes on', async ({ assert }) => {
+    const network = routes({
+      ...smitheryPages([
+        smitherySkill('https://github.com/old/skills/tree/main/skills/moved'),
+        smitherySkill('https://github.com/acme/skills/tree/main/skills/lint-rules'),
+      ]),
+      'https://api.github.com/repos/old/skills': { status: 301, body: {} },
+    })
+    const { records } = await run([], network, { sources: [SMITHERY_SOURCE] }).result
+    assert.deepInclude(bySlug(records).get('moved'), {
+      checked: true,
+      eligible: false,
+      ineligibleReason: 'moved: /repos/old/skills',
+    })
+    assert.deepInclude(bySlug(records).get('lint-rules'), { eligible: true })
+  })
+
+  test('a skill skills.sh also finds, in another case, is one record', async ({ assert }) => {
+    const network = routes(
+      smitheryPages([
+        smitherySkill('https://github.com/ACME/Skills/tree/main/skills/browser-tests'),
+      ]),
+    )
+    const { records } = await run([], network, {
+      sources: [SKILLS_SH_SOURCE, SMITHERY_SOURCE],
+    }).result
+    assert.lengthOf(
+      records.filter((record) => record.slug.startsWith('browser-tests')),
+      1,
+    )
+    assert.deepInclude(bySlug(records).get('browser-tests'), {
+      registryId: 'acme/skills/browser-tests',
+      foundBy: [1, 4],
+      trusted: true,
+    })
+  })
+})
+
+test.group('searchSkills with a marketplace', () => {
+  test("a repository's marketplace.json says which of its folders are skills", async ({
+    assert,
+  }) => {
+    const network = routes(
+      marketplace([{ name: 'tests', source: './', skills: ['./skills/browser-tests'] }]),
+    )
+    const { records } = await run([], network, { sources: [ACME_SOURCE] }).result
+    assert.deepEqual(
+      records.map((record) => record.slug),
+      ['browser-tests'],
+    )
+    assert.deepInclude(records[0], { foundBy: [2], trusted: true, eligible: true })
+  })
+
+  test('the plugins it lists from other repositories are trusted too', async ({ assert }) => {
+    const network = routes({
+      ...marketplace([
+        {
+          name: 'ext',
+          source: {
+            source: 'git-subdir',
+            url: 'https://github.com/other/skills.git',
+            path: 'plugins/ext',
+          },
+        },
+        { name: 'third', source: { source: 'github', repo: 'third/skills' } },
+        { name: 'packaged', source: { source: 'npm', package: 'packaged' } },
+      ]),
+      ...repository('other', ['plugins/ext/skills/ext-skill', 'plugins/ext/docs/not-a-skill']),
+      ...rawSkill('other', 'plugins/ext/skills/ext-skill'),
+      ...repository('third', ['skills/third-skill']),
+      ...rawSkill('third', 'skills/third-skill'),
+    })
+    const { records, sources } = await run([], network, { sources: [ACME_SOURCE] }).result
+    assert.sameMembers(
+      records.map((record) => record.slug),
+      ['ext-skill', 'third-skill'],
+    )
+    assert.deepInclude(bySlug(records).get('ext-skill'), {
+      registryId: 'other/skills/ext-skill',
+      source: 'other/skills',
+      foundBy: [2],
+      trusted: true,
+      eligible: true,
+      url: `https://github.com/other/skills/tree/${SHA}/plugins/ext/skills/ext-skill`,
+    })
+    assert.deepEqual(sources, [{ sourceId: 2, ok: true, complete: true, error: null }])
+  })
+
+  test('a listed repository that fails leaves its skills as they are, the run goes on', async ({
+    assert,
+  }) => {
+    const trusted = known({
+      slug: 'gone-skill',
+      registryId: 'gone/skills/gone-skill',
+      url: `https://github.com/gone/skills/tree/${SHA}/skills/gone-skill`,
+      installs: 0,
+      audits: [],
+      trustedBy: [2],
+    })
+    const network = routes({
+      ...marketplace([
+        { name: 'gone', source: { source: 'github', repo: 'gone/skills' } },
+        { name: 'local', source: './', skills: ['./skills/lint-rules'] },
+      ]),
+      'https://api.github.com/repos/gone/skills': down(),
+    })
+    const { records, sources } = await run([trusted], network, { sources: [ACME_SOURCE] }).result
+    assert.deepInclude(sources[0], { sourceId: 2, ok: true, complete: false })
+    assert.deepInclude(bySlug(records).get('lint-rules'), { eligible: true })
+    assert.deepInclude(bySlug(records).get('gone-skill'), {
+      trusted: true,
+      eligible: true,
+      checked: false,
+      contentSha: FOLDER,
     })
   })
 })

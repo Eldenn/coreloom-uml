@@ -155,3 +155,37 @@ export function known(overrides: Partial<KnownSkill> = {}): KnownSkill {
     ...overrides,
   }
 }
+
+export const SMITHERY_SOURCE: SearchSource = {
+  id: 4,
+  kind: 'smithery',
+  owner: null,
+  repo: null,
+  path: null,
+}
+
+export const SMITHERY_PAGE = 'https://api.smithery.ai/skills?pageSize=100&page='
+
+/** One Smithery skill, verified with a good quality score unless told otherwise. */
+export function smitherySkill(gitUrl: string, overrides: Record<string, unknown> = {}) {
+  return {
+    slug: gitUrl.split('/').at(-1),
+    displayName: gitUrl.split('/').at(-1),
+    gitUrl,
+    verified: true,
+    qualityScore: 0.9,
+    totalActivations: 10,
+    uniqueUsers: 8,
+    ...overrides,
+  }
+}
+
+/** Smithery's list, one page per array. */
+export function smitheryPages(...pages: unknown[][]): Record<string, Route> {
+  return Object.fromEntries(
+    pages.map((skills, index) => [
+      `${SMITHERY_PAGE}${index + 1}`,
+      { body: { skills, pagination: { currentPage: index + 1, totalPages: pages.length } } },
+    ]),
+  )
+}

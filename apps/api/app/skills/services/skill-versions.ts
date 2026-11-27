@@ -3,7 +3,7 @@ import { gunzip, gzip } from 'node:zlib'
 import drive from '@adonisjs/drive/services/main'
 import { SKILL_NAME, SkillOrigin } from '@coreloom-uml/catalog'
 import { DateTime } from 'luxon'
-import { SkillSourceKind, SkillStatus } from '#app/skills/constants/skill'
+import { SkillStatus, TRUSTING_SOURCE_KINDS } from '#app/skills/constants/skill'
 import {
   LICENSE_IN_FOLDER,
   SKILL_VERSION_LIMITS,
@@ -57,10 +57,10 @@ export async function captureSkillVersions(options: CaptureOptions = {}): Promis
   const skills = await capturableSkills()
     .if(options.slug, (query) => query.where('slug', options.slug as string))
     .orderByRaw(`origin = '${SkillOrigin.Manual}' desc`)
-    // Then what a trusted GitHub source vouches for, which no installs figure would bring up.
+    // Then what a trusting source vouches for, which no installs figure would bring up.
     .orderByRaw(
       `exists (select 1 from skill_source_skills l join skill_sources s on s.id = l.skill_source_id
-        where l.skill_id = skills.id and s.enabled and s.kind = '${SkillSourceKind.Github}') desc`,
+        where l.skill_id = skills.id and s.enabled and s.kind in (${TRUSTING_SOURCE_KINDS.map((kind) => `'${kind}'`).join(', ')})) desc`,
     )
     .orderByRaw('installs desc nulls last')
     .orderBy('id')
