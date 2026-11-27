@@ -3873,7 +3873,8 @@ export const fr: Messages = {
       provider_settings:
         'Ces réglages de fournisseur ne peuvent pas être appelés : vérifiez-les dans vos paramètres.',
       over_cap: 'Même l’estimation basse de ce test dépasse son plafond de coût.',
-      cli_path_unavailable: 'Ce test exécute votre clé dans un bac à sable, ce qui n’est pas encore disponible.',
+      cli_path_unavailable:
+        'Ce test exécute votre clé dans un bac à sable, ce qui n’est pas encore disponible.',
     },
     openSettings: 'Ouvrir les paramètres',
     confirmTitle: 'Lancer un test des conventions ?',
