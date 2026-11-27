@@ -1,3 +1,4 @@
+import { gunzipSync } from 'node:zlib'
 import app from '@adonisjs/core/services/app'
 import type { TrialGrades } from '@coreloom-uml/catalog/evals'
 import {
@@ -29,7 +30,8 @@ export class FakeEvalSandboxes {
   isolated = 0
   killed: string[] = []
   runs: Run[] = []
-  uploads: { path: string; bytes: number; user: string }[] = []
+  /** Every upload with a copy of its bytes, as sent (a gzipped tarball, for the archives). */
+  uploads: { path: string; bytes: number; data: Buffer; user: string }[] = []
   /** What `list` answers, by the metadata it is asked for (all of it must match). */
   listed: ListedSandbox[] = []
   listQueries: Record<string, string>[] = []
@@ -74,6 +76,24 @@ export class FakeEvalSandboxes {
       .map((run) => run.envs.SHELL_COMMAND ?? '')
   }
 
+  /**
+   * Whether `secret` reached any sandbox: in a command line, an env's name or value, or the bytes
+   * of an upload, a gzipped one searched once unpacked too (a tarball stores its files as is).
+   */
+  holds(secret: string): boolean {
+    const inRuns = this.runs.some(
+      (run) =>
+        run.command.includes(secret) ||
+        Object.entries(run.envs).some(
+          ([name, value]) => name.includes(secret) || value.includes(secret),
+        ),
+    )
+    return (
+      inRuns ||
+      this.uploads.some((upload) => unpacked(upload.data).some((bytes) => bytes.includes(secret)))
+    )
+  }
+
   private create(meta: { runId: number; accountId: number }): OpenEvalSandbox | null {
     if (this.options.createFails) return null
     this.created.push(meta)
@@ -101,7 +121,7 @@ export class FakeEvalSandboxes {
         return !this.options.isolateFails
       },
       upload: async (path, data, user = 'user') => {
-        this.uploads.push({ path, bytes: data.byteLength, user })
+        this.uploads.push({ path, bytes: data.byteLength, data: Buffer.from(data), user })
         return true
       },
       renew: async () => {},
@@ -110,4 +130,10 @@ export class FakeEvalSandboxes {
       },
     }
   }
+}
+
+/** An upload's bytes and, when they are gzip (magic `1f 8b`), their gunzipped form too. */
+function unpacked(data: Buffer): Buffer[] {
+  if (data[0] !== 0x1f || data[1] !== 0x8b) return [data]
+  return [data, gunzipSync(data)]
 }
