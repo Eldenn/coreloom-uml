@@ -42,6 +42,7 @@ import {
 import { FakeEvalSandboxes } from '#tests/helpers/fake-eval-sandbox'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
+import { TEST_LLM_KEY } from '#tests/helpers/llm-key'
 
 const tmp = mkdtempSync(join(realpathSync(tmpdir()), 'coreloom-uml-evals-spec-'))
 
@@ -385,6 +386,11 @@ test.group('Convention tests - the job', (group) => {
       // The lock is free and the run's folder gone.
       assert.isTrue(await lockIsFree(user.id))
       assert.deepEqual(readdirSync(evalsHome()), [])
+      // The account's saved mistral key reached no sandbox: no command line, no env, no upload
+      // (the archives searched unpacked, as the control on a file name of theirs shows).
+      assert.isAbove(sandboxes.uploads.length, 0)
+      assert.isTrue(sandboxes.holds('AGENTS.md'))
+      assert.isFalse(sandboxes.holds(TEST_LLM_KEY))
     } finally {
       sandboxes.restore()
     }
@@ -508,6 +514,11 @@ test.group('Convention tests - the job', (group) => {
       assert.include(files, 'AGENTS.md')
       assert.include(files, 'CLAUDE.md')
       assert.lengthOf(sandboxes.created, 6)
+      // Nor in any sandbox: no command line, no env, no upload (the archives searched unpacked,
+      // as the control on a file name of theirs shows).
+      assert.isAbove(sandboxes.uploads.length, 0)
+      assert.isTrue(sandboxes.holds('AGENTS.md'))
+      assert.isFalse(sandboxes.holds(ANTHROPIC_KEY))
 
       // The key's base64, anywhere in an output, ends the run as leaked.
       const encoded = Buffer.from(`token=${ANTHROPIC_KEY};`).toString('base64')
