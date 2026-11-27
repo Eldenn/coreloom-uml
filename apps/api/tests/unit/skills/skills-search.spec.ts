@@ -1,6 +1,7 @@
 import { test } from '@japa/runner'
 import {
   cleanText,
+  identifyLicense,
   type KnownSkill,
   mergeAffinities,
   readFrontmatter,
@@ -355,6 +356,36 @@ test.group('skills search helpers', () => {
     )
   })
 
+  test('names the open licence a licence file holds, or null', ({ assert }) => {
+    const cases: [string, string | null][] = [
+      ['Apache License\n  Version 2.0, January 2004', 'Apache-2.0'],
+      ['MIT License\n\nPermission is hereby granted, free of charge, to any person', 'MIT'],
+      [
+        'Redistribution and use in source and binary forms, with or without modification, are permitted provided that',
+        'BSD-2-Clause',
+      ],
+      [
+        'Redistribution and use in source and binary forms... Neither the name of the copyright holder nor',
+        'BSD-3-Clause',
+      ],
+      [
+        'Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.',
+        'ISC',
+      ],
+      [
+        'Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted.',
+        '0BSD',
+      ],
+      ['Mozilla Public License Version 2.0', 'MPL-2.0'],
+      ['This is free and unencumbered software released into the public domain.', 'Unlicense'],
+      ['Creative Commons Legal Code\n\nCC0 1.0 Universal', 'CC0-1.0'],
+      ['Attribution 4.0 International\n\nCreative Commons Corporation', 'CC-BY-4.0'],
+      ['© 2025 Someone. All rights reserved.', null],
+      ['GNU GENERAL PUBLIC LICENSE Version 3', null],
+    ]
+    for (const [text, spdx] of cases) assert.equal(identifyLicense(text), spdx, text)
+  })
+
   test('renders the report as one line', ({ assert }) => {
     assert.equal(
       renderReport({
@@ -531,8 +562,11 @@ test.group('searchSkills with sources', () => {
     assert.notExists(calls.find((call) => call.url.includes('skills.sh')))
   })
 
-  test('an archived or unlicensed repository lists nothing and says why', async ({ assert }) => {
-    const network = routes(repository('closed', ['skills/x'], null))
+  test('an archived repository lists nothing and says why', async ({ assert }) => {
+    const network = routes({
+      ...repository('closed', ['skills/x']),
+      'https://api.github.com/repos/closed/skills': { body: { archived: true } },
+    })
     const { records, sources } = await run([], network, {
       sources: [SKILLS_SH_SOURCE, github('closed')],
     }).result
@@ -540,9 +574,59 @@ test.group('searchSkills with sources', () => {
       sourceId: 3,
       ok: true,
       complete: true,
-      error: 'licence not accepted: none',
+      error: 'archived repository',
     })
     assert.notExists(records.find((record) => record.source === 'closed/skills'))
+  })
+
+  test('a repository with no licence of its own is listed, each skill judged by its folder', async ({
+    assert,
+  }) => {
+    const base = repository(
+      'folders',
+      ['skills/apache', 'skills/declared', 'skills/none', 'skills/own'],
+      null,
+    )
+    const tree = `https://api.github.com/repos/folders/skills/git/trees/${SHA}?recursive=1`
+    const entries = (base[tree]?.body as { tree: unknown[] }).tree
+    const raw = (path: string) => `https://raw.githubusercontent.com/folders/skills/${SHA}/${path}`
+    const network = routes({
+      ...base,
+      [tree]: {
+        body: {
+          tree: [
+            ...entries,
+            { path: 'skills/apache/LICENSE.txt', type: 'blob', sha: '7'.repeat(40) },
+            { path: 'skills/own/LICENSE', type: 'blob', sha: '8'.repeat(40) },
+          ],
+        },
+      },
+      [raw('skills/apache/LICENSE.txt')]: {
+        body: '\n   Apache License\n   Version 2.0, January 2004\n   http://www.apache.org/licenses/\n',
+      },
+      [raw('skills/own/LICENSE')]: { body: '© 2025 Someone. All rights reserved.' },
+      [raw('skills/apache/SKILL.md')]: {
+        body: '---\nname: apache\ndescription: An Apache skill.\nlicense: Complete terms in LICENSE.txt\n---\n',
+      },
+      [raw('skills/declared/SKILL.md')]: {
+        body: '---\nname: declared\ndescription: A declared skill.\nlicense: MIT\n---\n',
+      },
+      [raw('skills/none/SKILL.md')]: { body: skillMd('none', 'No licence at all.') },
+      [raw('skills/own/SKILL.md')]: { body: skillMd('own', 'A closed licence.') },
+    })
+    const { records, sources } = await run([], network, { sources: [github('folders')] }).result
+    assert.deepEqual(sources, [{ sourceId: 3, ok: true, complete: true, error: null }])
+    const found = bySlug(records)
+    assert.deepInclude(found.get('apache'), { eligible: true, license: 'Apache-2.0' })
+    assert.deepInclude(found.get('declared'), { eligible: true, license: 'MIT' })
+    assert.deepInclude(found.get('none'), {
+      eligible: false,
+      ineligibleReason: 'licence not accepted: none',
+    })
+    assert.deepInclude(found.get('own'), {
+      eligible: false,
+      ineligibleReason: 'licence not accepted: skills/own/LICENSE not recognised',
+    })
   })
 
   test('a source lists at most 100 skills, in path order', async ({ assert }) => {
