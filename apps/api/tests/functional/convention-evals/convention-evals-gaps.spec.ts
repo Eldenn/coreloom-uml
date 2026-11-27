@@ -33,6 +33,7 @@ import User from '#app/users/models/user'
 import llmConfig from '#config/llm'
 import {
   ANTHROPIC_KEY,
+  allowCliPath,
   anthropic,
   CANARY,
   claude,
@@ -142,6 +143,7 @@ async function withLimit(key: 'harborPollMs', value: number, body: () => Promise
 
 test.group('Convention tests (gaps) - routes', (group) => {
   group.each.setup(() => withDefaultFlags())
+  group.each.setup(() => allowCliPath())
   group.each.teardown(() => app.container.restore(LanguageModels))
 
   test('the lock is the account’s: a second test of another configuration is refused 409', async ({
@@ -318,6 +320,7 @@ test.group('Convention tests (gaps) - routes', (group) => {
 
 test.group('Convention tests (gaps) - the job', (group) => {
   group.each.setup(() => withDefaultFlags())
+  group.each.setup(() => allowCliPath())
   group.each.teardown(() => {
     app.container.restore(LanguageModels)
     app.container.restore(HarborRunner)

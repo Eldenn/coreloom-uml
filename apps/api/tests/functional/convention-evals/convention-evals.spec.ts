@@ -25,6 +25,7 @@ import LanguageModels from '#app/llm/services/language-models'
 import { saveApiKey } from '#app/llm-connections/services/llm-api-keys'
 import {
   ANTHROPIC_KEY,
+  allowCliPath,
   anthropic,
   CANARY,
   freeLock,
@@ -114,6 +115,7 @@ function harborResults(output: string) {
 
 test.group('Convention tests - routes', (group) => {
   group.each.setup(() => withDefaultFlags())
+  group.each.setup(() => allowCliPath())
   group.each.teardown(async () => {
     app.container.restore(LanguageModels)
   })
@@ -268,8 +270,68 @@ test.group('Convention tests - routes', (group) => {
   })
 })
 
+test.group('Convention tests - path I is off until #153', (group) => {
+  group.each.setup(() => withDefaultFlags())
+  group.each.setup(() => allowCliPath('disabled'))
+
+  test('a saved key is refused with cli_path_unavailable; a subscription is not', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    await turnOn(user)
+    await saveApiKey(user, 'anthropic', { apiKey: ANTHROPIC_KEY, baseUrl: null })
+    const configId = await makeConfig(client, user, 'commits')
+
+    const plan = await client
+      .get(`/agent-configs/${configId}/evals/plan`)
+      .qs(anthropic)
+      .headers(json)
+      .loginAs(user)
+    plan.assertStatus(200)
+    assert.equal(plan.body().path, 'cli')
+    assert.equal(plan.body().refusal, 'cli_path_unavailable')
+
+    const { response, sent } = await start(client, user, configId, anthropic)
+    response.assertStatus(422)
+    assert.equal(response.body().refusal, 'cli_path_unavailable')
+    assert.lengthOf(sent, 0)
+    assert.lengthOf(await ConventionEvalRun.query().where('userId', user.id), 0)
+    assert.isTrue(await lockIsFree(user.id, 'cli'))
+
+    // A path II kind does not read the setting.
+    const harness = await client
+      .get(`/agent-configs/${configId}/evals/plan`)
+      .qs({ kind: 'mistral', model: 'mistral-small-2603' })
+      .headers(json)
+      .loginAs(user)
+    assert.notEqual(harness.body().refusal, 'cli_path_unavailable')
+  })
+
+  test('the worker refuses a path I run queued before the setting was turned off', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    await turnOn(user)
+    await saveApiKey(user, 'anthropic', { apiKey: ANTHROPIC_KEY, baseUrl: null })
+    const configId = await makeConfig(client, user, 'commits')
+    const restore = allowCliPath('enabled')
+    const { sent } = await start(client, user, configId, anthropic)
+    restore()
+    const harbor = useHarbor(() => [])
+    const { run, trials } = await runJob(sent[0] as RunConventionEvalJobData)
+    assert.equal(run.status, EvalRunStatus.Failed)
+    assert.equal(run.failureReason, EvalFailureReason.CliPathUnavailable)
+    assert.lengthOf(trials, 0)
+    assert.lengthOf(harbor.started, 0)
+    app.container.restore(HarborRunner)
+  })
+})
+
 test.group('Convention tests - the job', (group) => {
   group.each.setup(() => withDefaultFlags())
+  group.each.setup(() => allowCliPath())
   group.each.teardown(async () => {
     app.container.restore(LanguageModels)
     app.container.restore(HarborRunner)

@@ -70,6 +70,8 @@ export const EvalFailureReason = {
   ProviderAuth: 'provider_auth',
   /** Another run holds the account's slot when this one starts. */
   Busy: 'busy',
+  /** A path I run reached a worker where `CONVENTION_EVALS_CLI_PATH` is off. */
+  CliPathUnavailable: 'cli_path_unavailable',
 } as const
 export type EvalFailureReason = (typeof EvalFailureReason)[keyof typeof EvalFailureReason]
 
@@ -83,6 +85,8 @@ export const EvalRefusal = {
   ProviderSettings: 'provider_settings',
   /** Even the lower estimate passes the cap. */
   OverCap: 'over_cap',
+  /** A saved key would run path I, which `CONVENTION_EVALS_CLI_PATH` keeps off (#153). */
+  CliPathUnavailable: 'cli_path_unavailable',
 } as const
 export type EvalRefusal = (typeof EvalRefusal)[keyof typeof EvalRefusal]
 

@@ -12,6 +12,7 @@ import {
   EvalRefusal,
 } from '#app/convention-evals/constants/convention-evals'
 import { EVAL_PRICES_CHECKED_ON } from '#app/convention-evals/constants/eval-prices'
+import { cliPathEnabled } from '#app/convention-evals/services/cli-path'
 import { priceOf, roundUsd, trialEstimate } from '#app/convention-evals/services/eval-cost'
 import { providerProblem } from '#app/llm/services/language-models'
 import type { ProviderKind } from '#app/llm-connections/constants/llm-connections'
@@ -95,7 +96,7 @@ export async function planEval(
 
   const resolved = await resolveCredential(provider, user)
   if ('notFound' in resolved) return resolved
-  const refusal = refusalOf({ tasks, provider, resolved, estimate })
+  const refusal = refusalOf({ tasks, provider, resolved, estimate, path: route.path })
   return {
     ...route,
     label: EVAL_AGENT_LABELS[route.agent],
@@ -125,8 +126,10 @@ function refusalOf(input: {
   provider: ProviderSettings
   resolved: Exclude<Awaited<ReturnType<typeof resolveCredential>>, { notFound: true }>
   estimate: EvalPlan['estimate']
+  path: EvalPath
 }): EvalRefusal | null {
   if (input.tasks.length === 0) return EvalRefusal.NoTestableRule
+  if (input.path === EvalPath.Cli && !cliPathEnabled()) return EvalRefusal.CliPathUnavailable
   if (!('credential' in input.resolved)) return EvalRefusal.NoCredential
   const { credential, baseUrl } = input.resolved
   const key = typeof credential === 'string' ? credential : ''

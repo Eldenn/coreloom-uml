@@ -17,6 +17,7 @@ import {
   SERIAL_KINDS,
 } from '#app/convention-evals/constants/convention-evals'
 import ConventionEvalRun from '#app/convention-evals/models/convention-eval-run'
+import { cliPathEnabled } from '#app/convention-evals/services/cli-path'
 import { killRunSandboxes, runCli } from '#app/convention-evals/services/cli-run'
 import { priceOf } from '#app/convention-evals/services/eval-cost'
 import {
@@ -141,6 +142,10 @@ export default class RunConventionEvalJob extends Job<RunConventionEvalJobData, 
     const price = priceOf(provider.kind, provider.model)
 
     if (route.path === EvalPath.Cli && route.agent !== EvalAgent.Harness && route.providerHost) {
+      // Checked again where Harbor would start: a run queued before the setting was turned off.
+      if (!cliPathEnabled()) {
+        return { status: EvalRunStatus.Failed, reason: EvalFailureReason.CliPathUnavailable }
+      }
       const resolved = await resolveCredential(provider, user)
       const credential =
         'credential' in resolved && typeof resolved.credential === 'string'

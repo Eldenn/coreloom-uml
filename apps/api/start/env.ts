@@ -232,4 +232,13 @@ export default await Env.create(new URL('../', import.meta.url), {
   | `tmp/convention-evals` inside the app.
   */
   CONVENTION_EVALS_DIR: Env.schema.string.optional(),
+
+  /*
+  | Convention tests through a saved Anthropic or OpenAI key (path I: Harbor runs
+  | the provider's coding agent CLI in a sandbox with the key). Off unless
+  | `enabled`: until #153 lifts it, the plan and the route refuse such a key
+  | (`cli_path_unavailable`) and the worker refuses to run one. Subscriptions and
+  | the other kinds (path II) do not read it.
+  */
+  CONVENTION_EVALS_CLI_PATH: Env.schema.enum.optional(['enabled', 'disabled'] as const),
 })

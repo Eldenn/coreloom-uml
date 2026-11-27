@@ -29,6 +29,7 @@ import RunConventionEvalJob, {
 } from '#app/jobs/run-convention-eval_job'
 import LanguageModels from '#app/llm/services/language-models'
 import User from '#app/users/models/user'
+import env from '#start/env'
 import { saveTestLlmKey } from '#tests/helpers/llm-key'
 
 type Client = TestContext['client']
@@ -154,6 +155,16 @@ export async function lockIsFree(userId: number, path: EvalPath = 'harness') {
   const free = await acquireEvalLock(userId, path, 'probe')
   if (free) await releaseEvalLock(userId, 'probe')
   return free
+}
+
+/**
+ * Turns path I on (`CONVENTION_EVALS_CLI_PATH=enabled`) for one spec, as a group's `each.setup`:
+ * those specs swap Harbor and never run it. Answers the teardown that puts the setting back.
+ */
+export function allowCliPath(state: 'enabled' | 'disabled' = 'enabled') {
+  const before = env.get('CONVENTION_EVALS_CLI_PATH')
+  env.set('CONVENTION_EVALS_CLI_PATH', state)
+  return () => env.set('CONVENTION_EVALS_CLI_PATH', before ?? 'disabled')
 }
 
 /** Frees the account's slot whoever holds it, for a spec's clean-up. */

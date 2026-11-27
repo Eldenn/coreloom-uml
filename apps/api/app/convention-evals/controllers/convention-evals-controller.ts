@@ -1,30 +1,24 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import app from '@adonisjs/core/services/app'
-import logger from '@adonisjs/core/services/logger'
-import { CATALOG_VERSION } from '@coreloom-uml/catalog'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
-import { DateTime } from 'luxon'
 import {
   AGENT_CONFIG_NOT_FOUND,
   findOwnedAgentConfig,
 } from '#app/agent-configs/services/owned-agent-config'
 import {
   CONVENTION_EVAL_BUSY,
-  CONVENTION_EVAL_LIMITS,
   CONVENTION_EVAL_RUN_NOT_FOUND,
   CONVENTION_EVALS_NOT_FOUND,
-  EvalFailureReason,
   EvalRefusal,
-  EvalRunStatus,
 } from '#app/convention-evals/constants/convention-evals'
 import ConventionEvalRun from '#app/convention-evals/models/convention-eval-run'
 import {
   serializeConventionEvalRun,
   serializeConventionEvalTrial,
 } from '#app/convention-evals/serializers/convention-eval-serializer'
-import { acquireEvalLock, releaseEvalLock } from '#app/convention-evals/services/eval-lock'
 import { type EvalPlan, planEval } from '#app/convention-evals/services/eval-plan'
 import EvalSandboxes from '#app/convention-evals/services/eval-sandbox'
+import { startConventionEval } from '#app/convention-evals/services/eval-start'
 import {
   listConventionEvalsInput,
   planConventionEvalInput,
@@ -37,7 +31,6 @@ import type {
   ConventionEvalStartOutput,
 } from '#app/convention-evals/validators/convention-evals-output'
 import { isFeatureEnabled } from '#app/feature-flags/services/feature-flags'
-import RunConventionEvalJob from '#app/jobs/run-convention-eval_job'
 import { SUBSCRIPTION_NOT_FOUND } from '#app/llm-connections/constants/llm-connections'
 import { paginate } from '#app/shared/pagination/paginate'
 import type User from '#app/users/models/user'
@@ -48,6 +41,8 @@ const REFUSAL_MESSAGES: Readonly<Record<EvalRefusal, string>> = {
   [EvalRefusal.NoCredential]: 'This provider has no saved key or connected subscription.',
   [EvalRefusal.ProviderSettings]: 'These provider settings cannot be called.',
   [EvalRefusal.OverCap]: 'Even the lower estimate of this test passes its cost cap.',
+  [EvalRefusal.CliPathUnavailable]:
+    'This test runs your key in a sandbox, which is not available yet.',
 }
 
 /** Behind the `convention-evals` flag and E2B: 404 to anyone without either. */
@@ -102,63 +97,16 @@ export default class ConventionEvalsController {
     if (!config) return response.notFound(AGENT_CONFIG_NOT_FOUND)
     const { provider } = await request.validateUsing(startConventionEvalInput)
 
-    const plan = await planEval(config, provider, user)
-    if ('notFound' in plan) return response.notFound(SUBSCRIPTION_NOT_FOUND)
-    if (plan.refusal) {
+    const started = await startConventionEval(config, provider, user)
+    if ('notFound' in started) return response.notFound(SUBSCRIPTION_NOT_FOUND)
+    if ('refusal' in started) {
       return response.unprocessableEntity({
-        error: { message: REFUSAL_MESSAGES[plan.refusal] },
-        refusal: plan.refusal,
+        error: { message: REFUSAL_MESSAGES[started.refusal] },
+        refusal: started.refusal,
       })
     }
-    // The row first, so the lock holds its id: only this run may renew or free it.
-    const run = await ConventionEvalRun.create({
-      userId: user.id,
-      agentConfigId: config.id,
-      path: plan.path,
-      agent: plan.agent,
-      providerKind: provider.kind,
-      model: provider.model,
-      status: EvalRunStatus.Queued,
-      failureReason: null,
-      capUsd: CONVENTION_EVAL_LIMITS.capUsd,
-      estimateLowUsd: plan.estimate?.lowUsd ?? null,
-      estimateHighUsd: plan.estimate?.highUsd ?? null,
-      pricesCheckedOn: plan.pricesCheckedOn,
-      costUsd: null,
-      inputTokens: 0,
-      cachedInputTokens: 0,
-      cacheWriteTokens: 0,
-      outputTokens: 0,
-      trialCount: plan.trials,
-      // The revision tested is the one the job renders (it writes it again then).
-      configRevision: config.revision,
-      catalogVersion: CATALOG_VERSION,
-      startedAt: null,
-      endedAt: null,
-    })
-    if (!(await acquireEvalLock(user.id, plan.path, String(run.id)))) {
-      await run.delete()
-      return response.conflict(CONVENTION_EVAL_BUSY)
-    }
-    try {
-      // Ids and kinds only: the job resolves the credential itself.
-      await RunConventionEvalJob.dispatch({
-        runId: run.id,
-        provider: { kind: provider.kind, model: provider.model },
-      })
-    } catch (error) {
-      run.status = EvalRunStatus.Failed
-      run.failureReason = EvalFailureReason.RunnerFailed
-      run.endedAt = DateTime.now()
-      await run.save().catch(() => undefined)
-      await releaseEvalLock(user.id, String(run.id))
-      throw error
-    }
-    logger.info(
-      { runId: run.id, agentConfigId: config.id, kind: provider.kind, trials: plan.trials },
-      'convention test queued',
-    )
-    const output: ConventionEvalStartOutput = { runId: run.id }
+    if ('busy' in started) return response.conflict(CONVENTION_EVAL_BUSY)
+    const output: ConventionEvalStartOutput = { runId: started.runId }
     return response.accepted(output)
   }
 
