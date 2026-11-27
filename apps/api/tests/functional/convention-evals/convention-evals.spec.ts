@@ -437,6 +437,7 @@ test.group('Convention tests - the job', (group) => {
       assert.isAbove(done.run.costUsd ?? 0, 0)
       // The key went to the child's environment under its name, nowhere in what Harbor was given.
       assert.equal(clean.started[0]?.env.ANTHROPIC_API_KEY, ANTHROPIC_KEY)
+      assert.property(clean.started[0]?.env ?? {}, 'E2B_API_KEY')
       assert.notInclude(JSON.stringify(clean.prepared), ANTHROPIC_KEY)
       const full = clean.prepared[0]?.trials.find((trial) => trial.condition === Condition.Full)
       const files = Object.keys(full?.files ?? {})
