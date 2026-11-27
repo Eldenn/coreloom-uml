@@ -4,14 +4,14 @@ import app from '@adonisjs/core/services/app'
 import env from '#start/env'
 
 /**
- * Where the runs of this worker keep their folders: `CONVENTION_EVALS_HOME` (a tmpfs in
+ * Where the runs of this worker keep their folders: `CONVENTION_EVALS_DIR` (a tmpfs in
  * production). Tests get a folder of their own whatever it says, since the purge below removes
  * every folder found there.
  */
 export function evalsHome(): string {
   return app.inTest
     ? app.makePath('tmp/convention-evals-test')
-    : (env.get('CONVENTION_EVALS_HOME') ?? app.makePath('tmp/convention-evals'))
+    : (env.get('CONVENTION_EVALS_DIR') ?? app.makePath('tmp/convention-evals'))
 }
 
 /** A new private folder (0700) for one run. */

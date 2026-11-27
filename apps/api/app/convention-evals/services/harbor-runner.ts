@@ -1,62 +1,19 @@
 import { type ChildProcess, spawn } from 'node:child_process'
-import type { Condition, EvalTask, FinalState } from '@coreloom-uml/catalog/evals'
+import type * as Harbor from '@coreloom-uml/catalog/evals/harbor'
 
-/*
- * The contract of `@coreloom-uml/catalog/evals/harbor` (the runner of path I, built beside this
- * code), kept here until that export lands: names and shapes are fixed by both sides.
- */
+export type {
+  HarborAgent,
+  HarborCommand,
+  HarborRunInput,
+  HarborTrialInput,
+  HarborTrialResult,
+} from '@coreloom-uml/catalog/evals/harbor'
 
-export type HarborAgent = 'claude-code' | 'codex'
-
-export type HarborTrialInput = {
-  task: EvalTask
-  condition: Condition
-  /** The rendered convention files for that condition ({} for `none`). */
-  files: Readonly<Record<string, string>>
-}
-
-export type HarborRunInput = {
-  /** Per-run folder on a tmpfs, 0700, created by the caller. */
-  dir: string
-  agent: HarborAgent
-  model: string
-  providerHost: string
-  trials: readonly HarborTrialInput[]
-  attempts: number
-  concurrency: number
-  runId: string
-  accountId: number
-}
-
-export type HarborCommand = {
-  file: string
-  args: readonly string[]
-  env: Readonly<Record<string, string>>
-  jobDir: string
-}
-
-export type HarborTrialResult = {
-  taskId: string
-  condition: Condition
-  attempt: number
-  /** The final workspace copied back from the sandbox. */
-  state: FinalState | null
-  /** Every text Harbor wrote for that trial, unfiltered. */
-  outputs: readonly { path: string; text: string }[]
-  usage: { input: number; cachedInput: number; cacheWrite: number; output: number } | null
-  /** Harbor's exception class name only. */
-  error: string | null
-  durationMs: number
-}
-
-export type HarborModule = {
-  prepareHarborRun(input: HarborRunInput): Promise<HarborCommand>
-  credentialEnvName(agent: HarborAgent): 'ANTHROPIC_API_KEY' | 'CODEX_API_KEY'
-  readHarborJob(jobDir: string): Promise<readonly HarborTrialResult[]>
-}
-
-/** Where the runner of path I is exported from. */
-const HARBOR_MODULE = '@coreloom-uml/catalog/evals/harbor'
+/** What the worker uses of `@coreloom-uml/catalog/evals/harbor` (#147's runner of path I). */
+export type HarborModule = Pick<
+  typeof Harbor,
+  'prepareHarborRun' | 'credentialEnvName' | 'readHarborJob'
+>
 
 /** A running `harbor run`, in a process group of its own. */
 export type HarborProcess = {
@@ -70,13 +27,14 @@ export type HarborProcess = {
  * Starts Harbor for path I. Resolved from the container, so tests swap it and never start
  * Harbor or reach E2B or a provider. The child is started without a shell, in a process group of
  * its own (so a kill reaches every process it started), with exactly the environment it is given:
- * the caller adds the credential there, under `credentialEnvName`, and nowhere else. Its output
- * is not read: what Harbor writes is read from its job folder, filtered.
+ * the caller adds the E2B settings and the credential there, under `credentialEnvName`, and
+ * nowhere else. Harbor's own classes then hand the key to the agent's command on its standard
+ * input only (record, section 5, fix g). Its output is not read: what Harbor writes is read from
+ * its job folder, filtered.
  */
 export default class HarborRunner {
   async load(): Promise<HarborModule> {
-    const specifier: string = HARBOR_MODULE
-    return (await import(specifier)) as HarborModule
+    return import('@coreloom-uml/catalog/evals/harbor')
   }
 
   start(command: { file: string; args: readonly string[]; env: Record<string, string> }) {

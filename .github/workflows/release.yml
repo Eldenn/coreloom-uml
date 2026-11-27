@@ -100,6 +100,19 @@ jobs:
             ghcr.io/${{ steps.owner.outputs.value }}/coreloom-uml-skill-tagger:${{ github.ref_name }}
             ghcr.io/${{ steps.owner.outputs.value }}/coreloom-uml-skill-tagger:production-latest
 
+      # The API's worker on Debian with Harbor, which runs the convention evals, for the
+      # `convention-evals` service.
+      - name: Build and push convention evals image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          target: convention-evals
+          push: true
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.value }}/coreloom-uml-convention-evals:${{ github.ref_name }}
+            ghcr.io/${{ steps.owner.outputs.value }}/coreloom-uml-convention-evals:production-latest
+
       - name: Build and push web image
         uses: docker/build-push-action@v6
         with:

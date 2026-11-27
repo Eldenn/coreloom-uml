@@ -231,5 +231,5 @@ export default await Env.create(new URL('../', import.meta.url), {
   | folder holds what an agent wrote before it is filtered. Defaults to
   | `tmp/convention-evals` inside the app.
   */
-  CONVENTION_EVALS_HOME: Env.schema.string.optional(),
+  CONVENTION_EVALS_DIR: Env.schema.string.optional(),
 })
