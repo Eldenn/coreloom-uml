@@ -41,8 +41,8 @@ export default class AdminWatchController {
 
   async storeSource({ auth, request, response }: HttpContext) {
     if (!(await watchEnabled(auth.getUserOrFail()))) return response.notFound(WATCH_NOT_FOUND)
-    const { url, query, topics } = await request.validateUsing(createWatchSourceInput)
-    if (url !== undefined && query !== undefined) {
+    const { url, search, topics } = await request.validateUsing(createWatchSourceInput)
+    if (url !== undefined && search !== undefined) {
       return response.unprocessableEntity({ error: { message: 'A feed or a search, not both' } })
     }
     const normalized = url === undefined ? null : normalizeUrl(url)
@@ -51,7 +51,7 @@ export default class AdminWatchController {
     }
     const target = normalized
       ? { kind: WatchSourceKind.Rss, url: normalized.href, query: null }
-      : { kind: WatchSourceKind.Linkup, url: null, query: query as string }
+      : { kind: WatchSourceKind.Linkup, url: null, query: search as string }
     const existing = await WatchSource.query()
       .if(target.url, (q) => q.where('url', target.url as string))
       .if(target.query, (q) => q.whereRaw('lower(query) = lower(?)', [target.query as string]))

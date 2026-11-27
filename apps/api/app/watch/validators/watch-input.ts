@@ -33,7 +33,8 @@ export const listWatchArticlesInput = vine.create(
 
 /**
  * `POST /admin/watch/sources`: a feed to read (`url`, `https` only) or a web search to run
- * (`query`), one of the two, with optional tags of its own.
+ * (`search`: its words, stored as the source's `query`; a body field named `query` would read as
+ * the query string in the typed client), one of the two, with optional tags of its own.
  */
 export const createWatchSourceInput = vine.create(
   vine.object({
@@ -43,8 +44,8 @@ export const createWatchSourceInput = vine.create(
       .maxLength(WATCH_LIMITS.urlMaxLength)
       .url({ protocols: ['https'], require_protocol: true })
       .optional()
-      .requiredIfMissing('query'),
-    query: vine
+      .requiredIfMissing('search'),
+    search: vine
       .string()
       .trim()
       .minLength(3)

@@ -357,7 +357,7 @@ test.group('Tech watch', (group) => {
     const added = await client
       .post('/admin/watch/sources')
       .headers(json)
-      .json({ query: 'prompt injection in coding agents', topics: ['security'] })
+      .json({ search: 'prompt injection in coding agents', topics: ['security'] })
       .loginAs(admin)
     added.assertStatus(201)
     assert.include(added.body().source, { kind: 'linkup', url: null })
@@ -365,14 +365,14 @@ test.group('Tech watch', (group) => {
       await client
         .post('/admin/watch/sources')
         .headers(json)
-        .json({ query: 'Prompt injection in coding agents' })
+        .json({ search: 'Prompt injection in coding agents' })
         .loginAs(admin)
     ).assertStatus(409)
     ;(
       await client
         .post('/admin/watch/sources')
         .headers(json)
-        .json({ query: 'both', url: 'https://a.example/feed' })
+        .json({ search: 'both', url: 'https://a.example/feed' })
         .loginAs(admin)
     ).assertStatus(422)
 
