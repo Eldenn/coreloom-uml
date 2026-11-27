@@ -12,7 +12,13 @@ import {
   syncManualSkills,
 } from '#app/skills/services/skills-catalog'
 import { withEmptySkillsCatalog } from '#tests/helpers/skills'
-import { fakeFetch, routes } from '#tests/unit/skills/skills-search-fixtures'
+import {
+  fakeFetch,
+  routes,
+  SMITHERY_PAGE,
+  smitheryPages,
+  smitherySkill,
+} from '#tests/unit/skills/skills-search-fixtures'
 
 const network = () =>
   fakeFetch(routes({ 'https://skills.sh/api/search*': { body: { skills: [] } } }))
@@ -214,6 +220,33 @@ test.group('Skills catalog with sources', (group) => {
       eligible: false,
       ineligibleReason: 'fewer than 500 installs',
     })
+  })
+
+  test('a skill Smithery listed stays trusted on a run where Smithery is down', async ({
+    assert,
+  }) => {
+    const smithery = await SkillSource.findByOrFail('kind', SkillSourceKind.Smithery)
+    const listed = fakeFetch(
+      routes({
+        'https://skills.sh/api/search*': { body: { skills: [] } },
+        ...smitheryPages([
+          smitherySkill('https://github.com/acme/skills/tree/main/skills/lint-rules'),
+        ]),
+      }),
+    )
+    await refreshCatalog({ fetch: listed.fn, githubToken: 'token', now: MONDAY })
+    assert.deepEqual(await listedBy(smithery), ['lint-rules'])
+    const down = fakeFetch(
+      routes({
+        'https://skills.sh/api/search*': { body: { skills: [] } },
+        [`${SMITHERY_PAGE}1`]: { status: 500, body: {} },
+      }),
+    )
+    await refreshCatalog({ fetch: down.fn, githubToken: 'token', now: MONDAY.plus({ weeks: 1 }) })
+    const lint = await CatalogSkill.findByOrFail('slug', 'lint-rules')
+    assert.deepInclude(lint.serialize(), { eligible: true, installs: 0 })
+    await smithery.refresh()
+    assert.equal(smithery.lastError, '500 from api.smithery.ai')
   })
 
   test('a trusted skill is copied before more installed ones', async ({ assert }) => {
