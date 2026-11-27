@@ -1873,6 +1873,7 @@ export const en = {
         'This provider has no saved key or connected subscription: add one in your settings.',
       provider_settings: 'These provider settings cannot be called: check them in your settings.',
       over_cap: 'Even the lower estimate of this test passes its cost cap.',
+      cli_path_unavailable: 'This test runs your key in a sandbox, which is not available yet.',
     },
     openSettings: 'Open the settings',
     confirmTitle: 'Start a convention test?',
@@ -3872,6 +3873,7 @@ export const fr: Messages = {
       provider_settings:
         'Ces réglages de fournisseur ne peuvent pas être appelés : vérifiez-les dans vos paramètres.',
       over_cap: 'Même l’estimation basse de ce test dépasse son plafond de coût.',
+      cli_path_unavailable: 'Ce test exécute votre clé dans un bac à sable, ce qui n’est pas encore disponible.',
     },
     openSettings: 'Ouvrir les paramètres',
     confirmTitle: 'Lancer un test des conventions ?',

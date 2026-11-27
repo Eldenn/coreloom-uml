@@ -340,6 +340,7 @@ describe('evalBlocker precedence', () => {
       'no_credential',
       'provider_settings',
       'over_cap',
+      'cli_path_unavailable',
     ] as const)
       expect(evalBlocker(provider, { refusal }, false)).toEqual({ kind: 'refused', refusal })
   })

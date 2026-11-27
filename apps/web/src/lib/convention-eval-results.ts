@@ -207,6 +207,7 @@ const EVAL_REFUSALS = [
   'no_credential',
   'provider_settings',
   'over_cap',
+  'cli_path_unavailable',
 ] as const satisfies readonly EvalRefusal[]
 
 /** How a start was refused, as the screen tells it. */
