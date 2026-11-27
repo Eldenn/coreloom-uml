@@ -1,6 +1,7 @@
 import { chmodSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import {
+  type AgentContextFile,
   AgentFileKind,
   HOOK_SHEBANG,
   HOOKS_DIRECTORY,
@@ -35,13 +36,38 @@ export function conventionFiles(task: EvalTask, condition: Condition) {
   )
 }
 
+/** Whether a rendered file is a Git hook: it is written with its `#!` line and made executable. */
+export const isHookFile = (path: string) => path.startsWith(`${HOOKS_DIRECTORY}/`)
+
+/**
+ * Rendered files as a trial's repository holds them, by path: a Git hook with its `#!` line
+ * first, as the CLI writes a hook it creates. What the app hands a runner for a condition.
+ */
+export function workspaceFiles(
+  files: readonly Pick<AgentContextFile, 'path' | 'content'>[],
+): Record<string, string> {
+  return Object.fromEntries(
+    files.map((file) => [
+      file.path,
+      isHookFile(file.path) ? `${HOOK_SHEBANG}\n${file.content}` : file.content,
+    ]),
+  )
+}
+
 /**
  * A fresh repository for one trial, under `parent`: the task's files and the rendered
  * conventions committed once on `main`, pushed to a bare `origin` beside it. In the `full`
  * condition the hooks are turned on with the command the catalog recommends. The rendered files
- * live in that temporary repository only, never in this one.
+ * live in that temporary repository only, never in this one. `conventions` are the files of the
+ * condition as `workspaceFiles` lays them out: by default the task's own rules rendered
+ * (`conventionFiles`); the app passes an agent configuration's own files instead.
  */
-export function createWorkspace(task: EvalTask, condition: Condition, parent: string): FinalState {
+export function createWorkspace(
+  task: EvalTask,
+  condition: Condition,
+  parent: string,
+  conventions: Readonly<Record<string, string>> = workspaceFiles(conventionFiles(task, condition)),
+): FinalState {
   const root = join(parent, 'repo')
   const remote = join(parent, 'origin.git')
   const write = (path: string, content: string) => {
@@ -50,10 +76,9 @@ export function createWorkspace(task: EvalTask, condition: Condition, parent: st
   }
   for (const [path, content] of Object.entries(task.files)) write(path, content)
   const hooks: string[] = []
-  for (const file of conventionFiles(task, condition)) {
-    const hook = file.path.startsWith(`${HOOKS_DIRECTORY}/`)
-    write(file.path, hook ? `${HOOK_SHEBANG}\n${file.content}` : file.content)
-    if (hook) hooks.push(file.path)
+  for (const [path, content] of Object.entries(conventions)) {
+    write(path, content)
+    if (isHookFile(path)) hooks.push(path)
   }
   for (const hook of hooks) chmodSync(join(root, hook), 0o755)
 
