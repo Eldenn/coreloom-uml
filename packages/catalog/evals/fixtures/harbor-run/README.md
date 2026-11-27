@@ -16,3 +16,6 @@ What was changed from the recording: the run folder's path is `/runs/fixture` an
 repositories) and Claude Code's session files are left out, so the test builds the oracle's
 workspace again from the task; `tasks/*/coreloom.json` are the exporter's own files. No credential
 was ever in these files (the fake key was in none of them).
+- `package-manager-pnpm-add--full__PYzF95k`: Codex with a fake key (round 2 of #147), which the
+  provider answered with 401 (`AgentAuthenticationError`); its `$CODEX_HOME` listing holds no
+  `auth.json`. The provider masks the key in its answer; the full value is in no file.

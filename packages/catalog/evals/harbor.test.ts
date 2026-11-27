@@ -5,6 +5,7 @@
 import { createHash } from 'node:crypto'
 import {
   cpSync,
+  existsSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
@@ -13,19 +14,27 @@ import {
   realpathSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { git } from './src/git.ts'
-import { CREDENTIAL_ENV_NAMES, HARBOR_AGENTS, TEMPLATES_DIR } from './src/harbor/constants.ts'
+import {
+  CREDENTIAL_ENV_NAMES,
+  HARBOR_AGENTS,
+  HARBOR_OUTPUT_LIMITS,
+  SAFE_GIT_CONFIG,
+  TEMPLATES_DIR,
+} from './src/harbor/constants.ts'
 import {
   credentialEnvName,
   HarborAgent,
   type HarborRunInput,
   prepareHarborRun,
   readHarborJob,
+  readHarborUsage,
 } from './src/harbor/index.ts'
 import { Condition, type EvalTask, Verdict } from './src/task.ts'
 import { AGENT_CLI_VERSIONS } from './src/versions.ts'
@@ -242,6 +251,9 @@ describe('prepareHarborRun', () => {
       prepareHarborRun(input(HarborAgent.Codex, { trials: one({ '/etc/x': 'x' }) })),
     ).rejects.toThrow('outside the repository')
     await expect(
+      prepareHarborRun(input(HarborAgent.Codex, { trials: one({ '.git/config': 'x' }) })),
+    ).rejects.toThrow('inside a Git folder')
+    await expect(
       prepareHarborRun(input(HarborAgent.Codex, { trials: [...one({}), ...one({})] })),
     ).rejects.toThrow('twice')
     await expect(prepareHarborRun(input(HarborAgent.Codex, { attempts: 0 }))).rejects.toThrow()
@@ -291,6 +303,7 @@ describe('readHarborJob', () => {
       { taskId: task.id, condition: 'none', attempt: 1, error: null },
       { taskId: task.id, condition: 'none', attempt: 2, error: 'SandboxException' },
       { taskId: task.id, condition: 'full', attempt: 1, error: 'AgentAuthenticationError' },
+      { taskId: task.id, condition: 'full', attempt: 2, error: 'AgentAuthenticationError' },
     ])
     for (const result of results) expect(result.durationMs).toBeGreaterThan(0)
   })
@@ -322,8 +335,10 @@ describe('readHarborJob', () => {
     expect(rejected?.usage).toEqual({ input: 0, cachedInput: 0, cacheWrite: 0, output: 0 })
     expect(results[0]?.usage).toBeNull()
     const oraclePaths = results[0]?.outputs.map((output) => output.path) ?? []
-    expect(oraclePaths).toContain('artifacts/work/repo/package.json')
+    expect(oraclePaths).toContain('result.json')
+    expect(oraclePaths.some((path) => path.startsWith('artifacts'))).toBe(false)
     expect(oraclePaths.every((path) => !path.startsWith('/'))).toBe(true)
+    expect(results.every((result) => !result.outputsCut)).toBe(true)
   })
 
   it('sums the usage of every model of a Claude Code run, and reads Harbor’s otherwise', async () => {
@@ -357,6 +372,122 @@ describe('readHarborJob', () => {
 
   it('answers nothing for a job Harbor never started', async () => {
     expect(await readHarborJob(join(tmp, 'no-such-job'))).toEqual([])
+  })
+
+  const oracleWork = (job: string) =>
+    join(job, 'package-manager-pnpm-add--none__KmEswdd', 'artifacts', 'work')
+
+  it('hands back a workspace Git can read without running anything the agent wrote', async () => {
+    const job = recorded()
+    const work = oracleWork(job)
+    const marker = join(tmp, `fsmonitor-ran-${runs}`)
+    const gitDir = join(work, 'repo', '.git')
+    // What a hostile agent leaves: a command in the config, a hook, attributes, an alternate.
+    writeFileSync(
+      join(gitDir, 'config'),
+      `${readFileSync(join(gitDir, 'config'), 'utf8')}[core]\n\tfsmonitor = "touch ${marker}"\n[filter "x"]\n\tsmudge = "touch ${marker}"\n`,
+    )
+    mkdirSync(join(gitDir, 'hooks'), { recursive: true })
+    writeFileSync(join(gitDir, 'hooks', 'post-checkout'), `#!/bin/sh\ntouch ${marker}\n`, {
+      mode: 0o755,
+    })
+    mkdirSync(join(gitDir, 'info'), { recursive: true })
+    writeFileSync(join(gitDir, 'info', 'attributes'), '* filter=x\n')
+    writeFileSync(join(gitDir, 'objects', 'info', 'alternates'), '/etc\n')
+    writeFileSync(
+      join(work, 'origin.git', 'config'),
+      `[core]\n\tbare = true\n\tfsmonitor = "touch ${marker}"\n`,
+    )
+    const [oracle] = await readHarborJob(job)
+    if (!oracle?.state) throw new Error(`refused: ${oracle?.stateProblem}`)
+    expect(readFileSync(join(gitDir, 'config'), 'utf8')).toBe(SAFE_GIT_CONFIG.repo)
+    expect(readFileSync(join(work, 'origin.git', 'config'), 'utf8')).toBe(SAFE_GIT_CONFIG.bare)
+    for (const path of ['hooks', 'info/attributes', 'objects/info/alternates']) {
+      expect(existsSync(join(gitDir, path)), path).toBe(false)
+    }
+    // Git really reads it: status, the log of the remote and a checkout of HEAD all work.
+    expect(task.success(oracle.state).verdict).toBe(Verdict.Pass)
+    expect(task.compliance(oracle.state).verdict).toBe(Verdict.Pass)
+    git(oracle.state.root, ['status', '--porcelain'])
+    expect(existsSync(marker)).toBe(false)
+  })
+
+  it('refuses a workspace holding a symbolic link or a .git that is a file', async () => {
+    const linked = recorded()
+    symlinkSync('/etc/passwd', join(oracleWork(linked), 'repo', 'package-lock.json'))
+    const [withLink] = await readHarborJob(linked)
+    expect(withLink?.state).toBeNull()
+    expect(withLink?.stateProblem).toBe('symbolic link package-lock.json in the workspace')
+
+    const redirected = recorded()
+    const repo = join(oracleWork(redirected), 'repo')
+    rmSync(join(repo, '.git'), { recursive: true, force: true })
+    writeFileSync(join(repo, '.git'), 'gitdir: /etc\n')
+    const [withFile] = await readHarborJob(redirected)
+    expect(withFile?.state).toBeNull()
+    expect(withFile?.stateProblem).toBe('a Git folder that is a file')
+  })
+
+  it('caps the texts it answers and leaves out a trial whose metadata does not parse', async () => {
+    const job = recorded()
+    const rejected = join(job, 'package-manager-pnpm-add--full__CjTEN9i')
+    writeFileSync(join(rejected, 'agent', 'big.txt'), 'é'.repeat(HARBOR_OUTPUT_LIMITS.fileBytes))
+    const results = await readHarborJob(job)
+    const big = results[2]?.outputs.find((output) => output.path === 'agent/big.txt')
+    expect(Buffer.byteLength(big?.text ?? '')).toBeLessThanOrEqual(HARBOR_OUTPUT_LIMITS.fileBytes)
+    expect(big?.text.endsWith('é')).toBe(true)
+    expect(results[2]?.outputsCut).toBe(true)
+    const total = (results[2]?.outputs ?? []).reduce((sum, o) => sum + Buffer.byteLength(o.text), 0)
+    expect(total).toBeLessThanOrEqual(HARBOR_OUTPUT_LIMITS.trialBytes)
+
+    const metadata = join(
+      job,
+      '..',
+      '..',
+      'tasks',
+      'package-manager-pnpm-add--full',
+      'coreloom.json',
+    )
+    writeFileSync(
+      metadata,
+      JSON.stringify({ taskId: 'package-manager-pnpm-add', condition: 'all' }),
+    )
+    expect((await readHarborJob(job)).map((result) => result.condition)).toEqual(['none', 'none'])
+  })
+
+  it("never lets the agent's own result line lower what Harbor counted", async () => {
+    const job = recorded()
+    const rejected = join(job, 'package-manager-pnpm-add--full__CjTEN9i')
+    const understated = { type: 'result', usage: { input_tokens: 1, output_tokens: 1 } }
+    writeFileSync(join(rejected, 'agent', 'claude-code.txt'), `${JSON.stringify(understated)}\n`)
+    const harbor = JSON.parse(readFileSync(join(rejected, 'result.json'), 'utf8'))
+    harbor.agent_result = { n_input_tokens: 5000, n_cache_tokens: 1000, n_output_tokens: 700 }
+    writeFileSync(join(rejected, 'result.json'), JSON.stringify(harbor))
+    const results = await readHarborJob(job)
+    expect(results[2]?.usage).toEqual({
+      input: 4000,
+      cachedInput: 1000,
+      cacheWrite: 0,
+      output: 700,
+    })
+    const polled = await readHarborUsage(job)
+    expect(polled.map(({ attempt, usage }) => ({ attempt, usage }))).toEqual(
+      results.map(({ attempt, usage }) => ({ attempt, usage })),
+    )
+    expect(Object.keys(polled[0] ?? {}).sort()).toEqual(['attempt', 'condition', 'taskId', 'usage'])
+  })
+
+  it("reads a Codex trial: its output, its CODEX_HOME listing and no usage of Claude's", async () => {
+    const results = await readHarborJob(recorded())
+    const codex = results.find((result) =>
+      result.outputs.some((output) => output.path === 'agent/codex-home.txt'),
+    )
+    if (!codex) throw new Error('no Codex trial in the fixture')
+    expect(codex.error).toBe('AgentAuthenticationError')
+    const listing = codex.outputs.find((output) => output.path === 'agent/codex-home.txt')?.text
+    expect(listing).toContain('config.toml')
+    expect(listing).not.toContain('auth.json')
+    expect(codex.outputs.find((o) => o.path === 'agent/codex.txt')?.text).toContain('401')
   })
 })
 

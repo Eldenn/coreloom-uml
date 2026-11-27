@@ -177,6 +177,10 @@ export function atHead(state: FinalState, grade: (root: string) => Grade): Grade
         [
           '-c',
           'core.hooksPath=/dev/null',
+          '-c',
+          'core.symlinks=false',
+          '-c',
+          'core.fsmonitor=false',
           '--git-dir',
           gitDir,
           '--work-tree',
