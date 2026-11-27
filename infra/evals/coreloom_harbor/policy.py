@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shlex
 from collections.abc import Mapping
 
 #: Every egress range a trial's agent phase is denied besides all other traffic: the API's
@@ -62,31 +63,35 @@ def drop_credentials(env: Mapping[str, str]) -> dict[str, str]:
     return {name: value for name, value in env.items() if not is_credential_name(name)}
 
 
-#: Exit code of a command whose credential did not arrive on its standard input.
+#: Exit code of a command whose credential file could not be read, or removed, by its fixed line.
 NO_SECRET_EXIT = 97
 
 
-def stdin_secret_command(name: str, command: str) -> str:
-    """``command`` preceded by the fixed line that reads the credential ``name`` from standard
-    input into that process's own environment (record section 5, g).
+def secret_file_command(name: str, path: str, command: str) -> str:
+    """``command`` preceded by the fixed line that reads the credential ``name`` from the file
+    ``path`` into that process's own environment (record section 5, g).
 
-    envd logs every command it starts with its ``envs`` in full, into the install's logs, whatever
-    the sandbox's network: a credential is never in ``envs`` nor on a command line. What a command
-    reads on its standard input is not logged. Standard input is then the empty file, so nothing
-    the agent starts can read the key from it again.
+    envd logs every command it starts with its command line and its ``envs`` in full, and every
+    write to a process's standard input with its bytes (base64), into the install's logs, whatever
+    the sandbox's network: a credential is in none of them. It is written to ``path`` with E2B's
+    file upload (``files.write``), whose log line names the path and the user, never the content.
+    The line reads it, removes the file before anything else, fails unless the file is gone and
+    the value is there, then exports it for ``command``. Standard input is the empty file.
     """
     if name not in CREDENTIAL_NAMES:
         raise ValueError(f"{name} is not a credential variable")
+    file = shlex.quote(path)
     return (
-        f"IFS= read -r {name} || exit {NO_SECRET_EXIT}; "
-        f'[ -n "${name}" ] || exit {NO_SECRET_EXIT}; '
-        f"export {name}; exec 0</dev/null; {command}"
+        f"IFS= read -r {name} 2> /dev/null < {file}; status=$?; "
+        f"rm -f -- {file}; [ ! -e {file} ] || exit {NO_SECRET_EXIT}; "
+        f'[ "$status" = 0 ] && [ -n "${name}" ] || exit {NO_SECRET_EXIT}; '
+        f"unset status; export {name}; exec 0</dev/null; {command}"
     )
 
 
-def stdin_secret_line(secret: str) -> str:
-    """What is sent on the command's standard input: the value and a newline, refused when it
-    would not read back as one line."""
+def secret_file_content(secret: str) -> str:
+    """What is written to the credential file: the value and a newline, refused when it would
+    not read back as one line."""
     if not secret or any(character in secret for character in "\r\n\0"):
         raise ValueError("a credential is one non-empty line")
     return f"{secret}\n"

@@ -32,8 +32,8 @@ from coreloom_harbor.policy import (
     check_agent_phase_info,
     check_no_network_info,
     drop_credentials,
-    stdin_secret_command,
-    stdin_secret_line,
+    secret_file_command,
+    secret_file_content,
 )
 
 #: Where the exporter puts the fixture in a task folder, and where it goes in the sandbox
@@ -42,6 +42,24 @@ TASK_WORKSPACE_DIR = "workspace"
 SANDBOX_WORK_DIR = "/work"
 #: The template's user the agent runs as; it owns the fixture.
 AGENT_USER = "node"
+#: Where the agent's key waits for its one command (fix g): a fixed path, never anything of the
+#: key's, in a folder of the agent user's home that only that user (and root) can open. E2B's
+#: file upload creates the file 0644, so the folder (0700) is what keeps it to that user. The
+#: command's fixed line removes the file before anything else (`secret_file_command`).
+SECRET_DIR = f"/home/{AGENT_USER}/.coreloom-secret"
+SECRET_FILE = f"{SECRET_DIR}/key"
+_SECRET_DIR_Q = shlex.quote(SECRET_DIR)
+_SECRET_FILE_Q = shlex.quote(SECRET_FILE)
+#: Run as the agent's user before the key is written: the folder is that user's own, a real
+#: folder (not a link), 0700, and holds no file at the key's path.
+PREPARE_SECRET_DIR = (
+    f"umask 077; mkdir -p -- {_SECRET_DIR_Q} && [ -d {_SECRET_DIR_Q} ] && "
+    f"[ ! -L {_SECRET_DIR_Q} ] && [ -O {_SECRET_DIR_Q} ] && chmod 0700 -- {_SECRET_DIR_Q} && "
+    f"rm -f -- {_SECRET_FILE_Q} && [ ! -e {_SECRET_FILE_Q} ]"
+)
+#: Run as the agent's user once the command is over or failed to start: the key's file is gone,
+#: removed here if its command never read it.
+REMOVE_SECRET_FILE = f"rm -f -- {_SECRET_FILE_Q}; [ ! -e {_SECRET_FILE_Q} ]"
 #: Run as root at setup, before the agent's user runs anything. E2B's template builder adds a
 #: user `user` with passwordless sudo, and leaves root's and its password empty, so anyone can
 #: `su` to root (record section 13): every empty password is locked, and no file keeps a
@@ -148,7 +166,7 @@ class ConventionEvalsE2BEnvironment(E2BEnvironment):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        #: The keys sent on a command's stdin, so that no later command carries one (fix g).
+        #: The keys handed to a command, so that no later command carries one (fix g).
         self._secrets: set[str] = set()
         self._agent_phase_started = False
         # Every phase this trial may switch to is checked before anything starts.
@@ -313,11 +331,15 @@ class ConventionEvalsE2BEnvironment(E2BEnvironment):
         user: str | int | None = None,
     ) -> ExecResult:
         """Runs ``command`` like ``exec``, with the credential ``secret_name`` set in its own
-        environment from its standard input (fix g): never in the request's envs nor its command
-        line, both of which envd writes into the install's logs. Only as the agent's user."""
+        environment from a file (fix g): never in the request's envs, its command line nor its
+        standard input, all of which envd writes into the install's logs. The key is written to
+        ``SECRET_FILE`` with E2B's file upload, whose log line holds the path and the user only;
+        the command's fixed line reads it and removes it first. Only as the agent's user. Fails
+        closed: no run when the folder or the write fails, and the file removed (and checked
+        gone) whatever happens, else ``PolicyViolation``."""
         if not self._sandbox:
             raise RuntimeError("Sandbox not found. Please start the environment first.")
-        line = stdin_secret_line(secret)
+        content = secret_file_content(secret)
         user = self._resolve_user(user)
         if str(user) != AGENT_USER:
             raise PolicyViolation(f"the key goes to a command of {AGENT_USER} only, not {user}")
@@ -325,24 +347,36 @@ class ConventionEvalsE2BEnvironment(E2BEnvironment):
         merged_env = self._without_credentials(
             {**self._exec_base_env, **(self._merge_env(env) or {})}
         )
-        wrapped = stdin_secret_command(secret_name, command)
+        wrapped = secret_file_command(secret_name, SECRET_FILE, command)
         self._refuse_secret(wrapped, merged_env)
-        handle = await self._sandbox.commands.run(
-            cmd=wrapped,
-            background=True,
-            stdin=True,
-            cwd=effective_exec_cwd(cwd, self.task_env_config.workdir, self._workdir),
-            envs=merged_env or None,
-            timeout=timeout_sec or 0,
-            user=AGENT_USER,
-        )
+        if (await self._run_as_agent(PREPARE_SECRET_DIR)).return_code != 0:
+            raise PolicyViolation(f"could not prepare {SECRET_DIR} for the key")
         try:
-            await self._sandbox.commands.send_stdin(handle.pid, line)
-            await self._sandbox.commands.close_stdin(handle.pid)
-        except BaseException:
-            await handle.kill()
-            raise
-        return await self._wait_reattaching(handle, timeout_sec)
+            await self._sandbox.files.write(
+                SECRET_FILE, content, user=AGENT_USER, request_timeout=_UPLOAD_TIMEOUT_SEC
+            )
+            handle = await self._sandbox.commands.run(
+                cmd=wrapped,
+                background=True,
+                cwd=effective_exec_cwd(cwd, self.task_env_config.workdir, self._workdir),
+                envs=merged_env or None,
+                timeout=timeout_sec or 0,
+                user=AGENT_USER,
+            )
+            return await self._wait_reattaching(handle, timeout_sec)
+        finally:
+            await self._remove_secret_file()
+
+    async def _run_as_agent(self, command: str) -> ExecResult:
+        """A fixed command of ours as the agent's user, outside Harbor's env overlays."""
+        handle = await self._sandbox.commands.run(  # type: ignore[union-attr]
+            cmd=command, background=True, cwd="/", timeout=_UPLOAD_TIMEOUT_SEC, user=AGENT_USER
+        )
+        return await self._wait_reattaching(handle, _UPLOAD_TIMEOUT_SEC)
+
+    async def _remove_secret_file(self) -> None:
+        if (await self._run_as_agent(REMOVE_SECRET_FILE)).return_code != 0:
+            raise PolicyViolation(f"the key's file {SECRET_FILE} is still in the sandbox")
 
     @override
     async def _prepare_sandbox(self) -> None:
