@@ -1,0 +1,138 @@
+{
+    "schema_version": 1,
+    "id": "18493a43-d782-43ec-8965-535d50bb88fa",
+    "task_name": "package-manager-pnpm-add--full",
+    "trial_name": "package-manager-pnpm-add--full__PYzF95k",
+    "trial_uri": "file:///runs/fixture/jobs/run-fixture/package-manager-pnpm-add--full__PYzF95k",
+    "task_id": {
+        "path": "/runs/fixture/tasks/package-manager-pnpm-add--full"
+    },
+    "source": "tasks",
+    "task_checksum": "943b584e4057eb0fde5387e5a49d16de737f508d7838ff5c796374e2c9d65ae5",
+    "config": {
+        "schema_version": 1,
+        "task": {
+            "path": "/runs/fixture/tasks/package-manager-pnpm-add--full",
+            "git_url": null,
+            "git_commit_id": null,
+            "name": null,
+            "ref": null,
+            "overwrite": false,
+            "download_dir": null,
+            "source": "tasks"
+        },
+        "trial_name": "package-manager-pnpm-add--full__PYzF95k",
+        "trials_dir": "/runs/fixture/jobs/run-fixture",
+        "install_only": false,
+        "timeout_multiplier": 1.0,
+        "agent_timeout_multiplier": null,
+        "verifier_timeout_multiplier": null,
+        "agent_setup_timeout_multiplier": null,
+        "environment_build_timeout_multiplier": null,
+        "agent": {
+            "name": "coreloom_harbor.agents:ConventionEvalsCodex",
+            "import_path": null,
+            "model_name": "openai/gpt-5-codex",
+            "base_url": null,
+            "model_api_key_name": null,
+            "model_api_format": null,
+            "skip_model_parsing": false,
+            "n_concurrent": null,
+            "concurrency_group": null,
+            "skills": [],
+            "override_timeout_sec": null,
+            "override_setup_timeout_sec": null,
+            "max_timeout_sec": null,
+            "resume_trajectory": false,
+            "load_trajectory": null,
+            "extra_allowed_hosts": [],
+            "kwargs": {
+                "version": "0.167.2"
+            },
+            "mcp_servers": []
+        },
+        "user_agent": null,
+        "environment": {
+            "type": null,
+            "import_path": "coreloom_harbor.environment:ConventionEvalsE2BEnvironment",
+            "force_build": false,
+            "delete": true,
+            "stream": false,
+            "cpu_enforcement_policy": "auto",
+            "memory_enforcement_policy": "auto",
+            "override_cpus": null,
+            "override_memory_mb": null,
+            "override_storage_mb": null,
+            "override_gpus": null,
+            "override_tpu": null,
+            "mounts": null,
+            "extra_docker_compose": [],
+            "kwargs": {
+                "sandbox_timeout_sec": 300,
+                "renew_interval_sec": 60,
+                "provider_host": "api.openai.com",
+                "coreloom_run": "live-1795761029357",
+                "coreloom_account": 1
+            },
+            "extra_allowed_hosts": []
+        },
+        "verifier": {
+            "override_timeout_sec": null,
+            "max_timeout_sec": null,
+            "disable": true
+        },
+        "override_error_policy": {},
+        "artifacts": [],
+        "extra_instruction_paths": [],
+        "extra_instructions": [],
+        "job_id": "1b52012f-c9c8-4ac8-8352-377b27dc5ae0",
+        "source_trial": null
+    },
+    "agent_info": {
+        "name": "codex",
+        "version": "0.167.2",
+        "model_info": {
+            "name": "gpt-5-codex",
+            "provider": "openai"
+        }
+    },
+    "agent_result": {
+        "n_input_tokens": null,
+        "n_cache_tokens": null,
+        "n_output_tokens": null,
+        "cost_usd": null,
+        "model_usage": null,
+        "rollout_details": null,
+        "metadata": null
+    },
+    "verifier_result": null,
+    "verifier_environment_mode": "shared",
+    "exception_info": {
+        "exception_type": "AgentAuthenticationError",
+        "exception_message": "Command failed (exit 1): unset OPENAI_API_KEY; codex exec --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check --model gpt-5-codex --json --enable unified_exec -c web_search=disabled -- 'Add a `slug(title)` function in `src/slug.js` that turns a title into a URL slug, using the npm package `slugify`.\n' 2>&1 </dev/null | tee /logs/agent/codex.txt\nstdout: Reading additional input from stdin...\n2026-11-27T06:30:40.696831Z ERROR codex_models_manager::manager: failed to refresh available models: Connection failed: error sending request\n2026-11-27T06:30:40.712356Z ERROR codex_models_manager::manager: fail ... [4767 chars truncated] ... :\"unexpected status 401 Unauthorized: Incorrect API key provided: sk-proj-*************************29-q. You can find your API key at https://platform.openai.com/account/api-keys., url: https://api.openai.com/v1/responses, cf-ray: a60f16543b37e1b7-MRS, request id: req_d96c35a569594b1b88b89c63b2415ad6, auth error: 401, auth error code: invalid_api_key\"}\n{\"type\":\"turn.failed\",\"error\":{\"message\":\"unexpected status 401 Unauthorized: Incorrect API key provided: sk-proj-*************************29-q. You can find your API key at https://platform.openai.com/account/api-keys., url: https://api.openai.com/v1/responses, cf-ray: a60f16543b37e1b7-MRS, request id: req_d96c35a569594b1b88b89c63b2415ad6, auth error: 401, auth error code: invalid_api_key\"}}\nstderr: None",
+        "exception_traceback": "Traceback (most recent call last):\n  File \"/opt/harbor/lib/python3.12/site-packages/harbor/trial/single_step.py\", line 77, in _run_agent\n    await self._run_agent_phase(\n  File \"/opt/harbor/lib/python3.12/site-packages/harbor/trial/trial.py\", line 784, in _run_agent_phase\n    await asyncio.wait_for(\n  File \"/opt/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/asyncio/tasks.py\", line 520, in wait_for\n    return await fut\n           ^^^^^^^^^\n  File \"/opt/harbor/lib/python3.12/site-packages/harbor/agents/installed/base.py\", line 202, in wrapper\n    return await fn(self, instruction, *args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/coreloom-pkg/coreloom_harbor/agents.py\", line 196, in run\n    await _exec_with_secret(\n  File \"/opt/coreloom-pkg/coreloom_harbor/agents.py\", line 78, in _exec_with_secret\n    raise agent._classify_exec_error(command, result)\nharbor.agents.installed.base.AgentAuthenticationError: Command failed (exit 1): unset OPENAI_API_KEY; codex exec --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check --model gpt-5-codex --json --enable unified_exec -c web_search=disabled -- 'Add a `slug(title)` function in `src/slug.js` that turns a title into a URL slug, using the npm package `slugify`.\n' 2>&1 </dev/null | tee /logs/agent/codex.txt\nstdout: Reading additional input from stdin...\n2026-11-27T06:30:40.696831Z ERROR codex_models_manager::manager: failed to refresh available models: Connection failed: error sending request\n2026-11-27T06:30:40.712356Z ERROR codex_models_manager::manager: fail ... [4767 chars truncated] ... :\"unexpected status 401 Unauthorized: Incorrect API key provided: sk-proj-*************************29-q. You can find your API key at https://platform.openai.com/account/api-keys., url: https://api.openai.com/v1/responses, cf-ray: a60f16543b37e1b7-MRS, request id: req_d96c35a569594b1b88b89c63b2415ad6, auth error: 401, auth error code: invalid_api_key\"}\n{\"type\":\"turn.failed\",\"error\":{\"message\":\"unexpected status 401 Unauthorized: Incorrect API key provided: sk-proj-*************************29-q. You can find your API key at https://platform.openai.com/account/api-keys., url: https://api.openai.com/v1/responses, cf-ray: a60f16543b37e1b7-MRS, request id: req_d96c35a569594b1b88b89c63b2415ad6, auth error: 401, auth error code: invalid_api_key\"}}\nstderr: None\n",
+        "occurred_at": "2026-11-27T06:30:59.756506Z",
+        "policy": {
+            "should_retry": false,
+            "should_grade": false,
+            "has_valid_reward": false
+        }
+    },
+    "started_at": "2026-11-27T06:30:33.835037Z",
+    "finished_at": "2026-11-27T06:31:39.938669Z",
+    "environment_setup": {
+        "started_at": "2026-11-27T06:30:33.871494Z",
+        "finished_at": "2026-11-27T06:30:36.383291Z"
+    },
+    "agent_setup": {
+        "started_at": "2026-11-27T06:30:36.383326Z",
+        "finished_at": "2026-11-27T06:30:36.877158Z"
+    },
+    "agent_execution": {
+        "started_at": "2026-11-27T06:30:36.877401Z",
+        "finished_at": "2026-11-27T06:30:59.755439Z"
+    },
+    "verifier": null,
+    "step_results": null,
+    "reward_valid": false
+}

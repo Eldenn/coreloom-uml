@@ -1,0 +1,79 @@
+{
+    "schema_version": 1,
+    "task": {
+        "path": "/runs/fixture/tasks/package-manager-pnpm-add--full",
+        "git_url": null,
+        "git_commit_id": null,
+        "name": null,
+        "ref": null,
+        "overwrite": false,
+        "download_dir": null,
+        "source": "tasks"
+    },
+    "trial_name": "package-manager-pnpm-add--full__PYzF95k",
+    "trials_dir": "/runs/fixture/jobs/run-fixture",
+    "install_only": false,
+    "timeout_multiplier": 1.0,
+    "agent_timeout_multiplier": null,
+    "verifier_timeout_multiplier": null,
+    "agent_setup_timeout_multiplier": null,
+    "environment_build_timeout_multiplier": null,
+    "agent": {
+        "name": "coreloom_harbor.agents:ConventionEvalsCodex",
+        "import_path": null,
+        "model_name": "openai/gpt-5-codex",
+        "base_url": null,
+        "model_api_key_name": null,
+        "model_api_format": null,
+        "skip_model_parsing": false,
+        "n_concurrent": null,
+        "concurrency_group": null,
+        "skills": [],
+        "override_timeout_sec": null,
+        "override_setup_timeout_sec": null,
+        "max_timeout_sec": null,
+        "resume_trajectory": false,
+        "load_trajectory": null,
+        "extra_allowed_hosts": [],
+        "kwargs": {
+            "version": "0.167.2"
+        },
+        "mcp_servers": []
+    },
+    "user_agent": null,
+    "environment": {
+        "type": null,
+        "import_path": "coreloom_harbor.environment:ConventionEvalsE2BEnvironment",
+        "force_build": false,
+        "delete": true,
+        "stream": false,
+        "cpu_enforcement_policy": "auto",
+        "memory_enforcement_policy": "auto",
+        "override_cpus": null,
+        "override_memory_mb": null,
+        "override_storage_mb": null,
+        "override_gpus": null,
+        "override_tpu": null,
+        "mounts": null,
+        "extra_docker_compose": [],
+        "kwargs": {
+            "sandbox_timeout_sec": 300,
+            "renew_interval_sec": 60,
+            "provider_host": "api.openai.com",
+            "coreloom_run": "live-1795761029357",
+            "coreloom_account": 1
+        },
+        "extra_allowed_hosts": []
+    },
+    "verifier": {
+        "override_timeout_sec": null,
+        "max_timeout_sec": null,
+        "disable": true
+    },
+    "override_error_policy": {},
+    "artifacts": [],
+    "extra_instruction_paths": [],
+    "extra_instructions": [],
+    "job_id": "1b52012f-c9c8-4ac8-8352-377b27dc5ae0",
+    "source_trial": null
+}

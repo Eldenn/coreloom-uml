@@ -18,7 +18,7 @@ export type HarborAgent = (typeof HarborAgent)[keyof typeof HarborAgent]
 /** Harbor's own entry point in the worker's image (`/opt/harbor`, a uv virtual environment). */
 export const HARBOR_BIN = '/opt/harbor/bin/harbor'
 
-/** Our environment class: Harbor's E2B one with fixes a to f of the decision record. */
+/** Our environment class: Harbor's E2B one with fixes a to g of the decision record. */
 export const HARBOR_ENVIRONMENT = 'coreloom_harbor.environment:ConventionEvalsE2BEnvironment'
 
 /** Harbor's agent that runs a task's `solution/solve.sh`: the live checks, never a user's run. */
@@ -108,6 +108,46 @@ export const TASK_METADATA_FILE = 'coreloom.json'
 
 /** Where Harbor puts the final `/work` of a trial (its `artifacts`), under the trial's folder. */
 export const ARTIFACT_WORK_DIR = join('artifacts', 'work')
+
+/** What the reader answers of a trial's texts: never `artifacts/`, each file and the trial capped. */
+export const HARBOR_OUTPUT_LIMITS = {
+  artifactsDir: 'artifacts',
+  fileBytes: 1024 * 1024,
+  trialBytes: 8 * 1024 * 1024,
+} as const
+
+/**
+ * The only `.git/config` a trial's repository keeps once read back: the agent wrote the one it
+ * had, and Git would run what it names (`core.fsmonitor`, a `filter.*` driver, `core.sshCommand`…).
+ */
+export const SAFE_GIT_CONFIG = {
+  repo: [
+    '[core]',
+    '\trepositoryformatversion = 0',
+    '\tfilemode = true',
+    '\tbare = false',
+    '[remote "origin"]',
+    `\turl = ${SANDBOX_REMOTE_DIR}`,
+    '\tfetch = +refs/heads/*:refs/remotes/origin/*',
+    '',
+  ].join('\n'),
+  bare: ['[core]', '\trepositoryformatversion = 0', '\tfilemode = true', '\tbare = true', ''].join(
+    '\n',
+  ),
+} as const
+
+/**
+ * What of a Git folder a read-back repository loses: whatever Git would run (hooks) or follow to
+ * another place (alternates, a worktree's `commondir`), and its attributes and per-worktree config.
+ */
+export const UNSAFE_GIT_PATHS = [
+  'hooks',
+  join('info', 'attributes'),
+  join('objects', 'info', 'alternates'),
+  join('objects', 'info', 'http-alternates'),
+  'commondir',
+  'config.worktree',
+] as const
 
 /** Separates a task id from its condition in a task folder's name (ids never hold two hyphens). */
 export const TASK_NAME_SEPARATOR = '--'

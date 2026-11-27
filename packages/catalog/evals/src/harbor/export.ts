@@ -141,6 +141,10 @@ function checkFilePath(path: string) {
   if (isAbsolute(path) || normal.startsWith('..') || normal !== path || path.includes('\\')) {
     throw new Error(`convention file path outside the repository: ${path}`)
   }
+  // A convention file is never Git's own: `.git/config` or a hook there would run in the sandbox.
+  if (path.split('/').includes('.git')) {
+    throw new Error(`convention file path inside a Git folder: ${path}`)
+  }
 }
 
 /** Points the repository's `origin` at the bare repository's path in the sandbox. */

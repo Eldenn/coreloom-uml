@@ -110,6 +110,17 @@ def agent_phase_update(allowed_hosts: list[str], provider_host: str) -> dict[str
 NO_NETWORK_UPDATE = {"allow_internet_access": False, "deny_out": [ALL_TRAFFIC]}
 
 
+def check_no_network_info(network: Mapping[str, object] | None) -> None:
+    """Checks the network E2B reports once a phase without network is applied: nothing allowed
+    and all traffic denied (code review 4: the no-network phases are read back too)."""
+    if not network:
+        raise PolicyViolation("E2B reported no network configuration for the sandbox")
+    allow_out = list(network.get("allow_out") or [])  # type: ignore[arg-type]
+    deny_out = set(network.get("deny_out") or [])  # type: ignore[arg-type]
+    if allow_out or ALL_TRAFFIC not in deny_out:
+        raise PolicyViolation(f"E2B allows {allow_out} and denies {sorted(deny_out)} offline")
+
+
 def check_agent_phase_info(network: Mapping[str, object] | None, provider_host: str) -> None:
     """Checks the network E2B reports for the sandbox once the agent phase's update is applied."""
     if not network:
