@@ -234,6 +234,24 @@ const routes = {
     tokens: [{"old":"/admin/github-app","type":0,"val":"admin","end":""},{"old":"/admin/github-app","type":0,"val":"github-app","end":""}],
     types: placeholder as Registry['admin.github_app.destroy']['types'],
   },
+  'admin.web_search.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/admin/web-search',
+    tokens: [{"old":"/admin/web-search","type":0,"val":"admin","end":""},{"old":"/admin/web-search","type":0,"val":"web-search","end":""}],
+    types: placeholder as Registry['admin.web_search.show']['types'],
+  },
+  'admin.web_search.update': {
+    methods: ["PUT"],
+    pattern: '/admin/web-search',
+    tokens: [{"old":"/admin/web-search","type":0,"val":"admin","end":""},{"old":"/admin/web-search","type":0,"val":"web-search","end":""}],
+    types: placeholder as Registry['admin.web_search.update']['types'],
+  },
+  'admin.web_search.destroy': {
+    methods: ["DELETE"],
+    pattern: '/admin/web-search',
+    tokens: [{"old":"/admin/web-search","type":0,"val":"admin","end":""},{"old":"/admin/web-search","type":0,"val":"web-search","end":""}],
+    types: placeholder as Registry['admin.web_search.destroy']['types'],
+  },
   'github.webhook': {
     methods: ["POST"],
     pattern: '/github/webhook',

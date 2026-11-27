@@ -218,6 +218,17 @@ router
   .prefix('/admin/github-app')
   .as('admin.github_app')
   .use([middleware.auth(), middleware.admin()])
+const adminWebSearchController = () =>
+  import('#app/web-search/controllers/admin-web-search-controller')
+router
+  .group(() => {
+    router.get('/', [adminWebSearchController, 'show']).as('show')
+    router.put('/', [adminWebSearchController, 'update']).as('update')
+    router.delete('/', [adminWebSearchController, 'destroy']).as('destroy')
+  })
+  .prefix('/admin/web-search')
+  .as('admin.web_search')
+  .use([middleware.auth(), middleware.admin()])
 router
   .post('/github/webhook', [
     () => import('#app/github/controllers/github-webhook-controller'),

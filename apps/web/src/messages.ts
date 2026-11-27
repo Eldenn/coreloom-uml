@@ -937,6 +937,40 @@ export const en = {
     nothingBack: 'GitHub sent nothing back. Start again from the settings.',
     backToSettings: 'Back to settings',
   },
+  webSearch: {
+    title: 'Web search',
+    description:
+      'The service the assistant and the web research search the web with. Shown to the admin only.',
+    notice:
+      'Queries are sent to this service, which keeps them unless you asked it not to. The key is the instance’s: every account’s searches are billed to it, up to 50 a day each.',
+    loadFailed: 'The web search service could not be loaded.',
+    service: 'Service',
+    kinds: { linkup: 'Linkup' },
+    apiKey: 'API key',
+    apiKeyHint: 'Checked with the service before it is saved. It is never shown again.',
+    apiKeyReplace: 'A new key replaces the saved one once the service accepts it.',
+    apiKeyRequired: 'Enter the API key.',
+    apiKeyTooShort: (min: number) => `A key has at least ${min} characters.`,
+    apiKeyTooLong: 'This key is too long.',
+    save: 'Save',
+    saved: 'Web search key saved.',
+    saveFailed: 'The key could not be saved.',
+    refused: {
+      unauthorized: 'The service refused this key. Nothing was saved.',
+      quota: 'This key has no searches left. Nothing was saved.',
+      timeout: 'The service did not answer in time. Nothing was saved; try again.',
+      unavailable: 'The service could not be reached. Nothing was saved; try again later.',
+    },
+    savedKey: 'Saved key',
+    keyHint: (hint: string) => `…${hint}`,
+    verified: (date: string) => `Checked on ${date}`,
+    remove: 'Remove',
+    removeTitle: 'Remove the web search service?',
+    removeText:
+      'The key is deleted, and the assistant and the web research stop searching the web.',
+    removed: 'Web search service removed.',
+    removeFailed: 'The web search service could not be removed.',
+  },
   shared: {
     unavailableTitle: 'This link is not available',
     unavailableText:
@@ -2792,6 +2826,41 @@ export const fr: Messages = {
     created: 'Application GitHub créée.',
     nothingBack: 'GitHub n’a rien renvoyé. Recommencez depuis les paramètres.',
     backToSettings: 'Retour aux paramètres',
+  },
+  webSearch: {
+    title: 'Recherche web',
+    description:
+      'Le service avec lequel l’assistant et la recherche web cherchent sur le web. Visible par l’administrateur seulement.',
+    notice:
+      'Les requêtes sont envoyées à ce service, qui les conserve sauf si vous lui avez demandé de ne pas le faire. La clé est celle de l’instance : les recherches de tous les comptes lui sont facturées, jusqu’à 50 par jour chacun.',
+    loadFailed: 'Le service de recherche web n’a pas pu être chargé.',
+    service: 'Service',
+    kinds: { linkup: 'Linkup' },
+    apiKey: 'Clé d’API',
+    apiKeyHint:
+      'Vérifiée auprès du service avant d’être enregistrée. Elle n’est plus jamais affichée.',
+    apiKeyReplace: 'Une nouvelle clé remplace celle enregistrée dès que le service l’accepte.',
+    apiKeyRequired: 'Saisissez la clé d’API.',
+    apiKeyTooShort: (min: number) => `Une clé compte au moins ${min} caractères.`,
+    apiKeyTooLong: 'Cette clé est trop longue.',
+    save: 'Enregistrer',
+    saved: 'Clé de recherche web enregistrée.',
+    saveFailed: 'La clé n’a pas pu être enregistrée.',
+    refused: {
+      unauthorized: 'Le service a refusé cette clé. Rien n’a été enregistré.',
+      quota: 'Cette clé n’a plus de recherches disponibles. Rien n’a été enregistré.',
+      timeout: 'Le service n’a pas répondu à temps. Rien n’a été enregistré ; réessayez.',
+      unavailable: 'Le service est injoignable. Rien n’a été enregistré ; réessayez plus tard.',
+    },
+    savedKey: 'Clé enregistrée',
+    keyHint: (hint: string) => `…${hint}`,
+    verified: (date: string) => `Vérifiée le ${date}`,
+    remove: 'Retirer',
+    removeTitle: 'Retirer le service de recherche web ?',
+    removeText:
+      'La clé est supprimée, et l’assistant comme la recherche web ne cherchent plus sur le web.',
+    removed: 'Service de recherche web retiré.',
+    removeFailed: 'Le service de recherche web n’a pas pu être retiré.',
   },
   shared: {
     unavailableTitle: 'Ce lien n’est pas disponible',

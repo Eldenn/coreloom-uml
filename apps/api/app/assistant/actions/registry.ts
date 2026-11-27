@@ -14,6 +14,7 @@ import { FILE_ACTIONS } from '#app/assistant/actions/file-actions'
 import { PROJECT_ACTIONS } from '#app/assistant/actions/project-actions'
 import { REPOSITORY_ACTIONS } from '#app/assistant/actions/repository-actions'
 import { SKILL_ACTIONS } from '#app/assistant/actions/skill-actions'
+import { WEB_SEARCH_ACTIONS } from '#app/assistant/actions/web-search-actions'
 import { ActionStatus, type StoredAction } from '#app/assistant/constants/assistant'
 import type User from '#app/users/models/user'
 
@@ -27,6 +28,7 @@ export const ASSISTANT_ACTIONS: readonly AssistantAction[] = [
   ...SKILL_ACTIONS,
   ...FILE_ACTIONS,
   ...REPOSITORY_ACTIONS,
+  ...WEB_SEARCH_ACTIONS,
 ]
 
 export function findAction(name: string): AssistantAction | undefined {
@@ -118,8 +120,8 @@ let calls = 0
 
 /**
  * Runs one tool call and tells the owner's screen it started and ended (its name only; a
- * repository tool adds what it asks of the sandbox through `show`). Nothing when no reply is
- * streamed.
+ * repository tool adds what it asks of the sandbox through `show`, and `search_web` its query).
+ * Nothing when no reply is streamed.
  */
 async function followed<T>(
   tool: string,
