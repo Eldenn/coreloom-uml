@@ -1,0 +1,82 @@
+{
+ "F1 BM25": {
+  "precision": 0.1489629164047769,
+  "recall": 0.21447963800904976,
+  "F1": 0.17581602373887242,
+  "positives with none": 0.2903225806451613,
+  "refusal suggested": 0.48148148148148145,
+  "nothing suggested": 0.4484848484848485
+ },
+ "F1 SparseUp-v2": {
+  "precision": 0.30824185398152987,
+  "recall": 0.40022624434389137,
+  "F1": 0.3482626242740427,
+  "positives with none": 0.3629032258064516,
+  "refusal suggested": 0.48333333333333334,
+  "nothing suggested": 0.3424242424242424
+ },
+ "F1 Qwen": {
+  "precision": 0.3334590009425071,
+  "recall": 0.4002262443438914,
+  "F1": 0.3638046272493573,
+  "positives with none": 0.43548387096774194,
+  "refusal suggested": 0.5462962962962963,
+  "nothing suggested": 0.22121212121212122
+ },
+ "F1 Qwen+BM25 a=0.7": {
+  "precision": 0.2780516958015838,
+  "recall": 0.42104072398190046,
+  "F1": 0.3349230630792765,
+  "positives with none": 0.20967741935483872,
+  "refusal suggested": 0.7037037037037037,
+  "nothing suggested": 0.43333333333333335
+ },
+ "F1 Qwen+SparseUp a=0.7": {
+  "precision": 0.3918702442931518,
+  "recall": 0.44276018099547515,
+  "F1": 0.4157637561079244,
+  "positives with none": 0.3548387096774194,
+  "refusal suggested": 0.4074074074074074,
+  "nothing suggested": 0.23181818181818184
+ },
+ "F0.5 BM25": {
+  "precision": 0.44078144078144077,
+  "recall": 0.08167420814479638,
+  "F0.5": 0.23453742203742206,
+  "positives with none": 0.8225806451612904,
+  "refusal suggested": 0.037037037037037035,
+  "nothing suggested": 0.06212121212121212
+ },
+ "F0.5 SparseUp-v2": {
+  "precision": 0.6089785296031229,
+  "recall": 0.21176470588235297,
+  "F0.5": 0.4428463285389856,
+  "positives with none": 0.7419354838709677,
+  "refusal suggested": 0.21666666666666667,
+  "nothing suggested": 0.030303030303030304
+ },
+ "F0.5 Qwen": {
+  "precision": 0.5748129675810474,
+  "recall": 0.2085972850678733,
+  "F0.5": 0.4254337393872278,
+  "positives with none": 0.7096774193548387,
+  "refusal suggested": 0.2222222222222222,
+  "nothing suggested": 0.08636363636363636
+ },
+ "F0.5 Qwen+BM25 a=0.7": {
+  "precision": 0.5859473023839398,
+  "recall": 0.21131221719457016,
+  "F0.5": 0.4325676176361616,
+  "positives with none": 0.6693548387096774,
+  "refusal suggested": 0.2037037037037037,
+  "nothing suggested": 0.022727272727272728
+ },
+ "F0.5 Qwen+SparseUp a=0.7": {
+  "precision": 0.52571737953438,
+  "recall": 0.21968325791855203,
+  "F0.5": 0.4111619241192412,
+  "positives with none": 0.7096774193548387,
+  "refusal suggested": 0.2759259259259259,
+  "nothing suggested": 0.12424242424242424
+ }
+}

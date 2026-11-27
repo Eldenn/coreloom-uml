@@ -1,0 +1,159 @@
+{
+ "agents.long-term-memory/none": {
+  "skills": [],
+  "refusal": false
+ },
+ "api.style/rest": {
+  "skills": [
+   "backend-patterns"
+  ],
+  "refusal": false
+ },
+ "api.webhooks/receives": {
+  "skills": [],
+  "refusal": false
+ },
+ "backend.container-image/dockerfile": {
+  "skills": [
+   "multi-stage-dockerfile"
+  ],
+  "refusal": false
+ },
+ "backend.graceful-shutdown/agree": {
+  "skills": [],
+  "refusal": false
+ },
+ "backend.module-system/esm": {
+  "skills": [],
+  "refusal": false
+ },
+ "backend.observability/none": {
+  "skills": [],
+  "refusal": true
+ },
+ "database.migrations/never": {
+  "skills": [],
+  "refusal": true
+ },
+ "database.query-rules/online-migrations": {
+  "skills": [
+   "database-migrations",
+   "supabase-postgres-best-practices"
+  ],
+  "refusal": false
+ },
+ "design.function-size/agree": {
+  "skills": [
+   "refactor"
+  ],
+  "refusal": false
+ },
+ "design.immutability/agree": {
+  "skills": [
+   "coding-standards"
+  ],
+  "refusal": false
+ },
+ "frontend.accessibility/basics": {
+  "skills": [
+   "accessibility",
+   "better-accessibility",
+   "fixing-accessibility",
+   "accessibility-compliance"
+  ],
+  "refusal": false
+ },
+ "frontend.e2e-tool/none": {
+  "skills": [],
+  "refusal": true
+ },
+ "frontend.lint-format/biome": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.platforms/browser-only": {
+  "skills": [],
+  "refusal": true
+ },
+ "frontend.semantic-html/agree": {
+  "skills": [
+   "fixing-accessibility",
+   "better-accessibility",
+   "accessibility"
+  ],
+  "refusal": false
+ },
+ "frontend.service-worker/none": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.test-runner/vitest": {
+  "skills": [
+   "vitest",
+   "javascript-testing-patterns"
+  ],
+  "refusal": false
+ },
+ "frontend.token-storage/httponly-cookie": {
+  "skills": [
+   "auth-implementation-patterns"
+  ],
+  "refusal": false
+ },
+ "git.history/disagree": {
+  "skills": [
+   "git-advanced-workflows"
+  ],
+  "refusal": false
+ },
+ "llm.eval-tool/none": {
+  "skills": [],
+  "refusal": false
+ },
+ "llm.prompt-injection/agree": {
+  "skills": [],
+  "refusal": false
+ },
+ "perf.budget-check/none": {
+  "skills": [],
+  "refusal": false
+ },
+ "perf.long-lists/virtualized": {
+  "skills": [],
+  "refusal": false
+ },
+ "react.styling/tailwind": {
+  "skills": [
+   "tailwind-css-patterns",
+   "tailwind-4-docs",
+   "tailwind-design-system"
+  ],
+  "refusal": false
+ },
+ "security.network/none": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.design-trade-offs/agree": {
+  "skills": [
+   "architecture-decision-records",
+   "documentation-and-adrs",
+   "architecture-decision-records-affaan-m"
+  ],
+  "refusal": false
+ },
+ "system.failover/active-active": {
+  "skills": [],
+  "refusal": false
+ },
+ "tooling.package-manager/pnpm": {
+  "skills": [
+   "pnpm"
+  ],
+  "refusal": false
+ },
+ "workflow.autonomy/ask-before-writing": {
+  "skills": [],
+  "refusal": false
+ }
+}

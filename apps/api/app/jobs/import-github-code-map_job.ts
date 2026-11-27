@@ -15,16 +15,16 @@ import { pruneCodeMaps } from '#app/code-maps/services/code-map-pruning'
 import { deleteCodeMapFiles, storeCodeMapFile } from '#app/code-maps/services/code-map-storage'
 import { readCodeMapValue } from '#app/code-maps/services/code-map-upload'
 import { GithubFailure } from '#app/github/constants/github'
-import { repositoryToken } from '#app/github/services/repository-token'
+import { repositoryToken, revokeOnce, TokenFlow } from '#app/github/services/repository-token'
 
 /**
  * Maps a GitHub repository for a `pending` code map (`POST /projects/:id/code-maps/github`, or a
  * push the project follows): a sandbox clones it and runs graphify (`mapRepository`), then the
  * map is checked and stored like an upload. When the owner reads the repository through the
  * GitHub App, an installation token is made here, for this repository only and read only, handed
- * to the sandbox's clone and revoked once it answered: it never reaches Redis, the database or
- * a log. A repository that cannot be mapped fails the map at once; a sandbox that cannot be
- * reached is tried again, and fails the map after the last attempt. No model is called.
+ * to the sandbox's clone and revoked as soon as the clone answered: it never reaches Redis, the
+ * database or a log. A repository that cannot be mapped fails the map at once; a sandbox that
+ * cannot be reached is tried again, and fails the map after the last attempt. No model is called.
  */
 /** A failed attempt worth retrying, with the reason the map gets after the last one. */
 class ImportAttemptError extends Error {
@@ -71,16 +71,17 @@ export default class ImportGithubCodeMapJob extends Job<ImportGithubCodeMapJobDa
     }
 
     let result: Awaited<ReturnType<typeof mapRepository>>
+    const revoke = revokeOnce(access, TokenFlow.Import)
     try {
       result = await mapRepository({
         repository: codeMap.repositoryUrl,
         branch: codeMap.branch,
         ignore: defaultGraphifyIgnore(),
-        ...(access ? { token: access.token } : {}),
+        ...(access ? { credential: { token: access.token, revoke } } : {}),
       })
     } finally {
-      // It would expire within the hour anyway.
-      if (access) await access.github.revokeInstallationToken(access.token).catch(() => undefined)
+      // Revoked right after the clone already; this covers a clone that never ran.
+      await revoke()
     }
     if (!result.ok) {
       if (!result.retry) return this.markFailed(codeMap, GITHUB_IMPORT_FAILURES[result.code])

@@ -2,9 +2,10 @@ import { SkillSourceKind } from '#app/skills/constants/skill'
 import type SkillSource from '#app/skills/models/skill-source'
 import type { SkillSourceOutput } from '#app/skills/validators/skill-sources-output'
 
-/** `skills.sh`, or `owner/repo[/path]`. */
+/** `skills.sh`, `smithery.ai`, or `owner/repo[/path]`. */
 export function sourceLabel(source: Pick<SkillSource, 'kind' | 'owner' | 'repo' | 'path'>) {
   if (source.kind === SkillSourceKind.SkillsSh) return 'skills.sh'
+  if (source.kind === SkillSourceKind.Smithery) return 'smithery.ai'
   return [source.owner, source.repo, source.path].filter(Boolean).join('/')
 }
 

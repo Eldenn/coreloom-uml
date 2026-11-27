@@ -6,13 +6,14 @@ import { test } from '@japa/runner'
 import queue from '@nemoventures/adonis-jobs/services/main'
 import { DateTime } from 'luxon'
 import { REPOSITORY_SANDBOX } from '#app/assistant/constants/repository'
-import { CLONE, MAP, MAP_EXIT } from '#app/assistant/services/repository-commands'
+import { CLONE, cloneKillSeconds, MAP, MAP_EXIT } from '#app/assistant/services/repository-commands'
 import {
   CODE_MAP_LIMITS,
   CODE_MAPS_QUEUE,
   CodeMapSource,
   CodeMapStatus,
   GITHUB_IMPORT_FAILURES,
+  GITHUB_IMPORT_LIMITS,
 } from '#app/code-maps/constants/code-map'
 import CodeMap from '#app/code-maps/models/code-map'
 import { parseGithubRepository } from '#app/code-maps/services/github-repository'
@@ -270,6 +271,8 @@ test.group('GitHub code maps: job', (group) => {
       REPO_URL: 'https://github.com/acme/shop.git',
       REPO_BRANCH: '',
       REPO_DEPTH: '1',
+      // Killed in the sandbox a little before the worker stops waiting for it.
+      ...cloneKillSeconds(GITHUB_IMPORT_LIMITS.cloneTimeoutMs),
     })
     assert.sameMembers(Object.keys(sandboxes.runs[1]?.envs ?? {}), ['REPO_ROOT', 'MAP_IGNORE'])
     assert.include(sandboxes.runs[1]?.envs.MAP_IGNORE, 'node_modules/')

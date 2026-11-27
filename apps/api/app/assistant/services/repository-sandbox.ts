@@ -1,9 +1,17 @@
-import { ALL_TRAFFIC, CommandExitError, Sandbox, Template, TimeoutError } from 'e2b'
+import {
+  ALL_TRAFFIC,
+  CommandExitError,
+  Sandbox,
+  type SandboxInfo,
+  Template,
+  TimeoutError,
+} from 'e2b'
 import {
   REPOSITORY_SANDBOX,
   REPOSITORY_TEMPLATE,
   REPOSITORY_TEMPLATE_NAME,
 } from '#app/assistant/constants/repository'
+import { CLONE, CLONE_AT } from '#app/assistant/services/repository-commands'
 import { RESEARCH_DENIED_RANGES } from '#app/research/constants/research'
 import { type ResearchConfig, researchConfig } from '#app/research/services/research-config'
 
@@ -27,6 +35,17 @@ export type OpenRepositorySandbox = {
   /** The bytes of a file a command line left in the sandbox; null when it cannot be read. */
   readFile(path: string): Promise<Uint8Array | null>
   /**
+   * Writes `content` to `path` for the fixed line run next, which reads the file and removes it
+   * (`cloneSecretFile`): E2B keeps a command's line, environment and standard input, not what a
+   * file it receives holds. From then on, a run whose line or environment holds `content` or one
+   * of `related` (what it was made from) is refused (`refusedExitCode`) without reaching E2B.
+   * False when the sandbox did not take the file, and without writing it on a sandbox from
+   * `resume` or once any command but the clone's (`CLONE`, `CLONE_AT`) ran in it: what such a
+   * command left running (one of the model or the owner, or one reading the repository's code)
+   * could read it.
+   */
+  writeSecret(path: string, content: string, related?: readonly string[]): Promise<boolean>
+  /**
    * Leaves it awake for `idleMs`, after which E2B pauses it by itself (`resume` wakes it);
    * the clone stays in it. Paused at once when E2B refuses the delay.
    */
@@ -38,9 +57,10 @@ export type OpenRepositorySandbox = {
  * import: with `ResearchSandbox`, the only files that import `e2b`. Resolved from the container,
  * so tests swap it and never reach E2B. It starts from the template of
  * `REPOSITORY_TEMPLATE` (E2B's base and graphify, nothing of ours) and gets no file of ours and no key:
- * the only secret it ever sees is an installation token for its one repository, as an
- * environment variable of one git command (never a file), revoked when the message or the import
- * ends. It runs only the fixed command lines of `repository-commands.ts`, one of which (`SHELL`)
+ * the only secret it ever sees is an installation token for its one repository, written to a
+ * file the clone's fixed line reads and removes at once (`writeSecret`, never a command line, an
+ * environment or a standard input, which E2B keeps), and revoked as soon as the clone answered.
+ * It runs only the fixed command lines of `repository-commands.ts`, one of which (`SHELL`)
  * runs a command of the model: only in a sandbox cut off every network (`isolate`), which never
  * gets a token again. Until then it may not reach a private address range. A conversation's
  * stays awake `idleMs` after its last use, then is paused by E2B, and is killed with its conversation, its account, after `maxIdleDays` unused, or as
@@ -80,6 +100,8 @@ export default class RepositorySandbox {
   async create(
     timeoutMs: number = REPOSITORY_SANDBOX.timeoutMs,
     onTimeout: 'kill' | 'pause' = 'kill',
+    /** What `listPaused` finds it by (a conversation's, `ASSISTANT_SANDBOX_METADATA`). */
+    metadata?: Record<string, string>,
   ): Promise<OpenRepositorySandbox | null> {
     const config = researchConfig()
     if (!config) return null
@@ -92,8 +114,9 @@ export default class RepositorySandbox {
         network: { denyOut: [...RESEARCH_DENIED_RANGES] },
         // Never woken by traffic: only `resume` does it, which cuts the network again.
         lifecycle: { onTimeout, ...(onTimeout === 'pause' ? { autoResume: false } : {}) },
+        ...(metadata ? { metadata } : {}),
       })
-      return handle(sandbox)
+      return handle(sandbox, { fresh: true })
     } catch {
       return null
     }
@@ -115,7 +138,26 @@ export default class RepositorySandbox {
         timeoutMs,
         requestTimeoutMs: REPOSITORY_SANDBOX.startTimeoutMs,
       })
-      return handle(sandbox)
+      return handle(sandbox, { fresh: false })
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * The ids of the paused sandboxes created with `metadata` (all of it), every page; null when
+   * E2B does not answer.
+   */
+  async listPaused(metadata: Record<string, string>): Promise<string[] | null> {
+    const config = researchConfig()
+    if (!config) return []
+    try {
+      const pages = Sandbox.list({
+        ...connection(config),
+        requestTimeoutMs: REPOSITORY_SANDBOX.commandTimeoutMs,
+        query: { metadata, state: ['paused'] },
+      })
+      return await pausedWith(pages, metadata)
     } catch {
       return null
     }
@@ -141,10 +183,70 @@ function connection(config: ResearchConfig) {
   }
 }
 
-function handle(sandbox: Sandbox): OpenRepositorySandbox {
+/**
+ * The ids, over every page, of the listed sandboxes that are paused and carry each entry of
+ * `metadata`; exported for its tests. The query already asks E2B for those, but an install that
+ * ignored it must not get a running sandbox, or one of another kind, killed by the sweep.
+ */
+export async function pausedWith(
+  pages: {
+    hasNext: boolean
+    nextItems(): Promise<Pick<SandboxInfo, 'sandboxId' | 'state' | 'metadata'>[]>
+  },
+  metadata: Record<string, string>,
+): Promise<string[]> {
+  const wanted = Object.entries(metadata)
+  const ids: string[] = []
+  while (pages.hasNext) {
+    for (const sandbox of await pages.nextItems()) {
+      if (sandbox.state !== 'paused') continue
+      if (!wanted.every(([key, value]) => sandbox.metadata?.[key] === value)) continue
+      ids.push(sandbox.sandboxId)
+    }
+  }
+  return ids
+}
+
+/** Whether a command's line or one of its environment values holds one of `secrets`. */
+export function holdsSecret(
+  secrets: ReadonlySet<string>,
+  command: string,
+  envs: Record<string, string>,
+): boolean {
+  const texts = [command, ...Object.keys(envs), ...Object.values(envs)]
+  for (const secret of secrets) {
+    if (texts.some((text) => text.includes(secret))) return true
+  }
+  return false
+}
+
+/**
+ * What `create` and `resume` hand out, around E2B's own sandbox; exported for its tests. Only a
+ * `fresh` one (from `create`) takes a secret, and only until a command other than `CLONE` and
+ * `CLONE_AT` ran in it.
+ */
+export function handle(
+  sandbox: Pick<
+    Sandbox,
+    'sandboxId' | 'commands' | 'files' | 'updateNetwork' | 'setTimeout' | 'pause'
+  >,
+  { fresh }: { fresh: boolean },
+): OpenRepositorySandbox {
+  /** Every secret written to this sandbox, refused in any later line or environment. */
+  const secrets = new Set<string>()
+  /** Whether it may still take a secret. */
+  let takesSecrets = fresh
   return {
     sandboxId: sandbox.sandboxId,
     async run(command, envs, timeoutMs = REPOSITORY_SANDBOX.commandTimeoutMs, onOutput) {
+      if (holdsSecret(secrets, command, envs)) {
+        return {
+          exitCode: REPOSITORY_SANDBOX.refusedExitCode,
+          output: REPOSITORY_SANDBOX.refusedOutput,
+        }
+      }
+      // Before it starts: even one that fails may leave something running.
+      if (command !== CLONE && command !== CLONE_AT) takesSecrets = false
       try {
         const result = await sandbox.commands.run(command, {
           envs,
@@ -181,6 +283,18 @@ function handle(sandbox: Sandbox): OpenRepositorySandbox {
         })
       } catch {
         return null
+      }
+    },
+    async writeSecret(path, content, related = []) {
+      for (const secret of [content, ...related]) if (secret) secrets.add(secret)
+      if (!takesSecrets) return false
+      try {
+        await sandbox.files.write(path, content, {
+          requestTimeoutMs: REPOSITORY_SANDBOX.commandTimeoutMs,
+        })
+        return true
+      } catch {
+        return false
       }
     },
     async rest() {

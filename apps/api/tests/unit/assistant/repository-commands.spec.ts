@@ -10,6 +10,9 @@ import { REPOSITORY_SANDBOX, REPOSITORY_TOOL_LIMITS } from '#app/assistant/const
 import {
   CLONE,
   CLONE_AT,
+  cloneCredential,
+  cloneKillSeconds,
+  cloneSecretFile,
   GIT_BLAME,
   GIT_LOG,
   GIT_SHOW,
@@ -38,6 +41,9 @@ let root = ''
 let base = ''
 let firstCommit = ''
 
+/** What the API gives a clone it waits a minute for. */
+const KILL_AFTER = cloneKillSeconds(60_000)
+
 const allowFile = {
   GIT_CONFIG_COUNT: '1',
   GIT_CONFIG_KEY_0: 'protocol.file.allow',
@@ -49,7 +55,10 @@ function sh(line: string, env: Record<string, string>) {
     execFile(
       '/bin/bash',
       ['-c', line],
-      { env: { PATH: process.env.PATH ?? '', REPO_ROOT: root, ...env }, maxBuffer: 1 << 26 },
+      {
+        env: { PATH: process.env.PATH ?? '', REPO_ROOT: root, ...KILL_AFTER, ...env },
+        maxBuffer: 1 << 26,
+      },
       (error, stdout) => {
         const code = error ? (typeof error.code === 'number' ? error.code : 1) : 0
         resolve({ exitCode: code, stdout })
@@ -429,5 +438,241 @@ test.group('repository sandbox command lines: MAP', (group) => {
     await writeFile(join(bin, 'graphify'), '#!/bin/sh\nexit 0\n')
     assert.equal((await sh(MAP, { MAP_IGNORE: '', PATH })).exitCode, MAP_EXIT.extraction)
     assert.isFalse(await exists(mapFile(root)))
+  })
+})
+
+/**
+ * The credential of `CLONE` and `CLONE_AT`: read from `cloneSecretFile`, removed first thing, and
+ * given to the fetching git process only. A `git` placed first on the `PATH` notes, for each git
+ * process the lines start, the subcommand and the HTTP header its configuration holds, then runs
+ * the real git.
+ */
+test.group('repository sandbox clone credential', (group) => {
+  const TOKEN = 'ghs_witness0123456789abcdefghijklmnopqrstuv'
+  let folder = ''
+  let source = ''
+  let commit = ''
+  let notes = ''
+  let PATH = ''
+  const exists = (path: string) =>
+    access(path).then(
+      () => true,
+      () => false,
+    )
+
+  group.setup(async () => {
+    folder = await mkdtemp(join(tmpdir(), 'clone-credential-'))
+    source = join(folder, 'source')
+    await mkdir(source)
+    await git(folder, 'init', '--quiet', '--initial-branch=main', source)
+    await writeFile(join(source, 'README.md'), 'Shop\n')
+    await git(source, 'add', '.')
+    await git(source, 'commit', '--quiet', '-m', 'Start')
+    commit = await git(source, 'rev-parse', 'HEAD')
+    const real = (await promisify(execFile)('/bin/bash', ['-c', 'command -v git'])).stdout.trim()
+    const bin = join(folder, 'bin')
+    await mkdir(bin)
+    notes = join(folder, 'notes')
+    await writeFile(
+      join(bin, 'git'),
+      [
+        '#!/bin/bash',
+        'sub=other',
+        'for a in "$@"; do case "$a" in clone|fetch|init|checkout|rev-parse|remote) sub="$a"; break ;; esac; done',
+        `h=$("${real}" config --get-all http.https://github.com/.extraheader 2>/dev/null)`,
+        `printf "%s %s\\n" "$sub" "\${h:-none}" >> "${notes}"`,
+        // Any process of this machine whose command line holds the header's value, this one
+        // included: read with builtins, so no process of the check holds it.
+        `test -z "$h" || for f in /proc/[0-9]*/cmdline; do mapfile -d "" p < "$f" 2>/dev/null || continue; case "\${p[*]}" in *"$h"*) echo "$f" >> "${notes}.argv" ;; esac; done`,
+        `exec "${real}" "$@"`,
+        '',
+      ].join('\n'),
+    )
+    await chmod(join(bin, 'git'), 0o755)
+    PATH = `${bin}:${process.env.PATH ?? ''}`
+    return () => rm(folder, { recursive: true, force: true })
+  })
+
+  /** Runs a line as the sandbox would; answers its exit code and what each git process held. */
+  async function clone(line: string, name: string, env: Record<string, string>) {
+    const at = join(folder, name)
+    await rm(notes, { force: true })
+    await rm(`${notes}.argv`, { force: true })
+    const ran = await new Promise<{ exitCode: number; stdout: string }>((resolve) => {
+      execFile(
+        '/bin/bash',
+        ['-c', line],
+        { env: { PATH, REPO_ROOT: at, REPO_URL: `file://${source}`, ...KILL_AFTER, ...env } },
+        (error, stdout) =>
+          resolve({
+            exitCode: error ? (typeof error.code === 'number' ? error.code : 1) : 0,
+            stdout,
+          }),
+      )
+    })
+    const held = (await readFile(notes, 'utf8').catch(() => '')).trim().split('\n')
+    const argv = (await readFile(`${notes}.argv`, 'utf8').catch(() => '')).trim()
+    return { ...ran, at, held, argv }
+  }
+
+  const header = `Authorization: Basic ${cloneCredential(TOKEN)}`
+
+  test('CLONE gives the credential it reads to the clone only, and removes the file', async ({
+    assert,
+  }) => {
+    const at = join(folder, 'private')
+    await writeFile(cloneSecretFile(at), cloneCredential(TOKEN))
+    const env = { REPO_BRANCH: '', REPO_FILTER: 'blob:none', ...allowFile }
+    const cloned = await clone(CLONE, 'private', env)
+    assert.equal(cloned.exitCode, 0)
+    assert.equal(cloned.stdout.trim(), commit)
+    assert.isFalse(await exists(cloneSecretFile(at)))
+    // The clone, and only it, held the header, after the `protocol.file.allow` already set.
+    assert.deepEqual(cloned.held, [`clone ${header}`, 'remote none', 'rev-parse none'])
+    // In git's environment only: no command line held it while git ran.
+    assert.equal(cloned.argv, '')
+    for (const value of [TOKEN, cloneCredential(TOKEN), header]) {
+      assert.notInclude(CLONE, value)
+      assert.notInclude(JSON.stringify(env), value)
+      assert.notInclude(await readFile(`${at}.git/config`, 'utf8'), value)
+    }
+  })
+
+  test('CLONE_AT gives the credential it reads to the fetch only, and removes the file', async ({
+    assert,
+  }) => {
+    const at = join(folder, 'private-at')
+    await writeFile(cloneSecretFile(at), cloneCredential(TOKEN))
+    const fetched = await clone(CLONE_AT, 'private-at', { REPO_COMMIT: commit, ...allowFile })
+    assert.equal(fetched.exitCode, 0)
+    assert.equal(fetched.stdout.trim(), commit)
+    assert.isFalse(await exists(cloneSecretFile(at)))
+    assert.deepEqual(fetched.held, [
+      'init none',
+      `fetch ${header}`,
+      'checkout none',
+      'rev-parse none',
+    ])
+    assert.equal(fetched.argv, '')
+    assert.notInclude(await readFile(`${at}.git/config`, 'utf8'), cloneCredential(TOKEN))
+  })
+
+  test('a public repository is cloned without any credential, and without waiting', async ({
+    assert,
+  }) => {
+    const cloned = await clone(CLONE, 'public', { REPO_BRANCH: '', ...allowFile })
+    assert.equal(cloned.exitCode, 0)
+    assert.equal(cloned.stdout.trim(), commit)
+    assert.isTrue(cloned.held.every((note) => note.endsWith(' none')))
+    const fetched = await clone(CLONE_AT, 'public-at', { REPO_COMMIT: commit, ...allowFile })
+    assert.equal(fetched.exitCode, 0)
+    assert.isTrue(fetched.held.every((note) => note.endsWith(' none')))
+  })
+
+  test('a count of GIT_CONFIG_* with a leading zero is read as a decimal', async ({ assert }) => {
+    const at = join(folder, 'leading-zero')
+    await writeFile(cloneSecretFile(at), cloneCredential(TOKEN))
+    // `protocol.file.allow` as the ninth entry, counted as "09" (an octal error in bash).
+    const env: Record<string, string> = { REPO_BRANCH: '', GIT_CONFIG_COUNT: '09' }
+    for (let n = 0; n < 8; n += 1) {
+      env[`GIT_CONFIG_KEY_${String(n)}`] = `coreloom.unused${String(n)}`
+      env[`GIT_CONFIG_VALUE_${String(n)}`] = 'x'
+    }
+    env.GIT_CONFIG_KEY_8 = 'protocol.file.allow'
+    env.GIT_CONFIG_VALUE_8 = 'always'
+    const cloned = await clone(CLONE, 'leading-zero', env)
+    assert.equal(cloned.exitCode, 0)
+    assert.deepEqual(cloned.held, [`clone ${header}`, 'rev-parse none'])
+    assert.isFalse(await exists(cloneSecretFile(at)))
+  })
+
+  test('a clone past its time is killed in the sandbox, git and all, and exits 124', async ({
+    assert,
+  }) => {
+    // A git that hangs on the network part (clone, fetch) and notes its process id.
+    const real = (await promisify(execFile)('/bin/bash', ['-c', 'command -v git'])).stdout.trim()
+    const bin = join(folder, 'hang-bin')
+    await mkdir(bin, { recursive: true })
+    const pids = join(folder, 'hang-pids')
+    await writeFile(
+      join(bin, 'git'),
+      [
+        '#!/bin/bash',
+        `for a in "$@"; do case "$a" in clone|fetch) echo "$$" >> "${pids}"; exec sleep 60 ;; esac; done`,
+        `exec "${real}" "$@"`,
+        '',
+      ].join('\n'),
+    )
+    await chmod(join(bin, 'git'), 0o755)
+    for (const [line, name] of [
+      [CLONE, 'hang'],
+      [CLONE_AT, 'hang-at'],
+    ] as const) {
+      await rm(pids, { force: true })
+      const at = join(folder, name)
+      await writeFile(cloneSecretFile(at), cloneCredential(TOKEN))
+      const started = performance.now()
+      const ran = await new Promise<number>((resolve) => {
+        execFile(
+          '/bin/bash',
+          ['-c', line],
+          {
+            env: {
+              PATH: `${bin}:${process.env.PATH ?? ''}`,
+              REPO_ROOT: at,
+              REPO_URL: `file://${source}`,
+              REPO_BRANCH: '',
+              REPO_COMMIT: commit,
+              REPO_TIMEOUT: '1',
+              ...allowFile,
+            },
+          },
+          (error) => resolve(error ? (typeof error.code === 'number' ? error.code : -1) : 0),
+        )
+      })
+      assert.equal(ran, 124, name)
+      assert.isBelow(performance.now() - started, 10_000, name)
+      assert.isFalse(await exists(cloneSecretFile(at)), name)
+      // The git that held the header is gone, not left running.
+      const [pid] = (await readFile(pids, 'utf8')).trim().split('\n').map(Number)
+      assert.isAbove(pid ?? 0, 0, name)
+      assert.throws(() => process.kill(pid ?? 0, 0), /ESRCH/, name)
+    }
+  })
+
+  test('a clone is given no time, or one that is not a number of seconds: nothing runs', async ({
+    assert,
+  }) => {
+    for (const timeout of ['', '1s', '-1']) {
+      const at = join(folder, 'no-timeout')
+      await writeFile(cloneSecretFile(at), cloneCredential(TOKEN))
+      const ran = await clone(CLONE, 'no-timeout', {
+        REPO_BRANCH: '',
+        ...allowFile,
+        REPO_TIMEOUT: timeout,
+      })
+      assert.equal(ran.exitCode, 1, timeout)
+      assert.deepEqual(ran.held, [''], timeout)
+      assert.isFalse(await exists(cloneSecretFile(at)), timeout)
+    }
+    // What the API gives: a little under what it waits, in whole seconds.
+    assert.deepEqual(cloneKillSeconds(25_000), { REPO_TIMEOUT: '22' })
+    assert.deepEqual(cloneKillSeconds(1_000), { REPO_TIMEOUT: '1' })
+  })
+
+  test('a credential that is not base64 is refused, and its file removed all the same', async ({
+    assert,
+  }) => {
+    for (const [line, name] of [
+      [CLONE, 'odd'],
+      [CLONE_AT, 'odd-at'],
+    ] as const) {
+      const at = join(folder, name)
+      await writeFile(cloneSecretFile(at), 'abc\nhttp.extraheader=x')
+      const ran = await clone(line, name, { REPO_BRANCH: '', REPO_COMMIT: commit, ...allowFile })
+      assert.equal(ran.exitCode, 1, name)
+      assert.isFalse(await exists(cloneSecretFile(at)), name)
+      assert.isFalse(await exists(at), name)
+    }
   })
 })

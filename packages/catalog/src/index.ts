@@ -6,10 +6,14 @@ export {
   suggestRoles,
 } from './match-roles.ts'
 export {
+  type AffinityDecision,
   COMPATIBLE_SKILLS_MAX,
+  COMPUTED_AFFINITY_THRESHOLD,
   CONFLICTING_SKILLS_MAX,
+  type ComputedAffinities,
   heldTopics,
   matchSkills,
+  pairKey,
   type SkillMatchInput,
   type SkillReason,
   type SkillSuggestion,

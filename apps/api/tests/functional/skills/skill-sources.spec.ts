@@ -22,16 +22,28 @@ test.group('Skill sources', (group) => {
     }
   })
 
-  test('the catalog starts with skills.sh as its one source, enabled', async ({ assert }) => {
-    const sources = await SkillSource.all()
-    assert.lengthOf(sources, 1)
-    assert.include(sources[0]?.serialize(), {
-      kind: SkillSourceKind.SkillsSh,
-      owner: null,
-      repo: null,
-      path: null,
-      enabled: true,
-    })
+  test('the catalog starts with two registries, skills.sh and Smithery, enabled', async ({
+    assert,
+  }) => {
+    const sources = await SkillSource.query().orderBy('id')
+    assert.deepEqual(
+      sources
+        .map((source) => source.serialize())
+        .map(({ kind, owner, repo, path, enabled }) => ({
+          kind,
+          owner,
+          repo,
+          path,
+          enabled,
+        })),
+      [SkillSourceKind.SkillsSh, SkillSourceKind.Smithery].map((kind) => ({
+        kind,
+        owner: null,
+        repo: null,
+        path: null,
+        enabled: true,
+      })),
+    )
   })
 
   test('the admin lists, adds, disables and deletes a source', async ({ client, assert }) => {
@@ -59,7 +71,7 @@ test.group('Skill sources', (group) => {
     listed.assertStatus(200)
     assert.deepEqual(
       listed.body().data.map((item: { label: string }) => item.label),
-      ['skills.sh', 'anthropics/skills/skills'],
+      ['skills.sh', 'smithery.ai', 'anthropics/skills/skills'],
     )
 
     const disabled = await client
@@ -97,14 +109,17 @@ test.group('Skill sources', (group) => {
     shouted.assertStatus(409)
   })
 
-  test('skills.sh can be disabled but never deleted', async ({ client, assert }) => {
+  test('a registry can be disabled but never deleted', async ({ client, assert }) => {
     const admin = await User.create({ email: ADMIN, password: PASSWORD })
     const skillsSh = await SkillSource.findByOrFail('kind', SkillSourceKind.SkillsSh)
-    const deleted = await client
-      .delete(`/admin/skill-sources/${skillsSh.id}`)
-      .headers(json)
-      .loginAs(admin)
-    deleted.assertStatus(409)
+    const smithery = await SkillSource.findByOrFail('kind', SkillSourceKind.Smithery)
+    for (const registry of [skillsSh, smithery]) {
+      const deleted = await client
+        .delete(`/admin/skill-sources/${registry.id}`)
+        .headers(json)
+        .loginAs(admin)
+      deleted.assertStatus(409)
+    }
     const disabled = await client
       .patch(`/admin/skill-sources/${skillsSh.id}`)
       .headers(json)

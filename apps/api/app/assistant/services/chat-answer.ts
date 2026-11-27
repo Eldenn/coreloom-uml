@@ -32,6 +32,7 @@ import {
 } from '#app/assistant/services/conversation-files'
 import { RepositorySession, withFilesRead } from '#app/assistant/services/repository-session'
 import { storeExchange } from '#app/assistant/services/store-exchange'
+import { withSearches } from '#app/assistant/services/web-searches-note'
 import type { ChatOutput, HandoffOutput } from '#app/assistant/validators/assistant-output'
 import { LlmFailureReason, llmFailure } from '#app/llm/services/language-models'
 import { ProviderKind } from '#app/llm-connections/constants/llm-connections'
@@ -103,6 +104,7 @@ export async function answerChat(
   let unfinished = false
   // Opened by the first repository tool, left to rest once the message is answered (or failed).
   const repository = new RepositorySession(user, conversation.id)
+  const web = { searches: 0 }
   const { onChunk } = stream
   try {
     if (withTools) {
@@ -111,6 +113,7 @@ export async function answerChat(
           conversationId: conversation.id,
           read,
           repository,
+          web,
           // Written by the tools themselves, beside the chunks `completeText` lets through.
           ...(onChunk
             ? {
@@ -138,7 +141,7 @@ export async function answerChat(
         },
         stream,
       )
-      reply = withFilesRead(result.reply, repository, locale)
+      reply = withSearches(withFilesRead(result.reply, repository, locale), web.searches, locale)
       unfinished = result.unfinished
       // Recorded by the tools as the loop went, in the same order: keep the ones the loop kept.
       actions = recorded.slice(0, result.proposed.length)

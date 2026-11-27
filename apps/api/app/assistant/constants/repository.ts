@@ -49,11 +49,27 @@ export const REPOSITORY_SANDBOX = {
   closeTimeoutMs: 5_000,
   /** Answered for a command the sandbox never answered (gone, unreachable). */
   goneExitCode: 125,
+  /**
+   * Answered, without asking E2B, for a command whose line or environment holds a secret given
+   * to that sandbox (`writeSecret`), with `refusedOutput`: a code no shell answers by itself (not
+   * 126 to 128, nor 128 + a signal), so a refusal is never read as the command's own failure.
+   * The model's `SHELL` and the owner's `TERMINAL` show the code and the sentence as they would
+   * any other; the clone, a code map import (`mapRepository`: not found, or extraction failed
+   * for `MAP`) and the source reading (`readSource`: unreadable, or the file left out) take it as
+   * a failure like any other code but 0.
+   */
+  refusedExitCode: 199,
+  refusedOutput: 'Refused: this command holds a secret given to this sandbox.\n',
   /** The clone, Git folder included: past this size it is refused, past this time abandoned. */
   cloneMaxBytes: 200 * 1024 * 1024,
   cloneTimeoutMs: 45_000,
   /** The first try, with every file of the history: past it, the files of one commit only. */
   fullCloneTimeoutMs: 25_000,
+  /**
+   * The clone's own line kills its fetching git this long before the API stops waiting for the
+   * line (`cloneKillSeconds`), so a clone the API gave up on never goes on in the sandbox.
+   */
+  cloneKillMarginMs: 3_000,
   /** One command of the model (`SHELL`): killed in the sandbox after this many seconds. */
   shellSeconds: 30,
   /** The least time between two pieces of a running command's output sent to the screen. */
@@ -65,6 +81,13 @@ export const REPOSITORY_SANDBOX = {
   /** One message at a time per conversation: the lock ends by itself after this. */
   lockSeconds: 120,
 } as const
+
+/**
+ * The E2B metadata of a conversation's sandbox (plus its `conversationId`): what
+ * `PruneAssistantSandboxesJob` lists to kill a paused one that never got its row (the API died
+ * between its creation and the row).
+ */
+export const ASSISTANT_SANDBOX_METADATA = { purpose: 'assistant-conversation' } as const
 
 /** What the repository tools answer at most. */
 export const REPOSITORY_TOOL_LIMITS = {

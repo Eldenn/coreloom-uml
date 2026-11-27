@@ -141,6 +141,7 @@ export const aiAgents: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Do not add a self-review or critic step to the agent: it doubles latency and the critic can be wrong; validate outputs with deterministic checks only.',
           ],
@@ -200,6 +201,7 @@ export const aiAgents: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Use the types and helpers of the agent framework or the model provider’s SDK directly where they are needed; do not wrap them in an abstraction layer of our own.',
           ],
@@ -396,6 +398,7 @@ export const aiAgents: RulePack = {
         },
         {
           id: 'final-only',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Only the final answer',
             fr: 'Seulement la réponse finale',
@@ -427,6 +430,7 @@ export const aiAgents: RulePack = {
       rules: [
         {
           id: 'one-model',
+          noAutomaticSuggestion: true,
           label: {
             en: 'The same model for every step',
             fr: 'Le même modèle pour chaque étape',
@@ -471,6 +475,7 @@ export const aiAgents: RulePack = {
         },
         {
           id: 'not-used',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Not cached',
             fr: 'Pas mis en cache',
@@ -673,6 +678,7 @@ export const aiAgents: RulePack = {
         },
         {
           id: 'not-used',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Does not use it',
             fr: 'Ne l’utilise pas',
@@ -735,6 +741,7 @@ export const aiAgents: RulePack = {
       rules: [
         {
           id: 'never',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Never',
             fr: 'Jamais',
@@ -779,6 +786,7 @@ export const aiAgents: RulePack = {
       rules: [
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing: each session starts fresh',
             fr: 'Rien : chaque session repart de zéro',
@@ -861,6 +869,7 @@ export const aiAgents: RulePack = {
         },
         {
           id: 'single-tenant',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing: the agent serves one user or one team',
             fr: 'Rien : l’agent sert un seul utilisateur ou une seule équipe',
@@ -892,6 +901,7 @@ export const aiAgents: RulePack = {
         },
         {
           id: 'until-deleted',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Is kept until its user asks to delete it',
             fr: 'Est conservé jusqu’à ce que son utilisateur demande de le supprimer',
@@ -936,6 +946,7 @@ export const aiAgents: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'No retrieval',
             fr: 'Aucune recherche',
@@ -966,6 +977,7 @@ export const aiAgents: RulePack = {
         },
         {
           id: 'disagree',
+          noAutomaticSuggestion: true,
           lines: [
             'Every indexed document is readable by every user of the agent: do not add per-user filters to the search unasked, and stop and ask before indexing a source that is not public to all of them.',
           ],
@@ -1013,6 +1025,7 @@ export const aiAgents: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'No such tests',
             fr: 'Pas de tels tests',
@@ -1108,6 +1121,7 @@ export const aiAgents: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'There is no such set yet',
             fr: 'Il n’existe pas encore de tel jeu',
@@ -1206,6 +1220,7 @@ export const aiAgents: RulePack = {
         },
         {
           id: 'none',
+          noAutomaticSuggestion: true,
           label: {
             en: 'Nothing: it acts alone',
             fr: 'Rien : il agit seul',

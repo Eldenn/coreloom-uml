@@ -52,12 +52,12 @@ export default class AdminSkillSourcesController {
     return response.ok({ source: await withCount(source) })
   }
 
-  /** A repository only: skills.sh is disabled, never deleted. */
+  /** A repository only: a registry (skills.sh, Smithery) is disabled, never deleted. */
   async destroy({ params, response }: HttpContext) {
     const source = await SkillSource.find(Number(params.id))
     if (!source) return response.notFound(NOT_FOUND)
-    if (source.kind === SkillSourceKind.SkillsSh) {
-      return response.conflict({ error: { message: 'skills.sh can be disabled, not deleted' } })
+    if (source.kind !== SkillSourceKind.Github) {
+      return response.conflict({ error: { message: 'A registry can be disabled, not deleted' } })
     }
     await source.delete()
     await publish()

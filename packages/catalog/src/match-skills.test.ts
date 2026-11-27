@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { COMPATIBLE_SKILLS_MAX, CONFLICTING_SKILLS_MAX, matchSkills } from './match-skills.ts'
+import {
+  type AffinityDecision,
+  COMPATIBLE_SKILLS_MAX,
+  COMPUTED_AFFINITY_THRESHOLD,
+  CONFLICTING_SKILLS_MAX,
+  type ComputedAffinities,
+  matchSkills,
+  pairKey,
+} from './match-skills.ts'
 import { findRuleGroup, RULE_PACKS } from './rule-packs/index.ts'
 import type { AcceptedRule, RulePack, Skill } from './schemas.ts'
 import { SKILLS } from './skills.ts'
@@ -299,5 +307,113 @@ describe('matchSkills with the real catalog', () => {
     const result = suggest({ 'workflow.autonomy': 'ask-before-writing' })
     expect(result.compatible.map((item) => item.id)).toContain('brainstorming')
     expect(result.conflicting).toEqual([])
+  })
+})
+
+describe('matchSkills with computed affinities', () => {
+  /** Computed affinities from a table of cosines keyed by `pairKey`. */
+  function computed(
+    cosines: Record<string, number>,
+    decisions: Record<string, AffinityDecision> = {},
+    duplicateOf: Record<string, string> = {},
+  ): ComputedAffinities {
+    return {
+      threshold: COMPUTED_AFFINITY_THRESHOLD.value,
+      cosine: (id, slot, rule) => cosines[pairKey(id, slot, rule)],
+      decisions: new Map(Object.entries(decisions)),
+      duplicateOf: new Map(Object.entries(duplicateOf)),
+    }
+  }
+
+  function matchComputed(held: Held, skills: Skill[], affinities: ComputedAffinities) {
+    return matchSkills(
+      {
+        packs: [frontendReact],
+        ready: ready(held),
+        targets: ['claude-code'],
+        diagramKinds: [],
+        computed: affinities,
+      },
+      skills,
+    )
+  }
+
+  const router = skill('router', { affinities: [], topics: ['frontend'] })
+  const other = skill('other', { affinities: [], topics: ['frontend'] })
+  const routed = { 'frontend.routing': 'react-router' }
+  const noRouter = { 'frontend.routing': 'none' }
+  const noRouterPair = pairKey('router', 'frontend.routing', 'none')
+
+  it('counts +1 for a pair at the threshold, 0 below it', () => {
+    const key = pairKey('router', 'frontend.routing', 'react-router')
+    expect(matchComputed(routed, [router], computed({ [key]: 0.656 })).compatible).toMatchObject([
+      { id: 'router', score: 1 },
+    ])
+    expect(matchComputed(routed, [router], computed({ [key]: 0.655 }))).toEqual({
+      compatible: [],
+      conflicting: [],
+    })
+  })
+
+  it('no longer makes a skill compatible by a shared tag alone', () => {
+    expect(match(routed, [router]).compatible).toHaveLength(1)
+    expect(matchComputed(routed, [router], computed({})).compatible).toEqual([])
+  })
+
+  it('gives no automatic suggestion for a marked rule, but counts a pair the admin accepted', () => {
+    const high = { [noRouterPair]: 0.9 }
+    expect(matchComputed(noRouter, [router], computed(high)).compatible).toEqual([])
+    expect(
+      matchComputed(noRouter, [router], computed(high, { [noRouterPair]: 'accepted' })).compatible,
+    ).toMatchObject([{ id: 'router', score: 1 }])
+  })
+
+  it('ignores a pair the admin rejected, and makes a conflict of one marked against', () => {
+    const key = pairKey('router', 'frontend.routing', 'react-router')
+    expect(
+      matchComputed(routed, [router], computed({ [key]: 0.9 }, { [key]: 'rejected' })),
+    ).toEqual({ compatible: [], conflicting: [] })
+    const against = matchComputed(noRouter, [router], computed({}, { [noRouterPair]: 'against' }))
+    expect(against.compatible).toEqual([])
+    expect(against.conflicting).toMatchObject([
+      { id: 'router', score: -1, reasons: [{ slot: 'frontend.routing' }] },
+    ])
+    const group = findRuleGroup([frontendReact], 'frontend.routing')
+    const titles = (id: string) => group?.rules.find((rule) => rule.id === id)?.label?.en
+    const reason = against.conflicting[0]?.reasons[0]
+    expect(reason?.yourAnswer.en).toBe(titles('none'))
+    // The skill expects any other answer of the group.
+    expect(reason?.skillExpects.en).toContain(titles('react-router'))
+    expect(reason?.skillExpects.en).not.toContain(titles('none'))
+  })
+
+  it('counts a rule once when a written affinity already fits it', () => {
+    const key = pairKey('strict-typing', 'typescript.any', 'agree')
+    const result = matchComputed(
+      { 'typescript.any': 'agree' },
+      [strictTyping],
+      computed({ [key]: 0.9 }),
+    )
+    expect(result.compatible).toMatchObject([{ id: 'strict-typing', score: 1 }])
+  })
+
+  const cosines = {
+    [pairKey('router', 'frontend.routing', 'react-router')]: 0.7,
+    [pairKey('other', 'frontend.routing', 'react-router')]: 0.8,
+  }
+
+  it('sorts by score, then by the best cosine, before the catalog order', () => {
+    expect(
+      matchComputed(routed, [router, other], computed(cosines)).compatible.map((item) => item.id),
+    ).toEqual(['other', 'router'])
+  })
+
+  it('skips a skill whose near duplicate is already listed', () => {
+    const result = matchComputed(
+      routed,
+      [router, other],
+      computed(cosines, {}, { other: 'router' }),
+    )
+    expect(result.compatible.map((item) => item.id)).toEqual(['other'])
   })
 })

@@ -961,3 +961,106 @@ export class UserSchema extends BaseModel {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
 }
+
+export class WatchArticleEmbeddingSchema extends BaseModel {
+  static $columns = ['articleId', 'createdAt', 'hash', 'vector'] as const
+  $columns = WatchArticleEmbeddingSchema.$columns
+  @column({ isPrimary: true })
+  declare articleId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare hash: string
+  @column()
+  declare vector: any
+}
+
+export class WatchArticleSchema extends BaseModel {
+  static $columns = ['createdAt', 'excerpt', 'hidden', 'id', 'publishedAt', 'reviewedTopics', 'site', 'sourceId', 'sourceTopics', 'taggerTopics', 'title', 'topics', 'updatedAt', 'url'] as const
+  $columns = WatchArticleSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare excerpt: string
+  @column()
+  declare hidden: boolean
+  @column({ isPrimary: true })
+  declare id: number
+  @column.dateTime()
+  declare publishedAt: DateTime
+  @column()
+  declare reviewedTopics: any | null
+  @column()
+  declare site: string
+  @column()
+  declare sourceId: number | null
+  @column()
+  declare sourceTopics: any
+  @column()
+  declare taggerTopics: any | null
+  @column()
+  declare title: string
+  @column()
+  declare topics: any
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare url: string
+}
+
+export class WatchBlockedSiteSchema extends BaseModel {
+  static $columns = ['createdAt', 'host', 'id'] as const
+  $columns = WatchBlockedSiteSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare host: string
+  @column({ isPrimary: true })
+  declare id: number
+}
+
+export class WatchSourceSchema extends BaseModel {
+  static $columns = ['createdAt', 'enabled', 'id', 'kind', 'lastError', 'lastRunAt', 'query', 'title', 'topics', 'updatedAt', 'url'] as const
+  $columns = WatchSourceSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare enabled: boolean
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare kind: string
+  @column()
+  declare lastError: string | null
+  @column.dateTime()
+  declare lastRunAt: DateTime | null
+  @column()
+  declare query: string | null
+  @column()
+  declare title: string | null
+  @column()
+  declare topics: any
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare url: string | null
+}
+
+export class WebSearchSettingSchema extends BaseModel {
+  static $columns = ['createdAt', 'id', 'keyHint', 'kind', 'sealedKey', 'updatedAt', 'verifiedAt'] as const
+  $columns = WebSearchSettingSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare keyHint: string
+  @column()
+  declare kind: string
+  @column()
+  declare sealedKey: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column.dateTime()
+  declare verifiedAt: DateTime
+}

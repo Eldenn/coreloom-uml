@@ -3,10 +3,11 @@ import { GRAPHIFY_TESTED_VERSION } from '@coreloom-uml/codemap'
 import { REPOSITORY_SANDBOX } from '#app/assistant/constants/repository'
 import {
   CLONE,
+  cloneKillSeconds,
   MAP,
   MAP_EXIT,
   mapFile,
-  tokenEnvs,
+  writeCloneCredential,
 } from '#app/assistant/services/repository-commands'
 import RepositorySandbox from '#app/assistant/services/repository-sandbox'
 import {
@@ -24,9 +25,10 @@ import { researchConfig } from '#app/research/services/research-config'
  * sandbox clones it (one commit) and runs graphify on the clone, with the two fixed command
  * lines `CLONE` and `MAP`, and only graphify's `graph.json` leaves it, gzipped. The code never
  * reaches this server. A private repository comes with an installation token of the GitHub App,
- * made for that one clone (one repository, read only): the clone's environment only, never
- * graphify's, and revoked by the worker once this answered. The sandbox is killed whatever
- * happens.
+ * made for that one clone (one repository, read only): written to a file the clone reads and
+ * removes at once (`writeCloneCredential`), never graphify's, and revoked as soon as the clone
+ * answered (`credential.revoke`; the worker revokes it again on its way out). The sandbox is killed
+ * whatever happens.
  */
 
 export type ExtractionResult =
@@ -54,8 +56,11 @@ export async function mapRepository(request: {
   repository: string
   branch: string | null
   ignore: string
-  /** An installation token, for a repository the owner reads through the GitHub App. */
-  token?: string
+  /**
+   * For a repository the owner reads through the GitHub App: an installation token and what
+   * revokes it, called as soon as the clone answered (or could not start), before graphify runs.
+   */
+  credential?: { token: string; revoke: () => Promise<void> }
 }): Promise<ExtractionResult> {
   const parsed = parseGithubRepository(request.repository)
   if (!parsed) return refused(ExtractionError.NotFound)
@@ -64,6 +69,11 @@ export async function mapRepository(request: {
   if (!sandbox) return again('the sandbox could not be started')
   const root = REPOSITORY_SANDBOX.root
   try {
+    const credential = request.credential
+    if (credential && !(await writeCloneCredential(sandbox, root, credential.token))) {
+      await credential.revoke()
+      return again('the sandbox stopped answering')
+    }
     const cloned = await sandbox.run(
       CLONE,
       {
@@ -71,10 +81,12 @@ export async function mapRepository(request: {
         REPO_URL: `${parsed.url}.git`,
         REPO_BRANCH: request.branch ?? '',
         REPO_DEPTH: '1',
-        ...(request.token ? tokenEnvs(request.token) : {}),
+        ...cloneKillSeconds(GITHUB_IMPORT_LIMITS.cloneTimeoutMs),
       },
       GITHUB_IMPORT_LIMITS.cloneTimeoutMs,
     )
+    // The clone is in, or failed: the token has no use left.
+    await credential?.revoke()
     const commit = cloned.output.trim()
     const cloneFailure = failure(cloned.exitCode)
     if (cloneFailure) return cloneFailure

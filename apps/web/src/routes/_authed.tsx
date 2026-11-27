@@ -15,6 +15,7 @@ import {
   FolderIcon,
   LanguagesIcon,
   NetworkIcon,
+  NewspaperIcon,
   PlusIcon,
   SettingsIcon,
   SparklesIcon,
@@ -37,8 +38,10 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { AssistantProvider } from '@/lib/assistant-context'
 import { apiBaseUrl } from '@/lib/client'
+import { useFeature } from '@/lib/feature-flags'
 import { type Locale, useLocale, useT } from '@/lib/locale'
 import { LegacyKeyOffer } from '@/llm/legacy-key-offer'
+import { RunningJobs } from '@/queue-jobs/running-jobs'
 
 export const Route = createFileRoute('/_authed')({
   // Runs before any page under it loads or renders, so a signed-out visitor never reaches one.
@@ -99,6 +102,7 @@ function useCrumbs() {
 function useCommands(isAdmin: boolean) {
   const t = useT()
   const navigate = useNavigate()
+  const watch = useFeature('tech-watch')
   return [
     {
       heading: t.shell.goTo,
@@ -123,6 +127,15 @@ function useCommands(isAdmin: boolean) {
           icon: SparklesIcon,
           onSelect: () => void navigate({ to: '/skills' }),
         },
+        ...(watch
+          ? [
+              {
+                label: t.nav.watch,
+                icon: NewspaperIcon,
+                onSelect: () => void navigate({ to: '/watch' }),
+              },
+            ]
+          : []),
         ...(isAdmin
           ? [
               {
@@ -171,6 +184,7 @@ function AuthedLayout() {
   const signingOut = React.useRef(false)
   const crumbs = useCrumbs()
   const commands = useCommands(user?.isAdmin ?? false)
+  const watch = useFeature('tech-watch')
 
   const fullWidth = useRouterState({
     select: (state) => state.matches.some((match) => match.staticData.fullWidth),
@@ -247,6 +261,16 @@ function AuthedLayout() {
                 icon: SparklesIcon,
                 isActive: isActive('/skills'),
               },
+              ...(watch
+                ? [
+                    {
+                      title: t.nav.watch,
+                      url: '/watch',
+                      icon: NewspaperIcon,
+                      isActive: isActive('/watch'),
+                    },
+                  ]
+                : []),
               ...(user.isAdmin
                 ? [
                     {
@@ -270,6 +294,7 @@ function AuthedLayout() {
         commands={commands}
         headerActions={
           <>
+            {user.isAdmin && <RunningJobs />}
             <LanguageMenu />
           </>
         }

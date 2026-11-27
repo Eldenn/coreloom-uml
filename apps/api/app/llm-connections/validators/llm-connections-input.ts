@@ -15,21 +15,26 @@ export const claudeCodeInput = vine.create(
 )
 
 /**
- * A provider key the account saves: printable ASCII on one line only (no space, control character
- * or line break, so it cannot leak into a header or a log line), stored only after the controller
- * checked it with a successful test call. A kind that calls a server the user names may take none
+ * A secret key a service is called with: printable ASCII on one line only (no space, control
+ * character or line break, so it cannot leak into a header or a log line), bounded. A new schema
+ * each call, for each validator to own its own.
+ */
+export const apiKeyRule = () =>
+  vine
+    .string()
+    .trim()
+    .minLength(16)
+    .maxLength(LLM_API_KEY_MAX_LENGTH)
+    .regex(/^[\x21-\x7E]+$/)
+
+/**
+ * A provider key the account saves (`apiKeyRule`), stored only after the controller checked it
+ * with a successful test call. A kind that calls a server the user names may take none
  * (`requiresApiKey` is false).
  */
 export const saveApiKeyInput = vine.create(
   vine.object({
-    apiKey: vine
-      .string()
-      .trim()
-      .minLength(16)
-      .maxLength(LLM_API_KEY_MAX_LENGTH)
-      .regex(/^[\x21-\x7E]+$/)
-      .nullable()
-      .optional(),
+    apiKey: apiKeyRule().nullable().optional(),
     baseUrl: vine.string().trim().maxLength(LLM_BASE_URL_MAX_LENGTH).nullable().optional(),
   }),
 )

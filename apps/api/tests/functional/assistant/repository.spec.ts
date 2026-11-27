@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { generateKeyPairSync } from 'node:crypto'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -14,15 +14,23 @@ import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import Architecture from '#app/architectures/models/architecture'
 import type { ToolActivity } from '#app/assistant/actions/action'
-import { REPOSITORY_SANDBOX } from '#app/assistant/constants/repository'
+import { ASSISTANT_SANDBOX_METADATA, REPOSITORY_SANDBOX } from '#app/assistant/constants/repository'
 import AssistantConversation from '#app/assistant/models/assistant-conversation'
 import AssistantMessage from '#app/assistant/models/assistant-message'
 import AssistantSandbox from '#app/assistant/models/assistant-sandbox'
-import { CLONE, SHELL, STOP_TERMINAL, TERMINAL } from '#app/assistant/services/repository-commands'
+import {
+  CLONE,
+  cloneCredential,
+  cloneSecretFile,
+  SHELL,
+  STOP_TERMINAL,
+  TERMINAL,
+  writeCloneCredential,
+} from '#app/assistant/services/repository-commands'
 import RepositorySandbox, {
   type OpenRepositorySandbox,
 } from '#app/assistant/services/repository-sandbox'
-import { RepositorySession } from '#app/assistant/services/repository-session'
+import { REPOSITORY_SENTENCES, RepositorySession } from '#app/assistant/services/repository-session'
 import GithubCodeMapFollow from '#app/code-maps/models/github-code-map-follow'
 import { updateFlag } from '#app/feature-flags/services/feature-flags'
 import GithubRepositoryGrant from '#app/github/models/github-repository-grant'
@@ -86,8 +94,9 @@ class FakeGithubApi extends GithubApi {
     return { ok: true, value: TOKEN }
   }
 
-  override async revokeInstallationToken(token: string) {
+  override async revokeInstallationToken(token: string): Promise<GithubResult<unknown>> {
     this.revoked.push(token)
+    return { ok: true, value: null }
   }
 
   override async canRead(): Promise<GithubResult<boolean>> {
@@ -139,10 +148,23 @@ class FakeSandboxes extends RepositorySandbox {
   clones: Record<string, string>[] = []
   /** The environment of every other command. */
   afterClone: Record<string, string>[] = []
+  /** Every command line run, with its environment. */
+  runs: { command: string; envs: Record<string, string> }[] = []
+  /** Every secret written to a sandbox (`writeSecret`), in order. */
+  writes: { path: string; content: string }[] = []
   /** What happened to the sandboxes, in order: 'clone', 'isolate', 'shell', 'tool'. */
   events: string[] = []
   /** False: E2B does not confirm the sandbox is cut off the network. */
   isolates = true
+  /** True: the sandbox does not take a secret (`writeSecret` answers false). */
+  writeFails = false
+  /**
+   * Exit codes the next clones answer instead of running, in order: the line still reads and
+   * removes the credential file first, as the real one does.
+   */
+  failClones: number[] = []
+  /** The E2B metadata each sandbox was created with. */
+  metadata = new Map<string, Record<string, string>>()
 
   constructor(private origin: string) {
     super()
@@ -152,12 +174,24 @@ class FakeSandboxes extends RepositorySandbox {
     return true
   }
 
-  async create(): Promise<OpenRepositorySandbox | null> {
+  async create(
+    _timeoutMs?: number,
+    _onTimeout?: 'kill' | 'pause',
+    metadata?: Record<string, string>,
+  ): Promise<OpenRepositorySandbox | null> {
     const folder = await mkdtemp(join(tmpdir(), 'fake-sandbox-'))
     this.created += 1
     const id = `sbx-${String(this.created)}`
     this.folders.set(id, folder)
+    if (metadata) this.metadata.set(id, metadata)
     return this.#open(id)
+  }
+
+  /** Every sandbox still there counts as paused here. */
+  async listPaused(metadata: Record<string, string>): Promise<string[] | null> {
+    return [...this.folders.keys()].filter((id) =>
+      Object.entries(metadata).every(([key, value]) => this.metadata.get(id)?.[key] === value),
+    )
   }
 
   async resume(sandboxId: string) {
@@ -178,9 +212,17 @@ class FakeSandboxes extends RepositorySandbox {
     return {
       sandboxId: id,
       run: (command, envs, _timeoutMs, onOutput) => {
+        this.runs.push({ command, envs })
         if (command === CLONE) this.clones.push(envs)
         this.events.push(EVENTS.get(command) ?? 'tool')
         if (command !== CLONE) this.afterClone.push(envs)
+        const failed = command === CLONE ? this.failClones.shift() : undefined
+        if (failed !== undefined) {
+          return rm(cloneSecretFile(root), { force: true }).then(() => ({
+            exitCode: failed,
+            output: '',
+          }))
+        }
         // GitHub's URL is cloned from the fixture, which the sandbox's git (https only) refuses
         // unless allowed, the same way a token is passed.
         const count = Number(envs.GIT_CONFIG_COUNT ?? 0)
@@ -208,6 +250,14 @@ class FakeSandboxes extends RepositorySandbox {
         })
       },
       readFile: (path) => readFile(path.replace(REPOSITORY_SANDBOX.root, root)).catch(() => null),
+      // Written where the clone's line, run for real here, reads it and removes it.
+      writeSecret: async (path, content) => {
+        this.writes.push({ path, content })
+        if (this.writeFails) return false
+        await mkdir(join(root, '..'), { recursive: true })
+        await writeFile(path.replace(REPOSITORY_SANDBOX.root, root), content)
+        return true
+      },
       isolate: async () => {
         this.events.push('isolate')
         return this.isolates
@@ -248,6 +298,23 @@ async function setup(email: string) {
   })
   const conversation = await AssistantConversation.create({ userId: user.id, title: '' })
   return { user, project, conversation, path: `/assistant/conversations/${conversation.id}` }
+}
+
+/** `setup`, the repository being private and read through the GitHub App. */
+async function privateSetup(email: string) {
+  const f = await setup(email)
+  await GithubRepositoryGrant.create({
+    userId: f.user.id,
+    githubUserId: 501,
+    githubLogin: 'octo',
+    installationId: 77,
+    repositoryId: 4242,
+    owner: 'acme',
+    name: 'shop',
+    private: true,
+    defaultBranch: 'main',
+  })
+  return f
 }
 
 const toolResults = (model: ReturnType<typeof toolCallingModel>) =>
@@ -316,6 +383,7 @@ test.group('Assistant repository', (group) => {
     assert.isFalse(response.body().unfinished)
     // A public repository is cloned without any credential.
     assert.lengthOf(sandboxes.clones, 1)
+    assert.lengthOf(sandboxes.writes, 0)
     assert.notProperty(sandboxes.clones[0], 'GIT_CONFIG_COUNT')
     assert.equal(sandboxes.created, 1)
     assert.equal(sandboxes.rested, 1)
@@ -375,6 +443,11 @@ test.group('Assistant repository', (group) => {
     const restore = withGithubApp()
     try {
       const github = new FakeGithubApi()
+      github.revokeInstallationToken = async (token) => {
+        github.revoked.push(token)
+        sandboxes.events.push('revoke')
+        return { ok: true, value: null }
+      }
       app.container.swap(GithubApi, () => github)
       const f = await setup('repo-private@example.com')
       await GithubRepositoryGrant.create({
@@ -410,12 +483,28 @@ test.group('Assistant repository', (group) => {
       logs.restore()
       response.assertStatus(200)
 
-      // The token reached the clone as an environment variable only, and was revoked.
+      // The token reached the clone through a file it read and removed, never through a
+      // command line or an environment, and was revoked.
       assert.lengthOf(sandboxes.clones, 1)
-      const header = Buffer.from(`x-access-token:${TOKEN}`).toString('base64')
-      assert.equal(sandboxes.clones[0].GIT_CONFIG_VALUE_0, `Authorization: Basic ${header}`)
+      const header = cloneCredential(TOKEN)
+      assert.deepEqual(sandboxes.writes, [
+        { path: cloneSecretFile(REPOSITORY_SANDBOX.root), content: header },
+      ])
+      for (const secret of [TOKEN, header]) {
+        assert.notInclude(JSON.stringify(sandboxes.runs), secret)
+      }
+      assert.notProperty(sandboxes.clones[0], 'GIT_CONFIG_COUNT')
       assert.deepEqual(github.revoked, [TOKEN])
-      const folder = [...sandboxes.folders.values()][0]
+      // Revoked as soon as the clone answered, before the sandbox is cut off and the tool runs.
+      assert.deepEqual(sandboxes.events.slice(0, 4), ['clone', 'revoke', 'isolate', 'tool'])
+      // The file is gone: the clone's line removed it.
+      const folder = [...sandboxes.folders.values()][0] ?? ''
+      assert.isFalse(
+        await access(cloneSecretFile(join(folder, 'repo'))).then(
+          () => true,
+          () => false,
+        ),
+      )
       const config = await readFile(join(folder, 'repo.git', 'config'), 'utf8')
       assert.notInclude(config, header)
       assert.notInclude(config, 'extraheader')
@@ -430,6 +519,157 @@ test.group('Assistant repository', (group) => {
     } finally {
       restore()
     }
+  })
+
+  test('a sandbox that does not take the credential clones nothing, revoked and killed', async ({
+    client,
+    assert,
+  }) => {
+    const restore = withGithubApp()
+    try {
+      const github = new FakeGithubApi()
+      app.container.swap(GithubApi, () => github)
+      const f = await privateSetup('repo-write-fails@example.com')
+      sandboxes.writeFails = true
+      const model = toolCallingModel([
+        { calls: [{ tool: 'list_repository_files', input: { projectId: f.project.id } }] },
+        { text: 'I could not read it.' },
+      ])
+      useModel(model)
+      const response = await client
+        .post(`${f.path}/messages`)
+        .headers(json)
+        .loginAs(f.user)
+        .json({ provider, apiKey: KEY, message: 'List', locale: 'en', auto: true })
+      response.assertStatus(200)
+      assert.include(toolResults(model), REPOSITORY_SENTENCES.unreadable)
+      assert.lengthOf(sandboxes.writes, 1)
+      // No clone and no tool: nothing ran in the sandbox, which is killed, and no row.
+      assert.lengthOf(sandboxes.runs, 0)
+      assert.deepEqual(sandboxes.killed, ['sbx-1'])
+      assert.equal(github.tokens, 1)
+      assert.deepEqual(github.revoked, [TOKEN])
+      assert.isNull(await AssistantSandbox.findBy('conversationId', f.conversation.id))
+    } finally {
+      restore()
+    }
+  })
+
+  for (const exitCode of [4, 124]) {
+    test(`a first clone exiting ${String(exitCode)} is tried again with the files of one commit, one token for both`, async ({
+      client,
+      assert,
+    }) => {
+      const restore = withGithubApp()
+      try {
+        const github = new FakeGithubApi()
+        github.revokeInstallationToken = async (token) => {
+          github.revoked.push(token)
+          sandboxes.events.push('revoke')
+          return { ok: true, value: null }
+        }
+        app.container.swap(GithubApi, () => github)
+        const f = await privateSetup(`repo-retry-${String(exitCode)}@example.com`)
+        sandboxes.failClones = [exitCode]
+        useModel(
+          toolCallingModel([
+            { calls: [{ tool: 'list_repository_files', input: { projectId: f.project.id } }] },
+            { text: 'ok' },
+          ]),
+        )
+        const response = await client
+          .post(`${f.path}/messages`)
+          .headers(json)
+          .loginAs(f.user)
+          .json({ provider, apiKey: KEY, message: 'List', locale: 'en', auto: true })
+        response.assertStatus(200)
+        // Written again for the second try (the first one's line removed it), one token.
+        const written = {
+          path: cloneSecretFile(REPOSITORY_SANDBOX.root),
+          content: cloneCredential(TOKEN),
+        }
+        assert.deepEqual(sandboxes.writes, [written, written])
+        assert.deepEqual(
+          sandboxes.clones.map((envs) => envs.REPO_FILTER),
+          ['', 'blob:none'],
+        )
+        // Each try's git is killed in the sandbox before the API stops waiting for it.
+        assert.deepEqual(
+          sandboxes.clones.map((envs) => Number(envs.REPO_TIMEOUT)),
+          [REPOSITORY_SANDBOX.fullCloneTimeoutMs, REPOSITORY_SANDBOX.cloneTimeoutMs].map(
+            (ms) => (ms - REPOSITORY_SANDBOX.cloneKillMarginMs) / 1000,
+          ),
+        )
+        assert.equal(github.tokens, 1)
+        assert.deepEqual(github.revoked, [TOKEN])
+        // Revoked once, after the second clone, before the sandbox is cut off.
+        assert.deepEqual(sandboxes.events.slice(0, 5), [
+          'clone',
+          'clone',
+          'revoke',
+          'isolate',
+          'tool',
+        ])
+        assert.isFalse(
+          await access(cloneSecretFile(join(sandboxes.folders.get('sbx-1') ?? '', 'repo'))).then(
+            () => true,
+            () => false,
+          ),
+        )
+        assert.isNotNull(await AssistantSandbox.findBy('conversationId', f.conversation.id))
+      } finally {
+        restore()
+      }
+    })
+  }
+
+  test('the prune kills a paused sandbox of a conversation that never got its row', async ({
+    client,
+    assert,
+  }) => {
+    const f = await setup('repo-orphan@example.com')
+    useModel(
+      toolCallingModel([
+        { calls: [{ tool: 'list_repository_files', input: { projectId: f.project.id } }] },
+        { text: 'ok' },
+      ]),
+    )
+    ;(
+      await client
+        .post(`${f.path}/messages`)
+        .headers(json)
+        .loginAs(f.user)
+        .json({ provider, apiKey: KEY, message: 'List', locale: 'en', auto: true })
+    ).assertStatus(200)
+    const row = await AssistantSandbox.findByOrFail('conversationId', f.conversation.id)
+    // Created tagged, so a crash before its row leaves something the prune finds.
+    assert.deepEqual(sandboxes.metadata.get(row.sandboxId), {
+      ...ASSISTANT_SANDBOX_METADATA,
+      conversationId: String(f.conversation.id),
+    })
+    // The API died between this sandbox's creation (credential written) and its row.
+    const orphan = await sandboxes.create(REPOSITORY_SANDBOX.timeoutMs, 'pause', {
+      ...ASSISTANT_SANDBOX_METADATA,
+      conversationId: String(f.conversation.id + 1),
+    })
+    // A sandbox of an import or a reading is no conversation's: never listed.
+    const other = await sandboxes.create()
+    if (!orphan || !other) throw new Error('the fake made no sandbox')
+    assert.isTrue(await writeCloneCredential(orphan, REPOSITORY_SANDBOX.root, TOKEN))
+    const job = new PruneAssistantSandboxesJob()
+    const logged: unknown[] = []
+    ;(job as unknown as { logger: unknown }).logger = { info: (data: unknown) => logged.push(data) }
+    await job.process()
+    assert.deepEqual(sandboxes.killed, [orphan.sandboxId])
+    assert.isNotNull(await AssistantSandbox.find(row.id))
+    assert.notInclude(sandboxes.killed, other.sandboxId)
+    assert.deepEqual(logged, [{ count: 0, orphans: 1 }])
+
+    // E2B does not list them: nothing is killed, and the prune goes on.
+    sandboxes.listPaused = async () => null
+    await job.process()
+    assert.lengthOf(sandboxes.killed, 1)
+    assert.deepEqual(logged[1], { count: 0, orphans: null })
   })
 
   test('runs a command of the model only once the sandbox is cut off the network', async ({

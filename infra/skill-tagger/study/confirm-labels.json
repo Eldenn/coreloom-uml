@@ -1,0 +1,428 @@
+{
+ "agents.confirmation/none": {
+  "skills": [],
+  "refusal": false
+ },
+ "agents.framework/hand-written": {
+  "skills": [
+   "claude-api"
+  ],
+  "refusal": false
+ },
+ "agents.history/summary": {
+  "skills": [],
+  "refusal": false
+ },
+ "agents.loop-limits/task-timeout": {
+  "skills": [],
+  "refusal": false
+ },
+ "agents.loop-limits/token-budget": {
+  "skills": [],
+  "refusal": false
+ },
+ "agents.mcp-third-party/free": {
+  "skills": [],
+  "refusal": false
+ },
+ "agents.mcp-transport/http": {
+  "skills": [],
+  "refusal": false
+ },
+ "agents.mcp-transport/stdio": {
+  "skills": [],
+  "refusal": false
+ },
+ "agents.progress/background": {
+  "skills": [],
+  "refusal": false
+ },
+ "agents.progress/step-events": {
+  "skills": [
+   "claude-api"
+  ],
+  "refusal": false
+ },
+ "agents.prompt-caching/not-used": {
+  "skills": [],
+  "refusal": true
+ },
+ "agents.retrieval-access/disagree": {
+  "skills": [],
+  "refusal": false
+ },
+ "agents.test-model/none": {
+  "skills": [],
+  "refusal": true
+ },
+ "agents.tool-definitions/schema-library": {
+  "skills": [],
+  "refusal": false
+ },
+ "agents.tool-errors/abort": {
+  "skills": [],
+  "refusal": false
+ },
+ "agents.tool-errors/return-to-model": {
+  "skills": [],
+  "refusal": false
+ },
+ "agents.tool-permissions/scoped-service": {
+  "skills": [],
+  "refusal": false
+ },
+ "api.compatibility/agree": {
+  "skills": [],
+  "refusal": false
+ },
+ "api.http-caching/agree": {
+  "skills": [],
+  "refusal": false
+ },
+ "api.idempotency/natural": {
+  "skills": [],
+  "refusal": false
+ },
+ "api.pagination/none": {
+  "skills": [],
+  "refusal": false
+ },
+ "api.pagination/offset": {
+  "skills": [],
+  "refusal": false
+ },
+ "api.validation/joi": {
+  "skills": [],
+  "refusal": false
+ },
+ "api.versioning/header": {
+  "skills": [],
+  "refusal": false
+ },
+ "backend.database-tests/mocks": {
+  "skills": [
+   "javascript-testing-patterns"
+  ],
+  "refusal": false
+ },
+ "backend.database-tests/real": {
+  "skills": [],
+  "refusal": false
+ },
+ "backend.load-protections/retries": {
+  "skills": [],
+  "refusal": false
+ },
+ "backend.lockfile/agree": {
+  "skills": [
+   "pnpm"
+  ],
+  "refusal": false
+ },
+ "backend.model-call-guards/usage": {
+  "skills": [],
+  "refusal": false
+ },
+ "backend.observability/health": {
+  "skills": [],
+  "refusal": false
+ },
+ "backend.realtime/none": {
+  "skills": [],
+  "refusal": false
+ },
+ "backend.realtime/sse": {
+  "skills": [],
+  "refusal": false
+ },
+ "backend.reverse-proxy/direct": {
+  "skills": [],
+  "refusal": false
+ },
+ "backend.security-headers/none": {
+  "skills": [],
+  "refusal": false
+ },
+ "backend.security-headers/proxy": {
+  "skills": [],
+  "refusal": false
+ },
+ "backend.stateless/disagree": {
+  "skills": [],
+  "refusal": false
+ },
+ "database.layering/agree": {
+  "skills": [
+   "backend-patterns"
+  ],
+  "refusal": false
+ },
+ "design.code-structure/feature-modules": {
+  "skills": [],
+  "refusal": false
+ },
+ "design.inheritance/base-classes": {
+  "skills": [],
+  "refusal": false
+ },
+ "design.module-imports/public-entry": {
+  "skills": [
+   "codebase-design"
+  ],
+  "refusal": false
+ },
+ "design.principles/open-closed": {
+  "skills": [
+   "code-review-expert"
+  ],
+  "refusal": false
+ },
+ "design.principles/tell-dont-ask": {
+  "skills": [],
+  "refusal": false
+ },
+ "design.shared-instances/container": {
+  "skills": [],
+  "refusal": false
+ },
+ "design.side-effects/disagree": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.api-client/apollo": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.api-verification/agree": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.browser-support/evergreen": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.hydration/agree": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.hydration/disagree": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.lint-format/none": {
+  "skills": [],
+  "refusal": true
+ },
+ "frontend.optimistic-updates/optimistic": {
+  "skills": [
+   "react-state-management"
+  ],
+  "refusal": false
+ },
+ "frontend.optimistic-updates/wait": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.raw-html/never": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.rendering/static": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.request-cancellation/disagree": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.runtime-validation/generated": {
+  "skills": [],
+  "refusal": false
+ },
+ "frontend.test-network/real": {
+  "skills": [],
+  "refusal": false
+ },
+ "git.never-commit/unrelated": {
+  "skills": [
+   "git-commit",
+   "git-workflow-and-versioning"
+  ],
+  "refusal": false
+ },
+ "llm.model-hosting/hosted": {
+  "skills": [],
+  "refusal": false
+ },
+ "llm.output-limit/agree": {
+  "skills": [
+   "claude-api"
+  ],
+  "refusal": false
+ },
+ "llm.prompt-changes/ask": {
+  "skills": [],
+  "refusal": false
+ },
+ "llm.prompt-logging/full": {
+  "skills": [],
+  "refusal": false
+ },
+ "llm.prompt-structure/role": {
+  "skills": [],
+  "refusal": false
+ },
+ "llm.retrieval/vector": {
+  "skills": [],
+  "refusal": false
+ },
+ "llm.vector-store/lancedb": {
+  "skills": [],
+  "refusal": false
+ },
+ "llm.vector-store/qdrant": {
+  "skills": [],
+  "refusal": false
+ },
+ "perf.cache-headers/platform": {
+  "skills": [],
+  "refusal": false
+ },
+ "perf.critical-css/inlined": {
+  "skills": [],
+  "refusal": false
+ },
+ "perf.css-rules/inline-style": {
+  "skills": [],
+  "refusal": false
+ },
+ "perf.field-metrics/none": {
+  "skills": [],
+  "refusal": true
+ },
+ "perf.field-metrics/web-vitals": {
+  "skills": [],
+  "refusal": false
+ },
+ "perf.image-loading/disagree": {
+  "skills": [],
+  "refusal": false
+ },
+ "perf.long-lists/paginated": {
+  "skills": [],
+  "refusal": false
+ },
+ "perf.main-thread/agree": {
+  "skills": [],
+  "refusal": false
+ },
+ "perf.unused-css/manual": {
+  "skills": [],
+  "refusal": false
+ },
+ "perf.vitals-targets/none": {
+  "skills": [],
+  "refusal": false
+ },
+ "react.error-boundaries/none": {
+  "skills": [],
+  "refusal": false
+ },
+ "react.error-boundaries/section": {
+  "skills": [],
+  "refusal": false
+ },
+ "react.styling/vanilla-extract": {
+  "skills": [],
+  "refusal": false
+ },
+ "security.network/open": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.alerting/disagree": {
+  "skills": [],
+  "refusal": true
+ },
+ "system.cache-invalidation/delete-on-write": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.cache-strategy/write-through": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.failover/active-passive": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.gateway/gateway": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.gateway/none": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.latency-percentiles/agree": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.legacy-migration/anti-corruption-layer": {
+  "skills": [
+   "architecture-patterns"
+  ],
+  "refusal": false
+ },
+ "system.measure-first/agree": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.message-ordering/global": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.monitoring-scope/none": {
+  "skills": [],
+  "refusal": true
+ },
+ "system.performance-antipatterns/chatty-io": {
+  "skills": [
+   "sql-optimization-patterns",
+   "sql-optimization"
+  ],
+  "refusal": false
+ },
+ "system.queue-guarantees/competing-consumers": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.queue-guarantees/priorities": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.service-discovery/configuration": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.service-discovery/not-applicable": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.service-protocol/graphql": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.service-protocol/not-applicable": {
+  "skills": [],
+  "refusal": true
+ },
+ "system.synchronous-chains/agree": {
+  "skills": [],
+  "refusal": false
+ },
+ "system.traffic-entry/layer-7": {
+  "skills": [],
+  "refusal": false
+ }
+}
