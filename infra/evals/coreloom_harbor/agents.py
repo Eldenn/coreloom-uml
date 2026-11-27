@@ -19,6 +19,16 @@ from coreloom_harbor.policy import drop_credentials
 CLAUDE_CODE_VERSION = "2.1.322"
 CODEX_VERSION = "0.167.2"
 
+#: Codex's `shell_environment_policy` (config.toml): the commands it starts inherit its
+#: environment but for any variable holding KEY, SECRET or TOKEN in its name (security I4).
+CODEX_SHELL_ENVIRONMENT = {
+    "shell_environment_policy": {
+        "inherit": "all",
+        "ignore_default_excludes": False,
+        "exclude": ["*KEY*", "*SECRET*", "*TOKEN*"],
+    }
+}
+
 #: Credential variables Claude Code would also read: never handed to it.
 _CLAUDE_OTHER_AUTH = frozenset(
     {
@@ -58,6 +68,7 @@ async def _exec_with_secret(
     secret: str,
     env: dict[str, str],
     timeout_sec: int | None = None,
+    cwd: str | None = None,
 ) -> Any:
     """The agent's own command with its key on standard input (record section 5, g), the way
     Harbor's ``_exec`` runs any other: pipefail, a redacted debug line, errors classified."""
@@ -73,6 +84,7 @@ async def _exec_with_secret(
         secret=secret,
         env=drop_credentials(env),
         timeout_sec=timeout_sec,
+        cwd=cwd,
     )
     if result.return_code != 0:
         raise agent._classify_exec_error(command, result)
@@ -92,6 +104,9 @@ class ConventionEvalsClaudeCode(ClaudeCode):
         _pin(self, CLAUDE_CODE_VERSION)
         # Merged last into the command's environment, whatever Harbor's own run sets.
         self._resolved_env_vars["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1"
+        # Security I4: Claude Code 2.1.322 strips its credentials from the environment of the
+        # commands it starts (its Bash tool, hooks) when this is set; the CLI itself keeps it.
+        self._resolved_env_vars["CLAUDE_CODE_SUBPROCESS_ENV_SCRUB"] = "1"
         self._agent_commands = 0
 
     @override
@@ -130,6 +145,7 @@ class ConventionEvalsClaudeCode(ClaudeCode):
                 secret=key,
                 env=env,
                 timeout_sec=timeout_sec,
+                cwd=cwd,
             )
         return await super().exec_as_agent(
             environment, command, env=drop_credentials(env), cwd=cwd, timeout_sec=timeout_sec
@@ -188,7 +204,7 @@ class ConventionEvalsCodex(Codex):
         )
         await self._upload_effective_config(
             environment,
-            self._build_effective_config(None),
+            {**self._build_effective_config(None), **CODEX_SHELL_ENVIRONMENT},
             f"{home}/config.toml",
         )
         cli_flags = self.build_cli_flags()

@@ -104,6 +104,9 @@ class AgentsTest(unittest.TestCase):
             self.assertNotIn("auth.json", target)
             self.assertNotIn(CODEX_KEY, content)
         self.assertTrue(any("codex-home.txt" in c[0] for c in environment.commands))
+        (config,) = [text for target, text in environment.uploads if target.endswith("config.toml")]
+        self.assertIn("[shell_environment_policy]", config)  # security I4
+        self.assertIn("\"*KEY*\"", config)
 
     def test_codex_refuses_another_version_and_never_installs(self):
         with self.assertRaises(ValueError):
@@ -158,6 +161,7 @@ class AgentsTest(unittest.TestCase):
         self.assertEqual(name, "ANTHROPIC_API_KEY")
         # Harbor's other variables may stay envs of the command.
         self.assertEqual(env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"], "1")
+        self.assertEqual(env["CLAUDE_CODE_SUBPROCESS_ENV_SCRUB"], "1")  # security I4
         self.assertEqual(env["ANTHROPIC_MODEL"], "claude-sonnet-5-5")
         for command, _, _, _ in environment.commands:
             self.assertNotIn("credentials", command)

@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 import shlex
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, override
 
 from pydantic import Field, model_validator
-from tenacity import RetryCallState, retry, retry_if_exception
+from tenacity import (
+    RetryCallState,
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 import harbor.environments.e2b as harbor_e2b
 from harbor.environments.base import ExecResult
@@ -23,6 +30,7 @@ from coreloom_harbor.policy import (
     PolicyViolation,
     agent_phase_update,
     check_agent_phase_info,
+    check_no_network_info,
     drop_credentials,
     stdin_secret_command,
     stdin_secret_line,
@@ -36,31 +44,52 @@ SANDBOX_WORK_DIR = "/work"
 AGENT_USER = "node"
 #: Run as root at setup, before the agent's user runs anything. E2B's template builder adds a
 #: user `user` with passwordless sudo, and leaves root's and its password empty, so anyone can
-#: `su` to root (record section 13): every empty password is locked, and no file of the root
-#: file system keeps a set-user-id or set-group-id bit (`su`, `sudo`, `mount`… are of no use to an
-#: agent). envd, which starts every command, runs as root and needs neither.
+#: `su` to root (record section 13): every empty password is locked, and no file keeps a
+#: set-user-id or set-group-id bit or a file capability (`su`, `sudo`, `mount`… are of no use to
+#: an agent). Every mount is walked but the kernel's (`/proc`, `/sys`, `/dev`). envd, which starts
+#: every command, runs as root and needs none of them.
+_SET_ID_FILES = (
+    "find / \\( -path /proc -o -path /sys -o -path /dev \\) -prune -o -type f -perm /6000 -print"
+)
 HARDEN_SANDBOX = (
     "set -e; "
-    "find / -xdev -type f -perm /6000 -exec chmod ug-s {} +; "
+    f"{_SET_ID_FILES} | while IFS= read -r file; do chmod ug-s \"$file\"; done; "
+    "if command -v getcap > /dev/null && command -v setcap > /dev/null; then "
+    "getcap -r / 2> /dev/null | while read -r file _; do setcap -r \"$file\"; done; fi; "
     "for name in $(awk -F: '$2 == \"\" { print $1 }' /etc/shadow); do "
     'passwd -l "$name" > /dev/null; done'
 )
 #: Run as the agent's user at setup: fails when it can become root (sudo, su with no password, a
-#: set-user-id program left) or read the environment of a process of root's (where a key of
-#: another command would be). A kernel thread's environment reads empty for anyone, so only a
-#: non-empty one counts.
+#: set-id program or a file capability left) or read the environment of a process of root's
+#: (where a key of another command would be). A kernel thread's environment reads empty for
+#: anyone, so only a non-empty one counts.
 AGENT_USER_CHECK = (
     "if command -v sudo > /dev/null && sudo -n true 2> /dev/null; then echo sudo; exit 1; fi; "
     "for name in root user; do "
     'if su -c true "$name" < /dev/null > /dev/null 2>&1; then echo "su $name"; exit 1; fi; '
     "done; "
-    'left="$(find / -xdev -type f -perm /6000 2> /dev/null | head -n 1)"; '
+    f'left="$({_SET_ID_FILES} 2> /dev/null | head -n 1)"; '
     'if [ -n "$left" ]; then echo "set-id $left"; exit 1; fi; '
+    "if command -v getcap > /dev/null; then "
+    'capped="$(getcap -r / 2> /dev/null | head -n 1)"; '
+    'if [ -n "$capped" ]; then echo "capability $capped"; exit 1; fi; fi; '
     "for file in /proc/[0-9]*/environ; do "
     '[ "$(stat -c %u "${file%/environ}" 2> /dev/null)" = 0 ] || continue; '
     'if [ -n "$(tr -d \'\\0\' < "$file" 2> /dev/null | head -c 1)" ]; then '
     'echo "reads $file"; exit 1; fi; '
     "done; exit 0"
+)
+#: Run as root once the agent phase is over and its network cut (security I3): every process of
+#: the agent's user is killed, then the trial fails if one is still there a moment later. Read from
+#: `/proc` (the templates hold no `pkill`); the shell running this is root's, never killed.
+_AGENT_PIDS = (
+    f'uid="$(id -u {AGENT_USER})"; for dir in /proc/[0-9]*; do '
+    '[ "$(stat -c %u "$dir" 2> /dev/null)" = "$uid" ] && echo "${dir#/proc/}"; done'
+)
+KILL_AGENT_PROCESSES = (
+    f"{_AGENT_PIDS} | xargs -r kill -KILL 2> /dev/null; "
+    "for _ in 1 2 3 4 5 6 7 8 9 10; do "
+    f'[ -z "$({_AGENT_PIDS})" ] && exit 0; sleep 0.2; done; exit 1'
 )
 _UPLOAD_TIMEOUT_SEC = 120
 #: Creations a node refuses for lack of room (memory) are tried again, this many times at most.
@@ -119,6 +148,9 @@ class ConventionEvalsE2BEnvironment(E2BEnvironment):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+        #: The keys sent on a command's stdin, so that no later command carries one (fix g).
+        self._secrets: set[str] = set()
+        self._agent_phase_started = False
         # Every phase this trial may switch to is checked before anything starts.
         for policy in (self.network_policy, *self._phase_network_policies):
             self._network_update(policy)
@@ -200,21 +232,56 @@ class ConventionEvalsE2BEnvironment(E2BEnvironment):
             network=self._sandbox_create_network_options(),
         )
 
-    @override
-    async def _apply_network_policy(self, network_policy: NetworkPolicy) -> None:
+    @retry(
+        stop=stop_after_attempt(2),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        reraise=True,
+    )
+    async def _update_network_checked(self, network_policy: NetworkPolicy) -> None:
+        """Harbor's update (tried twice, as upstream), then the policy E2B really holds, read
+        back: the provider's host only for the agent phase, nothing allowed for the others."""
         if not self._sandbox:
             raise RuntimeError("Sandbox not found. Please start the environment first.")
-        update = self._network_update(network_policy)
-        await self._sandbox.update_network(update)
+        await self._sandbox.update_network(self._network_update(network_policy))
+        info = await self._sandbox.get_info()
         if network_policy.network_mode == NetworkMode.ALLOWLIST:
-            # The policy E2B really holds, read back before the agent starts.
-            info = await self._sandbox.get_info()
             check_agent_phase_info(info.network, self.provider_host)
             self.logger.info(
                 "agent phase network checked: allow_out=%s deny_out=%s",
                 info.network.get("allow_out"),
                 sorted(info.network.get("deny_out") or []),
             )
+        else:
+            check_no_network_info(info.network)
+
+    @override
+    async def _apply_network_policy(self, network_policy: NetworkPolicy) -> None:
+        await self._update_network_checked(network_policy)
+        if network_policy.network_mode == NetworkMode.ALLOWLIST:
+            self._agent_phase_started = True
+        elif self._agent_phase_started:
+            # The agent phase is over, its network already cut: nothing the agent left running
+            # keeps the key in its environment through the copy back or the verifier.
+            await self._kill_agent_processes()
+
+    async def _kill_agent_processes(self) -> None:
+        result = await self._run_as_root(KILL_AGENT_PROCESSES, _UPLOAD_TIMEOUT_SEC)
+        if result.return_code != 0:
+            raise PolicyViolation(f"processes of {AGENT_USER} outlived the agent phase")
+
+    def _refuse_secret(self, command: str, env: Mapping[str, str] | None) -> None:
+        """Fix g, by value: a key sent once is never in a command line or an env value after."""
+        for secret in self._secrets:
+            if secret in command or any(secret in value for value in (env or {}).values()):
+                raise PolicyViolation("a command would carry the key in its line or its envs")
+
+    def _without_credentials(self, env: Mapping[str, str]) -> dict[str, str]:
+        kept = drop_credentials(env)
+        dropped = sorted(set(env) - set(kept))
+        if dropped:
+            # Names only: Harbor's model settings (`*_TOKENS`) are dropped too, on purpose.
+            self.logger.debug("credential-like variables dropped from a command: %s", dropped)
+        return kept
 
     @override
     async def _dispatch_command(
@@ -228,12 +295,10 @@ class ConventionEvalsE2BEnvironment(E2BEnvironment):
     ) -> Any:
         # Fix g: every command Harbor starts goes through here, and envd logs each one with its
         # envs in full: none carries a credential, whoever asked for it.
+        kept = self._without_credentials(env) if env else env
+        self._refuse_secret(command, kept)
         return await super()._dispatch_command(
-            command,
-            cwd=cwd,
-            env=drop_credentials(env) if env else env,
-            timeout_sec=timeout_sec,
-            user=user,
+            command, cwd=cwd, env=kept, timeout_sec=timeout_sec, user=user
         )
 
     async def exec_with_secret(
@@ -249,20 +314,27 @@ class ConventionEvalsE2BEnvironment(E2BEnvironment):
     ) -> ExecResult:
         """Runs ``command`` like ``exec``, with the credential ``secret_name`` set in its own
         environment from its standard input (fix g): never in the request's envs nor its command
-        line, both of which envd writes into the install's logs."""
+        line, both of which envd writes into the install's logs. Only as the agent's user."""
         if not self._sandbox:
             raise RuntimeError("Sandbox not found. Please start the environment first.")
         line = stdin_secret_line(secret)
         user = self._resolve_user(user)
-        merged_env = drop_credentials({**self._exec_base_env, **(self._merge_env(env) or {})})
+        if str(user) != AGENT_USER:
+            raise PolicyViolation(f"the key goes to a command of {AGENT_USER} only, not {user}")
+        self._secrets.add(secret)
+        merged_env = self._without_credentials(
+            {**self._exec_base_env, **(self._merge_env(env) or {})}
+        )
+        wrapped = stdin_secret_command(secret_name, command)
+        self._refuse_secret(wrapped, merged_env)
         handle = await self._sandbox.commands.run(
-            cmd=stdin_secret_command(secret_name, command),
+            cmd=wrapped,
             background=True,
             stdin=True,
             cwd=effective_exec_cwd(cwd, self.task_env_config.workdir, self._workdir),
             envs=merged_env or None,
             timeout=timeout_sec or 0,
-            user=str(user) if user is not None else self.default_exec_user,
+            user=AGENT_USER,
         )
         try:
             await self._sandbox.commands.send_stdin(handle.pid, line)
