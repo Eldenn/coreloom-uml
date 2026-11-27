@@ -1142,6 +1142,7 @@ export const en = {
       manage: 'Manage',
       manageLabel: (title: string) => `Manage “${title}”`,
       newTab: '(opens in a new tab)',
+      via: (kind: string, label: string) => `via ${kind}: ${label}`,
     },
     admin: {
       refresh: 'Refresh now',
@@ -3135,6 +3136,7 @@ export const fr: Messages = {
       manage: 'Gérer',
       manageLabel: (title: string) => `Gérer « ${title} »`,
       newTab: '(s’ouvre dans un nouvel onglet)',
+      via: (kind: string, label: string) => `via ${kind} : ${label}`,
     },
     admin: {
       refresh: 'Actualiser maintenant',

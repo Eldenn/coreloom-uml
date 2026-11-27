@@ -90,6 +90,12 @@ function ArticleRow({
         <span className="text-[12px] text-muted-foreground">
           <span className="font-mono">{article.site}</span> ·{' '}
           <PublishedOn date={article.publishedAt} />
+          {article.source && (
+            <>
+              {' · '}
+              {t.list.via(t.sources.kinds[article.source.kind], article.source.label)}
+            </>
+          )}
         </span>
         {article.excerpt && <ItemDescription>{article.excerpt}</ItemDescription>}
         {article.topics.length > 0 && (

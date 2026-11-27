@@ -110,6 +110,7 @@ export default class AdminWatchController {
     }
     await article.save()
     if (topics !== undefined) await ClassifySkillTopicsJob.dispatch({})
+    await article.load('source')
     return response.ok({ article: serializeWatchArticle(article) })
   }
 
