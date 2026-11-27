@@ -62,6 +62,36 @@ def drop_credentials(env: Mapping[str, str]) -> dict[str, str]:
     return {name: value for name, value in env.items() if not is_credential_name(name)}
 
 
+#: Exit code of a command whose credential did not arrive on its standard input.
+NO_SECRET_EXIT = 97
+
+
+def stdin_secret_command(name: str, command: str) -> str:
+    """``command`` preceded by the fixed line that reads the credential ``name`` from standard
+    input into that process's own environment (record section 5, g).
+
+    envd logs every command it starts with its ``envs`` in full, into the install's logs, whatever
+    the sandbox's network: a credential is never in ``envs`` nor on a command line. What a command
+    reads on its standard input is not logged. Standard input is then the empty file, so nothing
+    the agent starts can read the key from it again.
+    """
+    if name not in CREDENTIAL_NAMES:
+        raise ValueError(f"{name} is not a credential variable")
+    return (
+        f"IFS= read -r {name} || exit {NO_SECRET_EXIT}; "
+        f'[ -n "${name}" ] || exit {NO_SECRET_EXIT}; '
+        f"export {name}; exec 0</dev/null; {command}"
+    )
+
+
+def stdin_secret_line(secret: str) -> str:
+    """What is sent on the command's standard input: the value and a newline, refused when it
+    would not read back as one line."""
+    if not secret or any(character in secret for character in "\r\n\0"):
+        raise ValueError("a credential is one non-empty line")
+    return f"{secret}\n"
+
+
 def agent_phase_update(allowed_hosts: list[str], provider_host: str) -> dict[str, list[str]]:
     """The E2B network update of the agent phase, refusing any allowlist but the provider's host.
 

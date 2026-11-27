@@ -1,8 +1,10 @@
-"""Fixes a, e and f of the record's section 5 on our E2B environment, with E2B faked."""
+"""Fixes a, e, f and g of the record's section 5 on our E2B environment, with E2B faked."""
 
 from __future__ import annotations
 
 import asyncio
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,14 +16,22 @@ from harbor.environments.e2b import E2BEnvironment
 from harbor.models.task.config import EnvironmentConfig, NetworkMode, NetworkPolicy
 from harbor.models.trial.paths import TrialPaths
 
-from coreloom_harbor.environment import ConventionEvalsE2BEnvironment, ConventionEvalsOptions
+from coreloom_harbor.environment import (
+    AGENT_USER,
+    AGENT_USER_CHECK,
+    HARDEN_SANDBOX,
+    ConventionEvalsE2BEnvironment,
+    ConventionEvalsOptions,
+)
 from coreloom_harbor.policy import (
     AGENT_PHASE_DENY_OUT,
     DENIED_RANGES,
+    NO_SECRET_EXIT,
     PolicyViolation,
     agent_phase_update,
     check_agent_phase_info,
     drop_credentials,
+    stdin_secret_command,
 )
 
 HOST = "api.anthropic.com"
@@ -42,6 +52,46 @@ class FakeSandbox:
 
     async def get_info(self):
         return SimpleNamespace(network=self.network)
+
+
+class FakeHandle:
+    def __init__(self, commands: FakeCommands, pid: int, exit_code: int) -> None:
+        self.commands, self.pid, self.exit_code = commands, pid, exit_code
+        self.stdout, self.stderr = "", ""
+
+    async def wait(self):
+        return SimpleNamespace(stdout="", stderr="", exit_code=self.exit_code)
+
+    async def kill(self) -> bool:
+        self.commands.killed = True
+        return True
+
+
+class FakeCommands:
+    """E2B's ``sandbox.commands``: what each command was started with, and what went to stdin."""
+
+    def __init__(self, exit_codes: dict[str, int]) -> None:
+        self.exit_codes = exit_codes
+        self.runs: list[dict] = []
+        self.stdin: list[tuple[int, str]] = []
+        self.fail_stdin = False
+        self.killed = False
+
+    async def run(self, cmd, background=False, envs=None, user=None, cwd=None, timeout=None,
+                  stdin=False, **_):
+        pid = len(self.runs) + 100
+        self.runs.append(
+            {"cmd": cmd, "envs": envs or {}, "user": user, "stdin": stdin, "pid": pid}
+        )
+        return FakeHandle(self, pid, self.exit_codes.get(cmd, 0))
+
+    async def send_stdin(self, pid: int, data: str) -> None:
+        if self.fail_stdin:
+            raise ConnectionError("envd went away")
+        self.stdin.append((pid, data))
+
+    async def close_stdin(self, pid: int) -> None:
+        self.stdin.append((pid, "close"))
 
 
 class EnvironmentTest(unittest.TestCase):
@@ -185,13 +235,134 @@ class EnvironmentTest(unittest.TestCase):
 
         with (
             mock.patch.object(E2BEnvironment, "_prepare_sandbox", mock.AsyncMock()),
+            mock.patch.object(environment, "_check_agent_user", mock.AsyncMock()) as check,
             mock.patch.object(environment, "_run_as_root", run_as_root),
             mock.patch.object(environment, "upload_dir", upload_dir),
         ):
             asyncio.run(environment._prepare_sandbox())
+        check.assert_awaited_once()
         self.assertIn("tune2fs -r 0", commands[0])
         self.assertEqual(uploads, [(str(self.environment_dir.parent / "workspace"), "/work")])
         self.assertIn("chown -R node:node /work", commands[1])
+
+    def sandbox_with_commands(self, exit_codes: dict[str, int] | None = None) -> FakeSandbox:
+        environment_sandbox = FakeSandbox(None)
+        environment_sandbox.commands = FakeCommands(exit_codes or {})  # type: ignore[attr-defined]
+        return environment_sandbox
+
+    def test_sends_the_key_on_stdin_never_in_envs_or_the_command(self):  # fix g
+        environment = self.make()
+        environment._sandbox = self.sandbox_with_commands()
+        result = asyncio.run(
+            environment.exec_with_secret(
+                "claude --print",
+                secret_name="ANTHROPIC_API_KEY",
+                secret=FAKE_KEY,
+                env={"ANTHROPIC_MODEL": "claude-sonnet-5-5", "OPENAI_API_KEY": FAKE_KEY},
+                user="node",
+            )
+        )
+        self.assertEqual(result.return_code, 0)
+        commands = environment._sandbox.commands
+        (run,) = commands.runs
+        self.assertTrue(run["stdin"])
+        self.assertNotIn(FAKE_KEY, run["cmd"])
+        self.assertNotIn(FAKE_KEY, repr(run["envs"]))
+        self.assertNotIn("ANTHROPIC_API_KEY", run["envs"])
+        self.assertEqual(run["envs"]["ANTHROPIC_MODEL"], "claude-sonnet-5-5")
+        self.assertEqual(run["envs"]["LANG"], "C.UTF-8")
+        self.assertTrue(run["cmd"].startswith("IFS= read -r ANTHROPIC_API_KEY || exit 97; "))
+        self.assertTrue(run["cmd"].endswith("exec 0</dev/null; claude --print"))
+        self.assertEqual(commands.stdin, [(run["pid"], f"{FAKE_KEY}\n"), (run["pid"], "close")])
+
+    def test_kills_the_command_when_the_key_cannot_be_sent(self):  # fix g
+        environment = self.make()
+        environment._sandbox = self.sandbox_with_commands()
+        environment._sandbox.commands.fail_stdin = True
+        with self.assertRaises(ConnectionError):
+            asyncio.run(
+                environment.exec_with_secret(
+                    "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY
+                )
+            )
+        self.assertTrue(environment._sandbox.commands.killed)
+
+    def test_refuses_a_key_that_is_not_one_line_and_a_name_that_is_not_a_credential(self):
+        environment = self.make()
+        environment._sandbox = self.sandbox_with_commands()
+        for name, secret in (("ANTHROPIC_API_KEY", "a\nb"), ("ANTHROPIC_API_KEY", ""), ("PATH", "x")):
+            with self.assertRaises(ValueError):
+                asyncio.run(environment.exec_with_secret("true", secret_name=name, secret=secret))
+        self.assertEqual(environment._sandbox.commands.runs, [])
+
+    def test_every_other_command_loses_its_credentials(self):  # fix g
+        environment = self.make()
+        environment._sandbox = self.sandbox_with_commands()
+        asyncio.run(
+            environment.exec("git status", env={"CODEX_API_KEY": FAKE_KEY, "TZ": "UTC"}, user="node")
+        )
+        (run,) = environment._sandbox.commands.runs
+        self.assertNotIn(FAKE_KEY, repr(run["envs"]))
+        self.assertNotIn("ANTHROPIC_API_KEY", run["envs"])  # Harbor's persistent env
+        self.assertEqual(run["envs"]["TZ"], "UTC")
+        self.assertFalse(run["stdin"])
+
+    def test_the_shell_line_reads_the_key_into_the_command_only(self):  # fix g
+        script = stdin_secret_command(
+            "CODEX_API_KEY", 'printf "%s|" "$CODEX_API_KEY"; cat; printf "|done"'
+        )
+        ran = subprocess.run(
+            ["bash", "-c", script],
+            input=f"{FAKE_KEY}\nleft on stdin\n",
+            capture_output=True,
+            text=True,
+            env={"PATH": os.environ["PATH"]},
+            check=False,
+        )
+        # The key is in the command's environment, and nothing after it can be read from stdin.
+        self.assertEqual((ran.returncode, ran.stdout), (0, f"{FAKE_KEY}||done"))
+        empty = subprocess.run(
+            ["bash", "-c", script], input="", capture_output=True, text=True, check=False
+        )
+        self.assertEqual(empty.returncode, NO_SECRET_EXIT)
+
+    def test_fails_the_trial_when_the_agent_user_may_act_as_root(self):  # record section 13
+        for failing in ("root", "node"):
+            environment = self.make()
+            sandbox = self.sandbox_with_commands({AGENT_USER_CHECK: 1 if failing == "node" else 0})
+            environment._sandbox = sandbox
+
+            async def run_as_root(command: str, _timeout: int, failing=failing):
+                code = 3 if failing == "root" and "sudoers" in command else 0
+                return SimpleNamespace(return_code=code, stdout="", stderr="")
+
+            with mock.patch.object(environment, "_run_as_root", run_as_root):
+                with self.assertRaises(PolicyViolation):
+                    asyncio.run(environment._check_agent_user())
+
+    def test_takes_roots_ways_back_then_checks_the_agent_user(self):
+        environment = self.make()
+        environment._sandbox = self.sandbox_with_commands()
+        as_root: list[str] = []
+
+        async def run_as_root(command: str, _timeout: int):
+            as_root.append(command)
+            return SimpleNamespace(return_code=0, stdout="", stderr="")
+
+        with mock.patch.object(environment, "_run_as_root", run_as_root):
+            asyncio.run(environment._check_agent_user())
+        self.assertEqual(as_root[0], HARDEN_SANDBOX)
+        self.assertIn("/etc/sudoers.d", as_root[1])
+        (run,) = environment._sandbox.commands.runs
+        self.assertEqual((run["cmd"], run["user"]), (AGENT_USER_CHECK, "node"))
+
+    def test_the_agent_user_check_finds_a_way_to_root_left_in_the_worker_image(self):
+        # Run in the worker image as `node`: its Debian keeps set-user-id programs (`su`,
+        # `passwd`…), which the check must report, so its shell line works and finds them.
+        ran = subprocess.run(["bash", "-c", AGENT_USER_CHECK], capture_output=True, text=True)
+        self.assertNotEqual(ran.returncode, 0, ran.stderr)
+        self.assertRegex(ran.stdout, r"^(set-id /|su |sudo|reads /proc/)")
+        self.assertEqual(AGENT_USER, "node")
 
     def test_denies_the_api_ranges_the_link_local_and_the_log_collector(self):
         self.assertEqual(

@@ -10,6 +10,8 @@ from pydantic import Field, model_validator
 from tenacity import RetryCallState, retry, retry_if_exception
 
 import harbor.environments.e2b as harbor_e2b
+from harbor.environments.base import ExecResult
+from harbor.environments.definition import effective_exec_cwd
 from harbor.environments.e2b import E2BEnvironment, E2BOptions
 from harbor.models.task.config import NetworkMode, NetworkPolicy
 
@@ -22,6 +24,8 @@ from coreloom_harbor.policy import (
     agent_phase_update,
     check_agent_phase_info,
     drop_credentials,
+    stdin_secret_command,
+    stdin_secret_line,
 )
 
 #: Where the exporter puts the fixture in a task folder, and where it goes in the sandbox
@@ -30,6 +34,34 @@ TASK_WORKSPACE_DIR = "workspace"
 SANDBOX_WORK_DIR = "/work"
 #: The template's user the agent runs as; it owns the fixture.
 AGENT_USER = "node"
+#: Run as root at setup, before the agent's user runs anything. E2B's template builder adds a
+#: user `user` with passwordless sudo, and leaves root's and its password empty, so anyone can
+#: `su` to root (record section 13): every empty password is locked, and no file of the root
+#: file system keeps a set-user-id or set-group-id bit (`su`, `sudo`, `mount`… are of no use to an
+#: agent). envd, which starts every command, runs as root and needs neither.
+HARDEN_SANDBOX = (
+    "set -e; "
+    "find / -xdev -type f -perm /6000 -exec chmod ug-s {} +; "
+    "for name in $(awk -F: '$2 == \"\" { print $1 }' /etc/shadow); do "
+    'passwd -l "$name" > /dev/null; done'
+)
+#: Run as the agent's user at setup: fails when it can become root (sudo, su with no password, a
+#: set-user-id program left) or read the environment of a process of root's (where a key of
+#: another command would be). A kernel thread's environment reads empty for anyone, so only a
+#: non-empty one counts.
+AGENT_USER_CHECK = (
+    "if command -v sudo > /dev/null && sudo -n true 2> /dev/null; then echo sudo; exit 1; fi; "
+    "for name in root user; do "
+    'if su -c true "$name" < /dev/null > /dev/null 2>&1; then echo "su $name"; exit 1; fi; '
+    "done; "
+    'left="$(find / -xdev -type f -perm /6000 2> /dev/null | head -n 1)"; '
+    'if [ -n "$left" ]; then echo "set-id $left"; exit 1; fi; '
+    "for file in /proc/[0-9]*/environ; do "
+    '[ "$(stat -c %u "${file%/environ}" 2> /dev/null)" = 0 ] || continue; '
+    'if [ -n "$(tr -d \'\\0\' < "$file" 2> /dev/null | head -c 1)" ]; then '
+    'echo "reads $file"; exit 1; fi; '
+    "done; exit 0"
+)
 _UPLOAD_TIMEOUT_SEC = 120
 #: Creations a node refuses for lack of room (memory) are tried again, this many times at most.
 _OUT_OF_ROOM_ATTEMPTS = 10
@@ -185,10 +217,98 @@ class ConventionEvalsE2BEnvironment(E2BEnvironment):
             )
 
     @override
+    async def _dispatch_command(
+        self,
+        command: str,
+        *,
+        cwd: str | None,
+        env: dict[str, str] | None,
+        timeout_sec: int | None,
+        user: str,
+    ) -> Any:
+        # Fix g: every command Harbor starts goes through here, and envd logs each one with its
+        # envs in full: none carries a credential, whoever asked for it.
+        return await super()._dispatch_command(
+            command,
+            cwd=cwd,
+            env=drop_credentials(env) if env else env,
+            timeout_sec=timeout_sec,
+            user=user,
+        )
+
+    async def exec_with_secret(
+        self,
+        command: str,
+        *,
+        secret_name: str,
+        secret: str,
+        cwd: str | None = None,
+        env: dict[str, str] | None = None,
+        timeout_sec: int | None = None,
+        user: str | int | None = None,
+    ) -> ExecResult:
+        """Runs ``command`` like ``exec``, with the credential ``secret_name`` set in its own
+        environment from its standard input (fix g): never in the request's envs nor its command
+        line, both of which envd writes into the install's logs."""
+        if not self._sandbox:
+            raise RuntimeError("Sandbox not found. Please start the environment first.")
+        line = stdin_secret_line(secret)
+        user = self._resolve_user(user)
+        merged_env = drop_credentials({**self._exec_base_env, **(self._merge_env(env) or {})})
+        handle = await self._sandbox.commands.run(
+            cmd=stdin_secret_command(secret_name, command),
+            background=True,
+            stdin=True,
+            cwd=effective_exec_cwd(cwd, self.task_env_config.workdir, self._workdir),
+            envs=merged_env or None,
+            timeout=timeout_sec or 0,
+            user=str(user) if user is not None else self.default_exec_user,
+        )
+        try:
+            await self._sandbox.commands.send_stdin(handle.pid, line)
+            await self._sandbox.commands.close_stdin(handle.pid)
+        except BaseException:
+            await handle.kill()
+            raise
+        return await self._wait_reattaching(handle, timeout_sec)
+
+    @override
     async def _prepare_sandbox(self) -> None:
         await super()._prepare_sandbox()
+        await self._check_agent_user()
         await self._release_reserved_blocks()
         await self._upload_workspace()
+
+    async def _check_agent_user(self) -> None:
+        """The agent's user is not root by another way (record section 13): the sandbox is
+        hardened first (``HARDEN_SANDBOX``), then the user must have no group that is root's, no
+        sudoers entry, no way to become root and no root process's environment it can read."""
+        harden = await self._run_as_root(HARDEN_SANDBOX, _UPLOAD_TIMEOUT_SEC)
+        if harden.return_code != 0:
+            raise PolicyViolation("could not take root's ways back from the agent's user")
+        user = shlex.quote(AGENT_USER)
+        as_root = await self._run_as_root(
+            f"id -u {user} > /dev/null || exit 2; "
+            f"id -nG {user} | tr ' ' '\\n' | grep -qxE 'root|sudo|wheel|admin' && exit 3; "
+            f"grep -rsqwE '^[^#]*{AGENT_USER}' /etc/sudoers /etc/sudoers.d && exit 4; "
+            "exit 0",
+            _UPLOAD_TIMEOUT_SEC,
+        )
+        if as_root.return_code != 0:
+            raise PolicyViolation(
+                f"{AGENT_USER} is missing or may act as root (check {as_root.return_code})"
+            )
+        handle = await self._sandbox.commands.run(  # type: ignore[union-attr]
+            cmd=AGENT_USER_CHECK,
+            background=True,
+            timeout=_UPLOAD_TIMEOUT_SEC,
+            user=AGENT_USER,
+        )
+        as_agent = await self._wait_reattaching(handle, _UPLOAD_TIMEOUT_SEC)
+        if as_agent.return_code != 0:
+            raise PolicyViolation(
+                f"{AGENT_USER} may act as root: {(as_agent.stdout or '').strip()[:200]}"
+            )
 
     async def _release_reserved_blocks(self) -> None:
         """Gives the agent's user the root file system's blocks ext4 keeps for root (256 MB on the
