@@ -68,6 +68,7 @@ export default defineConfig({
     () => import('#start/mail'),
     () => import('#start/skills'),
     { file: () => import('#start/llm-keys'), environment: ['web'] },
+    { file: () => import('#start/default-account'), environment: ['web'] },
   ],
 
   /*

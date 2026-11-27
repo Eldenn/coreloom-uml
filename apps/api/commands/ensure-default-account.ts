@@ -11,9 +11,15 @@ export default class EnsureDefaultAccount extends BaseCommand {
   }
 
   async run() {
-    const { defaultAccountConfig, ensureDefaultAccount } = await import(
-      '#app/auth/services/default-account'
-    )
+    const { currentDefaultAccountProblems, defaultAccountConfig, ensureDefaultAccount } =
+      await import('#app/auth/services/default-account')
+
+    const problems = currentDefaultAccountProblems()
+    if (problems.length > 0) {
+      for (const problem of problems) this.logger.error(problem)
+      this.exitCode = 1
+      return
+    }
 
     const config = defaultAccountConfig()
     if (!config) {

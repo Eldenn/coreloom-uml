@@ -1,17 +1,6 @@
 import { Env } from '@adonisjs/core/env'
 import { DRIVE_DISKS } from '#app/shared/drive/drive-disk'
 
-/**
- * A variable that may be left out in development and test, but must be set in
- * production: the API refuses to boot without it there.
- */
-function requiredInProduction(name: string, value?: string): string | undefined {
-  if (!value && process.env.NODE_ENV === 'production') {
-    throw new Error(`Missing environment variable "${name}" (required in production)`)
-  }
-  return value || undefined
-}
-
 export default await Env.create(new URL('../', import.meta.url), {
   NODE_ENV: Env.schema.enum(['development', 'production', 'test'] as const),
 
@@ -130,11 +119,13 @@ export default await Env.create(new URL('../', import.meta.url), {
   | The default account is created (or brought back in line) by
   | `node ace account:ensure-default`, run right after the migrations. The
   | environment is its source of truth: its email and password cannot be
-  | changed from the app. Both are required in production.
+  | changed from the app. Both are required in production by the web server and
+  | by `account:ensure-default` (`start/default-account.ts`), never by a worker:
+  | a worker is not handed the default account (security review I6).
   | Public sign-up is off unless REGISTRATION_ENABLED=true.
   */
-  DEFAULT_ACCOUNT_EMAIL: requiredInProduction,
-  DEFAULT_ACCOUNT_PASSWORD: requiredInProduction,
+  DEFAULT_ACCOUNT_EMAIL: Env.schema.string.optional(),
+  DEFAULT_ACCOUNT_PASSWORD: Env.schema.string.optional(),
   DEFAULT_ACCOUNT_NAME: Env.schema.string.optional(),
   REGISTRATION_ENABLED: Env.schema.boolean.optional(),
 

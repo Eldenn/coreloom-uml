@@ -19,9 +19,41 @@ export const EnsureDefaultAccountResult = {
 export type EnsureDefaultAccountResult =
   (typeof EnsureDefaultAccountResult)[keyof typeof EnsureDefaultAccountResult]
 
+/** The variables the default account is made of, required in production. */
+export const DEFAULT_ACCOUNT_REQUIRED = [
+  'DEFAULT_ACCOUNT_EMAIL',
+  'DEFAULT_ACCOUNT_PASSWORD',
+] as const
+type DefaultAccountVariable = (typeof DEFAULT_ACCOUNT_REQUIRED)[number]
+
+/**
+ * Why this process cannot run without the default account, one line per missing variable, or
+ * none: production needs both, development and test do not. Pure, so it is tested without a
+ * production process. Only the web server (`start/default-account.ts`) and
+ * `account:ensure-default` check it: a worker runs without the default account.
+ */
+export function defaultAccountProblems(
+  nodeEnv: string,
+  values: Partial<Record<DefaultAccountVariable, string>>,
+): string[] {
+  if (nodeEnv !== 'production') return []
+  return DEFAULT_ACCOUNT_REQUIRED.filter((name) => !values[name]).map(
+    (name) => `Missing environment variable "${name}" (required in production)`,
+  )
+}
+
+/** `defaultAccountProblems` for this process's environment. */
+export function currentDefaultAccountProblems(): string[] {
+  return defaultAccountProblems(env.get('NODE_ENV'), {
+    DEFAULT_ACCOUNT_EMAIL: env.get('DEFAULT_ACCOUNT_EMAIL'),
+    DEFAULT_ACCOUNT_PASSWORD: env.get('DEFAULT_ACCOUNT_PASSWORD'),
+  })
+}
+
 /**
  * The default account as described by the environment, or null when the
- * variables are not set (allowed outside production, see `start/env.ts`).
+ * variables are not set (allowed outside production and in a worker, see
+ * `start/env.ts`).
  */
 export function defaultAccountConfig(): DefaultAccountConfig | null {
   const email = env.get('DEFAULT_ACCOUNT_EMAIL')?.trim().toLowerCase()
