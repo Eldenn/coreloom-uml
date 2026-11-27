@@ -149,23 +149,56 @@ export function durationParts(ms: number): { minutes: number; seconds: number } 
   return { minutes: Math.floor(total / 60), seconds: total % 60 }
 }
 
-/** Why the screen cannot offer to start a test, before the plan is even asked for. */
+/** Why the screen cannot offer to start a test. */
 export type EvalBlocker =
   | { kind: 'no-provider' }
   | { kind: 'refused'; refusal: EvalRefusal }
   /** The plan answered 404: a subscription this account cannot use here. */
   | { kind: 'provider-unavailable' }
+  /** A run of this configuration the screen knows of is still queued or running. */
+  | { kind: 'busy' }
 
-/** What keeps a test from starting, or null when it can start. */
+/**
+ * What keeps a test from starting, or null when it can start. What the owner must change comes
+ * before a run still going, which ends by itself. `running` only covers the runs this screen
+ * knows of: a run of another configuration still meets the API's 409.
+ */
 export function evalBlocker(
   provider: StoredProvider | null,
   plan: Pick<EvalPlan, 'refusal'> | null,
   planNotFound: boolean,
+  running = false,
 ): EvalBlocker | null {
   if (!provider) return { kind: 'no-provider' }
   if (planNotFound) return { kind: 'provider-unavailable' }
   if (plan?.refusal) return { kind: 'refused', refusal: plan.refusal }
+  if (running) return { kind: 'busy' }
   return null
+}
+
+/**
+ * The run to show when the owner has not picked one: the newest of the list still going, so a
+ * run started before a reload comes back on its own.
+ */
+export function activeRunId(runs: readonly Pick<EvalRun, 'id' | 'status'>[]): number | null {
+  return runs.find((run) => isRunActive(run.status))?.id ?? null
+}
+
+/** One side of a condition as its cell shows it: "—" stands for no attempt graded (k = 0). */
+export interface HeldCell {
+  /** Null when no attempt was graded pass or fail. */
+  ratio: { held: number; graded: number } | null
+  notApplicable: number
+  /** Attempts of the condition this side has no grade for (an error, the cap, a leak). */
+  ungraded: number
+}
+
+export function heldCell(count: HeldCount, trials: number): HeldCell {
+  return {
+    ratio: count.graded > 0 ? { held: count.held, graded: count.graded } : null,
+    notApplicable: count.notApplicable,
+    ungraded: Math.max(0, trials - count.graded - count.notApplicable),
+  }
 }
 
 /** Every refusal the plan and the start answer (`EvalRefusal` in the API). */

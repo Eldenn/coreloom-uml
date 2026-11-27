@@ -12,6 +12,10 @@ interface TokenFigures {
   output: string
 }
 
+/** Counts written the way each language writes them (`1,234` and `1 234`). */
+const enNumber = (value: number) => new Intl.NumberFormat('en').format(value)
+const frNumber = (value: number) => new Intl.NumberFormat('fr').format(value)
+
 export const en = {
   brand: 'Coreloom UML',
   nav: {
@@ -1843,9 +1847,10 @@ export const en = {
     noRules: 'None',
     trials: 'Trials',
     trialsText: (trials: number, tasks: number, conditions: number, attempts: number) =>
-      `${String(trials)} trials: ${String(tasks)} ${tasks === 1 ? 'task' : 'tasks'} × ${String(conditions)} conditions × ${String(attempts)} attempts`,
+      `${enNumber(trials)} trials: ${enNumber(tasks)} ${tasks === 1 ? 'task' : 'tasks'} × ${enNumber(conditions)} conditions × ${enNumber(attempts)} attempts`,
     estimate: 'Estimated cost',
     estimateRange: (low: string, high: string) => `${low} to ${high}`,
+    estimateHint: (range: string, cap: string) => `Estimated ${range} · capped at ${cap}`,
     estimateNone: 'No price for this provider: the test is capped in tokens instead.',
     pricesCheckedOn: (date: string) => `Prices checked on ${date}.`,
     subscriptionCost:
@@ -1895,7 +1900,8 @@ export const en = {
     runTitle: (date: string) => `Test of ${date}`,
     close: 'Close',
     runLoadFailed: 'This test could not be read.',
-    progress: (done: number, total: number) => `${String(done)} of ${String(total)} trials done`,
+    progress: (done: number, total: number) =>
+      `${enNumber(done)} of ${enNumber(total)} trials done`,
     measuredCost: 'Measured cost',
     equivalentCost: 'Equivalent cost',
     noCost: 'Not priced',
@@ -1906,7 +1912,7 @@ export const en = {
     notStarted: 'Not started',
     model: 'Model',
     revision: (revision: number, catalog: string) =>
-      `Configuration revision ${String(revision)}, catalog ${catalog}`,
+      `Configuration revision ${enNumber(revision)}, catalog ${catalog}`,
     results: 'Results',
     resultsHint:
       'Per rule, task and condition: how many attempts finished the task, and how many followed the rule. A task done is not a rule followed.',
@@ -1917,9 +1923,10 @@ export const en = {
     conditionName: { none: 'Without conventions', full: 'With your conventions' },
     success: 'Task done',
     compliance: 'Rule followed',
-    held: (held: number, graded: number) => `held ${String(held)}/${String(graded)}`,
-    notApplicable: (count: number) => `${String(count)} not applicable`,
-    ungraded: (count: number) => `${String(count)} not graded`,
+    held: (held: number, graded: number) => `held ${enNumber(held)}/${enNumber(graded)}`,
+    noneGraded: 'No attempt graded',
+    notApplicable: (count: number) => `${enNumber(count)} not applicable`,
+    ungraded: (count: number) => `${enNumber(count)} not graded`,
     reason: {
       cap_reached: 'The cost cap was reached: the remaining trials were cancelled.',
       time_limit: 'The time limit was reached: the remaining trials were cancelled.',
@@ -1943,8 +1950,10 @@ export const en = {
     historyEmpty: 'No test of these conventions yet.',
     historyFailed: 'The past tests could not be read.',
     open: 'Open',
+    openRun: (title: string) => `Open: ${title}`,
+    runEnded: (status: string) => `${status}: the results are below.`,
     opened: 'Shown',
-    page: (page: number, last: number) => `Page ${String(page)} of ${String(last)}`,
+    page: (page: number, last: number) => `Page ${enNumber(page)} of ${enNumber(last)}`,
   },
 }
 
@@ -3836,9 +3845,10 @@ export const fr: Messages = {
     noRules: 'Aucune',
     trials: 'Essais',
     trialsText: (trials: number, tasks: number, conditions: number, attempts: number) =>
-      `${String(trials)} essais : ${String(tasks)} ${tasks === 1 ? 'tâche' : 'tâches'} × ${String(conditions)} conditions × ${String(attempts)} tentatives`,
+      `${frNumber(trials)} essais : ${frNumber(tasks)} ${tasks === 1 ? 'tâche' : 'tâches'} × ${frNumber(conditions)} conditions × ${frNumber(attempts)} tentatives`,
     estimate: 'Coût estimé',
     estimateRange: (low: string, high: string) => `${low} à ${high}`,
+    estimateHint: (range: string, cap: string) => `Estimé de ${range} · plafond ${cap}`,
     estimateNone: 'Pas de tarif pour ce fournisseur : le test est plafonné en jetons.',
     pricesCheckedOn: (date: string) => `Tarifs vérifiés le ${date}.`,
     subscriptionCost:
@@ -3890,7 +3900,7 @@ export const fr: Messages = {
     close: 'Fermer',
     runLoadFailed: 'Ce test n’a pas pu être lu.',
     progress: (done: number, total: number) =>
-      `${String(done)} essais terminés sur ${String(total)}`,
+      `${frNumber(done)} essais terminés sur ${frNumber(total)}`,
     measuredCost: 'Coût mesuré',
     equivalentCost: 'Coût équivalent',
     noCost: 'Sans tarif',
@@ -3901,7 +3911,7 @@ export const fr: Messages = {
     notStarted: 'Pas commencé',
     model: 'Modèle',
     revision: (revision: number, catalog: string) =>
-      `Révision ${String(revision)} de la configuration, catalogue ${catalog}`,
+      `Révision ${frNumber(revision)} de la configuration, catalogue ${catalog}`,
     results: 'Résultats',
     resultsHint:
       'Par règle, tâche et condition : combien d’essais ont fini la tâche, et combien ont suivi la règle. Une tâche faite n’est pas une règle suivie.',
@@ -3912,9 +3922,10 @@ export const fr: Messages = {
     conditionName: { none: 'Sans conventions', full: 'Avec vos conventions' },
     success: 'Tâche faite',
     compliance: 'Règle suivie',
-    held: (held: number, graded: number) => `tenu ${String(held)}/${String(graded)}`,
-    notApplicable: (count: number) => `${String(count)} sans objet`,
-    ungraded: (count: number) => `${String(count)} non noté${count > 1 ? 's' : ''}`,
+    held: (held: number, graded: number) => `tenu ${frNumber(held)}/${frNumber(graded)}`,
+    noneGraded: 'Aucun essai noté',
+    notApplicable: (count: number) => `${frNumber(count)} sans objet`,
+    ungraded: (count: number) => `${frNumber(count)} non noté${count > 1 ? 's' : ''}`,
     reason: {
       cap_reached: 'Le plafond de coût a été atteint : les essais restants ont été annulés.',
       time_limit: 'La limite de temps a été atteinte : les essais restants ont été annulés.',
@@ -3939,7 +3950,9 @@ export const fr: Messages = {
     historyEmpty: 'Aucun test de ces conventions pour l’instant.',
     historyFailed: 'Les tests précédents n’ont pas pu être lus.',
     open: 'Ouvrir',
+    openRun: (title: string) => `Ouvrir : ${title}`,
+    runEnded: (status: string) => `${status} : les résultats sont ci-dessous.`,
     opened: 'Affiché',
-    page: (page: number, last: number) => `Page ${String(page)} sur ${String(last)}`,
+    page: (page: number, last: number) => `Page ${frNumber(page)} sur ${frNumber(last)}`,
   },
 }

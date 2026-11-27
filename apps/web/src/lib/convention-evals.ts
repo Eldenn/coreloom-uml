@@ -1,9 +1,9 @@
 // Convention tests of an agent configuration (behind `convention-evals`): what a test would run
 // with the provider this browser keeps (`GET …/evals/plan`), starting one (`POST …/evals`, 202
 // with its id at once, 409 while one runs for the account), one run asked again while it goes
-// (`GET …/evals/:runId`) and the configuration's past runs (`GET …/evals`). The API runs the
-// trials in its worker; these routes call no model.
-import { useMutation, useQuery } from '@tanstack/react-query'
+// (`GET …/evals/:runId`) and the configuration's past runs (`GET …/evals`), asked again while one
+// of them goes. The API runs the trials in its worker; these routes call no model.
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 
 import { client } from '@/lib/client'
 import { isRunActive } from '@/lib/convention-eval-results'
@@ -38,18 +38,23 @@ export const conventionEvalKeys = {
 export function useEvalPlan(configId: number, provider: StoredProvider | null) {
   return useQuery({
     queryKey: conventionEvalKeys.plan(configId, provider),
-    queryFn: () =>
-      client.api.agentConfigs.evals.plan({
-        params: { id: configId },
-        query: { kind: provider?.kind ?? 'anthropic', model: provider?.model ?? '' },
-      }),
-    enabled: provider !== null,
+    queryFn: provider
+      ? () =>
+          client.api.agentConfigs.evals.plan({
+            params: { id: configId },
+            query: { kind: provider.kind, model: provider.model },
+          })
+      : skipToken,
     retry: false,
   })
 }
 
-/** The configuration's runs, newest first. A 404 means the feature cannot run on this server. */
-export function useEvalRuns(configId: number, page: number, { enabled }: { enabled: boolean }) {
+/**
+ * The configuration's runs, newest first, asked again while one of the page is queued or running,
+ * so a run left or reloaded meanwhile still ends in the list. A 404 means the feature cannot run
+ * on this server.
+ */
+export function useEvalRuns(configId: number, page: number) {
   return useQuery({
     queryKey: conventionEvalKeys.runsPage(configId, page),
     queryFn: () =>
@@ -57,9 +62,10 @@ export function useEvalRuns(configId: number, page: number, { enabled }: { enabl
         params: { id: configId },
         query: { page, perPage: EVAL_RUNS_PER_PAGE },
       }),
-    enabled,
     retry: false,
     placeholderData: (previous) => previous,
+    refetchInterval: (query) =>
+      query.state.data?.data.some((run) => isRunActive(run.status)) ? RUN_POLL_INTERVAL_MS : false,
   })
 }
 
@@ -67,16 +73,10 @@ export function useEvalRuns(configId: number, page: number, { enabled }: { enabl
 export function useEvalRun(configId: number, runId: number | null) {
   return useQuery({
     queryKey: conventionEvalKeys.run(configId, runId ?? 0),
-    queryFn: async () => {
-      const detail = await client.api.agentConfigs.evals.show({
-        params: { id: configId, runId: runId ?? 0 },
-      })
-      // The list shows each run's status: it is read again once this one has ended.
-      if (!isRunActive(detail.run.status))
-        await queryClient.invalidateQueries({ queryKey: conventionEvalKeys.runs(configId) })
-      return detail
-    },
-    enabled: runId !== null,
+    queryFn:
+      runId === null
+        ? skipToken
+        : () => client.api.agentConfigs.evals.show({ params: { id: configId, runId } }),
     refetchInterval: (query) => {
       const status = query.state.data?.run.status
       if (query.state.status === 'error') return false

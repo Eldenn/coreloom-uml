@@ -32,14 +32,16 @@ import { Spinner } from '@/components/ui/spinner'
 import type { RulePack } from '@/lib/agent-configs'
 import { TuyauError } from '@/lib/client'
 import {
+  activeRunId,
   type EvalBlocker,
   evalBlocker,
   type EvalPlan,
+  isRunActive,
   isSubscriptionKind,
   isUnverifiedKind,
   startFailure,
 } from '@/lib/convention-eval-results'
-import { useEvalPlan, useEvalRuns, useStartEval } from '@/lib/convention-evals'
+import { useEvalPlan, useEvalRun, useEvalRuns, useStartEval } from '@/lib/convention-evals'
 import { useFeature } from '@/lib/feature-flags'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { type StoredProvider, useStoredProvider } from '@/lib/llm-provider'
@@ -60,9 +62,22 @@ export function AgentConfigEvals({ configId, packs }: { configId: number; packs:
 function EvalsSection({ configId, packs }: { configId: number; packs: RulePack[] }) {
   const t = useT().evals
   const [page, setPage] = React.useState(1)
-  const [runId, setRunId] = React.useState<number | null>(null)
-  const runs = useEvalRuns(configId, page, { enabled: true })
+  // `undefined` until the owner opens or closes a run: the run still going, if any, shows then.
+  const [picked, setPicked] = React.useState<number | null | undefined>(undefined)
+  // The run whose heading takes the focus: one the owner opened or started, never one shown alone.
+  const [focusRun, setFocusRun] = React.useState<number | null>(null)
+  const runs = useEvalRuns(configId, page)
+  const going = activeRunId(runs.data?.data ?? [])
+  // A run started before a reload comes back once, and stays shown when it ends.
+  if (picked === undefined && going !== null) setPicked(going)
+  const runId = picked ?? null
+  const shown = useEvalRun(configId, runId)
+  const running = going !== null || (shown.data !== undefined && isRunActive(shown.data.run.status))
   const historyRef = React.useRef<HTMLHeadingElement>(null)
+  const open = (id: number) => {
+    setPicked(id)
+    setFocusRun(id)
+  }
 
   // The server cannot run tests (no sandbox service): the section stays hidden.
   if (runs.isError && isNotFound(runs.error)) return null
@@ -76,14 +91,15 @@ function EvalsSection({ configId, packs }: { configId: number; packs: RulePack[]
         <CardDescription>{t.intro}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        <EvalPlanBlock configId={configId} packs={packs} onStarted={setRunId} />
+        <EvalPlanBlock configId={configId} packs={packs} running={running} onStarted={open} />
         {runId !== null && (
           <EvalRunView
             configId={configId}
             runId={runId}
             packs={packs}
+            takeFocus={focusRun === runId}
             onClose={() => {
-              setRunId(null)
+              setPicked(null)
               historyRef.current?.focus()
             }}
           />
@@ -97,7 +113,7 @@ function EvalsSection({ configId, packs }: { configId: number; packs: RulePack[]
           >
             {t.history}
           </h3>
-          <EvalRunList runs={runs} selected={runId} onOpen={setRunId} onPage={setPage} />
+          <EvalRunList runs={runs} selected={runId} onOpen={open} onPage={setPage} />
         </section>
         <p className="m-0 text-[13px] text-muted-foreground">{t.caveat}</p>
       </CardContent>
@@ -114,6 +130,7 @@ function blockerText(
   if (blocker.kind === 'no-provider') return { text: t.noProvider, settings: true }
   if (blocker.kind === 'provider-unavailable')
     return { text: t.providerUnavailable, settings: true }
+  if (blocker.kind === 'busy') return { text: t.busy, settings: false }
   switch (blocker.refusal) {
     case 'no_testable_rule':
       return { text: t.refusal.no_testable_rule(testable), settings: false }
@@ -125,10 +142,12 @@ function blockerText(
 }
 
 function BlockerNotice({
+  id,
   blocker,
   plan,
   packs,
 }: {
+  id: string
   blocker: EvalBlocker
   plan: EvalPlan | undefined
   packs: RulePack[]
@@ -141,9 +160,9 @@ function BlockerNotice({
     (plan?.testable ?? []).map(ruleTitle).join(', '),
   )
   return (
-    <Alert variant="warning">
+    <Alert variant={blocker.kind === 'busy' ? 'default' : 'warning'}>
       <AlertDescription className="flex flex-col gap-2">
-        <span>{text}</span>
+        <span id={id}>{text}</span>
         {settings && (
           <Button variant="outline" size="sm" className="w-fit" asChild>
             <Link to="/settings">{t.openSettings}</Link>
@@ -157,10 +176,12 @@ function BlockerNotice({
 function EvalPlanBlock({
   configId,
   packs,
+  running,
   onStarted,
 }: {
   configId: number
   packs: RulePack[]
+  running: boolean
   onStarted: (runId: number) => void
 }) {
   const t = useT().evals
@@ -191,7 +212,7 @@ function EvalPlanBlock({
       packs={packs}
       provider={provider}
       plan={plan.data}
-      blocker={evalBlocker(provider, plan.data ?? null, plan.isError)}
+      blocker={evalBlocker(provider, plan.data ?? null, plan.isError, running)}
       onStarted={onStarted}
     />
   )
@@ -215,11 +236,12 @@ function PlanReady({
 }) {
   const t = useT().evals
   const [confirming, setConfirming] = React.useState(false)
+  const blockerId = React.useId()
   const ready = plan && provider && !blocker ? { plan, provider } : null
   return (
     <div className="flex flex-col gap-4">
       {plan && provider && <PlanDetails plan={plan} provider={provider} packs={packs} />}
-      {blocker && <BlockerNotice blocker={blocker} plan={plan} packs={packs} />}
+      {blocker && <BlockerNotice id={blockerId} blocker={blocker} plan={plan} packs={packs} />}
       {ready && isUnverifiedKind(ready.provider.kind) && (
         <Alert variant="warning">
           <AlertDescription>{t.unverified}</AlertDescription>
@@ -228,6 +250,7 @@ function PlanReady({
       <Button
         className="w-fit"
         disabled={!ready}
+        aria-describedby={blocker ? blockerId : undefined}
         onClick={() => {
           setConfirming(true)
         }}
@@ -462,7 +485,7 @@ function EvalRunList({
               variant="outline"
               size="sm"
               disabled={selected === run.id}
-              aria-label={`${t.open}: ${t.runTitle(format.dateTime(run.createdAt))}`}
+              aria-label={t.openRun(t.runTitle(format.dateTime(run.createdAt)))}
               onClick={() => {
                 onOpen(run.id)
               }}

@@ -29,6 +29,7 @@ import {
   type ConditionResult,
   type EvalRun,
   type EvalTrial,
+  heldCell,
   type HeldCount,
   isRunActive,
   isSubscriptionKind,
@@ -89,7 +90,10 @@ function runFacts(
       term: isSubscriptionKind(run.providerKind) ? t.equivalentCost : t.measuredCost,
       value: run.costUsd === null ? t.noCost : format.usd(run.costUsd),
       hint: run.estimate
-        ? `${t.estimate}: ${t.estimateRange(format.usd(run.estimate.lowUsd), format.usd(run.estimate.highUsd))} · ${t.cap}: ${format.usd(run.capUsd)}`
+        ? t.estimateHint(
+            t.estimateRange(format.usd(run.estimate.lowUsd), format.usd(run.estimate.highUsd)),
+            format.usd(run.capUsd),
+          )
         : undefined,
     },
     {
@@ -110,20 +114,22 @@ export function EvalRunView({
   configId,
   runId,
   packs,
+  takeFocus,
   onClose,
 }: {
   configId: number
   runId: number
   packs: RulePack[]
+  /** The owner opened or started this run: its heading takes the focus once it shows. */
+  takeFocus: boolean
   onClose: () => void
 }) {
   const t = useT().evals
   const format = useEvalFormat()
   const detail = useEvalRun(configId, runId)
-  // A run opened from the list (or just started) takes the focus once its heading shows.
   const focusedFor = React.useRef<number | null>(null)
   const headingRef = (node: HTMLHeadingElement | null) => {
-    if (!node || focusedFor.current === runId) return
+    if (!node || !takeFocus || focusedFor.current === runId) return
     focusedFor.current = runId
     node.focus()
   }
@@ -145,6 +151,7 @@ export function EvalRunView({
     )
 
   const { run, trials } = detail.data
+  const active = isRunActive(run.status)
   // While it runs, the duration is counted to the last answer, which comes every few seconds.
   const durationMs = runDurationMs(run, detail.dataUpdatedAt)
   return (
@@ -157,15 +164,17 @@ export function EvalRunView({
           {t.runTitle(format.dateTime(run.createdAt))}
         </h3>
         <div className="flex items-center gap-2">
-          <span aria-live="polite">
-            <RunStatus status={run.status} />
-          </span>
+          <RunStatus status={run.status} />
           <Button variant="ghost" size="sm" onClick={onClose}>
             {t.close}
           </Button>
         </div>
       </div>
-      {isRunActive(run.status) && (
+      {/* Says the status as it changes, and where the results are once the run ends. */}
+      <span aria-live="polite" className="sr-only">
+        {active ? t.status[run.status] : t.runEnded(t.status[run.status])}
+      </span>
+      {active && (
         <div className="flex flex-col gap-1.5">
           <Progress
             value={run.trialCount > 0 ? (trials.length / run.trialCount) * 100 : 0}
@@ -183,14 +192,26 @@ export function EvalRunView({
   )
 }
 
-function HeldCell({ count }: { count: HeldCount }) {
+/** One side of a condition: "held n/k", or "—" when no attempt was graded, and what k leaves out. */
+function HeldCellView({ count, trials }: { count: HeldCount; trials: number }) {
   const t = useT().evals
+  const cell = heldCell(count, trials)
   return (
     <span className="flex flex-col gap-0.5">
-      <span className="font-mono text-[13px]">{t.held(count.held, count.graded)}</span>
-      {count.notApplicable > 0 && (
+      {cell.ratio ? (
+        <span className="font-mono text-[13px]">{t.held(cell.ratio.held, cell.ratio.graded)}</span>
+      ) : (
+        <span className="font-mono text-[13px]">
+          <span aria-hidden>—</span>
+          <span className="sr-only">{t.noneGraded}</span>
+        </span>
+      )}
+      {cell.ungraded > 0 && (
+        <span className="text-[12.5px] text-muted-foreground">{t.ungraded(cell.ungraded)}</span>
+      )}
+      {cell.notApplicable > 0 && (
         <span className="text-[12.5px] text-muted-foreground">
-          {t.notApplicable(count.notApplicable)}
+          {t.notApplicable(cell.notApplicable)}
         </span>
       )}
     </span>
@@ -213,21 +234,12 @@ function ConditionRow({
   return (
     <TableRow>
       {leading}
+      <TableCell>{conditionName(t, result.condition)}</TableCell>
       <TableCell>
-        <span className="flex flex-col gap-0.5">
-          {conditionName(t, result.condition)}
-          {result.ungraded > 0 && (
-            <span className="text-[12.5px] text-muted-foreground">
-              {t.ungraded(result.ungraded)}
-            </span>
-          )}
-        </span>
+        <HeldCellView count={result.success} trials={result.trials} />
       </TableCell>
       <TableCell>
-        <HeldCell count={result.success} />
-      </TableCell>
-      <TableCell>
-        <HeldCell count={result.compliance} />
+        <HeldCellView count={result.compliance} trials={result.trials} />
       </TableCell>
     </TableRow>
   )
