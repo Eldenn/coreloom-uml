@@ -1,6 +1,7 @@
 import { RedisCheck, RedisMemoryUsageCheck } from '@adonisjs/redis'
 import { defineConfig } from '@nemoventures/adonis-jobs'
 import { CODE_MAPS_QUEUE } from '#app/code-maps/constants/code-map'
+import { CONVENTION_EVALS_QUEUE } from '#app/convention-evals/constants/queue'
 import { SKILL_SCANS_QUEUE } from '#app/skills/constants/skill-scan'
 import { SKILL_TOPICS_QUEUE } from '#app/skills/constants/skill-topics'
 
@@ -87,6 +88,14 @@ const queueConfig = defineConfig({
      * run at a time.
      */
     [SKILL_TOPICS_QUEUE]: { globalConcurrency: 1 },
+
+    /**
+     * The convention tests (`RunConventionEvalJob`): listened to by the `convention-evals` worker
+     * only (`queue:work --queues=convention-evals`), the one image holding Harbor. Every other
+     * worker names its queues without this one. Each test holds an account lock of its own, so
+     * two accounts' tests may run side by side; each runs at most three trials at once.
+     */
+    [CONVENTION_EVALS_QUEUE]: { globalConcurrency: 2 },
 
     /**
      * Example of a queue with specific connection and options

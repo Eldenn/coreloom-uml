@@ -223,4 +223,13 @@ export default await Env.create(new URL('../', import.meta.url), {
   E2B_API_KEY: Env.schema.string.optional(),
   E2B_API_URL: Env.schema.string.optional({ format: 'url', tld: false }),
   E2B_SANDBOX_URL: Env.schema.string.optional({ format: 'url', tld: false }),
+
+  /*
+  | Convention tests: each run gets a private folder (0700) under this path for
+  | its trials' workspaces and, on the CLI path, Harbor's job folder, removed
+  | when the run ends. It must be a tmpfs on a worker with no swap, since that
+  | folder holds what an agent wrote before it is filtered. Defaults to
+  | `tmp/convention-evals` inside the app.
+  */
+  CONVENTION_EVALS_HOME: Env.schema.string.optional(),
 })
