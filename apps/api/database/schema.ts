@@ -875,17 +875,88 @@ export class RequirementSchema extends BaseModel {
   declare userId: number
 }
 
+export class RuleEmbeddingSchema extends BaseModel {
+  static $columns = ['createdAt', 'hash', 'ruleId', 'slot', 'vector'] as const
+  $columns = RuleEmbeddingSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare hash: string
+  @column()
+  declare ruleId: string
+  @column({ isPrimary: true })
+  declare slot: string
+  @column()
+  declare vector: any
+}
+
+export class SkillAffinityReviewSchema extends BaseModel {
+  static $columns = ['cosine', 'createdAt', 'decidedAt', 'decision', 'id', 'ruleId', 'skillId', 'slot'] as const
+  $columns = SkillAffinityReviewSchema.$columns
+  @column()
+  declare cosine: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime()
+  declare decidedAt: DateTime | null
+  @column()
+  declare decision: string | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare ruleId: string
+  @column()
+  declare skillId: number
+  @column()
+  declare slot: string
+}
+
 export class SkillEmbeddingSchema extends BaseModel {
-  static $columns = ['createdAt', 'hash', 'skillId', 'vector'] as const
+  static $columns = ['createdAt', 'hash', 'purpose', 'skillId', 'vector'] as const
   $columns = SkillEmbeddingSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()
   declare hash: string
+  @column()
+  declare purpose: string
   @column({ isPrimary: true })
   declare skillId: number
   @column()
   declare vector: any
+}
+
+export class SkillNearDuplicateSchema extends BaseModel {
+  static $columns = ['duplicateOf', 'skillId'] as const
+  $columns = SkillNearDuplicateSchema.$columns
+  @column()
+  declare duplicateOf: number
+  @column({ isPrimary: true })
+  declare skillId: number
+}
+
+export class SkillRuleScoreSchema extends BaseModel {
+  static $columns = ['cosine', 'ruleId', 'skillId', 'slot'] as const
+  $columns = SkillRuleScoreSchema.$columns
+  @column()
+  declare cosine: number
+  @column()
+  declare ruleId: string
+  @column({ isPrimary: true })
+  declare skillId: number
+  @column()
+  declare slot: string
+}
+
+export class SkillScoringStateSchema extends BaseModel {
+  static $columns = ['hash', 'id', 'scoredAt'] as const
+  $columns = SkillScoringStateSchema.$columns
+  @column()
+  declare hash: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column.dateTime()
+  declare scoredAt: DateTime
 }
 
 export class SkillSnapshotSchema extends BaseModel {

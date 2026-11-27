@@ -28,7 +28,6 @@ export const STATE_SQL = `case
   when skills.eligible
     and skills.content_sha is not null
     and skills.checked_at is not null
-    and (jsonb_array_length(skills.affinities) > 0 or jsonb_array_length(skills.topics) > 0)
     then 'suggested'
   else 'catalogued'
 end`

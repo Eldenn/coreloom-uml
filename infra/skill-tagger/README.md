@@ -10,12 +10,31 @@ download.
 
 - **Code**: `apps/api/app/skills/services/skill-topics.ts` (`classifySkillTopics`),
   `skill-embedder.ts` (the model, through transformers.js on the CPU) and `topic-head.ts` (the
-  regression, pure TypeScript). Run by `ClassifySkillTopicsJob` on the `skill-topics` queue, after
-  each skills refresh and each tag the admin sets, and by `node ace skills:classify`.
+  regression, pure TypeScript), then `skill-rule-scores.ts` (`scoreSkillRules`, the computed
+  skill affinities). Run by `ClassifySkillTopicsJob` on the `skill-topics` queue, after each
+  skills refresh, each tag the admin sets, each copy captured and each skill blocked or suggested
+  again, and queued by `node ace skills:classify` and, when the scores are not current,
+  `skills:setup`. The job loads the model once and runs, in this order: the skills' classification
+  vectors and tags, the search vectors of the suggestable skills and of the rules, the scores, then
+  the watch's articles.
 - **Model**: `SKILL_EMBEDDING_MODEL` in `app/skills/constants/skill-topics.ts`:
-  `onnx-community/Qwen3-Embedding-0.6B-ONNX`, its 8-bit build, pinned to a commit of its
-  Hugging Face repository. Downloaded on first use into `SKILL_TAGGER_CACHE` (about 600 MB, the
-  `skill-tagger-models` volume); about 1.5 GB of memory while it reads, freed after each run.
+  `onnx-community/Qwen3-Embedding-0.6B-ONNX`, its fp32 build, pinned to a commit of its
+  Hugging Face repository. Downloaded on first use into `SKILL_TAGGER_CACHE` (2.4 GB, the
+  `skill-tagger-models` volume), read in batches of 2 and freed after each run. The 8-bit build
+  tagged as well but lost 0.067 nDCG@5 finding the skills of a rule (`study/`).
+- **Memory**: the model alone reading 1,096 texts peaks at 2.6 GB. In the worker, where each
+  batch's vectors are written to the database, a run peaks at 4.8 GB: onnxruntime's output
+  buffers are memory V8 collects late (they reached 1.8 GB before a full collection), and the
+  process keeps what it freed. Measured on 2026-11-27 on the first run of a deployment (2,729 skills
+  tagged, then 215 skills and 844 rules for the search, 7 minutes): it rises to 4.7 GB within the
+  first 800 texts and stays there. Neither freeing the tensors, onnxruntime's arena off, fewer
+  malloc arenas nor a forced collection after each batch brought it down. `mem_limit: 6g` on the
+  service is a guard against a leak, not the expected size.
+- **Vectors**: `skill_embeddings` keeps one per skill and purpose (`EMBEDDING_PURPOSES`):
+  `classification`, with the tagger's instruction, and `retrieval`, a suggestable skill's
+  `name: description` with no instruction; `rule_embeddings` each ready-made rule's text but the
+  `{value}` ones, with the rule instruction. The texts and the instruction are the study's, to the
+  character: `COMPUTED_AFFINITY_THRESHOLD` (0.656) was measured for them and this model only.
 - **Image**: stage `skill-tagger` of `apps/api/Dockerfile`, published as
   `coreloom-uml-skill-tagger` by `release.yml`, service `skill-tagger` of every compose file
   (behind the `skills` profile locally). It is the API's build on Debian slim rather than Alpine:
@@ -60,19 +79,21 @@ the rare tags raised it from 0.776 to 0.830.
 
 ## Running it
 
-- Locally, on a Linux or macOS host: `pnpm --filter @coreloom-uml/api queue:tag` (the worker)
-  or `node ace skills:classify` (one run now). In Docker:
+- Locally, on a Linux or macOS host: `pnpm --filter @coreloom-uml/api queue:tag` (the worker);
+  `node ace skills:classify` queues one run for it, so no second model is ever loaded. In Docker:
   `docker compose -f infra/docker-compose.yml --profile skills up -d skill-tagger`.
 - Staging and production: the `skill-tagger` service.
 
 ## Raising a version
 
-- **The model** (`SKILL_EMBEDDING_MODEL`: its commit, build or instruction): every skill is
-  embedded again at the next run. Measure it first on the labels: 10-fold cross-validation and the
-  53 held out, against the figures above.
+- **The model** (`SKILL_EMBEDDING_MODEL`: its commit or build, or an instruction of
+  `EMBEDDING_PURPOSES`): every skill, rule and article is embedded again at the next run, and the
+  computed affinities turn themselves off until `COMPUTED_AFFINITY_THRESHOLD` is measured again
+  for the new model (`study/`). Measure the tags first on the labels: 10-fold cross-validation and
+  the 53 held out, against the figures above, and the watch's articles each feed held out.
 - **transformers.js** (`@huggingface/transformers` in `apps/api/package.json`, and the
-  onnxruntime it brings): build the `skill-tagger` image and run `node ace skills:classify` in it
-  before relying on it, since only that shows the binary loads.
+  onnxruntime it brings): build the `skill-tagger` image, start its worker and queue a run
+  (`node ace skills:classify`) before relying on it, since only that shows the binary loads.
 
 ## Articles of the tech watch
 

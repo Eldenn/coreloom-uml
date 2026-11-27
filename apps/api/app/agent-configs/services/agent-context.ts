@@ -4,6 +4,7 @@ import {
   type AgentContextOutput,
   type AgentContextProject,
   CATALOG_VERSION,
+  type ComputedAffinities,
   heldTopics,
   MANAGED_BLOCK_BEGIN,
   MANAGED_BLOCK_END,
@@ -141,15 +142,23 @@ export function render(inputs: StoredAgentConfigInputs): AgentContextOutput {
 }
 
 /** The skills that fit the inputs: their ready-made rules and the kinds of the project's diagrams. */
+/** The skills that fit the rules held; with `computed`, from computed affinities too (`matchSkills`). */
 export function suggestSkills(
   inputs: StoredAgentConfigInputs,
   skills: readonly Skill[],
+  computed?: ComputedAffinities,
 ): SkillSuggestions {
   const diagramKinds = inputs.project.architectures.flatMap((architecture) =>
     architecture.diagrams.map((diagram) => diagram.kind),
   )
   return matchSkills(
-    { packs: RULE_PACKS, ready: inputs.ready ?? [], targets: inputs.targets, diagramKinds },
+    {
+      packs: RULE_PACKS,
+      ready: inputs.ready ?? [],
+      targets: inputs.targets,
+      diagramKinds,
+      ...(computed ? { computed } : {}),
+    },
     skills,
   )
 }

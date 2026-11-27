@@ -23,7 +23,10 @@ export const CLEAN_SCAN: SkillScan = {
 export async function withEmptySkillsCatalog() {
   const rollback = await testUtils.db().withGlobalTransaction()
   await db.from('skill_snapshots').delete()
+  // Their scores, duplicates and reviews go with the skills; the rules' vectors and the run's state too.
   await db.from('skills').delete()
+  await db.from('rule_embeddings').delete()
+  await db.from('skill_scoring_state').delete()
   // Back to its registries, skills.sh and Smithery, as their migrations created them.
   await db.from('skill_sources').where('kind', 'github').delete()
   await db.from('skill_sources').update({ enabled: true, last_run_at: null, last_error: null })

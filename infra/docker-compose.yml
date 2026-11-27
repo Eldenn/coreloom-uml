@@ -116,9 +116,9 @@ services:
   # -----------------------------------------------
   # Skill tagger — the API's worker on the `skill-topics` queue, in its own image
   # (Debian: the embedding model's runtime needs glibc). Its first run downloads
-  # the model (about 600 MB) into skill_tagger_models. On a Linux or macOS host,
-  # `pnpm --filter @coreloom-uml/api queue:tag` or `node ace skills:classify`
-  # run it without this service. See infra/skill-tagger/README.md.
+  # the model (2.4 GB) into skill_tagger_models. On a Linux or macOS host,
+  # `pnpm --filter @coreloom-uml/api queue:tag` runs it without this service
+  # (`node ace skills:classify` queues a run). See infra/skill-tagger/README.md.
   # -----------------------------------------------
   skill-tagger:
     profiles: ["skills"]
@@ -127,6 +127,8 @@ services:
       dockerfile: apps/api/Dockerfile
       target: skill-tagger
     restart: unless-stopped
+    # A first run in fp32 peaks at 4.8 GB (infra/skill-tagger/README.md): a guard against a leak.
+    mem_limit: 6g
     env_file: ../apps/api/.env
     environment:
       NODE_ENV: production
