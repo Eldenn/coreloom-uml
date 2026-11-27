@@ -1315,6 +1315,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skills-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'admin.jobs.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/admin/jobs'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/queue-jobs/controllers/admin-queue-jobs-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/queue-jobs/controllers/admin-queue-jobs-controller').default['index']>>>
+    }
+  }
   'admin.skill_sources.index': {
     methods: ["GET","HEAD"]
     pattern: '/admin/skill-sources'

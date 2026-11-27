@@ -7,6 +7,7 @@ import { client } from '@/lib/client'
 import { MODEL_CALL } from '@/lib/llm-provider'
 import { callBody, type StoredProvider } from '@/lib/llm-provider-body'
 import { queryClient } from '@/lib/query'
+import { jobLaunched } from '@/lib/queue-jobs'
 import { skillKeys } from '@/lib/skills'
 
 export type SkillVersion = Awaited<
@@ -78,12 +79,18 @@ export function useModelReviewSkillVersion() {
 export function useScanSkillVersion() {
   return useMutation({
     mutationFn: (id: number) => client.api.admin.skillVersions.scan({ params: { id: String(id) } }),
+    onSuccess: jobLaunched,
   })
 }
 
 /** Asks for a scan of every pending copy that has no verdict; answers how many. */
 export function useQueueSkillScans() {
-  return useMutation({ mutationFn: () => client.api.admin.skillVersions.scans({}) })
+  return useMutation({
+    mutationFn: () => client.api.admin.skillVersions.scans({}),
+    onSuccess: ({ queued }) => {
+      if (queued > 0) jobLaunched()
+    },
+  })
 }
 
 /**
@@ -93,6 +100,7 @@ export function useQueueSkillScans() {
 export function useCaptureSkillCopy() {
   return useMutation({
     mutationFn: (slug: string) => client.api.admin.skillVersions.store({ body: { slug } }),
+    onSuccess: jobLaunched,
   })
 }
 

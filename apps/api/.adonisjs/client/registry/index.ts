@@ -660,6 +660,12 @@ const routes = {
     tokens: [{"old":"/admin/skills/:slug","type":0,"val":"admin","end":""},{"old":"/admin/skills/:slug","type":0,"val":"skills","end":""},{"old":"/admin/skills/:slug","type":1,"val":"slug","end":""}],
     types: placeholder as Registry['admin.skills.update']['types'],
   },
+  'admin.jobs.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/admin/jobs',
+    tokens: [{"old":"/admin/jobs","type":0,"val":"admin","end":""},{"old":"/admin/jobs","type":0,"val":"jobs","end":""}],
+    types: placeholder as Registry['admin.jobs.index']['types'],
+  },
   'admin.skill_sources.index': {
     methods: ["GET","HEAD"],
     pattern: '/admin/skill-sources',

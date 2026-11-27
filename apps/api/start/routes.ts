@@ -652,6 +652,17 @@ router
   .use([middleware.auth(), middleware.admin()])
 
 /*
+| The background jobs that run, wait or just ended, for the admin's header: names, states and times,
+| never a job's data. Other accounts get a 404.
+*/
+const adminQueueJobsController = () =>
+  import('#app/queue-jobs/controllers/admin-queue-jobs-controller')
+router
+  .get('/admin/jobs', [adminQueueJobsController, 'index'])
+  .as('admin.jobs.index')
+  .use([middleware.auth(), middleware.admin()])
+
+/*
 | Where the weekly search looks for skills: skills.sh (disabled, never deleted) and the GitHub
 | repositories the admin trusts. Writes rows only; the next run reads them. Other accounts get a 404.
 */
