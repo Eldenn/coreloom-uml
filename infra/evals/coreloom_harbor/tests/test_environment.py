@@ -20,6 +20,7 @@ from coreloom_harbor.environment import (
     AGENT_USER,
     AGENT_USER_CHECK,
     HARDEN_SANDBOX,
+    KILL_AGENT_PROCESSES,
     ConventionEvalsE2BEnvironment,
     ConventionEvalsOptions,
 )
@@ -185,7 +186,7 @@ class EnvironmentTest(unittest.TestCase):
 
     def test_setup_and_the_verifier_get_no_network(self):
         environment = self.make()
-        sandbox = FakeSandbox(None)
+        sandbox = FakeSandbox({"allow_out": [], "deny_out": ["0.0.0.0/0"]})
         environment._sandbox = sandbox
         asyncio.run(environment._apply_network_policy(NO_NETWORK))
         self.assertEqual(sandbox.updates, [{"allow_internet_access": False, "deny_out": ["0.0.0.0/0"]}])
@@ -282,7 +283,7 @@ class EnvironmentTest(unittest.TestCase):
         with self.assertRaises(ConnectionError):
             asyncio.run(
                 environment.exec_with_secret(
-                    "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY
+                    "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY, user="node"
                 )
             )
         self.assertTrue(environment._sandbox.commands.killed)
@@ -292,8 +293,81 @@ class EnvironmentTest(unittest.TestCase):
         environment._sandbox = self.sandbox_with_commands()
         for name, secret in (("ANTHROPIC_API_KEY", "a\nb"), ("ANTHROPIC_API_KEY", ""), ("PATH", "x")):
             with self.assertRaises(ValueError):
-                asyncio.run(environment.exec_with_secret("true", secret_name=name, secret=secret))
+                asyncio.run(
+                    environment.exec_with_secret("true", secret_name=name, secret=secret, user="node")
+                )
         self.assertEqual(environment._sandbox.commands.runs, [])
+
+    def test_refuses_a_command_carrying_the_key_by_value(self):  # security I2, QA 3
+        environment = self.make()
+        environment._sandbox = self.sandbox_with_commands()
+        with self.assertRaises(PolicyViolation):
+            asyncio.run(
+                environment.exec_with_secret(
+                    "claude",
+                    secret_name="ANTHROPIC_API_KEY",
+                    secret=FAKE_KEY,
+                    env={"CLAUDE_EXTRA": FAKE_KEY},
+                    user="node",
+                )
+            )
+        self.assertEqual(environment._sandbox.commands.runs, [])
+        # Once sent, the value is refused in any later command's line or env value.
+        asyncio.run(
+            environment.exec_with_secret(
+                "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY, user="node"
+            )
+        )
+        for command, env in ((f"echo {FAKE_KEY}", {}), ("true", {"X": f"a{FAKE_KEY}b"})):
+            with self.assertRaises(PolicyViolation):
+                asyncio.run(environment.exec(command, env=env, user="node"))
+        self.assertEqual(len(environment._sandbox.commands.runs), 1)
+
+    def test_sends_the_key_to_the_agents_user_only(self):  # security I1
+        environment = self.make()
+        environment._sandbox = self.sandbox_with_commands()
+        for user in (None, "root", "user"):
+            with self.assertRaises(PolicyViolation):
+                asyncio.run(
+                    environment.exec_with_secret(
+                        "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY, user=user
+                    )
+                )
+        self.assertEqual(environment._sandbox.commands.runs, [])
+
+    def test_reads_back_the_no_network_phases(self):  # code review 4
+        for network in (None, {"allow_out": [HOST], "deny_out": ["0.0.0.0/0"]}, {"deny_out": []}):
+            environment = self.make()
+            environment._sandbox = FakeSandbox(network)
+            with self.assertRaises(PolicyViolation):
+                asyncio.run(environment._apply_network_policy(NO_NETWORK))
+
+    def test_kills_the_agents_processes_once_the_agent_phase_is_over(self):  # security I3
+        environment = self.make()
+        sandbox = FakeSandbox({"allow_out": [HOST], "deny_out": list(AGENT_PHASE_DENY_OUT)})
+        environment._sandbox = sandbox
+        as_root: list[str] = []
+        left = {"code": 0}
+
+        async def run_as_root(command: str, _timeout: int):
+            as_root.append(command)
+            return SimpleNamespace(return_code=left["code"], stdout="", stderr="")
+
+        with mock.patch.object(environment, "_run_as_root", run_as_root):
+            sandbox.network = {"allow_out": [], "deny_out": ["0.0.0.0/0"]}
+            asyncio.run(environment._apply_network_policy(NO_NETWORK))
+            self.assertEqual(as_root, [])  # setup: no agent phase yet
+            sandbox.network = {"allow_out": [HOST], "deny_out": list(AGENT_PHASE_DENY_OUT)}
+            asyncio.run(environment._apply_network_policy(AGENT_PHASE))
+            sandbox.network = {"allow_out": [], "deny_out": ["0.0.0.0/0"]}
+            asyncio.run(environment._apply_network_policy(NO_NETWORK))
+            self.assertEqual(as_root, [KILL_AGENT_PROCESSES])
+            left["code"] = 1
+            sandbox.network = {"allow_out": [HOST], "deny_out": list(AGENT_PHASE_DENY_OUT)}
+            asyncio.run(environment._apply_network_policy(AGENT_PHASE))
+            sandbox.network = {"allow_out": [], "deny_out": ["0.0.0.0/0"]}
+            with self.assertRaises(PolicyViolation):
+                asyncio.run(environment._apply_network_policy(NO_NETWORK))
 
     def test_every_other_command_loses_its_credentials(self):  # fix g
         environment = self.make()

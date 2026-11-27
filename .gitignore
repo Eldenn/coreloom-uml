@@ -41,6 +41,8 @@ apps/web/dist/
 
 # Logs
 *.log
+# The recorded Harbor job the reader's tests read holds Harbor's own logs.
+!packages/catalog/evals/fixtures/**/*.log
 npm-debug.log*
 pnpm-debug.log*
 logs/
