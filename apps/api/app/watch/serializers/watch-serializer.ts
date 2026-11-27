@@ -1,6 +1,6 @@
 import type WatchArticle from '#app/watch/models/watch-article'
-import type WatchFeed from '#app/watch/models/watch-feed'
-import type { WatchArticleOutput, WatchFeedOutput } from '#app/watch/validators/watch-output'
+import type WatchSource from '#app/watch/models/watch-source'
+import type { WatchArticleOutput, WatchSourceOutput } from '#app/watch/validators/watch-output'
 
 export function serializeWatchArticle(article: WatchArticle): WatchArticleOutput {
   return {
@@ -17,16 +17,17 @@ export function serializeWatchArticle(article: WatchArticle): WatchArticleOutput
 }
 
 /** A row loaded with its `articles_count`. */
-export function serializeWatchFeed(feed: WatchFeed): WatchFeedOutput {
+export function serializeWatchSource(source: WatchSource): WatchSourceOutput {
   return {
-    id: feed.id,
-    kind: feed.kind,
-    url: feed.url,
-    title: feed.title,
-    topics: feed.topics,
-    enabled: feed.enabled,
-    articles: Number(feed.$extras.articles_count ?? 0),
-    lastRunAt: feed.lastRunAt?.toUTC().toISO() ?? null,
-    lastError: feed.lastError,
+    id: source.id,
+    kind: source.kind,
+    url: source.url,
+    query: source.query,
+    title: source.title,
+    topics: source.topics,
+    enabled: source.enabled,
+    articles: Number(source.$extras.articles_count ?? 0),
+    lastRunAt: source.lastRunAt?.toUTC().toISO() ?? null,
+    lastError: source.lastError,
   }
 }

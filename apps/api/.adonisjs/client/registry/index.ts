@@ -720,29 +720,29 @@ const routes = {
     tokens: [{"old":"/watch/articles","type":0,"val":"watch","end":""},{"old":"/watch/articles","type":0,"val":"articles","end":""}],
     types: placeholder as Registry['watch.articles.index']['types'],
   },
-  'admin.watch.feeds.index': {
+  'admin.watch.sources.index': {
     methods: ["GET","HEAD"],
-    pattern: '/admin/watch/feeds',
-    tokens: [{"old":"/admin/watch/feeds","type":0,"val":"admin","end":""},{"old":"/admin/watch/feeds","type":0,"val":"watch","end":""},{"old":"/admin/watch/feeds","type":0,"val":"feeds","end":""}],
-    types: placeholder as Registry['admin.watch.feeds.index']['types'],
+    pattern: '/admin/watch/sources',
+    tokens: [{"old":"/admin/watch/sources","type":0,"val":"admin","end":""},{"old":"/admin/watch/sources","type":0,"val":"watch","end":""},{"old":"/admin/watch/sources","type":0,"val":"sources","end":""}],
+    types: placeholder as Registry['admin.watch.sources.index']['types'],
   },
-  'admin.watch.feeds.store': {
+  'admin.watch.sources.store': {
     methods: ["POST"],
-    pattern: '/admin/watch/feeds',
-    tokens: [{"old":"/admin/watch/feeds","type":0,"val":"admin","end":""},{"old":"/admin/watch/feeds","type":0,"val":"watch","end":""},{"old":"/admin/watch/feeds","type":0,"val":"feeds","end":""}],
-    types: placeholder as Registry['admin.watch.feeds.store']['types'],
+    pattern: '/admin/watch/sources',
+    tokens: [{"old":"/admin/watch/sources","type":0,"val":"admin","end":""},{"old":"/admin/watch/sources","type":0,"val":"watch","end":""},{"old":"/admin/watch/sources","type":0,"val":"sources","end":""}],
+    types: placeholder as Registry['admin.watch.sources.store']['types'],
   },
-  'admin.watch.feeds.update': {
+  'admin.watch.sources.update': {
     methods: ["PATCH"],
-    pattern: '/admin/watch/feeds/:id',
-    tokens: [{"old":"/admin/watch/feeds/:id","type":0,"val":"admin","end":""},{"old":"/admin/watch/feeds/:id","type":0,"val":"watch","end":""},{"old":"/admin/watch/feeds/:id","type":0,"val":"feeds","end":""},{"old":"/admin/watch/feeds/:id","type":1,"val":"id","end":""}],
-    types: placeholder as Registry['admin.watch.feeds.update']['types'],
+    pattern: '/admin/watch/sources/:id',
+    tokens: [{"old":"/admin/watch/sources/:id","type":0,"val":"admin","end":""},{"old":"/admin/watch/sources/:id","type":0,"val":"watch","end":""},{"old":"/admin/watch/sources/:id","type":0,"val":"sources","end":""},{"old":"/admin/watch/sources/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['admin.watch.sources.update']['types'],
   },
-  'admin.watch.feeds.destroy': {
+  'admin.watch.sources.destroy': {
     methods: ["DELETE"],
-    pattern: '/admin/watch/feeds/:id',
-    tokens: [{"old":"/admin/watch/feeds/:id","type":0,"val":"admin","end":""},{"old":"/admin/watch/feeds/:id","type":0,"val":"watch","end":""},{"old":"/admin/watch/feeds/:id","type":0,"val":"feeds","end":""},{"old":"/admin/watch/feeds/:id","type":1,"val":"id","end":""}],
-    types: placeholder as Registry['admin.watch.feeds.destroy']['types'],
+    pattern: '/admin/watch/sources/:id',
+    tokens: [{"old":"/admin/watch/sources/:id","type":0,"val":"admin","end":""},{"old":"/admin/watch/sources/:id","type":0,"val":"watch","end":""},{"old":"/admin/watch/sources/:id","type":0,"val":"sources","end":""},{"old":"/admin/watch/sources/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['admin.watch.sources.destroy']['types'],
   },
   'admin.watch.refresh': {
     methods: ["POST"],

@@ -118,11 +118,11 @@ export interface ApiDefinition {
       destroy: typeof routes['admin.skill_sources.destroy']
     }
     watch: {
-      feeds: {
-        index: typeof routes['admin.watch.feeds.index']
-        store: typeof routes['admin.watch.feeds.store']
-        update: typeof routes['admin.watch.feeds.update']
-        destroy: typeof routes['admin.watch.feeds.destroy']
+      sources: {
+        index: typeof routes['admin.watch.sources.index']
+        store: typeof routes['admin.watch.sources.store']
+        update: typeof routes['admin.watch.sources.update']
+        destroy: typeof routes['admin.watch.sources.destroy']
       }
       refresh: typeof routes['admin.watch.refresh']
       articles: {

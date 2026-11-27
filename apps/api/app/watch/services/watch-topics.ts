@@ -119,7 +119,7 @@ export async function classifyWatchArticles(): Promise<ArticleTopicsReport> {
     await article
       .merge({
         taggerTopics: topics,
-        topics: effectiveTopics(article.feedTopics, topics, article.reviewedTopics),
+        topics: effectiveTopics(article.sourceTopics, topics, article.reviewedTopics),
       })
       .save()
     report.tagged += 1

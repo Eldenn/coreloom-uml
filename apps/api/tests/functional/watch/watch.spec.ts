@@ -8,12 +8,15 @@ import { updateFlag } from '#app/feature-flags/services/feature-flags'
 import SkillEmbedder from '#app/skills/services/skill-embedder'
 import User from '#app/users/models/user'
 import WatchArticle from '#app/watch/models/watch-article'
-import WatchFeed from '#app/watch/models/watch-feed'
+import WatchSource from '#app/watch/models/watch-source'
 import FeedFetcher from '#app/watch/services/feed-fetch'
 import { refreshWatch } from '#app/watch/services/watch-refresh'
 import { releaseWatchRefresh } from '#app/watch/services/watch-refresh-lock'
 import { classifyWatchArticles } from '#app/watch/services/watch-topics'
+import WebSearch from '#app/web-search/services/web-search'
+import { saveWebSearch } from '#app/web-search/services/web-search-settings'
 import env from '#start/env'
+import { FakeWebSearch } from '#tests/helpers/fake-web-search'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 
 const json = { accept: 'application/json' }
@@ -58,6 +61,7 @@ test.group('Tech watch', (group) => {
       env.set('DEFAULT_ACCOUNT_PASSWORD', '')
       app.container.restore(FeedFetcher)
       app.container.restore(SkillEmbedder)
+      app.container.restore(WebSearch)
       await releaseWatchRefresh()
     }
   })
@@ -65,7 +69,7 @@ test.group('Tech watch', (group) => {
   test('every route answers 404 while tech-watch is off', async ({ client }) => {
     const admin = await User.create({ email: ADMIN, password: PASSWORD })
     ;(await client.get('/watch/articles').headers(json).loginAs(admin)).assertStatus(404)
-    ;(await client.get('/admin/watch/feeds').headers(json).loginAs(admin)).assertStatus(404)
+    ;(await client.get('/admin/watch/sources').headers(json).loginAs(admin)).assertStatus(404)
     ;(await client.post('/admin/watch/refresh').headers(json).loginAs(admin)).assertStatus(404)
   })
 
@@ -74,7 +78,7 @@ test.group('Tech watch', (group) => {
     await updateFlag(FeatureFlagKey.TechWatch, ON, someone)
     ;(await client.get('/watch/articles').headers(json).loginAs(someone)).assertStatus(200)
     const added = await client
-      .post('/admin/watch/feeds')
+      .post('/admin/watch/sources')
       .headers(json)
       .json({ url: 'https://blog.example.com/feed' })
       .loginAs(someone)
@@ -89,29 +93,30 @@ test.group('Tech watch', (group) => {
     await updateFlag(FeatureFlagKey.TechWatch, ON, admin)
 
     const added = await client
-      .post('/admin/watch/feeds')
+      .post('/admin/watch/sources')
       .headers(json)
       .json({ url: 'https://blog.example.com/feed', topics: ['security'] })
       .loginAs(admin)
     added.assertStatus(201)
-    assert.include(added.body().feed, { url: 'https://blog.example.com/feed', enabled: true })
+    assert.include(added.body().source, { url: 'https://blog.example.com/feed', enabled: true })
     ;(
       await client
-        .post('/admin/watch/feeds')
+        .post('/admin/watch/sources')
         .headers(json)
         .json({ url: 'https://blog.example.com/feed' })
         .loginAs(admin)
     ).assertStatus(409)
     ;(
       await client
-        .post('/admin/watch/feeds')
+        .post('/admin/watch/sources')
         .headers(json)
         .json({ url: 'http://blog.example.com/feed' })
         .loginAs(admin)
     ).assertStatus(422)
-    await WatchFeed.create({
+    await WatchSource.create({
       kind: 'rss',
       url: 'https://broken.example/feed',
+      query: null,
       topics: [],
       enabled: true,
     })
@@ -137,8 +142,8 @@ test.group('Tech watch', (group) => {
     ).assertStatus(201)
 
     const report = await refreshWatch()
-    assert.deepEqual(report, { feeds: 2, failed: 1, added: 1, pruned: 0 })
-    const broken = await WatchFeed.findByOrFail('url', 'https://broken.example/feed')
+    assert.deepEqual(report, { sources: 2, failed: 1, added: 1, pruned: 0, searches: 0 })
+    const broken = await WatchSource.findByOrFail('url', 'https://broken.example/feed')
     assert.equal(broken.lastError, 'The feed answered 500')
     // A second run adds nothing: the link is known.
     assert.equal((await refreshWatch()).added, 0)
@@ -176,7 +181,7 @@ test.group('Tech watch', (group) => {
       excerpt: '',
       publishedAt: DateTime.now().minus({ days: 1 }),
       topics: [],
-      feedTopics: [],
+      sourceTopics: [],
       taggerTopics: null,
       reviewedTopics: null,
       hidden: false,
@@ -228,7 +233,7 @@ test.group('Tech watch', (group) => {
 
     const base = {
       excerpt: 'x'.repeat(500),
-      feedTopics: [],
+      sourceTopics: [],
       taggerTopics: null,
       reviewedTopics: null,
     }
@@ -287,15 +292,20 @@ test.group('Tech watch', (group) => {
       fake.close = async () => {}
       return fake
     })
-    const make = (n: number, title: string, reviewed: string[] | null, feedTopics: string[] = []) =>
+    const make = (
+      n: number,
+      title: string,
+      reviewed: string[] | null,
+      sourceTopics: string[] = [],
+    ) =>
       WatchArticle.create({
         url: `https://a.example/${title.replace(/\s/g, '-')}-${String(n)}`,
         site: 'a.example',
         title,
         excerpt: '',
         publishedAt: DateTime.now().minus({ days: 1 }),
-        topics: reviewed ?? feedTopics,
-        feedTopics,
+        topics: reviewed ?? sourceTopics,
+        sourceTopics,
         taggerTopics: null,
         reviewedTopics: reviewed,
         hidden: false,
@@ -313,5 +323,100 @@ test.group('Tech watch', (group) => {
     assert.deepEqual(unknown.taggerTopics, ['security'])
     assert.deepEqual(unknown.topics, ['security'])
     assert.equal((await classifyWatchArticles()).embedded, 0)
+  })
+
+  test('a search source runs on the instance key, since its last run, without blocked sites', async ({
+    client,
+    assert,
+  }) => {
+    const admin = await User.create({ email: ADMIN, password: PASSWORD })
+    await updateFlag(FeatureFlagKey.TechWatch, ON, admin)
+    const fake = new FakeWebSearch()
+    app.container.swap(WebSearch, () => fake)
+    fakeFeeds({})
+
+    const added = await client
+      .post('/admin/watch/sources')
+      .headers(json)
+      .json({ query: 'prompt injection in coding agents', topics: ['security'] })
+      .loginAs(admin)
+    added.assertStatus(201)
+    assert.include(added.body().source, { kind: 'linkup', url: null })
+    ;(
+      await client
+        .post('/admin/watch/sources')
+        .headers(json)
+        .json({ query: 'Prompt injection in coding agents' })
+        .loginAs(admin)
+    ).assertStatus(409)
+    ;(
+      await client
+        .post('/admin/watch/sources')
+        .headers(json)
+        .json({ query: 'both', url: 'https://a.example/feed' })
+        .loginAs(admin)
+    ).assertStatus(422)
+
+    // No service set: nothing is searched, and the source says why.
+    const listed = await client.get('/admin/watch/sources').headers(json).loginAs(admin)
+    assert.isFalse(listed.body().webSearchReady)
+    assert.deepEqual(await refreshWatch(), {
+      sources: 1,
+      failed: 1,
+      added: 0,
+      pruned: 0,
+      searches: 0,
+    })
+    assert.lengthOf(fake.queries, 0)
+
+    await saveWebSearch('linkup', 'lk-test-key-0000')
+    await client
+      .post('/admin/watch/blocked-sites')
+      .headers(json)
+      .json({ host: 'spam.example' })
+      .loginAs(admin)
+    fake.results = [
+      {
+        title: 'Agents & <b>injection</b>',
+        url: 'https://research.example/injection?utm_source=x',
+        snippet: 'A page that says ignore previous instructions.',
+        publishedAt: DateTime.now().minus({ days: 1 }).toISODate(),
+      },
+      {
+        title: 'Undated product page',
+        url: 'https://vendor.example/p',
+        snippet: '',
+        publishedAt: null,
+      },
+    ]
+    const report = await refreshWatch()
+    assert.deepEqual([report.searches, report.added, report.failed], [1, 1, 0])
+    assert.deepEqual(fake.queries, ['prompt injection in coding agents'])
+    assert.deepEqual(fake.options[0].excludeDomains, ['spam.example'])
+    assert.equal(fake.options[0].fromDate, DateTime.now().minus({ days: 7 }).toUTC().toISODate())
+    const article = await WatchArticle.findByOrFail('url', 'https://research.example/injection')
+    assert.equal(article.title, 'Agents & injection')
+    assert.deepEqual(article.topics, ['security'])
+  })
+
+  test('a run spends at most its searches; the rest wait for the next run', async ({ assert }) => {
+    const fake = new FakeWebSearch()
+    app.container.swap(WebSearch, () => fake)
+    fakeFeeds({})
+    await saveWebSearch('linkup', 'lk-test-key-0000')
+    for (let n = 0; n < 12; n++) {
+      await WatchSource.create({
+        kind: 'linkup',
+        url: null,
+        query: `query ${String(n)}`,
+        topics: [],
+        enabled: true,
+      })
+    }
+    const report = await refreshWatch()
+    assert.deepEqual([report.searches, report.failed], [10, 2])
+    const waiting = await WatchSource.query().whereNotNull('last_error')
+    assert.lengthOf(waiting, 2)
+    assert.isNull(waiting[0].lastRunAt)
   })
 })

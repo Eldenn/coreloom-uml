@@ -1,29 +1,47 @@
-/** What a watch feed is read as. One kind for now; Atom feeds are read as `rss` too. */
-export const WatchFeedKind = {
+/**
+ * Where a watch source's articles come from: an RSS or Atom feed (`url`), or a search of the
+ * instance's web search service (`query`, Linkup, through `WebSearch`).
+ */
+export const WatchSourceKind = {
   Rss: 'rss',
+  Linkup: 'linkup',
 } as const
 
-export type WatchFeedKind = (typeof WatchFeedKind)[keyof typeof WatchFeedKind]
+export type WatchSourceKind = (typeof WatchSourceKind)[keyof typeof WatchSourceKind]
 
-export const WATCH_FEED_KINDS = Object.values(WatchFeedKind) as readonly WatchFeedKind[]
+export const WATCH_SOURCE_KINDS = Object.values(WatchSourceKind) as readonly WatchSourceKind[]
 
 /**
  * What the watch keeps and reads. An article older than `retentionDays` (by its publication date)
- * is dropped by each run, and never taken in; at most `itemsPerFeed` new articles a feed a run.
+ * is dropped by each run, and never taken in; at most `itemsPerSource` new articles a feed a run.
  * Titles, excerpts (the item's description reduced to plain text) and the strings of a feed are
- * cut to these lengths. `feeds` and `blockedSites` are the most the admin may add.
+ * cut to these lengths. `sources` and `blockedSites` are the most the admin may add.
  */
 export const WATCH_LIMITS = {
   retentionDays: 90,
-  itemsPerFeed: 50,
-  feeds: 100,
+  itemsPerSource: 50,
+  sources: 100,
   blockedSites: 500,
   titleMaxLength: 300,
   excerptMaxLength: 500,
   urlMaxLength: 2000,
   hostMaxLength: 253,
-  feedTitleMaxLength: 200,
+  sourceTitleMaxLength: 200,
   errorMaxLength: 300,
+  queryMaxLength: 200,
+} as const
+
+/**
+ * The spending bound of one run on the web search service, apart from the per-account cap of the
+ * assistant's searches: at most `searchesPerRun` searches (Linkup: about $0.005 each in `fast`), each
+ * of `results` pages published since the source's last run (`lookbackDays` before its first, a day
+ * of overlap after), leaving out the blocked sites (`excludedDomainsMax` at most).
+ */
+export const WATCH_SEARCH_LIMITS = {
+  searchesPerRun: 10,
+  results: 20,
+  lookbackDays: 7,
+  excludedDomainsMax: 100,
 } as const
 
 /**

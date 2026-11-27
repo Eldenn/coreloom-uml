@@ -1,7 +1,7 @@
 import type { Paginated } from '#app/shared/pagination/paginate'
-import type { WatchFeedKind } from '#app/watch/constants/watch'
+import type { WatchSourceKind } from '#app/watch/constants/watch'
 
-/** One article of the watch: never the page, only what the feed said of it. */
+/** One article of the watch: never the page, only what its feed or search said of it. */
 export type WatchArticleOutput = {
   id: number
   title: string
@@ -17,11 +17,12 @@ export type WatchArticleOutput = {
 
 export type WatchArticlesOutput = Paginated<WatchArticleOutput>
 
-/** One feed the daily run reads, with how its last run went. */
-export type WatchFeedOutput = {
+/** One feed or search the daily run reads, with how its last run went. */
+export type WatchSourceOutput = {
   id: number
-  kind: WatchFeedKind
-  url: string
+  kind: WatchSourceKind
+  url: string | null
+  query: string | null
   title: string | null
   topics: string[]
   enabled: boolean
@@ -31,3 +32,9 @@ export type WatchFeedOutput = {
 }
 
 export type WatchBlockedSiteOutput = { id: number; host: string }
+
+export type WatchSourcesOutput = {
+  data: WatchSourceOutput[]
+  /** Whether a web search service is set (Settings): a search source is read only then. */
+  webSearchReady: boolean
+}

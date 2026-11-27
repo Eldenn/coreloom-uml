@@ -1435,52 +1435,52 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/watch-articles-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
-  'admin.watch.feeds.index': {
+  'admin.watch.sources.index': {
     methods: ["GET","HEAD"]
-    pattern: '/admin/watch/feeds'
+    pattern: '/admin/watch/sources'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['feeds']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['feeds']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['sources']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['sources']>>>
     }
   }
-  'admin.watch.feeds.store': {
+  'admin.watch.sources.store': {
     methods: ["POST"]
-    pattern: '/admin/watch/feeds'
+    pattern: '/admin/watch/sources'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#app/watch/validators/watch-input').createWatchFeedInput)>>
+      body: ExtractBody<InferInput<(typeof import('#app/watch/validators/watch-input').createWatchSourceInput)>>
       paramsTuple: []
       params: {}
-      query: ExtractQuery<InferInput<(typeof import('#app/watch/validators/watch-input').createWatchFeedInput)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['storeFeed']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['storeFeed']>>> | { status: 422; response: { errors: SimpleError[] } }
+      query: ExtractQuery<InferInput<(typeof import('#app/watch/validators/watch-input').createWatchSourceInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['storeSource']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['storeSource']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
-  'admin.watch.feeds.update': {
+  'admin.watch.sources.update': {
     methods: ["PATCH"]
-    pattern: '/admin/watch/feeds/:id'
+    pattern: '/admin/watch/sources/:id'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#app/watch/validators/watch-input').updateWatchFeedInput)>>
+      body: ExtractBody<InferInput<(typeof import('#app/watch/validators/watch-input').updateWatchSourceInput)>>
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
-      query: ExtractQuery<InferInput<(typeof import('#app/watch/validators/watch-input').updateWatchFeedInput)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['updateFeed']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['updateFeed']>>> | { status: 422; response: { errors: SimpleError[] } }
+      query: ExtractQuery<InferInput<(typeof import('#app/watch/validators/watch-input').updateWatchSourceInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['updateSource']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['updateSource']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
-  'admin.watch.feeds.destroy': {
+  'admin.watch.sources.destroy': {
     methods: ["DELETE"]
-    pattern: '/admin/watch/feeds/:id'
+    pattern: '/admin/watch/sources/:id'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['destroyFeed']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['destroyFeed']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['destroySource']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/watch/controllers/admin-watch-controller').default['destroySource']>>>
     }
   }
   'admin.watch.refresh': {

@@ -3,72 +3,83 @@ import db from '@adonisjs/lucid/services/db'
 import ClassifySkillTopicsJob from '#app/jobs/classify-skill-topics_job'
 import RefreshWatchJob from '#app/jobs/refresh-watch_job'
 import { effectiveTopics } from '#app/skills/services/skill-topics'
-import { WATCH_LIMITS, WATCH_NOT_FOUND, WatchFeedKind } from '#app/watch/constants/watch'
+import { WATCH_LIMITS, WATCH_NOT_FOUND, WatchSourceKind } from '#app/watch/constants/watch'
 import WatchArticle from '#app/watch/models/watch-article'
 import WatchBlockedSite from '#app/watch/models/watch-blocked-site'
-import WatchFeed from '#app/watch/models/watch-feed'
-import { serializeWatchArticle, serializeWatchFeed } from '#app/watch/serializers/watch-serializer'
+import WatchSource from '#app/watch/models/watch-source'
+import {
+  serializeWatchArticle,
+  serializeWatchSource,
+} from '#app/watch/serializers/watch-serializer'
 import { normalizeUrl } from '#app/watch/services/feed-parse'
 import { watchEnabled } from '#app/watch/services/watch-query'
 import { acquireWatchRefresh } from '#app/watch/services/watch-refresh-lock'
 import {
   blockWatchSiteInput,
-  createWatchFeedInput,
+  createWatchSourceInput,
   updateWatchArticleInput,
-  updateWatchFeedInput,
+  updateWatchSourceInput,
 } from '#app/watch/validators/watch-input'
-import type { WatchBlockedSiteOutput } from '#app/watch/validators/watch-output'
+import type { WatchBlockedSiteOutput, WatchSourcesOutput } from '#app/watch/validators/watch-output'
+import { webSearchReady } from '#app/web-search/services/web-search-settings'
 
 /**
  * What the admin sets of the tech watch (`middleware.admin()`, and `tech-watch` on for them, 404
- * otherwise): the feeds, the blocked sites, an article's tags and whether it is shown, and a run
- * asked now. These routes only write rows or queue a job: none fetches a feed.
+ * otherwise): the sources (feeds and web searches), the blocked sites, an article's tags and whether it is shown, and a run
+ * asked now. These routes only write rows or queue a job: none fetches a feed or runs a search.
  */
 export default class AdminWatchController {
-  async feeds({ auth, response }: HttpContext) {
+  async sources({ auth, response }: HttpContext) {
     if (!(await watchEnabled(auth.getUserOrFail()))) return response.notFound(WATCH_NOT_FOUND)
-    const feeds = await WatchFeed.query().withCount('articles').orderBy('id')
-    return response.ok({ data: feeds.map(serializeWatchFeed) })
+    const sources = await WatchSource.query().withCount('articles').orderBy('id')
+    const output: WatchSourcesOutput = {
+      data: sources.map(serializeWatchSource),
+      webSearchReady: await webSearchReady(),
+    }
+    return response.ok(output)
   }
 
-  async storeFeed({ auth, request, response }: HttpContext) {
+  async storeSource({ auth, request, response }: HttpContext) {
     if (!(await watchEnabled(auth.getUserOrFail()))) return response.notFound(WATCH_NOT_FOUND)
-    const { url, topics } = await request.validateUsing(createWatchFeedInput)
-    const normalized = normalizeUrl(url)
-    if (!normalized) {
+    const { url, query, topics } = await request.validateUsing(createWatchSourceInput)
+    if (url !== undefined && query !== undefined) {
+      return response.unprocessableEntity({ error: { message: 'A feed or a search, not both' } })
+    }
+    const normalized = url === undefined ? null : normalizeUrl(url)
+    if (url !== undefined && !normalized) {
       return response.unprocessableEntity({ error: { message: 'Not a feed address' } })
     }
-    if (await WatchFeed.findBy('url', normalized.href)) {
-      return response.conflict({ error: { message: 'This feed exists already' } })
+    const target = normalized
+      ? { kind: WatchSourceKind.Rss, url: normalized.href, query: null }
+      : { kind: WatchSourceKind.Linkup, url: null, query: query as string }
+    const existing = await WatchSource.query()
+      .if(target.url, (q) => q.where('url', target.url as string))
+      .if(target.query, (q) => q.whereRaw('lower(query) = lower(?)', [target.query as string]))
+      .first()
+    if (existing) return response.conflict({ error: { message: 'This source exists already' } })
+    const [{ count }] = await db.from('watch_sources').count('* as count')
+    if (Number(count) >= WATCH_LIMITS.sources) {
+      return response.conflict({ error: { message: 'Too many sources' } })
     }
-    const [{ count }] = await db.from('watch_feeds').count('* as count')
-    if (Number(count) >= WATCH_LIMITS.feeds) {
-      return response.conflict({ error: { message: 'Too many feeds' } })
-    }
-    const feed = await WatchFeed.create({
-      kind: WatchFeedKind.Rss,
-      url: normalized.href,
-      topics: topics ?? [],
-      enabled: true,
-    })
-    return response.created({ feed: await withCount(feed) })
+    const source = await WatchSource.create({ ...target, topics: topics ?? [], enabled: true })
+    return response.created({ source: await withCount(source) })
   }
 
-  async updateFeed({ auth, params, request, response }: HttpContext) {
+  async updateSource({ auth, params, request, response }: HttpContext) {
     if (!(await watchEnabled(auth.getUserOrFail()))) return response.notFound(WATCH_NOT_FOUND)
-    const changes = await request.validateUsing(updateWatchFeedInput)
-    const feed = await WatchFeed.find(Number(params.id))
-    if (!feed) return response.notFound(WATCH_NOT_FOUND)
-    await feed.merge(changes).save()
-    return response.ok({ feed: await withCount(feed) })
+    const changes = await request.validateUsing(updateWatchSourceInput)
+    const source = await WatchSource.find(Number(params.id))
+    if (!source) return response.notFound(WATCH_NOT_FOUND)
+    await source.merge(changes).save()
+    return response.ok({ source: await withCount(source) })
   }
 
-  /** Its articles stay, without a feed. */
-  async destroyFeed({ auth, params, response }: HttpContext) {
+  /** Its articles stay, without a source. */
+  async destroySource({ auth, params, response }: HttpContext) {
     if (!(await watchEnabled(auth.getUserOrFail()))) return response.notFound(WATCH_NOT_FOUND)
-    const feed = await WatchFeed.find(Number(params.id))
-    if (!feed) return response.notFound(WATCH_NOT_FOUND)
-    await feed.delete()
+    const source = await WatchSource.find(Number(params.id))
+    if (!source) return response.notFound(WATCH_NOT_FOUND)
+    await source.delete()
     return response.noContent()
   }
 
@@ -94,7 +105,7 @@ export default class AdminWatchController {
     if (hidden !== undefined) article.hidden = hidden
     if (topics !== undefined) {
       article.reviewedTopics = topics
-      article.topics = effectiveTopics(article.feedTopics, article.taggerTopics, topics)
+      article.topics = effectiveTopics(article.sourceTopics, article.taggerTopics, topics)
     }
     await article.save()
     if (topics !== undefined) await ClassifySkillTopicsJob.dispatch({})
@@ -138,7 +149,7 @@ export default class AdminWatchController {
   }
 }
 
-async function withCount(feed: WatchFeed) {
-  const row = await WatchFeed.query().where('id', feed.id).withCount('articles').firstOrFail()
-  return serializeWatchFeed(row)
+async function withCount(source: WatchSource) {
+  const row = await WatchSource.query().where('id', source.id).withCount('articles').firstOrFail()
+  return serializeWatchSource(row)
 }

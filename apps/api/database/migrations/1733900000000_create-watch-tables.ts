@@ -1,9 +1,9 @@
 import { BaseSchema } from '@adonisjs/lucid/schema'
-import { WATCH_FEED_KINDS, WATCH_LIMITS } from '#app/watch/constants/watch'
+import { WATCH_SOURCE_KINDS, WATCH_LIMITS } from '#app/watch/constants/watch'
 
 /**
- * The tech watch (`app/watch/`), shared by the whole instance. `watch_feeds` are the feeds the
- * admin picks, each with optional tags of its own. `watch_articles` keeps of each item a title, its
+ * The tech watch (`app/watch/`), shared by the whole instance. `watch_sources` are what the admin
+ * picks, each with optional tags of its own: a feed (`url`) or a web search (`query`). `watch_articles` keeps of each item a title, its
  * link (unique), its site, its date and a short excerpt, never the page; it goes 90 days after its
  * publication. `watch_blocked_sites` are hosts never taken in. `watch_article_embeddings` holds
  * what the skill tagger read of each article (its own table, so reading the page never loads a
@@ -11,11 +11,12 @@ import { WATCH_FEED_KINDS, WATCH_LIMITS } from '#app/watch/constants/watch'
  */
 export default class extends BaseSchema {
   async up() {
-    this.schema.createTable('watch_feeds', (table) => {
+    this.schema.createTable('watch_sources', (table) => {
       table.increments('id').notNullable()
-      table.enum('kind', [...WATCH_FEED_KINDS]).notNullable()
-      table.string('url', WATCH_LIMITS.urlMaxLength).notNullable().unique()
-      table.string('title', WATCH_LIMITS.feedTitleMaxLength).nullable()
+      table.enum('kind', [...WATCH_SOURCE_KINDS]).notNullable()
+      table.string('url', WATCH_LIMITS.urlMaxLength).nullable().unique()
+      table.string('query', WATCH_LIMITS.queryMaxLength).nullable().unique()
+      table.string('title', WATCH_LIMITS.sourceTitleMaxLength).nullable()
       table.jsonb('topics').notNullable().defaultTo('[]')
       table.boolean('enabled').notNullable().defaultTo(true)
       table.timestamp('last_run_at', { useTz: true }).nullable()
@@ -23,13 +24,18 @@ export default class extends BaseSchema {
       table.timestamp('created_at', { useTz: true }).notNullable()
       table.timestamp('updated_at', { useTz: true }).notNullable()
     })
+    this.schema.raw(
+      `ALTER TABLE watch_sources ADD CONSTRAINT watch_sources_kind_target CHECK (
+        (kind = 'rss' AND url IS NOT NULL AND query IS NULL)
+        OR (kind = 'linkup' AND query IS NOT NULL AND url IS NULL))`,
+    )
     this.schema.createTable('watch_articles', (table) => {
       table.increments('id').notNullable()
       table
-        .integer('feed_id')
+        .integer('source_id')
         .nullable()
         .references('id')
-        .inTable('watch_feeds')
+        .inTable('watch_sources')
         .onDelete('SET NULL')
       table.string('url', WATCH_LIMITS.urlMaxLength).notNullable().unique()
       table.string('site', WATCH_LIMITS.hostMaxLength).notNullable()
@@ -38,7 +44,7 @@ export default class extends BaseSchema {
       table.timestamp('published_at', { useTz: true }).notNullable()
       // What everything reads (`effectiveTopics`): the admin's, else the tagger's, else the feed's.
       table.jsonb('topics').notNullable().defaultTo('[]')
-      table.jsonb('feed_topics').notNullable().defaultTo('[]')
+      table.jsonb('source_topics').notNullable().defaultTo('[]')
       table.jsonb('tagger_topics').nullable()
       table.jsonb('reviewed_topics').nullable()
       table.boolean('hidden').notNullable().defaultTo(false)
@@ -69,6 +75,6 @@ export default class extends BaseSchema {
     this.schema.dropTable('watch_blocked_sites')
     this.schema.dropTable('watch_article_embeddings')
     this.schema.dropTable('watch_articles')
-    this.schema.dropTable('watch_feeds')
+    this.schema.dropTable('watch_sources')
   }
 }

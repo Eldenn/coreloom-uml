@@ -15,7 +15,7 @@ export default class WatchArticle extends BaseModel {
 
   /** The feed it came from; null once that feed is deleted. */
   @column()
-  declare feedId: number | null
+  declare sourceId: number | null
 
   @column()
   declare url: string
@@ -40,7 +40,7 @@ export default class WatchArticle extends BaseModel {
 
   /** The feed's tags when the article was taken in. */
   @column(json)
-  declare feedTopics: string[]
+  declare sourceTopics: string[]
 
   /** The tags the tagger gave, null until it tagged this article. */
   @column(nullableJson)

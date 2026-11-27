@@ -158,6 +158,6 @@ export function parseFeed(xml: string, feedUrl: string): ParsedFeed {
       ),
     })
   }
-  const title = plainText(text(titleNode), WATCH_LIMITS.feedTitleMaxLength)
+  const title = plainText(text(titleNode), WATCH_LIMITS.sourceTitleMaxLength)
   return { title: title || null, items }
 }

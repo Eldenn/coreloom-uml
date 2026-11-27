@@ -31,20 +31,32 @@ export const listWatchArticlesInput = vine.create(
   }),
 )
 
-/** `POST /admin/watch-feeds`: a feed to read (`https` only), with optional tags of its own. */
-export const createWatchFeedInput = vine.create(
+/**
+ * `POST /admin/watch/sources`: a feed to read (`url`, `https` only) or a web search to run
+ * (`query`), one of the two, with optional tags of its own.
+ */
+export const createWatchSourceInput = vine.create(
   vine.object({
     url: vine
       .string()
       .trim()
       .maxLength(WATCH_LIMITS.urlMaxLength)
-      .url({ protocols: ['https'], require_protocol: true }),
+      .url({ protocols: ['https'], require_protocol: true })
+      .optional()
+      .requiredIfMissing('query'),
+    query: vine
+      .string()
+      .trim()
+      .minLength(3)
+      .maxLength(WATCH_LIMITS.queryMaxLength)
+      .optional()
+      .requiredIfMissing('url'),
     topics: topics().optional(),
   }),
 )
 
-/** `PATCH /admin/watch-feeds/:id`: read it at the next run or not, and its tags. */
-export const updateWatchFeedInput = vine.create(
+/** `PATCH /admin/watch/sources/:id`: read it at the next run or not, and its tags. */
+export const updateWatchSourceInput = vine.create(
   vine.object({
     enabled: vine.boolean().optional(),
     topics: topics().optional(),
@@ -52,7 +64,7 @@ export const updateWatchFeedInput = vine.create(
 )
 
 /**
- * `PATCH /admin/watch-articles/:id`: hide or show it again, and its tags as the admin sets them,
+ * `PATCH /admin/watch/articles/:id`: hide or show it again, and its tags as the admin sets them,
  * the main one first (the tagger learns from it), or `null` to give them back to the tagger.
  */
 export const updateWatchArticleInput = vine.create(
@@ -62,7 +74,7 @@ export const updateWatchArticleInput = vine.create(
   }),
 )
 
-/** `POST /admin/watch-blocked-sites`: a host whose articles are never taken in again. */
+/** `POST /admin/watch/blocked-sites`: a host whose articles are never taken in again. */
 export const blockWatchSiteInput = vine.create(
   vine.object({
     host: vine.string().trim().toLowerCase().regex(HOST),

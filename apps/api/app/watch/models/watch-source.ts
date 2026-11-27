@@ -1,23 +1,28 @@
 import { BaseModel, column, hasMany } from '@adonisjs/lucid/orm'
 import type { HasMany } from '@adonisjs/lucid/types/relations'
 import type { DateTime } from 'luxon'
-import type { WatchFeedKind } from '#app/watch/constants/watch'
+import type { WatchSourceKind } from '#app/watch/constants/watch'
 import WatchArticle from '#app/watch/models/watch-article'
 
 const json = { prepare: (value: unknown) => JSON.stringify(value) }
 
-/** A feed the daily watch run reads (see the `watch_feeds` migration). */
-export default class WatchFeed extends BaseModel {
-  static table = 'watch_feeds'
+/** A feed or a search the daily watch run reads (see the `watch_sources` migration). */
+export default class WatchSource extends BaseModel {
+  static table = 'watch_sources'
 
   @column({ isPrimary: true })
   declare id: number
 
   @column()
-  declare kind: WatchFeedKind
+  declare kind: WatchSourceKind
 
+  /** A feed's address (`rss`), null for a search. */
   @column()
-  declare url: string
+  declare url: string | null
+
+  /** A search's words (`linkup`), null for a feed. */
+  @column()
+  declare query: string | null
 
   /** The feed's own title, read at its last run that answered. */
   @column()
@@ -42,6 +47,6 @@ export default class WatchFeed extends BaseModel {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
 
-  @hasMany(() => WatchArticle, { foreignKey: 'feedId' })
+  @hasMany(() => WatchArticle, { foreignKey: 'sourceId' })
   declare articles: HasMany<typeof WatchArticle>
 }

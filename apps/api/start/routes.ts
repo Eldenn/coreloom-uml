@@ -723,10 +723,10 @@ router
 const adminWatchController = () => import('#app/watch/controllers/admin-watch-controller')
 router
   .group(() => {
-    router.get('/feeds', [adminWatchController, 'feeds']).as('feeds.index')
-    router.post('/feeds', [adminWatchController, 'storeFeed']).as('feeds.store')
-    router.patch('/feeds/:id', [adminWatchController, 'updateFeed']).as('feeds.update')
-    router.delete('/feeds/:id', [adminWatchController, 'destroyFeed']).as('feeds.destroy')
+    router.get('/sources', [adminWatchController, 'sources']).as('sources.index')
+    router.post('/sources', [adminWatchController, 'storeSource']).as('sources.store')
+    router.patch('/sources/:id', [adminWatchController, 'updateSource']).as('sources.update')
+    router.delete('/sources/:id', [adminWatchController, 'destroySource']).as('sources.destroy')
     router.post('/refresh', [adminWatchController, 'refresh']).as('refresh')
     router.patch('/articles/:id', [adminWatchController, 'updateArticle']).as('articles.update')
     router.get('/blocked-sites', [adminWatchController, 'blockedSites']).as('blocked_sites.index')

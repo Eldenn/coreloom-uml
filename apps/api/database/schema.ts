@@ -976,16 +976,12 @@ export class WatchArticleEmbeddingSchema extends BaseModel {
 }
 
 export class WatchArticleSchema extends BaseModel {
-  static $columns = ['createdAt', 'excerpt', 'feedId', 'feedTopics', 'hidden', 'id', 'publishedAt', 'reviewedTopics', 'site', 'taggerTopics', 'title', 'topics', 'updatedAt', 'url'] as const
+  static $columns = ['createdAt', 'excerpt', 'hidden', 'id', 'publishedAt', 'reviewedTopics', 'site', 'sourceId', 'sourceTopics', 'taggerTopics', 'title', 'topics', 'updatedAt', 'url'] as const
   $columns = WatchArticleSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()
   declare excerpt: string
-  @column()
-  declare feedId: number | null
-  @column()
-  declare feedTopics: any
   @column()
   declare hidden: boolean
   @column({ isPrimary: true })
@@ -996,6 +992,10 @@ export class WatchArticleSchema extends BaseModel {
   declare reviewedTopics: any | null
   @column()
   declare site: string
+  @column()
+  declare sourceId: number | null
+  @column()
+  declare sourceTopics: any
   @column()
   declare taggerTopics: any | null
   @column()
@@ -1019,9 +1019,9 @@ export class WatchBlockedSiteSchema extends BaseModel {
   declare id: number
 }
 
-export class WatchFeedSchema extends BaseModel {
-  static $columns = ['createdAt', 'enabled', 'id', 'kind', 'lastError', 'lastRunAt', 'title', 'topics', 'updatedAt', 'url'] as const
-  $columns = WatchFeedSchema.$columns
+export class WatchSourceSchema extends BaseModel {
+  static $columns = ['createdAt', 'enabled', 'id', 'kind', 'lastError', 'lastRunAt', 'query', 'title', 'topics', 'updatedAt', 'url'] as const
+  $columns = WatchSourceSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()
@@ -1035,13 +1035,15 @@ export class WatchFeedSchema extends BaseModel {
   @column.dateTime()
   declare lastRunAt: DateTime | null
   @column()
+  declare query: string | null
+  @column()
   declare title: string | null
   @column()
   declare topics: any
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
   @column()
-  declare url: string
+  declare url: string | null
 }
 
 export class WebSearchSettingSchema extends BaseModel {
