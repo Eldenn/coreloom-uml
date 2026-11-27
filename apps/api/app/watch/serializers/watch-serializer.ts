@@ -13,6 +13,13 @@ export function serializeWatchArticle(article: WatchArticle): WatchArticleOutput
     topics: article.topics,
     reviewed: !!article.reviewedTopics?.length,
     hidden: article.hidden,
+    // Loaded by the caller (`preload('source')`); null once the source is deleted.
+    source: article.source
+      ? {
+          kind: article.source.kind,
+          label: article.source.title ?? article.source.url ?? article.source.query ?? '',
+        }
+      : null,
   }
 }
 

@@ -15,7 +15,10 @@ export default class WatchArticlesController {
     const { page, perPage, hidden, ...filters } =
       await request.validateUsing(listWatchArticlesInput)
     // What the admin hid is the admin's to see.
-    const query = watchArticlesQuery({ ...filters, hidden: hidden && isDefaultAccount(user) })
+    const query = watchArticlesQuery({
+      ...filters,
+      hidden: hidden && isDefaultAccount(user),
+    }).preload('source')
     const output: WatchArticlesOutput = await paginate(
       query,
       { page, perPage },

@@ -158,6 +158,7 @@ test.group('Tech watch', (group) => {
       reviewed: false,
     })
     assert.deepEqual(list.body().data[0].topics, ['security'])
+    assert.deepEqual(list.body().data[0].source, { kind: 'rss', label: 'A feed' })
 
     const byWords = await client
       .get('/watch/articles?q=TOKENS&topic=security')
@@ -195,6 +196,7 @@ test.group('Tech watch', (group) => {
     tagged.assertStatus(200)
     assert.deepEqual(tagged.body().article.topics, ['ai', 'testing'])
     assert.isTrue(tagged.body().article.reviewed)
+    assert.isNull(tagged.body().article.source)
 
     const untagged = await client.get('/watch/articles?untagged=true').headers(json).loginAs(admin)
     assert.equal(untagged.body().meta.total, 0)

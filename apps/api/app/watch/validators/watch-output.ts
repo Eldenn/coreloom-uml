@@ -13,6 +13,8 @@ export type WatchArticleOutput = {
   /** Whether the admin set its tags (else they are the tagger's or the feed's). */
   reviewed: boolean
   hidden: boolean
+  /** The feed (its title, else its address) or the search (its query) that brought it. */
+  source: { kind: WatchSourceKind; label: string } | null
 }
 
 export type WatchArticlesOutput = Paginated<WatchArticleOutput>

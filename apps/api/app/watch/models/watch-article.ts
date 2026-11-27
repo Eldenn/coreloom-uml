@@ -1,5 +1,7 @@
-import { BaseModel, column } from '@adonisjs/lucid/orm'
+import { BaseModel, belongsTo, column } from '@adonisjs/lucid/orm'
+import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import type { DateTime } from 'luxon'
+import WatchSource from '#app/watch/models/watch-source'
 
 const json = { prepare: (value: unknown) => JSON.stringify(value) }
 const nullableJson = {
@@ -58,4 +60,7 @@ export default class WatchArticle extends BaseModel {
 
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
+
+  @belongsTo(() => WatchSource, { foreignKey: 'sourceId' })
+  declare source: BelongsTo<typeof WatchSource>
 }
