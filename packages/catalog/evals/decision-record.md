@@ -474,8 +474,12 @@ only). On such an install the controls cannot be found by value: `live-check/run
 the mode by itself (the `[redacted` marker in the probe sandbox's SendInput row), prints it
 (`log mode: plain` or `redacted`), and in the `redacted` mode expects the canary's name with
 `[redacted]`, exactly 1 SendInput row of the probe sandbox carrying `[redacted: `, and 0 rows of
-either control's value, the fake key's checks unchanged. That mode was exercised with stubbed
-counts only; no Harbor trial was run for it, none being needed to change the check.
+either control's value, the fake key's checks unchanged. That mode was first exercised with stubbed
+counts only. It then ran once end to end, `run.sh claude-code fake` at aa4b762 on the local install
+that masks its logs: `log mode: redacted`; the fake key in 0 rows as is and in 0 rows in base64 at
+each of its three alignments; the canary's name with its value masked in 1 row; 1 masked SendInput
+row (the control's); 0 rows of either control's value; the trial ended in
+`AgentAuthenticationError` (the provider refused the fake key) and nothing was found leaked.
 
 Whether a real provider key went through standard input before the file channel (the owner's
 check of 2026-11-27, counts only): the local install held 27 SendInput rows, 11 starting with a
