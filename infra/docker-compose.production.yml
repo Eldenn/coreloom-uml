@@ -277,6 +277,8 @@ services:
   skill-tagger:
     image: 'ghcr.io/${IMAGE_OWNER}/coreloom-uml-skill-tagger:${IMAGE_TAG:-production-latest}'
     restart: unless-stopped
+    # A first run in fp32 peaks at 4.8 GB (infra/skill-tagger/README.md): a guard against a leak.
+    mem_limit: 6g
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0

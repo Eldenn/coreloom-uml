@@ -1,15 +1,19 @@
-import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
 import { isTopic, type Topic } from '@coreloom-uml/catalog'
-import { SKILL_TOPIC_LIMITS } from '#app/skills/constants/skill-topics'
+import {
+  EMBEDDING_PURPOSES,
+  SKILL_TOPIC_LIMITS,
+  SkillEmbeddingPurpose,
+} from '#app/skills/constants/skill-topics'
 import CatalogSkill from '#app/skills/models/catalog-skill'
-import SkillEmbedder from '#app/skills/services/skill-embedder'
+import type SkillEmbedder from '#app/skills/services/skill-embedder'
 import {
   effectiveTopics,
   embeddingHash,
   namedTopics,
   topicsFromProbabilities,
   trainingLabels,
+  withEmbedder,
 } from '#app/skills/services/skill-topics'
 import { type LabelledVector, trainTopicHead } from '#app/skills/services/topic-head'
 import { WATCH_TAGGER } from '#app/watch/constants/watch'
@@ -61,7 +65,9 @@ export type ArticleTopicsReport = {
  * the main tag the admin set on articles, and writes each article's `tagger_topics` and `topics`
  * (`articleTopics`).
  */
-export async function classifyWatchArticles(): Promise<ArticleTopicsReport> {
+export async function classifyWatchArticles(
+  options: { embedder?: SkillEmbedder } = {},
+): Promise<ArticleTopicsReport> {
   const report: ArticleTopicsReport = { embedded: 0, labels: 0, tagged: 0 }
   const articles = await WatchArticle.query().orderBy('id')
   if (articles.length === 0) return report
@@ -79,11 +85,13 @@ export async function classifyWatchArticles(): Promise<ArticleTopicsReport> {
     .filter(({ article, hash }) => stored.get(article.id) !== hash)
 
   if (todo.length > 0) {
-    const embedder = await app.container.make(SkillEmbedder)
-    try {
+    await withEmbedder(options.embedder, async (embedder) => {
       for (let start = 0; start < todo.length; start += SKILL_TOPIC_LIMITS.batch) {
         const batch = todo.slice(start, start + SKILL_TOPIC_LIMITS.batch)
-        const vectors = await embedder.embed(batch.map((item) => item.text))
+        const vectors = await embedder.embed(
+          batch.map((item) => item.text),
+          EMBEDDING_PURPOSES.classification,
+        )
         for (const [index, item] of batch.entries()) {
           await db.rawQuery(
             `insert into watch_article_embeddings (article_id, hash, vector, created_at)
@@ -95,9 +103,7 @@ export async function classifyWatchArticles(): Promise<ArticleTopicsReport> {
         }
         report.embedded += batch.length
       }
-    } finally {
-      await embedder.close()
-    }
+    })
   }
 
   const articleVectors = new Map<number, number[]>(
@@ -111,6 +117,7 @@ export async function classifyWatchArticles(): Promise<ArticleTopicsReport> {
   if (skillLabels.size > 0) {
     const rows = await db
       .from('skill_embeddings')
+      .where('purpose', SkillEmbeddingPurpose.Classification)
       .whereIn('skill_id', [...skillLabels.keys()])
       .select('skill_id', 'vector')
     for (const row of rows as { skill_id: number; vector: number[] }[]) {

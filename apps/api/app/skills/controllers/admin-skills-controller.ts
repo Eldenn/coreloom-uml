@@ -1,5 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import app from '@adonisjs/core/services/app'
+import ClassifySkillTopicsJob from '#app/jobs/classify-skill-topics_job'
 import RefreshSkillsJob from '#app/jobs/refresh-skills_job'
 import { setSkillBlocked } from '#app/skills/services/skills-catalog'
 import SkillsEvents from '#app/skills/services/skills-events'
@@ -19,6 +20,8 @@ export default class AdminSkillsController {
     const { blocked, reason } = await request.validateUsing(blockSkillInput)
     const found = await setSkillBlocked(String(params.slug), blocked, reason)
     if (!found) return response.notFound({ error: { message: 'Skill not found' } })
+    // The suggestable skills changed: the scores follow at the tagger's next run.
+    await ClassifySkillTopicsJob.dispatch({})
     await (await app.container.make(SkillsEvents)).publish('catalog.updated')
     return response.ok({ blocked })
   }

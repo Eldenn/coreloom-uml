@@ -1,0 +1,14 @@
+https://simonwillison.net/atom/everything/
+https://martinfowler.com/feed.atom
+https://github.blog/feed/
+https://blog.cloudflare.com/rss/
+https://www.postgresql.org/news.rss
+https://devblogs.microsoft.com/typescript/feed/
+https://kentcdodds.com/blog/rss.xml
+https://testing.googleblog.com/feeds/posts/default
+https://snyk.io/blog/feed/
+https://react.dev/rss.xml
+https://kubernetes.io/feed.xml
+https://blog.pragmaticengineer.com/rss/
+https://www.joshwcomeau.com/rss.xml
+https://android-developers.googleblog.com/feeds/posts/default

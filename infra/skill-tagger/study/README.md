@@ -54,6 +54,7 @@ identical to `rules.json`.
 | The confirmation (run once) | `python -I confirm-run.py .` | no |
 | Validation proposals and near duplicates | `python -I proposals.py .` (`dedup.py .` writes `skill-emb.npy`) | no |
 | The tagger in fp32 against q8 (224 skills, 10-fold CV) | `node tagger/embed-seed.mjs q8 8`, `… fp32 2`, then `node tagger/cv.ts` (needs `tagger/skills-db.json`, the `skills` rows exported as JSON) | yes |
+| The tagger on the tech watch's articles, q8 and fp32 (106 labelled, each feed held out) | fetch `watch/feeds.txt` (`curl -sL` each into `feed<n>.xml`, in that order), copy `watch/extract.ts` into `apps/api/tmp/measure/` and run it there on the files (`node --import @poppinss/ts-exec tmp/measure/extract.ts feed1.xml … > items.jsonl`), then `node tagger/watch.mjs <dtype> items.jsonl watch/labels.json` (after `embed-seed.mjs` for that dtype) | yes |
 
 ## Results kept
 
@@ -64,3 +65,9 @@ identical to `rules.json`.
 - The 8-bit build loses 0.067 nDCG@5 [-0.121, -0.013] against PyTorch; fp32 and fp16 match it.
 - The tagger: main tag right 0.825 in fp32 against 0.813 in q8 on the same folds, +0.012
   [-0.020, +0.044].
+- The tech watch (2026-11-27, the 106 articles labelled for #155, the feeds fetched that day):
+  main tag right, each feed held out, 0.736 in fp32 against 0.698 in q8 with the skills'
+  instruction (Wilson 95 % for fp32 [0.645, 0.811]), and 0.774 against 0.670 with the article
+  one; the head fitted on the skills alone, 0.670 against 0.651. Replayed in q8, the figures
+  differ from the README of `infra/skill-tagger` by one to three articles: that run read its
+  skill labels from the database, this one from `seed.tsv`.

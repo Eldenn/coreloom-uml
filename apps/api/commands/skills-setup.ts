@@ -4,7 +4,7 @@ import type { CommandOptions } from '@adonisjs/core/types/ace'
 export default class SkillsSetup extends BaseCommand {
   static commandName = 'skills:setup'
   static description =
-    'Copy the hand-picked skills into the catalog and schedule the weekly skills search'
+    'Copy the hand-picked skills into the catalog, queue a tagger run when the scores are not current, and schedule the weekly skills search'
 
   static options: CommandOptions = {
     startApp: true,
@@ -19,6 +19,16 @@ export default class SkillsSetup extends BaseCommand {
 
     const count = await syncManualSkills()
     this.logger.success(`${count} hand-picked skills in the catalog`)
+
+    // A new model or catalog (a deployment) is scored at once rather than at the next refresh.
+    const { scoringIsCurrent } = await import('#app/skills/services/skill-rule-scores')
+    if (!(await scoringIsCurrent())) {
+      const { default: ClassifySkillTopicsJob } = await import(
+        '#app/jobs/classify-skill-topics_job'
+      )
+      await ClassifySkillTopicsJob.dispatch({})
+      this.logger.info('the skills are not scored for this model and catalog: tagger run queued')
+    }
 
     if (env.get('SKILLS_REFRESH_ENABLED')) {
       await JobScheduler.schedule({

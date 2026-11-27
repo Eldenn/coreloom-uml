@@ -324,8 +324,11 @@ async function saveRecord(
 }
 
 /**
- * The skills generations may suggest: the package's hand-picked ones, then the found ones that
- * passed every check, most installed first. Blocked skills are left out.
+ * The skills generations may suggest: the package's hand-picked ones in the package's order, then
+ * the found ones that passed every check, in the order they entered the catalog (`id`: total and
+ * deterministic, and no figure a trusted source lacks, as installs were). Blocked skills are left
+ * out. Neither a tag nor an affinity is asked for: a new skill gets its computed affinities at the
+ * tagger's next run.
  */
 export async function suggestableSkills(): Promise<Skill[]> {
   const manual = await CatalogSkill.query().where('origin', SkillOrigin.Manual)
@@ -342,17 +345,13 @@ export async function suggestableSkills(): Promise<Skill[]> {
     .where('eligible', true)
     .whereNotNull('contentSha')
     .whereNotNull('checkedAt')
-    .orderByRaw('installs desc nulls last')
     .orderBy('id')
   return [
     ...SKILLS.filter((skill) => !blocked.has(skill.id)).map((skill) => ({
       ...skill,
       topics: manualTopics.get(skill.id) ?? skill.topics,
     })),
-    // A tag alone is enough: it may make a skill compatible (`matchSkills`).
-    ...found
-      .map((row) => row.toSkill())
-      .filter((skill) => skill.affinities.length > 0 || skill.topics?.length),
+    ...found.map((row) => row.toSkill()),
   ]
 }
 

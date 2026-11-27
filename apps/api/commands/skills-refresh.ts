@@ -27,7 +27,7 @@ export default class SkillsRefresh extends BaseCommand {
         '#app/jobs/classify-skill-topics_job'
       )
       await ClassifySkillTopicsJob.dispatch({})
-      this.logger.info('skills queued for the tagger (or run node ace skills:classify now)')
+      this.logger.info('skills queued for the tagger')
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : String(error))
       this.exitCode = 1

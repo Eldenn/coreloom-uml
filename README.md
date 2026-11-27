@@ -571,7 +571,7 @@ anything.
 ```bash
 node ace skills:setup                      # copy the hand-picked skills; schedule the search when SKILLS_REFRESH_ENABLED=true
 node ace skills:refresh                    # run the search now
-node ace skills:classify                   # tag the skills now (the search and the admin queue it)
+node ace skills:classify                   # queue a tagger run: tags and skill scores (the search and the admin queue it too)
 node ace skills:block <slug> --reason "…"  # never suggest it again (--unblock to undo)
 ```
 

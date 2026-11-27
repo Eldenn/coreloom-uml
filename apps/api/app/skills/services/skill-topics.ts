@@ -4,9 +4,12 @@ import db from '@adonisjs/lucid/services/db'
 import { isTopic, type Topic } from '@coreloom-uml/catalog'
 import { SEED_TOPICS } from '#app/skills/constants/seed-topics'
 import {
+  EMBEDDING_PURPOSES,
+  type EmbeddingPurpose,
   NAMED_TOPICS,
   SKILL_EMBEDDING_MODEL,
   SKILL_TOPIC_LIMITS,
+  SkillEmbeddingPurpose,
 } from '#app/skills/constants/skill-topics'
 import CatalogSkill from '#app/skills/models/catalog-skill'
 import SkillEmbedder from '#app/skills/services/skill-embedder'
@@ -35,11 +38,28 @@ function hasText(skill: CatalogSkill): boolean {
   return (skill.description.en ?? '').trim().length >= SKILL_TOPIC_LIMITS.minDescriptionLength
 }
 
-/** The hash of what a skill's vector depends on: its text and the model that read it. */
-export function embeddingHash(text: string): string {
+/** The hash of what a vector depends on: its text, the model that read it and the instruction. */
+export function embeddingHash(text: string, purpose: EmbeddingPurpose = 'classification'): string {
   return createHash('sha256')
-    .update(JSON.stringify([text, SKILL_EMBEDDING_MODEL]))
+    .update(JSON.stringify([text, SKILL_EMBEDDING_MODEL, EMBEDDING_PURPOSES[purpose]]))
     .digest('hex')
+}
+
+/**
+ * The embedder a run reads with: the one given (a job reads skills, rules and articles with one
+ * model loaded once), else its own, closed when the run ends.
+ */
+export async function withEmbedder<T>(
+  given: SkillEmbedder | undefined,
+  run: (embedder: SkillEmbedder) => Promise<T>,
+): Promise<T> {
+  if (given) return run(given)
+  const embedder = await app.container.make(SkillEmbedder)
+  try {
+    return await run(embedder)
+  } finally {
+    await embedder.close()
+  }
 }
 
 /** The narrow tags a text names (`NAMED_TOPICS`). */
@@ -77,6 +97,22 @@ export function trainingLabels(skills: CatalogSkill[]): Map<number, Topic> {
   return labels
 }
 
+/** Keeps a skill's vector for one purpose, replacing the one it had. */
+export async function saveSkillVector(
+  skillId: number,
+  purpose: SkillEmbeddingPurpose,
+  hash: string,
+  vector: number[],
+): Promise<void> {
+  await db.rawQuery(
+    `insert into skill_embeddings (skill_id, purpose, hash, vector, created_at)
+     values (?, ?, ?, ?, now())
+     on conflict (skill_id, purpose) do update
+     set hash = excluded.hash, vector = excluded.vector, created_at = excluded.created_at`,
+    [skillId, purpose, hash, vector],
+  )
+}
+
 export type ClassifyReport = {
   /** Skills read by the model this run: new, or whose text changed. */
   embedded: number
@@ -96,7 +132,7 @@ export type ClassifyReport = {
  * the next run. Only the rows whose tags changed are written.
  */
 export async function classifySkillTopics(
-  options: { onProgress?: (message: string) => void } = {},
+  options: { onProgress?: (message: string) => void; embedder?: SkillEmbedder } = {},
 ): Promise<ClassifyReport> {
   const report: ClassifyReport = { embedded: 0, labels: 0, tagged: 0, skipped: 0 }
   const skills = await CatalogSkill.query().orderBy('id')
@@ -104,9 +140,12 @@ export async function classifySkillTopics(
   report.skipped = skills.length - readable.length
 
   const stored = new Map<number, string>(
-    (await db.from('skill_embeddings').select('skill_id', 'hash')).map(
-      (row: { skill_id: number; hash: string }) => [row.skill_id, row.hash],
-    ),
+    (
+      await db
+        .from('skill_embeddings')
+        .where('purpose', SkillEmbeddingPurpose.Classification)
+        .select('skill_id', 'hash')
+    ).map((row: { skill_id: number; hash: string }) => [row.skill_id, row.hash]),
   )
   const todo = readable
     .map((skill) => {
@@ -116,31 +155,32 @@ export async function classifySkillTopics(
     .filter(({ skill, hash }) => stored.get(skill.id) !== hash)
 
   if (todo.length > 0) {
-    const embedder = await app.container.make(SkillEmbedder)
-    try {
+    await withEmbedder(options.embedder, async (embedder) => {
       for (let start = 0; start < todo.length; start += SKILL_TOPIC_LIMITS.batch) {
         const batch = todo.slice(start, start + SKILL_TOPIC_LIMITS.batch)
-        const vectors = await embedder.embed(batch.map((item) => item.text))
+        const vectors = await embedder.embed(
+          batch.map((item) => item.text),
+          EMBEDDING_PURPOSES.classification,
+        )
         for (const [index, item] of batch.entries()) {
-          await db.rawQuery(
-            `insert into skill_embeddings (skill_id, hash, vector, created_at) values (?, ?, ?, now())
-             on conflict (skill_id) do update
-             set hash = excluded.hash, vector = excluded.vector, created_at = excluded.created_at`,
-            [item.skill.id, item.hash, vectors[index]],
+          await saveSkillVector(
+            item.skill.id,
+            SkillEmbeddingPurpose.Classification,
+            item.hash,
+            vectors[index],
           )
         }
         report.embedded += batch.length
         options.onProgress?.(`read ${report.embedded} of ${todo.length} skills`)
       }
-    } finally {
-      await embedder.close()
-    }
+    })
   }
 
   const vectors = new Map<number, number[]>(
     (
       await db
         .from('skill_embeddings')
+        .where('purpose', SkillEmbeddingPurpose.Classification)
         .whereIn(
           'skill_id',
           readable.map((skill) => skill.id),

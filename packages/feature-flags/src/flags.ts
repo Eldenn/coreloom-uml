@@ -16,6 +16,7 @@ export const FeatureFlagKey = {
   DesignRecords: 'design-records',
   WebSearch: 'web-search',
   TechWatch: 'tech-watch',
+  ComputedSkillAffinities: 'computed-skill-affinities',
 } as const
 
 export type FeatureFlagKey = (typeof FeatureFlagKey)[keyof typeof FeatureFlagKey]
@@ -125,6 +126,14 @@ export const FEATURE_FLAGS: readonly FeatureFlagDeclaration[] = [
     description:
       'Shows the Watch page: articles from the RSS feeds and the web searches the admin picks, tagged by topic, which the assistant reads too.',
     tags: ['watch'],
+    defaultState: OFF,
+  },
+  {
+    key: FeatureFlagKey.ComputedSkillAffinities,
+    name: 'Computed skill affinities',
+    description:
+      'Suggests skills to agent conventions from the similarity of their texts with the rules held, and no longer from a shared tag alone.',
+    tags: ['skills'],
     defaultState: OFF,
   },
 ]
