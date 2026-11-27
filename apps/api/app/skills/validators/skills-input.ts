@@ -7,6 +7,10 @@ import {
   SKILL_STATES,
   SKILLS_SEARCH_MAX_LENGTH,
 } from '#app/skills/constants/skill'
+import {
+  AFFINITY_DECISIONS,
+  AFFINITY_REVIEW_STATUSES,
+} from '#app/skills/constants/skill-affinities'
 import { SKILL_TOPIC_LIMITS } from '#app/skills/constants/skill-topics'
 import { SKILL_COPY_STATES } from '#app/skills/constants/skill-version'
 
@@ -63,4 +67,22 @@ export const reviewSkillTopicsInput = vine.create(
       .distinct()
       .nullable(),
   }),
+)
+
+/** `GET /admin/skill-affinity-reviews`: the pending pairs by default, of one skill with `skill`. */
+export const listAffinityReviewsInput = vine.create(
+  vine.object({
+    status: vine.enum(AFFINITY_REVIEW_STATUSES).optional(),
+    skill: vine
+      .string()
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+      .optional(),
+    page: vine.number().withoutDecimals().min(1).optional(),
+    perPage: vine.number().withoutDecimals().min(1).optional(),
+  }),
+)
+
+/** `PATCH /admin/skill-affinity-reviews/:id`: the admin's decision, or `null` to undo it. */
+export const decideAffinityInput = vine.create(
+  vine.object({ decision: vine.enum(AFFINITY_DECISIONS).nullable() }),
 )

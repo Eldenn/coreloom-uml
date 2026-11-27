@@ -686,6 +686,22 @@ router
   .use([middleware.auth(), middleware.admin()])
 
 /*
+| The pairs of a skill and a ready-made rule the scoring proposed, for the admin to decide, behind
+| `computed-skill-affinities` (404 while off). Other accounts get a 404.
+*/
+const adminSkillAffinityReviewsController = () =>
+  import('#app/skills/controllers/admin-skill-affinity-reviews-controller')
+router
+  .group(() => {
+    router.get('/', [adminSkillAffinityReviewsController, 'index']).as('index')
+    router.patch('/:id', [adminSkillAffinityReviewsController, 'update']).as('update')
+  })
+  .prefix('/admin/skill-affinity-reviews')
+  .as('admin.skill_affinity_reviews')
+  .where('id', /^[0-9]+$/)
+  .use([middleware.auth(), middleware.admin()])
+
+/*
 | The background jobs that run, wait or just ended, for the admin's header: names, states and times,
 | never a job's data. Other accounts get a 404.
 */

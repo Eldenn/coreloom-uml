@@ -197,7 +197,7 @@ export function AgentConfigGeneration({
         </Card>
       )}
       <RoleMatrixCard configId={configId} generation={current} />
-      <SkillsCard skills={current.skills} />
+      <SkillsCard skills={current.skills} onChooseSkills={onBack} />
       <InstallCard configId={configId} />
     </div>
   )
@@ -311,10 +311,18 @@ function Changes({
   ))
 }
 
-/** Third-party skills: links only, never a command to copy. */
-function SkillsCard({ skills }: { skills: AgentGeneration['skills'] }) {
+/**
+ * Third-party skills: links only, never a command to copy. When none fits, it says so and sends
+ * the owner to the skills they can pick themselves (the summary's), never a list filled anyway.
+ */
+function SkillsCard({
+  skills,
+  onChooseSkills,
+}: {
+  skills: AgentGeneration['skills']
+  onChooseSkills: () => void
+}) {
   const t = useT()
-  if (skills.compatible.length === 0 && skills.conflicting.length === 0) return null
   return (
     <Card>
       <CardHeader>
@@ -322,8 +330,15 @@ function SkillsCard({ skills }: { skills: AgentGeneration['skills'] }) {
         <CardDescription>{t.agents.skillsThirdParty}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        {skills.compatible.length > 0 && (
+        {skills.compatible.length > 0 ? (
           <SkillList title={t.agents.skillsCompatible} skills={skills.compatible} />
+        ) : (
+          <div className="flex flex-col items-start gap-2">
+            <p className="m-0 text-sm text-muted-foreground">{t.agents.skillsNoneFit}</p>
+            <Button variant="outline" size="sm" onClick={onChooseSkills}>
+              {t.agents.skillsChoose}
+            </Button>
+          </div>
         )}
         {skills.conflicting.length > 0 && (
           <SkillList title={t.agents.skillsConflicting} skills={skills.conflicting} />

@@ -702,6 +702,18 @@ const routes = {
     tokens: [{"old":"/admin/skills/:slug","type":0,"val":"admin","end":""},{"old":"/admin/skills/:slug","type":0,"val":"skills","end":""},{"old":"/admin/skills/:slug","type":1,"val":"slug","end":""}],
     types: placeholder as Registry['admin.skills.update']['types'],
   },
+  'admin.skill_affinity_reviews.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/admin/skill-affinity-reviews',
+    tokens: [{"old":"/admin/skill-affinity-reviews","type":0,"val":"admin","end":""},{"old":"/admin/skill-affinity-reviews","type":0,"val":"skill-affinity-reviews","end":""}],
+    types: placeholder as Registry['admin.skill_affinity_reviews.index']['types'],
+  },
+  'admin.skill_affinity_reviews.update': {
+    methods: ["PATCH"],
+    pattern: '/admin/skill-affinity-reviews/:id',
+    tokens: [{"old":"/admin/skill-affinity-reviews/:id","type":0,"val":"admin","end":""},{"old":"/admin/skill-affinity-reviews/:id","type":0,"val":"skill-affinity-reviews","end":""},{"old":"/admin/skill-affinity-reviews/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['admin.skill_affinity_reviews.update']['types'],
+  },
   'admin.jobs.index': {
     methods: ["GET","HEAD"],
     pattern: '/admin/jobs',

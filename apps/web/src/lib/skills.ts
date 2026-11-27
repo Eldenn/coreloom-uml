@@ -22,6 +22,8 @@ export const skillKeys = {
   list: (query: SkillsQuery) => ['skills', 'list', query] as const,
   detail: (slug: string) => ['skills', 'detail', slug] as const,
   stats: ['skills', 'stats'] as const,
+  // Under `skills`: a run of the tagger (`catalog.updated`) replaces the pending pairs.
+  affinityReviews: ['skills', 'affinity-reviews'] as const,
 }
 
 export function useSkills(query: SkillsQuery) {
@@ -60,6 +62,34 @@ export function useBlockSkill() {
     mutationFn: ({ slug, ...body }: { slug: string; blocked: boolean; reason?: string }) =>
       client.api.admin.skills.update({ params: { slug }, body }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: skillKeys.all }),
+  })
+}
+
+export type AffinityReviewsQuery = NonNullable<
+  Parameters<typeof client.api.admin.skillAffinityReviews.index>[0]
+>['query']
+export type AffinityReview = Awaited<
+  ReturnType<typeof client.api.admin.skillAffinityReviews.index>
+>['data'][number]
+export type AffinityDecision = NonNullable<AffinityReview['decision']>
+
+/** The admin's: the pairs of a skill and a rule the scoring proposed (`computed-skill-affinities`). */
+export function useAffinityReviews(query: AffinityReviewsQuery, enabled = true) {
+  return useQuery({
+    queryKey: [...skillKeys.affinityReviews, query],
+    queryFn: () => client.api.admin.skillAffinityReviews.index({ query }),
+    placeholderData: keepPreviousData,
+    enabled,
+  })
+}
+
+/** The admin's: accepts, rejects or marks a pair as going against, or undoes it with `null`. */
+export function useDecideAffinity() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, decision }: { id: number; decision: AffinityDecision | null }) =>
+      client.api.admin.skillAffinityReviews.update({ params: { id }, body: { decision } }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: skillKeys.affinityReviews }),
   })
 }
 

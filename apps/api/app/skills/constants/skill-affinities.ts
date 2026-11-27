@@ -22,3 +22,8 @@ export const AFFINITY_DECISIONS = [
   'rejected',
   'against',
 ] as const satisfies readonly AffinityDecision[]
+
+/** Which proposed pairs the admin's list shows: still to decide (the default), decided, or both. */
+export const AFFINITY_REVIEW_STATUSES = ['pending', 'decided', 'all'] as const
+
+export type AffinityReviewStatus = (typeof AFFINITY_REVIEW_STATUSES)[number]

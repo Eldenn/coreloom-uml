@@ -1,4 +1,11 @@
-import type { DiagramKind, SkillAffinity, SkillOrigin, Topic } from '@coreloom-uml/catalog'
+import type {
+  AffinityDecision,
+  DiagramKind,
+  Localized,
+  SkillAffinity,
+  SkillOrigin,
+  Topic,
+} from '@coreloom-uml/catalog'
 import type { Paginated } from '#app/shared/pagination/paginate'
 import type { SkillRiskLevel, SkillState } from '#app/skills/constants/skill'
 import type { TopicsSource } from '#app/skills/constants/skill-topics'
@@ -112,3 +119,22 @@ export type SkillCopyOutput = {
   license: string
   files: { path: string; executable: boolean; content: string }[]
 }
+
+/** `GET /admin/skill-affinity-reviews`: a pair of a skill and a ready-made rule the scoring proposed. */
+export type AffinityReviewOutput = {
+  id: number
+  skill: { slug: string; name: string }
+  slot: string
+  ruleId: string
+  /** The rule's group, and the rule (its label, else its lines). */
+  group: Localized
+  rule: Localized
+  noAutomaticSuggestion: boolean
+  cosine: number
+  /** Suggested without any decision: a rule not marked, at the threshold or above. */
+  shownByItself: boolean
+  decision: AffinityDecision | null
+  decidedAt: string | null
+}
+
+export type AffinityReviewsOutput = Paginated<AffinityReviewOutput>
