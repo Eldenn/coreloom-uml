@@ -479,7 +479,9 @@ test.group('repository sandbox clone credential', (group) => {
         '#!/bin/bash',
         'sub=other',
         'for a in "$@"; do case "$a" in clone|fetch|init|checkout|rev-parse|remote) sub="$a"; break ;; esac; done',
-        `h=$("${real}" config --get-all http.https://github.com/.extraheader 2>/dev/null)`,
+        // Read from outside any repository: only what the line gave this git, never the
+        // configuration of the checkout the tests run in (a CI checkout holds a header of its own).
+        `h=$(cd / && "${real}" config --get-all http.https://github.com/.extraheader 2>/dev/null)`,
         `printf "%s %s\\n" "$sub" "\${h:-none}" >> "${notes}"`,
         // Any process of this machine whose command line holds the header's value, this one
         // included: read with builtins, so no process of the check holds it.
