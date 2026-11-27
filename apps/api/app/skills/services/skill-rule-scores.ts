@@ -248,6 +248,9 @@ export async function scoreSkillRules(
     if (duplicates.length > 0) await trx.table('skill_near_duplicates').multiInsert(duplicates)
     report.duplicates = duplicates.length
 
+    // An admin's decision made between reading the decided pairs and inserting the pending ones
+    // would collide with a pending row: it waits for this transaction instead.
+    await trx.rawQuery('lock table skill_affinity_reviews in share row exclusive mode')
     const decided = new Set(
       (
         await trx

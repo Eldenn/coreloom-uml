@@ -20,9 +20,11 @@ import {
 } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useFeature } from '@/lib/feature-flags'
 import { useCoreloomI18n } from '@/lib/i18n'
 import { useLocale, useT } from '@/lib/locale'
 import { type SkillDetail, useSkill } from '@/lib/skills'
+import { SkillAffinityReviews } from '@/skills/skill-affinity-reviews'
 import { SkillCopies } from '@/skills/skill-copies'
 import { RiskBadge, StateBadge } from '@/skills/skill-labels'
 import { SkillTopicsEditor } from '@/skills/skill-topics-editor'
@@ -153,6 +155,7 @@ function SkillBody({ skill }: { skill: SkillDetail }) {
   const t = useT().skills
   const { locale } = useLocale()
   const { user } = useAuth()
+  const affinities = useFeature('computed-skill-affinities')
   const description = (locale === 'fr' ? skill.description.fr : undefined) ?? skill.description.en
   return (
     <>
@@ -182,6 +185,7 @@ function SkillBody({ skill }: { skill: SkillDetail }) {
             <TabsContent value="admin" className="flex flex-col gap-8">
               <SkillTopicsEditor key={skill.topics.join()} skill={skill} />
               <SkillCopies slug={skill.slug} canCopy={skill.state !== 'blocked'} />
+              {affinities && <SkillAffinityReviews slug={skill.slug} />}
               <SkillBlock skill={skill} />
             </TabsContent>
           </Tabs>

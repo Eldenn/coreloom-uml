@@ -1399,6 +1399,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skills-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'admin.skill_affinity_reviews.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/admin/skill-affinity-reviews'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/skills/validators/skills-input').listAffinityReviewsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-affinity-reviews-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-affinity-reviews-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'admin.skill_affinity_reviews.update': {
+    methods: ["PATCH"]
+    pattern: '/admin/skill-affinity-reviews/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/skills/validators/skills-input').decideAffinityInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/skills/validators/skills-input').decideAffinityInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-affinity-reviews-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/skills/controllers/admin-skill-affinity-reviews-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'admin.jobs.index': {
     methods: ["GET","HEAD"]
     pattern: '/admin/jobs'

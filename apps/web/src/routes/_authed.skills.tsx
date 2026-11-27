@@ -1,6 +1,7 @@
 // The skills catalog: what the weekly search on skills.sh found, as a live dashboard and a ranked
 // list. `?skill=<slug>` opens a skill's sheet; the list's search, filters, sort and page are in
-// the URL too, so a view can be shared. The list comes first; `?view=overview` shows the trends.
+// the URL too, so a view can be shared. The list comes first; `?view=overview` shows the trends,
+// and `?view=affinities` the admin's affinities to review (`computed-skill-affinities`).
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { SparklesIcon } from 'lucide-react'
 import { z } from 'zod'
@@ -13,8 +14,10 @@ import { RelativeTime } from '@/components/ui/relative-time'
 import { toast } from '@/components/ui/sonner'
 import { StatusIndicator } from '@/components/ui/status-indicator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useFeature } from '@/lib/feature-flags'
 import { useT } from '@/lib/locale'
 import { type LiveStatus, useSkillsLiveUpdates, useSkillsStats } from '@/lib/skills'
+import { AffinityReviewsTab } from '@/skills/skill-affinity-reviews'
 import { SkillSheet } from '@/skills/skill-sheet'
 import { SkillSourcesButton } from '@/skills/skill-sources'
 import { SkillsAdminActions } from '@/skills/skills-admin'
@@ -89,6 +92,9 @@ function SkillsPage() {
     setSearch({ ...search, skill: undefined })
   }
   const isEmpty = stats.data?.totals.skills === 0
+  const reviewing = useFeature('computed-skill-affinities') && user?.isAdmin === true
+  const views = reviewing ? (['overview', 'affinities'] as const) : (['overview'] as const)
+  const view = views.find((candidate) => candidate === search.view) ?? 'catalog'
 
   return (
     <>
@@ -126,14 +132,17 @@ function SkillsPage() {
         <>
           <SkillsFigures stats={stats.data} />
           <Tabs
-            value={search.view === 'overview' ? 'overview' : 'catalog'}
-            onValueChange={(view) => {
-              setSearch({ ...search, view: view === 'overview' ? view : undefined })
+            value={view}
+            onValueChange={(next) => {
+              setSearch({ ...search, view: next === 'catalog' ? undefined : next })
             }}
           >
             <TabsList variant="line">
               <TabsTrigger value="catalog">{t.skills.tabs.catalog}</TabsTrigger>
               <TabsTrigger value="overview">{t.skills.tabs.overview}</TabsTrigger>
+              {reviewing && (
+                <TabsTrigger value="affinities">{t.skills.tabs.affinities}</TabsTrigger>
+              )}
             </TabsList>
             <TabsContent value="catalog">
               <SkillsCatalog
@@ -147,6 +156,11 @@ function SkillsPage() {
             <TabsContent value="overview">
               <SkillsTrends stats={stats.data} onOpen={open} />
             </TabsContent>
+            {reviewing && (
+              <TabsContent value="affinities">
+                <AffinityReviewsTab onOpen={open} />
+              </TabsContent>
+            )}
           </Tabs>
         </>
       )}

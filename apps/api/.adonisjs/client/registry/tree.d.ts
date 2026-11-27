@@ -108,6 +108,10 @@ export interface ApiDefinition {
       update: typeof routes['admin.skills.update']
       topics: typeof routes['admin.skills.topics']
     }
+    skillAffinityReviews: {
+      index: typeof routes['admin.skill_affinity_reviews.index']
+      update: typeof routes['admin.skill_affinity_reviews.update']
+    }
     jobs: {
       index: typeof routes['admin.jobs.index']
     }
