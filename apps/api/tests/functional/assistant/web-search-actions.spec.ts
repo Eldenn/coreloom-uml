@@ -23,6 +23,7 @@ import { FakeWebSearch } from '#tests/helpers/fake-web-search'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
 import { saveTestLlmKey } from '#tests/helpers/llm-key'
+import { keepWebSearchSetting } from '#tests/helpers/web-search-setting'
 
 /**
  * The workspace assistant searches the web through the instance's service. The search client is
@@ -86,6 +87,7 @@ async function offered(user: User, conversationId: number): Promise<string[]> {
 let fake: FakeWebSearch
 
 test.group('Assistant web search', (group) => {
+  group.setup(() => keepWebSearchSetting())
   group.each.setup(async () => {
     const rollback = await withDefaultFlags()
     fake = new FakeWebSearch()
@@ -183,8 +185,8 @@ test.group('Assistant web search', (group) => {
     response.assertStatus(200)
     assert.include(toolResults(model), 'The daily limit of web searches is reached.')
     assert.lengthOf(fake.queries, 0)
-    // Counted even when refused: the model asked for it.
-    assert.include(response.body().messages[1].content, '_Recherches web : 1_')
+    // A refused search did not run: the reply says nothing of it.
+    assert.notInclude(response.body().messages[1].content, '_Recherches web')
   })
 
   test('the reading before a drawing never searches the web', async ({ client, assert }) => {

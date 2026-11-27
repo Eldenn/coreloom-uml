@@ -21,11 +21,16 @@ export function useWebSearchSetting() {
 
 export function useSaveWebSearch() {
   const queryClient = useQueryClient()
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: (body: { kind: WebSearchKind; apiKey: string }) =>
       client.api.admin.webSearch.update({ body }),
-    onSuccess: (setting) => queryClient.setQueryData(webSearchKey, setting),
+    onSuccess: (setting) => {
+      queryClient.setQueryData(webSearchKey, setting)
+      // Saved: the key is not kept in the mutation's variables while the section stays open.
+      mutation.reset()
+    },
   })
+  return mutation
 }
 
 export function useDeleteWebSearch() {

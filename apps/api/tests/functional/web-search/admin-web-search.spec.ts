@@ -8,6 +8,7 @@ import type { WebSearchOutput } from '#app/web-search/validators/web-search-outp
 import env from '#start/env'
 import { FakeWebSearch } from '#tests/helpers/fake-web-search'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
+import { keepWebSearchSetting } from '#tests/helpers/web-search-setting'
 
 /**
  * The instance's web search service, for the admin: saved only after the service accepted the key,
@@ -26,6 +27,7 @@ async function admin() {
 }
 
 test.group('Admin: web search service', (group) => {
+  group.setup(() => keepWebSearchSetting())
   let fake: FakeWebSearch
   group.each.setup(() => {
     env.set('DEFAULT_ACCOUNT_EMAIL', ADMIN)

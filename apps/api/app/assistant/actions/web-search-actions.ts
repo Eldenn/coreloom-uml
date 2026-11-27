@@ -23,10 +23,13 @@ export const WEB_SEARCH_ACTIONS: readonly AssistantAction[] = [
     available: webSearchOffered,
     async read({ query }, user, context) {
       context.show?.({ detail: cleanQuery(query) })
-      context.web.searches += 1
       // No abort signal: a search ends by itself after `WEB_SEARCH_LIMITS.timeoutMs`.
       const answer = await searchFor(user, query)
-      if ('results' in answer) return { results: answer.results }
+      if ('results' in answer) {
+        // Counted only once it ran: a refused or failed search is not in the reply's note.
+        context.web.searches += 1
+        return { results: answer.results }
+      }
       return {
         error:
           answer.failure === WebSearchFailure.Quota

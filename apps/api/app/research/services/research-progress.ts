@@ -37,10 +37,14 @@ export function trackProgress(
   tools: ResearchTools,
 ): { tools: ResearchTools; clear(): Promise<void> } {
   const steps: ResearchStep[] = []
-  const save = () =>
-    redis
+  // Set by `clear`: a call that settles after the research ended writes nothing back.
+  let closed = false
+  const save = async () => {
+    if (closed) return
+    await redis
       .set(progressKey(userId), JSON.stringify(steps), 'EX', RESEARCH_LOCK_SECONDS)
       .catch(() => null)
+  }
 
   async function noted<T>(
     kind: ResearchStepKind,
@@ -96,6 +100,7 @@ export function trackProgress(
       }),
     },
     async clear() {
+      closed = true
       await redis.del(progressKey(userId)).catch(() => null)
     },
   }

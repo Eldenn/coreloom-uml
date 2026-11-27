@@ -26,6 +26,7 @@ import { FakeWebSearch } from '#tests/helpers/fake-web-search'
 import { withDefaultFlags } from '#tests/helpers/feature-flags'
 import { captureLogs, dumpDatabase } from '#tests/helpers/leaks'
 import { saveTestLlmKey } from '#tests/helpers/llm-key'
+import { keepWebSearchSetting } from '#tests/helpers/web-search-setting'
 
 const json = { accept: 'application/json' }
 /** Fixture secrets: neither may show up in a response, a log line or the database. */
@@ -153,6 +154,7 @@ function research(
 }
 
 test.group('Agent configs - web research', (group) => {
+  group.setup(() => keepWebSearchSetting())
   group.each.setup(() => withDefaultFlags())
   group.each.teardown(() => {
     app.container.restore(LanguageModels)
