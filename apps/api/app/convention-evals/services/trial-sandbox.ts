@@ -5,7 +5,13 @@ import type { FinalState, TrialGrades } from '@coreloom-uml/catalog/evals'
 import { z } from 'zod'
 import { CONVENTION_EVAL_LIMITS } from '#app/convention-evals/constants/convention-evals'
 import { EVAL_SANDBOX_PATHS } from '#app/convention-evals/constants/eval-sandbox'
-import { BASE_ENVS, GRADE, SETUP, STOP_AGENT } from '#app/convention-evals/services/eval-commands'
+import {
+  BASE_ENVS,
+  DENY_SUDO,
+  GRADE,
+  SETUP,
+  STOP_AGENT,
+} from '#app/convention-evals/services/eval-commands'
 import EvalSandboxes, { type OpenEvalSandbox } from '#app/convention-evals/services/eval-sandbox'
 import { packFolder } from '#app/convention-evals/services/grader-bundle'
 
@@ -49,6 +55,7 @@ export async function openTrialSandbox(
   }
   const ready =
     (await sandbox.isolate()) &&
+    (await sandbox.run(DENY_SUDO, {}, { user: 'root', timeoutMs: 15_000 })).exitCode === 0 &&
     (await sandbox.upload(EVAL_SANDBOX_PATHS.trialArchive, workspace)) &&
     (await sandbox.run(SETUP, { ...BASE_ENVS })).exitCode === 0
   if (!ready) {

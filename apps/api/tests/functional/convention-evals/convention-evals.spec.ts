@@ -12,6 +12,7 @@ import type { TestContext } from '@japa/runner/core'
 import { EvalFailureReason, EvalRunStatus } from '#app/convention-evals/constants/convention-evals'
 import ConventionEvalRun from '#app/convention-evals/models/convention-eval-run'
 import ConventionEvalTrial from '#app/convention-evals/models/convention-eval-trial'
+import { DENY_SUDO } from '#app/convention-evals/services/eval-commands'
 import { evalsHome } from '#app/convention-evals/services/eval-folders'
 import { acquireEvalLock, releaseEvalLock } from '#app/convention-evals/services/eval-lock'
 import HarborRunner, {
@@ -434,6 +435,11 @@ test.group('Convention tests - the job', (group) => {
       assert.isTrue(
         sandboxes.runs.filter((item) => item.envs.TASK_ID).every((item) => item.user === 'root'),
       )
+      // Sudo is taken from the model's user, as root, before the workspace is set up.
+      const first = sandboxes.runs[0]
+      assert.equal(first?.command, DENY_SUDO)
+      assert.equal(first?.user, 'root')
+      assert.deepEqual(first?.envs, {})
       // The lock is free and the run's folder gone.
       assert.isTrue(await acquireEvalLock(user.id, 'harness'))
       await releaseEvalLock(user.id)

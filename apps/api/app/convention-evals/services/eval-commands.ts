@@ -19,6 +19,15 @@ export const BASE_ENVS = {
 } as const
 
 /**
+ * Run as root before anything else: takes passwordless sudo away from `user`, the model's user.
+ * E2B's template build gives it back at its last step whatever the recipe did (a line of
+ * /etc/sudoers and the group `sudo`), so it is done in each sandbox. Fails unless `sudo` is then
+ * refused to `user`: with it, the model would be root and could leave a process the grading
+ * step's `kill -1` does not reach.
+ */
+export const DENY_SUDO = `bash -c 'sed -i "/^user[[:space:]]/d" /etc/sudoers && rm -f /etc/sudoers.d/user && gpasswd -d user sudo >/dev/null 2>&1; visudo -c >/dev/null && ! su -s /bin/sh user -c "sudo -n true" >/dev/null 2>&1'`
+
+/**
  * Unpacks the trial's workspace (built on the worker: the fixture, its conventions, a bare
  * `origin`) into `$TRIAL_ROOT` and points `origin` at the bare repository where it now lies.
  */
