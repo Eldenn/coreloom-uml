@@ -363,6 +363,37 @@ class EnvironmentTest(unittest.TestCase):
                 )
             )
 
+    def test_a_file_left_after_a_failed_command_keeps_the_first_error(self):  # security R3-8
+        environment = self.make()
+        environment._sandbox = self.sandbox_with_commands({REMOVE_SECRET_FILE: 1})
+        environment._sandbox.commands.fail_start = "claude"
+        with self.assertLogs(level="WARNING") as logs:
+            with self.assertRaises(PolicyViolation) as raised:
+                asyncio.run(
+                    environment.exec_with_secret(
+                        "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY, user="node"
+                    )
+                )
+        self.assertIsInstance(raised.exception.__cause__, ConnectionError)
+        self.assertIn("ConnectionError", "\n".join(logs.output))
+        self.assertNotIn(FAKE_KEY, "\n".join(logs.output))
+
+    def test_a_removal_that_cannot_run_keeps_the_first_error(self):  # security R3-8
+        environment = self.make()
+        environment._sandbox = self.sandbox_with_commands()
+        environment._sandbox.files.fail = True
+        environment._sandbox.commands.fail_start = REMOVE_SECRET_FILE
+        with self.assertLogs(level="WARNING"):
+            with self.assertRaises(ConnectionError) as raised:
+                asyncio.run(
+                    environment.exec_with_secret(
+                        "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY, user="node"
+                    )
+                )
+        # The removal's own failure, raised from the upload's.
+        self.assertIsInstance(raised.exception.__cause__, ConnectionError)
+        self.assertIsNot(raised.exception, raised.exception.__cause__)
+
     def test_refuses_a_key_that_is_not_one_line_and_a_name_that_is_not_a_credential(self):
         environment = self.make()
         environment._sandbox = self.sandbox_with_commands()

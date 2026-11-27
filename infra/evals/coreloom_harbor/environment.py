@@ -363,9 +363,12 @@ class ConventionEvalsE2BEnvironment(E2BEnvironment):
                 timeout=timeout_sec or 0,
                 user=AGENT_USER,
             )
-            return await self._wait_reattaching(handle, timeout_sec)
-        finally:
-            await self._remove_secret_file()
+            result = await self._wait_reattaching(handle, timeout_sec)
+        except BaseException as error:
+            await self._remove_secret_file(after=error)
+            raise
+        await self._remove_secret_file()
+        return result
 
     async def _run_as_agent(self, command: str) -> ExecResult:
         """A fixed command of ours as the agent's user, outside Harbor's env overlays."""
@@ -374,9 +377,21 @@ class ConventionEvalsE2BEnvironment(E2BEnvironment):
         )
         return await self._wait_reattaching(handle, _UPLOAD_TIMEOUT_SEC)
 
-    async def _remove_secret_file(self) -> None:
-        if (await self._run_as_agent(REMOVE_SECRET_FILE)).return_code != 0:
-            raise PolicyViolation(f"the key's file {SECRET_FILE} is still in the sandbox")
+    async def _remove_secret_file(self, after: BaseException | None = None) -> None:
+        """Removes the key's file and checks it is gone, else fails the trial. ``after`` is the
+        error the write or the command already failed with: a failed removal is then raised
+        from it, and its type logged, so the first failure is never lost behind the second."""
+        try:
+            removed = (await self._run_as_agent(REMOVE_SECRET_FILE)).return_code == 0
+            if not removed:
+                raise PolicyViolation(f"the key's file {SECRET_FILE} is still in the sandbox")
+        except Exception as failure:
+            if after is None:
+                raise
+            self.logger.warning(
+                "the key's file could not be checked gone after %s", type(after).__name__
+            )
+            raise failure from after
 
     @override
     async def _prepare_sandbox(self) -> None:
