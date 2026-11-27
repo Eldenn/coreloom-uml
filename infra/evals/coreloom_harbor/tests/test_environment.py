@@ -394,6 +394,59 @@ class EnvironmentTest(unittest.TestCase):
         self.assertIsInstance(raised.exception.__cause__, ConnectionError)
         self.assertIsNot(raised.exception, raised.exception.__cause__)
 
+    def test_a_file_left_after_a_cancellation_or_an_interrupt_raises_it_unchanged(self):  # R4-1
+        for first in (asyncio.CancelledError(), KeyboardInterrupt()):
+            environment = self.make()
+            environment._sandbox = self.sandbox_with_commands({REMOVE_SECRET_FILE: 1})
+
+            async def attempt():
+                try:
+                    await environment.exec_with_secret(
+                        "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY, user="node"
+                    )
+                except BaseException as error:
+                    return error
+                return None
+
+            write = mock.AsyncMock(side_effect=first)
+            with (
+                mock.patch.object(environment._sandbox.files, "write", write),
+                self.assertLogs(level="WARNING") as logs,
+            ):
+                raised = asyncio.run(attempt())
+            self.assertIs(raised, first)
+            self.assertIn(type(first).__name__, "\n".join(logs.output))
+            self.assertNotIn(FAKE_KEY, "\n".join(logs.output))
+            cmds = [run["cmd"] for run in environment._sandbox.commands.runs]
+            self.assertEqual(cmds, [PREPARE_SECRET_DIR, REMOVE_SECRET_FILE])
+
+    def test_a_cancelled_trial_ends_cancelled_when_its_file_is_left(self):  # security R4-1
+        environment = self.make()
+        environment._sandbox = self.sandbox_with_commands({REMOVE_SECRET_FILE: 1})
+        started = asyncio.Event()
+
+        async def write(*_args, **_kwargs):
+            started.set()
+            await asyncio.Event().wait()
+
+        async def cancel_it():
+            task = asyncio.create_task(
+                environment.exec_with_secret(
+                    "claude", secret_name="ANTHROPIC_API_KEY", secret=FAKE_KEY, user="node"
+                )
+            )
+            await started.wait()
+            task.cancel()
+            await asyncio.wait([task])
+            return task
+
+        with (
+            mock.patch.object(environment._sandbox.files, "write", write),
+            self.assertLogs(level="WARNING"),
+        ):
+            task = asyncio.run(cancel_it())
+        self.assertTrue(task.cancelled())
+
     def test_refuses_a_key_that_is_not_one_line_and_a_name_that_is_not_a_credential(self):
         environment = self.make()
         environment._sandbox = self.sandbox_with_commands()

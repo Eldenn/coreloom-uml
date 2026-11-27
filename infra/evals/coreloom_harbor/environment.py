@@ -380,7 +380,9 @@ class ConventionEvalsE2BEnvironment(E2BEnvironment):
     async def _remove_secret_file(self, after: BaseException | None = None) -> None:
         """Removes the key's file and checks it is gone, else fails the trial. ``after`` is the
         error the write or the command already failed with: a failed removal is then raised
-        from it, and its type logged, so the first failure is never lost behind the second."""
+        from it, and its type logged, so the first failure is never lost behind the second. A
+        cancellation or an interrupt (not an ``Exception``) is raised itself once the failed
+        removal is logged, so the trial still ends cancelled or interrupted."""
         try:
             removed = (await self._run_as_agent(REMOVE_SECRET_FILE)).return_code == 0
             if not removed:
@@ -391,6 +393,8 @@ class ConventionEvalsE2BEnvironment(E2BEnvironment):
             self.logger.warning(
                 "the key's file could not be checked gone after %s", type(after).__name__
             )
+            if not isinstance(after, Exception):
+                raise after
             raise failure from after
 
     @override
