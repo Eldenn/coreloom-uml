@@ -468,7 +468,37 @@ The fake key is in no file of either job folder and the Codex trial left no `aut
 Claude Code run, 8 rows name the key file's path and 2 the fixed read line, with no value, and
 no file of the job folder shows the fixed line's exit 97.
 
+These figures date from before the local install masked its logs (its log collector has kept,
+since 2026-11-27 16:52 UTC, the names of a command's envs and the length of its standard input
+only). On such an install the controls cannot be found by value: `live-check/run.sh` now finds
+the mode by itself (the `[redacted` marker in the probe sandbox's SendInput row), prints it
+(`log mode: plain` or `redacted`), and in the `redacted` mode expects the canary's name with
+`[redacted]`, exactly 1 SendInput row of the probe sandbox carrying `[redacted: `, and 0 rows of
+either control's value, the fake key's checks unchanged. That mode was exercised with stubbed
+counts only; no Harbor trial was run for it, none being needed to change the check.
+
+Whether a real provider key went through standard input before the file channel (the owner's
+check of 2026-11-27, counts only): the local install held 27 SendInput rows, 11 starting with a
+provider key prefix, 4 already masked and 12 other; all 27 were purged that day (on the SendInput
+predicate only, 27 to 0, no other row removed). No real provider key was ever used: the owner
+holds none, the dev database holds only test keys a script seeded, and the 11 key-shaped values
+are shorter than real keys of either provider. The hash comparison could not be run, since there
+is no real key to hash: "no real key" rests on those three points, not on a hash match. Nothing
+to rotate.
+
 Residuals, and what ticket 7 must prove for each:
+- **Claude Code's descendants hold the key** (open, not new with the file channel: it was the
+  same on standard input). The fixed line exports the key into the agent's command, so every
+  process it starts inherits it: its Bash tool, the fixture's scripts, npm hooks. Codex filters
+  it out (`shell_environment_policy` excludes `*KEY*`); Claude Code does not, since
+  `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` makes it refuse to start without bubblewrap (security I4).
+  Egress is the provider host only, so what is left is the key written to a workspace or output
+  file, which the job folder's filter must catch (section 5: the exact value, its base64 and the
+  other encoded forms; built with ticket 4, so today only the live check's search of the job
+  folder for the exact value stands), or used against the provider itself (the capped key).
+  Tracked fix: bubblewrap in the Claude Code template, then
+  `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` set, with a live check that a command started by the
+  agent sees no key.
 - **MMDS** (169.254.169.254, Firecracker's metadata service) answers despite deny-all; with a
   token it gives a hash, the envd log address, the env and instance ids, not a token. Not a
   blocker. Prove that it still answers with `169.254.0.0/16` denied (it is served inside
