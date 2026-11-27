@@ -313,7 +313,15 @@ export async function searchSkills(options: SearchOptions): Promise<SearchResult
       record.eligible = true
       record.ineligibleReason = null
     } catch (error) {
-      if (!(error instanceof SkipError)) throw error
+      if (!(error instanceof SkipError)) {
+        // An untrusted skill still stops the run: a GitHub outage must never unlist it. A
+        // trusted one comes from a list of other publishers' repositories (Smithery, a
+        // marketplace): one that GitHub refuses must not stop every run.
+        if (!record.trusted) throw error
+        report.warnings.push(`${record.slug}: not checked on GitHub (${(error as Error).message})`)
+        if (!record.contentSha) ineligible(record, 'not checked on GitHub yet')
+        continue
+      }
       record.checked = true
       ineligible(record, error.message)
     }
@@ -637,7 +645,7 @@ async function listMarketplace(
   const plugins = (Array.isArray(body.plugins) ? body.plugins : []) as MarketplacePlugin[]
   const pluginRoot = typeof body.metadata?.pluginRoot === 'string' ? body.metadata.pluginRoot : ''
   let complete = true
-  let elsewhere = 0
+  const elsewhere = new Set<string>()
   let skipped = 0
   for (const plugin of plugins) {
     const where = pluginLocation(plugin.source, pluginRoot, snapshot.fullName)
@@ -647,14 +655,16 @@ async function listMarketplace(
     }
     let tree = snapshot
     if (where.repository) {
-      if (elsewhere >= SKILL_SOURCE_LIMITS.marketplaceRepos) {
+      // Repositories, not plugins: a monorepo of many plugins counts once.
+      const key = where.repository.toLowerCase()
+      if (!elsewhere.has(key) && elsewhere.size >= SKILL_SOURCE_LIMITS.marketplaceRepos) {
         report.warnings.push(
           `${label}: more than ${SKILL_SOURCE_LIMITS.marketplaceRepos} other repositories, the rest left out`,
         )
         complete = false
         break
       }
-      elsewhere += 1
+      elsewhere.add(key)
       const [owner, repo] = where.repository.split('/') as [string, string]
       try {
         tree = await github.repo(owner, repo)
@@ -1030,8 +1040,9 @@ export class Http {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     })
     if (response.status === 404) throw new SkipError(`not found: ${new URL(url).pathname}`)
-    // A renamed or moved repository: its registry entry is out of date, not GitHub down.
-    if (response.status >= 300 && response.status < 400) {
+    // A renamed or moved repository: its registry entry is out of date, not GitHub down. Only
+    // GitHub's API: elsewhere (skills.sh's audits) a redirect is a failure, never "not found".
+    if (url.startsWith(GITHUB_API) && response.status >= 300 && response.status < 400) {
       throw new SkipError(`moved: ${new URL(url).pathname}`)
     }
     if (!response.ok) throw new Error(`${response.status} from ${new URL(url).host}`)

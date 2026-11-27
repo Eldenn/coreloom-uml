@@ -852,3 +852,61 @@ test.group('searchSkills with a marketplace', () => {
     })
   })
 })
+
+test.group('searchSkills, review fixes', () => {
+  test('a redirect from skills.sh stops the run instead of reading as no audit', async ({
+    assert,
+  }) => {
+    const network = routes({
+      'https://www.skills.sh/tele/audit?source=acme%2Fskills&skills=browser-tests': {
+        status: 301,
+        body: {},
+      },
+    })
+    await assert.rejects(() => run([], network).result, '301 from www.skills.sh')
+  })
+
+  test('a GitHub error on one Smithery repository leaves that skill unchecked, the run goes on', async ({
+    assert,
+  }) => {
+    const network = routes({
+      ...smitheryPages([
+        smitherySkill('https://github.com/blocked/skills/tree/main/skills/blocked'),
+        smitherySkill('https://github.com/acme/skills/tree/main/skills/lint-rules'),
+      ]),
+      'https://api.github.com/repos/blocked/skills': { status: 451, body: {} },
+    })
+    const { records, report } = await run([], network, { sources: [SMITHERY_SOURCE] }).result
+    assert.deepInclude(bySlug(records).get('blocked'), {
+      eligible: false,
+      ineligibleReason: 'not checked on GitHub yet',
+    })
+    assert.deepInclude(bySlug(records).get('lint-rules'), { eligible: true })
+    assert.isTrue(report.warnings.some((line) => line.startsWith('blocked:')))
+  })
+
+  test('a marketplace with many plugins of one other repository reads it once, whole', async ({
+    assert,
+  }) => {
+    const folders = Array.from({ length: 35 }, (_, index) => `plugins/p${index}/skills/s${index}`)
+    const network = routes({
+      ...marketplace(
+        folders.map((_, index) => ({
+          name: `p${index}`,
+          source: {
+            source: 'git-subdir',
+            url: 'https://github.com/other/skills.git',
+            path: `plugins/p${index}`,
+          },
+        })),
+      ),
+      ...repository('other', folders),
+    })
+    const { records, sources } = await run([], network, {
+      sources: [ACME_SOURCE],
+      githubChecks: 0,
+    }).result
+    assert.lengthOf(records, 35)
+    assert.deepEqual(sources, [{ sourceId: 2, ok: true, complete: true, error: null }])
+  })
+})
