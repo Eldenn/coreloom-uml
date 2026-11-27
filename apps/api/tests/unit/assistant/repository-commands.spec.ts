@@ -502,7 +502,12 @@ test.group('repository sandbox clone credential', (group) => {
       execFile(
         '/bin/bash',
         ['-c', line],
-        { env: { PATH, REPO_ROOT: at, REPO_URL: `file://${source}`, ...KILL_AFTER, ...env } },
+        // Outside any repository: the probe reads the configuration of the folder git runs in,
+        // and a CI checkout keeps its own header in its `.git/config`.
+        {
+          cwd: folder,
+          env: { PATH, REPO_ROOT: at, REPO_URL: `file://${source}`, ...KILL_AFTER, ...env },
+        },
         (error, stdout) =>
           resolve({
             exitCode: error ? (typeof error.code === 'number' ? error.code : 1) : 0,
