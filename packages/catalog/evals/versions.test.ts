@@ -131,6 +131,11 @@ describe('the other workers', () => {
       scripts: Record<string, string>
     }
     for (const [name, script] of Object.entries(scripts)) {
+      // `queue:evals` is the convention-evals worker itself, outside Docker.
+      if (name === 'queue:evals') {
+        expect(script).toMatch(/queue:work --queues=convention-evals$/)
+        continue
+      }
       expect(script, name).not.toContain('--queues=convention-evals')
     }
     for (const file of ['docker-compose.staging.yml', 'docker-compose.production.yml']) {
