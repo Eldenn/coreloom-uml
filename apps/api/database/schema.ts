@@ -447,6 +447,106 @@ export class CodeReviewSchema extends BaseModel {
   declare userId: number
 }
 
+export class ConventionEvalRunSchema extends BaseModel {
+  static $columns = ['agent', 'agentConfigId', 'cacheWriteTokens', 'cachedInputTokens', 'capUsd', 'catalogVersion', 'configRevision', 'costUsd', 'createdAt', 'endedAt', 'estimateHighUsd', 'estimateLowUsd', 'failureReason', 'id', 'inputTokens', 'model', 'outputTokens', 'path', 'pricesCheckedOn', 'providerKind', 'startedAt', 'status', 'trialCount', 'updatedAt', 'userId'] as const
+  $columns = ConventionEvalRunSchema.$columns
+  @column()
+  declare agent: string
+  @column()
+  declare agentConfigId: number
+  @column()
+  declare cacheWriteTokens: number
+  @column()
+  declare cachedInputTokens: number
+  @column()
+  declare capUsd: string
+  @column()
+  declare catalogVersion: string
+  @column()
+  declare configRevision: number
+  @column()
+  declare costUsd: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime()
+  declare endedAt: DateTime | null
+  @column()
+  declare estimateHighUsd: string | null
+  @column()
+  declare estimateLowUsd: string | null
+  @column()
+  declare failureReason: string | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare inputTokens: number
+  @column()
+  declare model: string
+  @column()
+  declare outputTokens: number
+  @column()
+  declare path: string
+  @column()
+  declare pricesCheckedOn: string
+  @column()
+  declare providerKind: string
+  @column.dateTime()
+  declare startedAt: DateTime | null
+  @column()
+  declare status: string
+  @column()
+  declare trialCount: number
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
+}
+
+export class ConventionEvalTrialSchema extends BaseModel {
+  static $columns = ['attempt', 'cacheWriteTokens', 'cachedInputTokens', 'complianceReason', 'complianceVerdict', 'condition', 'costUsd', 'createdAt', 'durationMs', 'errorReason', 'id', 'inputTokens', 'output', 'outputTokens', 'ruleId', 'ruleSlot', 'runId', 'successReason', 'successVerdict', 'taskId'] as const
+  $columns = ConventionEvalTrialSchema.$columns
+  @column()
+  declare attempt: number
+  @column()
+  declare cacheWriteTokens: number
+  @column()
+  declare cachedInputTokens: number
+  @column()
+  declare complianceReason: string | null
+  @column()
+  declare complianceVerdict: string | null
+  @column()
+  declare condition: string
+  @column()
+  declare costUsd: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare durationMs: number
+  @column()
+  declare errorReason: string | null
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare inputTokens: number
+  @column()
+  declare output: string | null
+  @column()
+  declare outputTokens: number
+  @column()
+  declare ruleId: string
+  @column()
+  declare ruleSlot: string
+  @column()
+  declare runId: number
+  @column()
+  declare successReason: string | null
+  @column()
+  declare successVerdict: string | null
+  @column()
+  declare taskId: string
+}
+
 export class DecisionDiagramSchema extends BaseModel {
   static $columns = ['decisionId', 'diagramId'] as const
   $columns = DecisionDiagramSchema.$columns

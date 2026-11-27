@@ -3,12 +3,12 @@
 Status: accepted for the task format, the graders, the conditions and the metric (sections 3,
 10, 11, 12); accepted by the owner's decisions of 2026-11-27 for the path of a test (trials in
 E2B sandboxes driven by Harbor, launched from the app, paid with the user's saved key, behind the
-`convention-evals` flag, opened only after an admin pilot). **Open, the owner decides**: the text
-of the AGENTS.md rule (section 5), the way subscriptions are served (section 8), the pilot's
-budget (section 16), a separate E2B team or key before opening (sections 13 and 15), a larger
-disk on the install only if a template does not fit (section 13), and the written acceptance of
-the install's log collector for the pilot if the 192.0.2.1 canary lands (section 13). Date:
-2026-11-27. Follows issue #140; issue #142, PR #143.
+`convention-evals` flag, opened only after an admin pilot), and for the subscriptions (option A of
+section 8) and the pilot's budget (a $5 cap per run, section 9). **Open, the owner decides**: the
+text of the AGENTS.md rule (section 5), a separate E2B team or key before opening (sections 13
+and 15), a larger disk on the install only if a template does not fit (section 13), and the
+written acceptance of the install's log collector for the pilot if the 192.0.2.1 canary lands
+(section 13). Date: 2026-11-27. Follows issue #140; issue #142, PR #143.
 
 ## 1. Context
 
@@ -78,7 +78,7 @@ sequenceDiagram
   participant E as E2B (one sandbox per trial)
   W->>A: POST /agent-configs/:id/evals (after the estimate is confirmed)
   A-->>W: 202 { runId } (account lock taken, 409 if one runs)
-  A->>Q: RunConventionEvalJob { runId, configId, userId }
+  A->>Q: RunConventionEvalJob { runId, provider: { kind, model } }
   Q->>R: process(): resolveCredential, tasks exported to a tmpfs
   R->>H: child process, no shell, key in its env only
   H->>E: per trial: create, setup (no network), agent (provider host only), verifier (no network), kill
@@ -110,6 +110,44 @@ sequenceDiagram
    and the filtered, capped agent output. The folder is removed in a `finally`.
 8. **Results.** The screen polls `GET /agent-configs/:id/evals/:runId` (TanStack Query
    `refetchInterval`) until the run is `done`, `failed`, `cancelled` (cap reached) or `leaked`.
+
+### As built (#148)
+
+- **Routes** (`app/convention-evals/`, behind `convention-evals` and `E2B_API_KEY`, 404 without
+  either, the owner only): `GET /agent-configs/:id/evals/plan?kind=&model=` answers what a test
+  would run (the held rules that have a task, the tasks, the path and its label, the trial count,
+  the estimate [p50, p90] with `pricesCheckedOn`, the cap) and `refusal`, null or one of
+  `no_testable_rule`, `no_credential` (a key kind with no saved key, a subscription not
+  connected), `provider_settings`, `over_cap` (the lower estimate passes the cap); a subscription
+  kind behind its off flag is a 404. `POST /agent-configs/:id/evals` takes the provider as every
+  other model feature sends it (`{ provider: { kind, model } }`; a saved key's base URL comes from
+  its row), plans again, answers 422 with the refusal, 409 when the account lock is taken, else
+  creates the run `queued` and answers 202 `{ runId }`. `GET /agent-configs/:id/evals` is the
+  paginated list, `GET …/:runId` the run and its trials.
+- **Job data**: `{ runId, provider: { kind, model } }`, no id of anything else and no credential
+  (a spec reads the dispatched payload). Never retried.
+- **Path per kind**: `anthropic` key → path I with Claude Code, `openai` key → path I with Codex;
+  every other kind → path II (section 8). The run stores `path`, `agent` and the label.
+- **Grading moved into sandboxes.** The graders run Git on the agent's repository (its
+  `.git/config` can name a `core.fsmonitor` or a filter, which Git then runs) and the hidden test
+  on the agent's code: on the worker, either would run a stranger's code beside the E2B key, the
+  database and the encryption keys. So a trial is graded in a sandbox (`GRADE`, as root, after
+  `kill -1` as the agent's user and a `chown` to root), from the catalog's TypeScript source and
+  zod (`grade-cli.ts`, `grader-bundle.ts`). Path II grades in the trial's own sandbox; path I in a
+  fresh sandbox of the harness template holding the final state Harbor copied back (the contract's
+  `state`), cut off the network. The contract with #147 is unchanged; #147's own verifier may run
+  the same `grade-cli.ts`.
+- **Filter** (`output-filter.ts`): `SECRET_PATTERNS` (Anthropic, OpenAI, E2B, GitHub tokens, JWTs)
+  plus, on path I, the key's value, URL-encoded, hex (both cases) and base64 / base64url at each of
+  the three alignments. Applied to every output, every Harbor error name and every grader reason. A
+  match: that trial is stored `leaked` with no output and no reason, nothing else is stored, the
+  run ends `leaked`.
+- **Harbor** is reached through `HarborRunner` (container class, swapped in tests): the module
+  `@coreloom-uml/catalog/evals/harbor` is loaded at run time, the child started without a shell,
+  `detached` (its own process group, killed with `SIGTERM` then `SIGKILL` after 10 s), its
+  environment exactly the one `prepareHarborRun` returns plus the key under `credentialEnvName`.
+  Its job folder is read every 30 s for the cost so far. After the run, whatever E2B lists with
+  `coreloom.run=<id>` is killed; a run Harbor answers no result for fails `runner_failed`.
 
 ## 5. Credentials
 
@@ -237,6 +275,62 @@ hold no secret (no build argument or file names a key, a lint test of the export
 
 ## 8. Subscriptions
 
+**Decided: option A** (owner, 2026-11-27), under the app-wide rule "a model call made for a user
+goes through the provider configured in that user's settings": saved `anthropic` and `openai`
+keys go through (I), every other kind (`claude-code`, `openai-codex`, `mistral`, `ollama`,
+`openai-compatible`) through (II). Built in #148; the comparison below is kept for the record.
+
+### Path II as built (#148)
+
+- **Loop**: `runCodingTrial` (`packages/llm/src/coding-trial.ts`) runs in the worker with the
+  user's model (`userLanguageModel`, so `resolveCredential` for every call): one tool, `run` (one
+  bash command, 4,000 characters at most, its output cut to 8,000 for the model), at most 30
+  steps, 600 s, temperature 0, no retry. It never throws: a provider failure ends the trial with
+  its reason and the repository is graded as it is. Usage is counted after each step
+  (`onStepEnd`, by price class: plain input, cache reads, cache writes, output), so the cap is
+  checked while a trial runs. A step aborted midway (the cap, the time limit) is not counted: the
+  AI SDK reports no partial usage, so the cost and the cap read low by at most one step per trial
+  under way. A step whose provider reports no usage is counted high instead (`unreportedStep`:
+  the conversation at 2 characters a token, plus the most output a step may give), and the Claude
+  subscription's cache reads and writes are counted from the binary's result. `claude-code` uses the one-action mode of `createClaudeCodeModel`
+  (each step one launch under `withClaudeLock`) and runs one trial at a time (`SERIAL_KINDS`);
+  others three at once.
+- **`full`**: the configuration's files rendered now (`render` on `currentInputs`, its own
+  targets), written in the workspace with the hooks turned on, and its AGENTS.md given in the
+  system prompt inside `<agents-md path="AGENTS.md">`, as a tool gives its own instruction file.
+  **`none`**: no file, no block. For path I the agent's own target (Claude Code or Codex) is added
+  to the targets rendered, so the CLI finds its pointer and settings.
+- **Sandbox** (`EvalSandboxes`, `app/convention-evals/services/eval-sandbox.ts`): template
+  `coreloom-uml-convention-evals-r4` built by `node ace assistant:setup` from the install's `base`
+  plus Node 26.3.0 (tarball checked by its SHA-256), pnpm 11.5.2, a Git identity and slugify 1.6.6
+  in pnpm's store and metadata cache (`prefer-offline`), since a trial has no network.
+  `denyOut: [ALL_TRAFFIC, RESEARCH_DENIED_RANGES]` at creation and again through `updateNetwork`
+  before anything runs (a sandbox E2B does not confirm is not used), metadata
+  `coreloom.purpose=convention-evals`, `coreloom.run`, `coreloom.account`, timeout 300 s renewed
+  every 60 s, killed in a `finally`. No environment variable of ours; the only files are the
+  workspace (built on the worker by `createWorkspace` from our fixture, one tarball, `SETUP`
+  re-points `origin`) and, after the loop, the graders.
+- **Commands**: the fixed lines of `eval-commands.ts`; the model's command is the variable
+  `SHELL_COMMAND` of `SHELL` (from the repository's root, `timeout -k 2 120`, output capped at
+  20,000 bytes in the sandbox). Tested with this machine's bash.
+- **Grading**: in the same sandbox, as root (section 4, "As built").
+- **Label**: "your model + your conventions", never mixed with a CLI's results.
+
+### `openai-codex`: fixed, not yet checked live
+
+The SDK sent the earlier items of a tool loop as `item_reference`s, which the Codex endpoint
+cannot resolve since `codexFetch` forces `store: false`. `createCodexModel` now gives the SDK
+`store: false` itself (a `transformParams` middleware), so the SDK sends each earlier item inline
+(the `function_call`, its `function_call_output`, a reasoning item with its `encrypted_content`)
+and adds `include: ["reasoning.encrypted_content"]`. `codex.test.ts` checks the second request of
+a two-step tool loop against a fake endpoint: no `item_reference`, the three items inline. It has
+not been sent to the real endpoint (no call with a real credential in this build): the pilot, or
+one manual call, confirms it. Until then the convention tests accept `openai-codex` on path II and
+the screen should call it unverified; the other features that refuse it (web research, the
+assistant's actions and readings, the exploration before a drawing) are unchanged.
+
+### The comparison that led to A
+
 The owner requires subscriptions to be usable for tests as for the assistant. Two architectures:
 
 | | (I) The agent's CLI in the sandbox | (II) Our loop in the API, the sandbox runs commands |
@@ -257,7 +351,7 @@ What is left for Harbor under (II): the task and verifier format only. A Harbor 
 rejected proxy; so the API drives E2B itself with the JS `e2b` SDK (`RepositorySandbox`'s way),
 reading the exported task folders.
 
-Options, **open: the owner decides**:
+Options, **decided: A** (see the top of this section):
 
 - **A. Keys through (I), subscriptions through (II)**, results labelled "model + your conventions
   through Coreloom's harness" and never mixed with a CLI's. Recommended: it meets the requirement
@@ -306,6 +400,52 @@ each trial the worker adds its measured cost, and when the next wave could cross
 cancels the remaining trials and reports partial results (`cancelled`). The worst overshoot is
 concurrency × one trial's p99. Per trial, `--max-turns` for Claude Code and the agent timeout for
 both bound the spend.
+
+### Prices and cap as built (#148)
+
+The price table is `EVAL_PRICES` (`app/convention-evals/constants/eval-prices.ts`), checked on
+**2026-11-27** (`EVAL_PRICES_CHECKED_ON`) on the three providers' pricing pages
+(`EVAL_PRICE_SOURCES`), standard tier, US dollars per million tokens (input / output / cache read
+/ cache write):
+
+| Provider | Model | Input | Output | Cache read | Cache write |
+|---|---|---|---|---|---|
+| Anthropic (5-min writes) | claude-fable-5-1 | 10 | 50 | 0.25 | 12.50 |
+| | claude-fable-5-2 | 8 | 40 | 0.20 | 10 |
+| | claude-opus-5 | 5 | 25 | 0.50 | 6.25 |
+| | claude-opus-5-5 | 4 | 20 | 0.20 | 5 |
+| | claude-sonnet-5-5 | 2 | 10 | 0.10 | 2.50 |
+| | claude-sonnet-5 | 2 | 10 | 0.20 | 2.50 |
+| | claude-haiku-5-5 (rate over 100k-token prompts) | 0.50 | 2.50 | 0.05 | 0.625 |
+| OpenAI (30-min writes) | gpt-6-astra | 10 | 50 | 1 | 12.50 |
+| | gpt-6.2-astra | 8 | 40 | 0.40 | 10 |
+| | gpt-6.2-sol, gpt-6.1-sol | 2 | 10 | 0.10 | 2.50 |
+| Mistral (no cache-write price: as input) | zai-glm-5-3 | 1.40 | 4.40 | 0.14 | 1.40 |
+| | mistral-large-4 | 0.70 | 2.10 | 0.07 | 0.70 |
+| | codestral-2508 | 0.30 | 0.90 | 0.30 | 0.30 |
+| | deepseek-v4-1-flash-1017 | 0.30 | 1.20 | 0.007 | 0.30 |
+| | mistral-small-2603, zai-glm-5-3-flash, ministral-* | 0.10 to 0.20 | 0.10 to 0.60 | | |
+
+GPT-5-Codex, which the estimate above used, is no longer on OpenAI's list; the Codex figures stay
+as token estimates, priced with the table. A subscription is priced as its provider's key would
+be (`claude-code` aliases `sonnet`, `opus`, `haiku`, `fable` read as the 5.5 / 5.2 models;
+`openai-codex` with the OpenAI table), an equivalent cost. A model not listed is priced as its
+provider's most expensive listed one (CTO arbitration). `ollama` and `openai-compatible` have no
+table: their runs are capped in tokens (`maxTokens`, 6 million) instead of dollars, and the plan's
+estimate is null.
+
+Per-trial tokens (`EVAL_TRIAL_TOKENS`, estimates until the pilot): Claude Code and Codex as in the
+table above; our harness 60k uncached input and 3k output (a short system prompt, no cache
+breakpoint, about ten steps). The upper bound is 2.5 times the lower. The plan refuses a run whose
+lower estimate passes the cap (`over_cap`).
+
+The cap (`CONVENTION_EVAL_LIMITS.capUsd`, $5) is enforced by `RunLedger`: on path II, no trial
+starts when what was measured plus (trials under way + 1) times one trial's upper estimate could
+pass it, and every step's measured usage is counted at once, so a trial under way is aborted as
+soon as the spend passes it; on path I, Harbor's job folder is read every 30 s and its process
+group killed when what finished plus a wave of three at the upper estimate could pass it. Either
+way the run ends `cancelled` with `cap_reached` and keeps the trials done. Hard limits: 45 min on
+path I, 90 min on path II (`cancelled`, `time_limit`).
 
 The pilot measures, per agent and task: median and p90 of uncached input, cache write, cache read
 and output tokens, and the turns (Claude Code's `stream-json` `usage`, `modelUsage`,
@@ -602,6 +742,88 @@ owner decides (section 8).
 
 Total: 18 to 25 days to opening with saved keys (tickets 1 to 8, 10 and the pilot), 24 to 34 with
 subscriptions under option A.
+
+Status after #148 (the API, built beside #147's runner):
+
+- **Ticket 4: built.** Flag, tables, the four routes, the job, the lock, the cap, the filter and
+  `SECRET_PATTERNS`, the functional specs with Harbor and E2B swapped (202; 409; 404 off the flag
+  and on another account's configuration; `leaked` on a canary in an output and on the key's
+  base64; no key in the job's data; cancellation at the cap; the path per kind; the refusals). One
+  change to the design: grading runs in sandboxes, not on the worker (section 4, "As built").
+  Left: the code against the real `@coreloom-uml/catalog/evals/harbor` once #147 lands (the
+  contract types are copied in `harbor-runner.ts` until then), and AGENTS.md's text by the owner.
+- **Ticket 5: built.** `PruneConventionEvalSandboxesJob` (every ten minutes, on the default queue,
+  scheduled by `node ace assistant:setup`), driven by E2B's list (`coreloom.purpose` or any
+  `harbor.job_id`, older than 50 min, running or paused); it also ends as `interrupted` the runs a
+  dead worker left. The run folders are purged by the first run of a worker process. Left: the
+  live check (a worker killed mid-trial, the list empty afterwards).
+- **Ticket 9, path II: built** (section 8, "Path II as built"), including the `openai-codex` fix,
+  checked against a fake endpoint only. Left: a live run with `claude-code` (the admin's
+  subscription) and one with `openai-codex`, and a first build of the harness template on the
+  install (its free disk recorded: Node 26 adds about 190 MB to `base`).
+- **Live checks of path II (local self-hosted E2B, scripted model, no provider call,
+  `node ace evals:smoke`, dev only):** template `coreloom-uml-convention-evals-r4` built in 25 s,
+  674 MB free in a trial sandbox (`base` alone: 836 MB). Each of the 4 tasks in `none` and `full`:
+  success and compliance `pass`, about 0.3 s to open, under 0.8 s of commands, 0.2 to 0.6 s to
+  grade. Egress: `curl https://api.anthropic.com` exits 28 (no name resolution), `getent hosts`
+  exits 2, `curl http://1.1.1.1` exits 52 (the filter answers the handshake, no data). A sandbox
+  whose process was SIGKILLed is still listed, kept by a sweep at a high age and killed by one at
+  5 s. What `sandbox_logs` keeps of a trial (35 to 41 rows): the fixed command lines and the env
+  var names `TRIAL_ROOT`, `TRIAL_ARCHIVE`, `GRADER_ROOT`, `GRADER_ARCHIVE`, `SHELL_COMMAND` (the
+  model's commands, in full), `TASK_ID`, `BASE_COMMIT`; uploads by path only; no metadata, no
+  account or run id, no convention file content. Fixed on the way: `base` ships Node 20 in
+  `/usr/local` (Node 26 now in its own folder), `pnpm init` adds a `devEngines` range that makes
+  pnpm switch to a newer pnpm whose cache the pinned one cannot read offline (seed manifest
+  written by hand), a failed template build still answers `Template.exists` (now checked by build
+  status), `Sandbox.list` refuses an empty metadata filter (400), Harbor tags its sandboxes
+  `harbor.context_id` / `harbor.trial_name`, not `harbor.job_id` (any `harbor.` key now), and
+  E2B's build gives `user` passwordless sudo back at its last step, so each trial sandbox takes it
+  away as root before anything runs (`DENY_SUDO`, checked: `sudo -n true` refused).
+- **Path I is off until #153.** `CONVENTION_EVALS_CLI_PATH` (`start/env.ts`, off unless `enabled`)
+  is read by the plan and the route, which refuse a saved `anthropic` or `openai` key with
+  `cli_path_unavailable` (422 on start), and again by the worker, which ends a path I run queued
+  before it was turned off as `failed` with that reason without starting Harbor. The live checks
+  with a fake key turned it on for their own process only.
+- **The pilot** (`node ace evals:pilot`, dev only, `commands/evals-pilot.ts` and
+  `app/convention-evals/services/eval-pilot.ts`): path II only, with the admin's configured
+  provider, the Claude subscription (`claude-code`, model `sonnet`, the catalog's first
+  suggestion for the kind, as the browser sends it), within the $5 cap (with a subscription, the
+  equivalent cost of the quota used). `--enable-flag` sets `convention-evals` through `updateFlag`
+  to the admin's email alone (rollout 0, rule `pilot-admin`) and checks it reads on for the admin
+  and off for another account. `--prepare` creates or reuses the admin's "Convention tests pilot"
+  configuration, outside any project, through the routes' services, holding
+  `git.commit-messages` = `conventional` and `tooling.package-manager` = `pnpm`. `--run --config
+  <id> --kind claude-code` plans the test (it refuses anything but path II), starts it through
+  `startConventionEval` (the route's own start: the run row, the account lock, job data with ids
+  and kinds only) and runs `RunConventionEvalJob.process()` in its own process, printing each
+  trial stored (verdicts, tokens), then held n/k per rule and condition (success and compliance
+  apart), the tokens, the equivalent cost, the duration and the sandboxes E2B still lists for the
+  run; `--dry` stops after the plan. Its dry plan on the dev database: 3 tasks, 18 trials,
+  estimate $2.70 to $6.75 (prices of 2026-11-27), cap $5: the upper estimate passes the cap, so
+  the run may end `cancelled` at the cap with the remaining trials not started.
+- **Pilot run #371 (2026-11-27, 13:00:41 to 13:12:56 UTC, local dev install, run by the
+  owner's decision through path II only).** Admin's Claude subscription, model `sonnet`, flag on
+  for the admin alone, cap $5. Ended `done`, 18 of 18 trials, 12 min 13 s (trials run one at a
+  time: 8 to 142 s each). Tokens: input 188, cache read 104,748, cache write 97,827, output
+  15,327: an equivalent cost of $0.41 at the prices of 2026-11-27 (Sonnet 5.5), about $0.023 a
+  trial, under the estimate's low end ($2.70): the estimate is revised from these figures
+  (ticket 8). With a subscription this is quota, not money. Held n/k (success and compliance
+  apart):
+
+  | Rule | Condition | Success | Compliance |
+  |---|---|---|---|
+  | `tooling.package-manager` = `pnpm` | none | 6/6 | 4/6 |
+  | `tooling.package-manager` = `pnpm` | full | 6/6 | 3/6 |
+  | `git.commit-messages` = `conventional` | none | 3/3 | 0/3 |
+  | `git.commit-messages` = `conventional` | full | 3/3 | 3/3 |
+
+  The commit-message rule moves from 0/3 to 3/3 with the conventions. The pnpm rule does not
+  (4/6 to 3/6): its `pnpm-add` task fails compliance in 5 of 6 trials, 4 of which took about
+  140 s, which points at the task in a sandbox with no network (an install that waits, then
+  another package manager) rather than at the conventions; to read in the transcripts before the
+  figure is trusted (section 12). With k = 3 neither difference is significant. E2B listed no
+  sandbox of the run afterwards; the install's logs of the run's window hold no key pattern and
+  nothing of the subscription's files.
 
 Tickets 1 to 3 are done in #147 (section 13 has their live checks). What they changed for the
 next ones: sandboxes have 1 GB of memory, not 2 (the install's huge pages); the environment class

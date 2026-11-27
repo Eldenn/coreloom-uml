@@ -86,6 +86,15 @@ export {
   requestDeviceCode,
 } from './codex.ts'
 export {
+  addUsage,
+  CODING_TRIAL,
+  type CodingTrialInput,
+  type CodingTrialResult,
+  type CodingTrialUsage,
+  NO_USAGE,
+  runCodingTrial,
+} from './coding-trial.ts'
+export {
   CONFORMANCE_COMMENT_MAX_LENGTH,
   CONFORMANCE_EVIDENCE_MAX,
   CONFORMANCE_FINDINGS_MAX,

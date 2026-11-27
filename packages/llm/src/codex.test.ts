@@ -1,4 +1,4 @@
-import { generateText, Output, streamText } from 'ai'
+import { generateText, Output, stepCountIs, streamText, tool } from 'ai'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import {
@@ -320,5 +320,74 @@ describe('review fixes', () => {
     const { fetch, seen } = fakeFetch(json({ access_token: ACCESS, expires_in: 600 }))
     await refreshCodexTokens(fetch, 'r', NOW)
     expect(first(seen).init.signal).toBeInstanceOf(AbortSignal)
+  })
+})
+
+/** A completed Responses stream whose output is these items. */
+function completedItems(output: unknown[]) {
+  const response = {
+    id: 'resp_tools',
+    object: 'response',
+    created_at: 1_700_000_000,
+    model: 'gpt-5.5',
+    status: 'completed',
+    output,
+    incomplete_details: null,
+    usage: { input_tokens: 5, output_tokens: 1, total_tokens: 6 },
+  }
+  return new Response(
+    `event: response.completed\ndata: ${JSON.stringify({ type: 'response.completed', response })}\n\n`,
+    { status: 200, headers: { 'content-type': 'text/event-stream' } },
+  )
+}
+
+describe('a tool call carried from one step to the next', () => {
+  it('sends the earlier items whole, never as references the endpoint does not keep', async () => {
+    const { fetch, seen } = fakeFetch(
+      completedItems([
+        { type: 'reasoning', id: 'rs_1', summary: [], encrypted_content: 'sealed-reasoning' },
+        {
+          type: 'function_call',
+          id: 'fc_1',
+          call_id: 'call_1',
+          name: 'run',
+          arguments: '{"command":"ls"}',
+          status: 'completed',
+        },
+      ]),
+      completed('Done'),
+    )
+    const ran: string[] = []
+    const result = await generateText({
+      model: createCodexModel('gpt-5.5', CREDENTIAL, fetch),
+      prompt: 'List the files',
+      tools: {
+        run: tool({
+          inputSchema: z.object({ command: z.string() }),
+          execute: async ({ command }) => {
+            ran.push(command)
+            return 'README.md'
+          },
+        }),
+      },
+      stopWhen: stepCountIs(3),
+      maxRetries: 0,
+    })
+    expect(ran).toEqual(['ls'])
+    expect(result.text).toBe('Done')
+    const second = JSON.parse(String(seen[1]?.init.body))
+    const types = second.input.map((item: { type?: string }) => item.type)
+    expect(types).not.toContain('item_reference')
+    expect(second.input).toContainEqual(
+      expect.objectContaining({ type: 'function_call', call_id: 'call_1', name: 'run' }),
+    )
+    expect(second.input).toContainEqual(
+      expect.objectContaining({ type: 'function_call_output', call_id: 'call_1' }),
+    )
+    expect(second.input).toContainEqual(
+      expect.objectContaining({ type: 'reasoning', encrypted_content: 'sealed-reasoning' }),
+    )
+    expect(second.include).toContain('reasoning.encrypted_content')
+    expect(second.store).toBe(false)
   })
 })
