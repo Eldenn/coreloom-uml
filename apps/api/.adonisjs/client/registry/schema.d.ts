@@ -1003,6 +1003,54 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/agent-configs/controllers/agent-config-imports-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'agent_configs.evals.plan': {
+    methods: ["GET","HEAD"]
+    pattern: '/agent-configs/:id/evals/plan'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/convention-evals/validators/convention-evals-input').planConventionEvalInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/convention-evals/controllers/convention-evals-controller').default['plan']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/convention-evals/controllers/convention-evals-controller').default['plan']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'agent_configs.evals.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/agent-configs/:id/evals'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQueryForGet<InferInput<(typeof import('#app/convention-evals/validators/convention-evals-input').listConventionEvalsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/convention-evals/controllers/convention-evals-controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/convention-evals/controllers/convention-evals-controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'agent_configs.evals.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/agent-configs/:id/evals/:runId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; runId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/convention-evals/controllers/convention-evals-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/convention-evals/controllers/convention-evals-controller').default['show']>>>
+    }
+  }
+  'agent_configs.evals.store': {
+    methods: ["POST"]
+    pattern: '/agent-configs/:id/evals'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/convention-evals/validators/convention-evals-input').startConventionEvalInput)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#app/convention-evals/validators/convention-evals-input').startConventionEvalInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/convention-evals/controllers/convention-evals-controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/convention-evals/controllers/convention-evals-controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'llm.providers': {
     methods: ["GET","HEAD"]
     pattern: '/llm/providers'

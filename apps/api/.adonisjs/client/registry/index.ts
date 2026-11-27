@@ -504,6 +504,30 @@ const routes = {
     tokens: [{"old":"/agent-configs/:id/imports","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/imports","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/imports","type":0,"val":"imports","end":""}],
     types: placeholder as Registry['agent_configs.imports.store']['types'],
   },
+  'agent_configs.evals.plan': {
+    methods: ["GET","HEAD"],
+    pattern: '/agent-configs/:id/evals/plan',
+    tokens: [{"old":"/agent-configs/:id/evals/plan","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/evals/plan","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/evals/plan","type":0,"val":"evals","end":""},{"old":"/agent-configs/:id/evals/plan","type":0,"val":"plan","end":""}],
+    types: placeholder as Registry['agent_configs.evals.plan']['types'],
+  },
+  'agent_configs.evals.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/agent-configs/:id/evals',
+    tokens: [{"old":"/agent-configs/:id/evals","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/evals","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/evals","type":0,"val":"evals","end":""}],
+    types: placeholder as Registry['agent_configs.evals.index']['types'],
+  },
+  'agent_configs.evals.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/agent-configs/:id/evals/:runId',
+    tokens: [{"old":"/agent-configs/:id/evals/:runId","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/evals/:runId","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/evals/:runId","type":0,"val":"evals","end":""},{"old":"/agent-configs/:id/evals/:runId","type":1,"val":"runId","end":""}],
+    types: placeholder as Registry['agent_configs.evals.show']['types'],
+  },
+  'agent_configs.evals.store': {
+    methods: ["POST"],
+    pattern: '/agent-configs/:id/evals',
+    tokens: [{"old":"/agent-configs/:id/evals","type":0,"val":"agent-configs","end":""},{"old":"/agent-configs/:id/evals","type":1,"val":"id","end":""},{"old":"/agent-configs/:id/evals","type":0,"val":"evals","end":""}],
+    types: placeholder as Registry['agent_configs.evals.store']['types'],
+  },
   'llm.providers': {
     methods: ["GET","HEAD"],
     pattern: '/llm/providers',
