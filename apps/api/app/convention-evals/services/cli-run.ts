@@ -44,6 +44,7 @@ export class HarborRunError extends Error {
 
 /** Harbor's error class names a trial's error reason is reduced to; any other is `agent_error`. */
 const HARBOR_ERRORS: Readonly<Record<string, EvalFailureReason>> = {
+  AgentAuthenticationError: EvalFailureReason.ProviderAuth,
   AgentTimeoutError: EvalFailureReason.AgentTimeout,
   EnvironmentStartTimeoutError: EvalFailureReason.SandboxUnavailable,
   VerifierTimeoutError: EvalFailureReason.GradingFailed,
@@ -90,8 +91,9 @@ export async function runCli(context: CliContext): Promise<void> {
   // Harbor answered nothing and nothing stopped it: the runner failed, the run did not pass.
   if (results.length === 0 && !ledger.stopped) throw new HarborRunError()
   for (const result of results) {
-    if (ledger.stopped === EvalFailureReason.Leaked) break
+    // Every trial's tokens were spent, stored or not: the cost counts them all, a leak or not.
     if (result.usage) ledger.addUsage(result.usage)
+    if (ledger.stopped === EvalFailureReason.Leaked) continue
     const task = context.tasks.find((item) => item.id === result.taskId)
     if (!task) continue
     const outcome = await gradeResult(context, task, result)

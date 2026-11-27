@@ -3,6 +3,7 @@ import app from '@adonisjs/core/services/app'
 import logger from '@adonisjs/core/services/logger'
 import { CATALOG_VERSION } from '@coreloom-uml/catalog'
 import { FeatureFlagKey } from '@coreloom-uml/feature-flags'
+import { DateTime } from 'luxon'
 import {
   AGENT_CONFIG_NOT_FOUND,
   findOwnedAgentConfig,
@@ -109,48 +110,48 @@ export default class ConventionEvalsController {
         refusal: plan.refusal,
       })
     }
-    if (!(await acquireEvalLock(user.id, plan.path))) {
+    // The row first, so the lock holds its id: only this run may renew or free it.
+    const run = await ConventionEvalRun.create({
+      userId: user.id,
+      agentConfigId: config.id,
+      path: plan.path,
+      agent: plan.agent,
+      providerKind: provider.kind,
+      model: provider.model,
+      status: EvalRunStatus.Queued,
+      failureReason: null,
+      capUsd: CONVENTION_EVAL_LIMITS.capUsd,
+      estimateLowUsd: plan.estimate?.lowUsd ?? null,
+      estimateHighUsd: plan.estimate?.highUsd ?? null,
+      pricesCheckedOn: plan.pricesCheckedOn,
+      costUsd: null,
+      inputTokens: 0,
+      cachedInputTokens: 0,
+      cacheWriteTokens: 0,
+      outputTokens: 0,
+      trialCount: plan.trials,
+      // The revision tested is the one the job renders (it writes it again then).
+      configRevision: config.revision,
+      catalogVersion: CATALOG_VERSION,
+      startedAt: null,
+      endedAt: null,
+    })
+    if (!(await acquireEvalLock(user.id, plan.path, String(run.id)))) {
+      await run.delete()
       return response.conflict(CONVENTION_EVAL_BUSY)
     }
-
-    let run: ConventionEvalRun | null = null
     try {
-      run = await ConventionEvalRun.create({
-        userId: user.id,
-        agentConfigId: config.id,
-        path: plan.path,
-        agent: plan.agent,
-        providerKind: provider.kind,
-        model: provider.model,
-        status: EvalRunStatus.Queued,
-        failureReason: null,
-        capUsd: CONVENTION_EVAL_LIMITS.capUsd,
-        estimateLowUsd: plan.estimate?.lowUsd ?? null,
-        estimateHighUsd: plan.estimate?.highUsd ?? null,
-        pricesCheckedOn: plan.pricesCheckedOn,
-        costUsd: null,
-        inputTokens: 0,
-        cachedInputTokens: 0,
-        cacheWriteTokens: 0,
-        outputTokens: 0,
-        trialCount: plan.trials,
-        configRevision: config.revision,
-        catalogVersion: CATALOG_VERSION,
-        startedAt: null,
-        endedAt: null,
-      })
       // Ids and kinds only: the job resolves the credential itself.
       await RunConventionEvalJob.dispatch({
         runId: run.id,
         provider: { kind: provider.kind, model: provider.model },
       })
     } catch (error) {
-      if (run) {
-        run.status = EvalRunStatus.Failed
-        run.failureReason = EvalFailureReason.RunnerFailed
-        await run.save().catch(() => undefined)
-      }
-      await releaseEvalLock(user.id)
+      run.status = EvalRunStatus.Failed
+      run.failureReason = EvalFailureReason.RunnerFailed
+      run.endedAt = DateTime.now()
+      await run.save().catch(() => undefined)
+      await releaseEvalLock(user.id, String(run.id))
       throw error
     }
     logger.info(

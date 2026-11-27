@@ -24,7 +24,7 @@ import {
   purgeRunFoldersOnce,
   removeRunFolder,
 } from '#app/convention-evals/services/eval-folders'
-import { releaseEvalLock } from '#app/convention-evals/services/eval-lock'
+import { releaseEvalLock, renewEvalLock } from '#app/convention-evals/services/eval-lock'
 import { EVAL_CONDITIONS, routeOf, tasksFor } from '#app/convention-evals/services/eval-plan'
 import { buildGraderArchive } from '#app/convention-evals/services/grader-bundle'
 import { type HarnessTrial, runHarness } from '#app/convention-evals/services/harness-run'
@@ -32,6 +32,7 @@ import { SecretFilter } from '#app/convention-evals/services/output-filter'
 import { RunLedger } from '#app/convention-evals/services/run-ledger'
 import { userLanguageModel } from '#app/llm/services/language-models'
 import { resolveCredential } from '#app/llm-connections/services/llm-credential'
+import { assertOwner } from '#app/shared/authorization/assert-owner'
 import User from '#app/users/models/user'
 
 /**
@@ -58,14 +59,32 @@ export default class RunConventionEvalJob extends Job<RunConventionEvalJobData, 
     removeOnFail: 100,
   }
 
+  /**
+   * The signal that ends a run at its path's hard limit, counted from `process()`. A seam: the
+   * specs give a shorter one rather than change `CONVENTION_EVAL_LIMITS`.
+   */
+  static deadlineOf: (path: EvalPath) => AbortSignal = (path) =>
+    AbortSignal.timeout(CONVENTION_EVAL_LIMITS.hardLimitMs[path])
+
   async process(): Promise<void> {
     const run = await ConventionEvalRun.find(this.data.runId)
-    if (!run || run.status !== EvalRunStatus.Queued) return
+    if (!run) return
+    const holder = String(run.id)
+    if (run.status !== EvalRunStatus.Queued) {
+      this.logger.warn({ runId: run.id, status: run.status }, 'convention test not queued')
+      // Ended meanwhile (the sweep, a failed dispatch): its slot is free again, if still its.
+      if (run.status !== EvalRunStatus.Running) await releaseEvalLock(run.userId, holder)
+      return
+    }
     let dir: string | null = null
     try {
+      // The slot from now for the whole hard limit: the run may have waited in the queue.
+      if (!(await renewEvalLock(run.userId, run.path, holder))) {
+        return await this.end(run, EvalRunStatus.Failed, EvalFailureReason.Busy)
+      }
       const user = await User.find(run.userId)
       const config = await AgentConfig.find(run.agentConfigId)
-      if (!user || !config || config.userId !== user.id) {
+      if (!user || !config || !assertOwner(config, user)) {
         return await this.end(run, EvalRunStatus.Failed, EvalFailureReason.RunnerFailed)
       }
       await purgeRunFoldersOnce()
@@ -78,11 +97,16 @@ export default class RunConventionEvalJob extends Job<RunConventionEvalJobData, 
       await this.end(run, outcome.status, outcome.reason)
     } catch (error) {
       const reason = error instanceof LlmCallError ? error.reason : EvalFailureReason.RunnerFailed
+      // The class name only: a message may hold a path, a provider's text or worse.
+      this.logger.error(
+        { runId: run.id, error: error instanceof Error ? error.constructor.name : typeof error },
+        'convention test failed',
+      )
       await this.end(run, EvalRunStatus.Failed, reason).catch(() => undefined)
     } finally {
       if (dir) await removeRunFolder(dir).catch(() => undefined)
       if (run.path === EvalPath.Cli) await killRunSandboxes(run.id).catch(() => 0)
-      await releaseEvalLock(run.userId)
+      await releaseEvalLock(run.userId, holder)
     }
   }
 
@@ -109,8 +133,11 @@ export default class RunConventionEvalJob extends Job<RunConventionEvalJobData, 
         extra && !inputs.targets.includes(extra) ? [...inputs.targets, extra] : inputs.targets,
     })
     const files = workspaceFiles(rendered.files)
+    // The revision tested is the one rendered now, whatever it was when the run was asked for.
+    run.configRevision = config.revision
+    await run.save()
     const graderArchive = await buildGraderArchive(dir)
-    const deadline = AbortSignal.timeout(CONVENTION_EVAL_LIMITS.hardLimitMs[route.path])
+    const deadline = RunConventionEvalJob.deadlineOf(route.path)
     const price = priceOf(provider.kind, provider.model)
 
     if (route.path === EvalPath.Cli && route.agent !== EvalAgent.Harness && route.providerHost) {
@@ -167,14 +194,33 @@ export default class RunConventionEvalJob extends Job<RunConventionEvalJobData, 
       return { status: EvalRunStatus.Leaked, reason: EvalFailureReason.Leaked }
     }
     if (ledger.stopped) return { status: EvalRunStatus.Cancelled, reason: ledger.stopped }
+    // Nothing graded is no result: the run failed, for the reason most of its trials gave.
+    if (ledger.graded === 0) {
+      return {
+        status: EvalRunStatus.Failed,
+        reason: ledger.commonError ?? EvalFailureReason.RunnerFailed,
+      }
+    }
     return { status: EvalRunStatus.Done, reason: null }
   }
 
+  /**
+   * Ends the run, unless it already ended (the sweep took it for a dead worker's): a run that
+   * ended stays as it ended.
+   */
   private async end(run: ConventionEvalRun, status: EvalRunStatus, reason: string | null) {
+    const endedAt = DateTime.now()
+    const updated = await ConventionEvalRun.query()
+      .where('id', run.id)
+      .whereIn('status', [EvalRunStatus.Queued, EvalRunStatus.Running])
+      .update({ status, failureReason: reason, endedAt: endedAt.toSQL() })
+    if (Number(updated[0] ?? 0) === 0) {
+      this.logger.warn({ runId: run.id, status }, 'convention test already ended')
+      return
+    }
     run.status = status
     run.failureReason = reason
-    run.endedAt = DateTime.now()
-    await run.save()
+    run.endedAt = endedAt
     const trials = await run.related('trials').query().count('* as total')
     this.logger.info(
       {
