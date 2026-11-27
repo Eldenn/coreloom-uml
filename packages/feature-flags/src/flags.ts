@@ -14,6 +14,7 @@ export const FeatureFlagKey = {
   AssistantActions: 'assistant-actions',
   AssistantRepository: 'assistant-repository',
   DesignRecords: 'design-records',
+  ConventionEvals: 'convention-evals',
 } as const
 
 export type FeatureFlagKey = (typeof FeatureFlagKey)[keyof typeof FeatureFlagKey]
@@ -107,6 +108,14 @@ export const FEATURE_FLAGS: readonly FeatureFlagDeclaration[] = [
     description:
       "Lets people record a project's requirements and architecture decisions, which the assistant reads before it draws.",
     tags: ['design', 'llm'],
+    defaultState: OFF,
+  },
+  {
+    key: FeatureFlagKey.ConventionEvals,
+    name: 'Convention tests',
+    description:
+      'Lets the owner of agent conventions test them against a coding agent in E2B sandboxes, paid with their own provider. Needs E2B_API_KEY on the server and the convention-evals worker.',
+    tags: ['agents', 'llm'],
     defaultState: OFF,
   },
 ]
