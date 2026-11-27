@@ -13,6 +13,19 @@ export const en = {
     featureFlags: 'Feature flags',
     settings: 'Settings',
   },
+  jobs: {
+    names: {
+      RefreshSkillsJob: 'Skills catalog search',
+      ScanSkillVersionJob: 'Scan of a skill copy',
+      CaptureSkillVersionJob: 'Sync of a skill',
+      ClassifySkillTopicsJob: 'Tagging of the skills',
+      ImportGithubCodeMapJob: 'Code map import from GitHub',
+      FollowGithubPushJob: 'GitHub push',
+      PruneAssistantSandboxesJob: 'Cleanup of the assistant sandboxes',
+    } as Record<string, string>,
+    retry: (attempt: number) => `Attempt ${attempt}`,
+    more: (count: number) => (count === 1 ? '1 more job waiting' : `${count} more jobs waiting`),
+  },
   shell: {
     workspace: 'Personal',
     main: 'Workspace',
@@ -1825,6 +1838,20 @@ export const fr: Messages = {
     skills: 'Skills',
     featureFlags: 'Feature flags',
     settings: 'Réglages',
+  },
+  jobs: {
+    names: {
+      RefreshSkillsJob: 'Recherche du catalogue de skills',
+      ScanSkillVersionJob: 'Scan d’une copie de skill',
+      CaptureSkillVersionJob: 'Synchro d’un skill',
+      ClassifySkillTopicsJob: 'Classement des skills par thème',
+      ImportGithubCodeMapJob: 'Import d’une code map depuis GitHub',
+      FollowGithubPushJob: 'Push GitHub',
+      PruneAssistantSandboxesJob: 'Nettoyage des sandboxes de l’assistant',
+    },
+    retry: (attempt: number) => `Tentative ${attempt}`,
+    more: (count: number) =>
+      count === 1 ? '1 autre tâche en attente' : `${count} autres tâches en attente`,
   },
   shell: {
     workspace: 'Personnel',

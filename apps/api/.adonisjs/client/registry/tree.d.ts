@@ -103,6 +103,9 @@ export interface ApiDefinition {
       update: typeof routes['admin.skills.update']
       topics: typeof routes['admin.skills.topics']
     }
+    jobs: {
+      index: typeof routes['admin.jobs.index']
+    }
     skillSources: {
       index: typeof routes['admin.skill_sources.index']
       store: typeof routes['admin.skill_sources.store']

@@ -39,6 +39,7 @@ import { AssistantProvider } from '@/lib/assistant-context'
 import { apiBaseUrl } from '@/lib/client'
 import { type Locale, useLocale, useT } from '@/lib/locale'
 import { LegacyKeyOffer } from '@/llm/legacy-key-offer'
+import { RunningJobs } from '@/queue-jobs/running-jobs'
 
 export const Route = createFileRoute('/_authed')({
   // Runs before any page under it loads or renders, so a signed-out visitor never reaches one.
@@ -270,6 +271,7 @@ function AuthedLayout() {
         commands={commands}
         headerActions={
           <>
+            {user.isAdmin && <RunningJobs />}
             <LanguageMenu />
           </>
         }
