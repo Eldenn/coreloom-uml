@@ -590,10 +590,8 @@ class GithubReader {
       license?: { spdx_id?: string } | null
     }
     if (info.archived) throw new SkipError('archived repository')
+    // Not refused here: without an open licence of its own, each skill's folder may hold one.
     const license = info.license?.spdx_id ?? 'none'
-    if (!(OPEN_LICENSES as readonly string[]).includes(license)) {
-      throw new SkipError(`licence not accepted: ${license}`)
-    }
     const branch = info.default_branch ?? 'main'
     const commit = (await this.http.json(
       `${GITHUB_API}/repos/${owner}/${repo}/commits/${encodeURIComponent(branch)}`,
@@ -605,6 +603,63 @@ class GithubReader {
     const fullName = info.full_name ?? `${owner}/${repo}`
     return { license, commit: commit.sha, entries: tree.tree ?? [], fullName }
   }
+}
+
+const LICENSE_FILE = /^LICEN[CS]E(\.[a-z]+)?$/i
+/** What GitHub says of a repository with no licence, or one it cannot name: its folders may. */
+const UNLICENSED = new Set(['none', 'NOASSERTION'])
+
+function isOpenLicense(spdx: string | null): spdx is string {
+  return spdx !== null && (OPEN_LICENSES as readonly string[]).includes(spdx)
+}
+
+/**
+ * The licence of a skill whose repository has no licence of its own (`UNLICENSED`): a licence file of its
+ * folder, read and named (`identifyLicense`), else the `license:` its SKILL.md declares.
+ */
+async function folderLicense(
+  snapshot: RepoSnapshot,
+  folder: string,
+  raw: (path: string) => Promise<string>,
+  readSkill: () => Promise<string>,
+): Promise<string> {
+  const file = snapshot.entries.find(
+    (entry) =>
+      entry.type === 'blob' &&
+      entry.path.startsWith(`${folder}/`) &&
+      LICENSE_FILE.test(entry.path.slice(folder.length + 1)),
+  )
+  if (file) {
+    const spdx = identifyLicense(await raw(file.path))
+    if (!spdx) throw new SkipError(`licence not accepted: ${file.path} not recognised`)
+    return spdx
+  }
+  const declared = readFrontmatter(await readSkill()).license
+  if (declared && isOpenLicense(declared)) return declared
+  throw new SkipError(`licence not accepted: ${snapshot.license}`)
+}
+
+/**
+ * The open licence (`OPEN_LICENSES`) a licence file's text holds, by the words each one is
+ * written with, or null. Most specific first: ISC is 0BSD plus its notice clause.
+ */
+export function identifyLicense(text: string): (typeof OPEN_LICENSES)[number] | null {
+  const words = text.toLowerCase().replace(/\s+/g, ' ')
+  if (/apache license,? version 2\.0/.test(words)) return 'Apache-2.0'
+  if (words.includes('permission is hereby granted, free of charge')) return 'MIT'
+  if (words.includes('redistribution and use in source and binary forms')) {
+    return words.includes('neither the name') ? 'BSD-3-Clause' : 'BSD-2-Clause'
+  }
+  if (words.includes('for any purpose with or without fee is hereby granted')) {
+    return words.includes('provided that the above copyright notice') ? 'ISC' : '0BSD'
+  }
+  if (words.includes('mozilla public license version 2.0')) return 'MPL-2.0'
+  if (words.includes('free and unencumbered software released into the public domain')) {
+    return 'Unlicense'
+  }
+  if (words.includes('cc0 1.0 universal')) return 'CC0-1.0'
+  if (words.includes('attribution 4.0 international')) return 'CC-BY-4.0'
+  return null
 }
 
 /** Pins the skill to its repository's latest commit, unless its folder did not change. */
@@ -619,7 +674,6 @@ async function checkOnGithub(
   const [, owner, repo] = match as unknown as [string, string, string]
 
   const snapshot = await github.repo(owner, repo)
-  record.license = snapshot.license
   const skillFile = snapshot.entries.find(
     (entry) =>
       entry.type === 'blob' &&
@@ -634,12 +688,26 @@ async function checkOnGithub(
     (entry) => entry.type === 'tree' && entry.path === folder,
   )?.sha
   if (!folderSha) throw new SkipError('cannot read the skill folder')
-  if (record.contentSha === folderSha && record.description.en !== '') return
+  const unchanged = record.contentSha === folderSha && record.description.en !== ''
+  const raw = (path: string) =>
+    http.text(`${GITHUB_RAW}/${owner}/${repo}/${snapshot.commit}/${path}`)
+  let markdown: string | undefined
+  const readSkill = async () => {
+    markdown ??= await raw(skillFile.path)
+    return markdown
+  }
 
-  const markdown = await http.text(
-    `${GITHUB_RAW}/${owner}/${repo}/${snapshot.commit}/${skillFile.path}`,
-  )
-  const frontmatter = readFrontmatter(markdown)
+  if (isOpenLicense(snapshot.license)) record.license = snapshot.license
+  else if (UNLICENSED.has(snapshot.license)) {
+    record.license = snapshot.license
+    record.license = await folderLicense(snapshot, folder, raw, readSkill)
+  } else {
+    record.license = snapshot.license
+    throw new SkipError(`licence not accepted: ${snapshot.license}`)
+  }
+  if (unchanged) return
+
+  const frontmatter = readFrontmatter(await readSkill())
   const description = cleanText(frontmatter.description ?? '', 300)
   if (!description) throw new SkipError('SKILL.md has no description')
   record.name = cleanText(`${frontmatter.name ?? candidate.slug} (${owner})`, 80)
@@ -719,7 +787,11 @@ export function parseGithubTreeUrl(url: string) {
 }
 
 /** The `name` and `description` of a `SKILL.md` frontmatter (plain or quoted, one line or folded). */
-export function readFrontmatter(markdown: string): { name?: string; description?: string } {
+export function readFrontmatter(markdown: string): {
+  name?: string
+  description?: string
+  license?: string
+} {
   const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(markdown)
   if (!match?.[1]) return {}
   const fields: Record<string, string> = {}
@@ -736,7 +808,12 @@ export function readFrontmatter(markdown: string): { name?: string; description?
     }
   }
   const unquote = (value?: string) => value?.trim().replace(/^(['"])([\s\S]*)\1$/, '$2')
-  return { name: unquote(fields.name), description: unquote(fields.description) }
+  const license = unquote(fields.license)
+  return {
+    name: unquote(fields.name),
+    description: unquote(fields.description),
+    ...(license ? { license } : {}),
+  }
 }
 
 /** One line, no HTML or managed-block marker, cut to `max` characters. */
