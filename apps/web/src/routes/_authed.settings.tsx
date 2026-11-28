@@ -6,6 +6,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { InfoIcon } from 'lucide-react'
 import { z } from 'zod'
 
+import { EvalSettingsSection } from '@/agent-configs/eval-settings-section'
 import { useAuth } from '@/auth/auth-context'
 import { type ApiKeyInput, ApiKeys } from '@/components/api-keys'
 import { SettingsLayout } from '@/components/settings-layout'
@@ -30,6 +31,7 @@ function SettingsPage() {
   const t = useT()
   const { user } = useAuth()
   const codeMaps = useFeature('code-maps')
+  const conventionEvals = useFeature('convention-evals')
   if (!user) return null
   return (
     <SettingsLayout
@@ -52,6 +54,7 @@ function SettingsPage() {
       <LlmProviderSection />
       {user.isAdmin && codeMaps ? <GithubAppSection /> : null}
       {user.isAdmin ? <WebSearchSection /> : null}
+      {user.isAdmin && conventionEvals ? <EvalSettingsSection /> : null}
       <SettingsSection title={t.settings.appearance}>
         <SettingsRow label={t.settings.theme}>
           <ThemeMenu />

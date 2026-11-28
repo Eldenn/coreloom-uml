@@ -94,6 +94,10 @@ export interface ApiDefinition {
       update: typeof routes['admin.web_search.update']
       destroy: typeof routes['admin.web_search.destroy']
     }
+    conventionEvals: {
+      show: typeof routes['admin.convention_evals.show']
+      update: typeof routes['admin.convention_evals.update']
+    }
     skillVersions: {
       index: typeof routes['admin.skill_versions.index']
       store: typeof routes['admin.skill_versions.store']

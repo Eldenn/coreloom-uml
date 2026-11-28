@@ -14,6 +14,7 @@ import {
 import { EVAL_PRICES_CHECKED_ON } from '#app/convention-evals/constants/eval-prices'
 import { cliPathEnabled } from '#app/convention-evals/services/cli-path'
 import { priceOf, roundUsd, trialEstimate } from '#app/convention-evals/services/eval-cost'
+import { evalCapUsd } from '#app/convention-evals/services/eval-settings'
 import { providerProblem } from '#app/llm/services/language-models'
 import type { ProviderKind } from '#app/llm-connections/constants/llm-connections'
 import { resolveCredential } from '#app/llm-connections/services/llm-credential'
@@ -96,7 +97,8 @@ export async function planEval(
 
   const resolved = await resolveCredential(provider, user)
   if ('notFound' in resolved) return resolved
-  const refusal = refusalOf({ tasks, provider, resolved, estimate, path: route.path })
+  const capUsd = await evalCapUsd()
+  const refusal = refusalOf({ tasks, provider, resolved, estimate, path: route.path, capUsd })
   return {
     ...route,
     label: EVAL_AGENT_LABELS[route.agent],
@@ -114,7 +116,7 @@ export async function planEval(
     trials,
     estimate,
     pricesCheckedOn: EVAL_PRICES_CHECKED_ON,
-    capUsd: CONVENTION_EVAL_LIMITS.capUsd,
+    capUsd,
     maxTokens: CONVENTION_EVAL_LIMITS.maxTokens,
     refusal,
     testable: testableRules(),
@@ -127,6 +129,7 @@ function refusalOf(input: {
   resolved: Exclude<Awaited<ReturnType<typeof resolveCredential>>, { notFound: true }>
   estimate: EvalPlan['estimate']
   path: EvalPath
+  capUsd: number
 }): EvalRefusal | null {
   if (input.tasks.length === 0) return EvalRefusal.NoTestableRule
   if (input.path === EvalPath.Cli && !cliPathEnabled()) return EvalRefusal.CliPathUnavailable
@@ -136,8 +139,6 @@ function refusalOf(input: {
   if (requiresApiKey(input.provider.kind) && !key) return EvalRefusal.NoCredential
   const effective = baseUrl ? { ...input.provider, baseUrl } : input.provider
   if (providerProblem(effective, key)) return EvalRefusal.ProviderSettings
-  if (input.estimate && input.estimate.lowUsd > CONVENTION_EVAL_LIMITS.capUsd) {
-    return EvalRefusal.OverCap
-  }
+  if (input.estimate && input.estimate.lowUsd > input.capUsd) return EvalRefusal.OverCap
   return null
 }

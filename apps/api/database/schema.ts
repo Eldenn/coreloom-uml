@@ -502,6 +502,19 @@ export class ConventionEvalRunSchema extends BaseModel {
   declare userId: number
 }
 
+export class ConventionEvalSettingSchema extends BaseModel {
+  static $columns = ['capUsd', 'createdAt', 'id', 'updatedAt'] as const
+  $columns = ConventionEvalSettingSchema.$columns
+  @column()
+  declare capUsd: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class ConventionEvalTrialSchema extends BaseModel {
   static $columns = ['attempt', 'cacheWriteTokens', 'cachedInputTokens', 'complianceReason', 'complianceVerdict', 'condition', 'costUsd', 'createdAt', 'durationMs', 'errorReason', 'id', 'inputTokens', 'output', 'outputTokens', 'ruleId', 'ruleSlot', 'runId', 'successReason', 'successVerdict', 'taskId'] as const
   $columns = ConventionEvalTrialSchema.$columns
