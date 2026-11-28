@@ -905,6 +905,11 @@ click-through staging topology, not production: single instance, cookie-based
 sessions, in-memory rate limiter, containerised Postgres, Mailpit instead of a
 real SMTP provider.
 
+> **Known risk, not fixed:** Coolify v4 (v4.7.9 at least) gives every service of a Docker Compose
+> resource all of the resource's variables, so the workers that read untrusted content receive
+> secrets they do not need. Read [`infra/coolify-environment.md`](infra/coolify-environment.md)
+> before deploying this file or the production one.
+
 1. In Coolify: **New Resource → Docker Compose**, connect this repo, set
    **Docker Compose Location** to `/infra/docker-compose.staging.yml`.
 2. Paste the variables from `infra/.env.staging.example` into the resource's
@@ -950,6 +955,10 @@ this file — it's provisioned as its own Coolify **Database** (PostgreSQL)
 resource, the only way to get Coolify's native scheduled backups to an S3
 target — and the API/web images are pulled prebuilt from GHCR rather than
 built on the host (see [Releases and production](#releases-and-production)).
+
+> **Known risk, not fixed:** every service of this resource receives all of its variables on
+> Coolify v4 (see [`infra/coolify-environment.md`](infra/coolify-environment.md)). The project is
+> not deployed to production until it is dealt with.
 
 1. **Create the Postgres resource first**: in Coolify, **New Resource →
    Database → PostgreSQL**, in the same project as the compose resource below
