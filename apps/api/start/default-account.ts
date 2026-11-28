@@ -4,8 +4,9 @@
 |--------------------------------------------------------------------------
 |
 | The admin is the default account (`DEFAULT_ACCOUNT_*`), so the web server stops here rather
-| than serving with no admin. Loaded for the web server only: a worker is not handed the default
-| account (security review I6). `node ace account:ensure-default` checks the same itself.
+| than serving with no admin. Loaded for the web server only: no job reads the default account,
+| and the staging and production compose files give it to no worker (security review I6).
+| `node ace account:ensure-default` checks the same itself.
 */
 import { currentDefaultAccountProblems } from '#app/auth/services/default-account'
 
