@@ -97,7 +97,8 @@ export const CONVENTION_EVAL_LIMITS = {
   concurrency: 3,
   /**
    * The hard cap of a run, in US dollars, from measured tokens and `EVAL_PRICES` (an equivalent
-   * cost for a subscription). Revised from the pilot's measured p90 (ticket 8).
+   * cost for a subscription). Revised from the pilot's measured p90 (ticket 8). The default: the
+   * admin may set another for the instance (`evalCapUsd`, within `CONVENTION_EVAL_CAP_USD`).
    */
   capUsd: 5,
   /** For a kind with no price (`ollama`, `openai-compatible`): the cap is in tokens. */
@@ -160,6 +161,9 @@ export const EVAL_SWEEP_SCHEDULE = {
   pattern: '*/10 * * * *',
   maxAgeMs: 50 * 60_000,
 } as const
+
+/** The bounds of the cap the admin sets for the instance, in US dollars. */
+export const CONVENTION_EVAL_CAP_USD = { min: 1, max: 100 } as const
 
 export const CONVENTION_EVALS_NOT_FOUND = { error: { message: 'Not found' } } as const
 export const CONVENTION_EVAL_RUN_NOT_FOUND = {

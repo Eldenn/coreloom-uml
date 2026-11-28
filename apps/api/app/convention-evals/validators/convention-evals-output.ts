@@ -28,6 +28,9 @@ export type ConventionEvalPlanOutput = {
   testable: { slot: string; rule: string }[]
 }
 
+/** The instance's cap as the admin screen shows it, with the bounds a new one must fit. */
+export type ConventionEvalSettingsOutput = { capUsd: number; minCapUsd: number; maxCapUsd: number }
+
 export type ConventionEvalStartOutput = { runId: number }
 
 export type ConventionEvalTokensOutput = {

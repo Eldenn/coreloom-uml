@@ -229,6 +229,16 @@ router
   .prefix('/admin/web-search')
   .as('admin.web_search')
   .use([middleware.auth(), middleware.admin()])
+const adminConventionEvalsController = () =>
+  import('#app/convention-evals/controllers/admin-convention-evals-controller')
+router
+  .group(() => {
+    router.get('/', [adminConventionEvalsController, 'show']).as('show')
+    router.put('/', [adminConventionEvalsController, 'update']).as('update')
+  })
+  .prefix('/admin/convention-evals')
+  .as('admin.convention_evals')
+  .use([middleware.auth(), middleware.admin()])
 router
   .post('/github/webhook', [
     () => import('#app/github/controllers/github-webhook-controller'),

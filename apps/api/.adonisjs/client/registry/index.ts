@@ -252,6 +252,18 @@ const routes = {
     tokens: [{"old":"/admin/web-search","type":0,"val":"admin","end":""},{"old":"/admin/web-search","type":0,"val":"web-search","end":""}],
     types: placeholder as Registry['admin.web_search.destroy']['types'],
   },
+  'admin.convention_evals.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/admin/convention-evals',
+    tokens: [{"old":"/admin/convention-evals","type":0,"val":"admin","end":""},{"old":"/admin/convention-evals","type":0,"val":"convention-evals","end":""}],
+    types: placeholder as Registry['admin.convention_evals.show']['types'],
+  },
+  'admin.convention_evals.update': {
+    methods: ["PUT"],
+    pattern: '/admin/convention-evals',
+    tokens: [{"old":"/admin/convention-evals","type":0,"val":"admin","end":""},{"old":"/admin/convention-evals","type":0,"val":"convention-evals","end":""}],
+    types: placeholder as Registry['admin.convention_evals.update']['types'],
+  },
   'github.webhook': {
     methods: ["POST"],
     pattern: '/github/webhook',

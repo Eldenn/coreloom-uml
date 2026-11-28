@@ -97,3 +97,24 @@ export function useStartEval(configId: number) {
     },
   })
 }
+
+export const evalSettingsKey = ['admin', 'convention-evals'] as const
+
+/** The instance's cap of a test and its bounds, for the admin's settings. */
+export function useEvalSettings() {
+  return useQuery({
+    queryKey: evalSettingsKey,
+    queryFn: () => client.api.admin.conventionEvals.show({}),
+  })
+}
+
+/** Saves the instance's cap; every plan is asked again, since each one shows it. */
+export function useSaveEvalSettings() {
+  return useMutation({
+    mutationFn: (capUsd: number) => client.api.admin.conventionEvals.update({ body: { capUsd } }),
+    onSuccess: (settings) => {
+      queryClient.setQueryData(evalSettingsKey, settings)
+      return queryClient.invalidateQueries({ queryKey: ['agent-configs', 'detail'] })
+    },
+  })
+}

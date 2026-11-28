@@ -956,6 +956,18 @@ export const en = {
     nothingBack: 'GitHub sent nothing back. Start again from the settings.',
     backToSettings: 'Back to settings',
   },
+  evalSettings: {
+    title: 'Convention tests',
+    description:
+      'The most a convention test may cost before its remaining trials are cancelled. Shown to the admin only.',
+    loadFailed: 'The convention test cap could not be loaded.',
+    cap: 'Cap of a test, in US dollars',
+    capHint: 'Applies to every account. A test already running keeps the cap it started with.',
+    capBounds: (min: string, max: string) => `Enter an amount between ${min} and ${max}.`,
+    save: 'Save',
+    saved: 'Convention test cap saved.',
+    saveFailed: 'The cap could not be saved.',
+  },
   webSearch: {
     title: 'Web search',
     description:
@@ -3099,6 +3111,19 @@ export const fr: Messages = {
     created: 'Application GitHub créée.',
     nothingBack: 'GitHub n’a rien renvoyé. Recommencez depuis les paramètres.',
     backToSettings: 'Retour aux paramètres',
+  },
+  evalSettings: {
+    title: 'Tests de conventions',
+    description:
+      'Ce qu’un test de conventions peut coûter au plus avant que ses essais restants soient annulés. Visible par l’administrateur seulement.',
+    loadFailed: 'Le plafond des tests de conventions n’a pas pu être chargé.',
+    cap: 'Plafond d’un test, en dollars américains',
+    capHint:
+      'Vaut pour tous les comptes. Un test déjà en cours garde le plafond qu’il avait au départ.',
+    capBounds: (min: string, max: string) => `Saisissez un montant entre ${min} et ${max}.`,
+    save: 'Enregistrer',
+    saved: 'Plafond des tests de conventions enregistré.',
+    saveFailed: 'Le plafond n’a pas pu être enregistré.',
   },
   webSearch: {
     title: 'Recherche web',

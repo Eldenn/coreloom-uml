@@ -499,6 +499,30 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/web-search/controllers/admin-web-search-controller').default['destroy']>>>
     }
   }
+  'admin.convention_evals.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/admin/convention-evals'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#app/convention-evals/controllers/admin-convention-evals-controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/convention-evals/controllers/admin-convention-evals-controller').default['show']>>>
+    }
+  }
+  'admin.convention_evals.update': {
+    methods: ["PUT"]
+    pattern: '/admin/convention-evals'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#app/convention-evals/validators/convention-evals-input').saveConventionEvalSettingsInput)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#app/convention-evals/validators/convention-evals-input').saveConventionEvalSettingsInput)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#app/convention-evals/controllers/admin-convention-evals-controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#app/convention-evals/controllers/admin-convention-evals-controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'github.webhook': {
     methods: ["POST"]
     pattern: '/github/webhook'

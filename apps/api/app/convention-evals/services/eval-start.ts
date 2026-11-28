@@ -4,7 +4,6 @@ import type { ProviderSettings } from '@coreloom-uml/llm'
 import { DateTime } from 'luxon'
 import type AgentConfig from '#app/agent-configs/models/agent-config'
 import {
-  CONVENTION_EVAL_LIMITS,
   EvalFailureReason,
   type EvalRefusal,
   EvalRunStatus,
@@ -50,7 +49,7 @@ export async function startConventionEval(
     model: provider.model,
     status: EvalRunStatus.Queued,
     failureReason: null,
-    capUsd: CONVENTION_EVAL_LIMITS.capUsd,
+    capUsd: plan.capUsd,
     estimateLowUsd: plan.estimate?.lowUsd ?? null,
     estimateHighUsd: plan.estimate?.highUsd ?? null,
     pricesCheckedOn: plan.pricesCheckedOn,
