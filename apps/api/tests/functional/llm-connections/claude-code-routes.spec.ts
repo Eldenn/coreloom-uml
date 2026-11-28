@@ -1,3 +1,5 @@
+import { pbkdf2 } from 'node:crypto'
+import { existsSync } from 'node:fs'
 import { mkdir, readdir, readFile, stat, utimes, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import app from '@adonisjs/core/services/app'
@@ -7,7 +9,10 @@ import type { ClaudeRun } from '@coreloom-uml/llm'
 import { test } from '@japa/runner'
 import { updateFlag } from '#app/feature-flags/services/feature-flags'
 import ClaudeCodeCli, { type ClaudeLogin } from '#app/llm-connections/services/claude-code-cli'
-import { startClaudeLogin } from '#app/llm-connections/services/claude-code-connections'
+import {
+  forgetClaude,
+  startClaudeLogin,
+} from '#app/llm-connections/services/claude-code-connections'
 import {
   claudeState,
   deleteClaudeState,
@@ -42,21 +47,39 @@ function makeUser() {
   })
 }
 
+/** How many rounds keep one thread of libuv's pool busy for a while (~0.2 s on a fast machine). */
+const BUSY_ROUNDS = 2_000_000
+/** How long a sign-in stopped with `slowStop` takes to exit. */
+const STOP_MS = 50
+
+/**
+ * Plays a loaded machine: every thread of libuv's pool is busy for a while, so the file system
+ * calls queued next (a folder's removal) wait behind it, while sockets do not.
+ */
+function occupyThreadPool() {
+  const threads = Number(process.env.UV_THREADPOOL_SIZE ?? 4)
+  for (let i = 0; i < threads; i++) pbkdf2('busy', 'salt', BUSY_ROUNDS, 32, 'sha256', () => {})
+}
+
 /**
  * Swaps the binary for a fake that records each call and the folder it ran in. Its sign-in writes
  * `CREDENTIALS` to its folder when it accepts the code, like the real one; `onRun` lets a test
- * play a launch (a refreshed token, a slow call).
+ * play a launch (a refreshed token, a slow call). With `slowStop`, a stopped sign-in plays a slow
+ * machine: it exits after `STOP_MS`, writing its credentials once more on its way out, while its
+ * folder's removal waits behind a busy thread pool; `exited` lists the folders whose binary ended.
  */
 function fakeClaude(options: {
   loggedIn?: boolean
   outcome?: Partial<Outcome>
   accept?: boolean
+  slowStop?: boolean
   onRun?: (configDir: string) => Promise<void>
 }) {
   const record = {
     dirs: [] as string[],
     codes: [] as string[],
     seen: [] as string[],
+    exited: [] as string[],
     killed: 0,
     logouts: 0,
     loggedIn: options.loggedIn ?? false,
@@ -95,14 +118,29 @@ function fakeClaude(options: {
           }
           return record.loggedIn
         },
-        kill: () => {
+        kill: async () => {
           record.killed++
+          if (options.slowStop) {
+            occupyThreadPool()
+            await sleep(STOP_MS)
+            // A folder removed already gets nothing back: the write fails, as the binary's would.
+            await writeFile(join(configDir, '.credentials.json'), CREDENTIALS).catch(() => {})
+          }
+          record.exited.push(configDir)
         },
       }
     }
     return fake
   })
   return record
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** Waits until `check` holds, for at most `ms`. */
+async function eventually(check: () => boolean, ms = 2000) {
+  const until = Date.now() + ms
+  while (!check() && Date.now() < until) await sleep(10)
 }
 
 function readCredentials(dir: string): Promise<string> {
@@ -231,11 +269,48 @@ test.group('Claude subscription', (group) => {
     assert.equal(record.killed, 1)
     await startClaudeLogin(user, { timeoutMs: 20 })
     assert.equal(record.killed, 2)
-    await new Promise((resolve) => setTimeout(resolve, 60))
+    await sleep(60)
     assert.equal(record.killed, 3)
     // Each stopped sign-in took its folder with it.
-    await new Promise((resolve) => setTimeout(resolve, 20))
+    await eventually(() => record.dirs.every((dir) => !existsSync(dir)))
     for (const dir of record.dirs) assert.isNull(await exists(dir))
+  })
+
+  test('on a slow machine, the code route answers once the binary has exited and its folder is gone', async ({
+    client,
+    assert,
+  }) => {
+    const user = await makeUser()
+    await enableClaude(user)
+    const record = fakeClaude({ slowStop: true })
+    await client.post('/llm/connections/claude-code/login').headers(json).loginAs(user)
+    const [loginDir] = record.dirs
+
+    const done = await client
+      .post('/llm/connections/claude-code/login/code')
+      .headers(json)
+      .loginAs(user)
+      .json({ code: CODE })
+    done.assertBody({ connected: true })
+    // Checked at once and without the thread pool: the removal was over before the answer.
+    assert.isFalse(existsSync(loginDir))
+    assert.deepEqual(record.exited, [loginDir])
+    assert.deepEqual(await claudeState(user), { '.credentials.json': CREDENTIALS })
+  })
+
+  test('on a slow machine, a second sign-in or a sign-out answers once the one before is gone', async ({
+    assert,
+  }) => {
+    const user = await makeUser()
+    const record = fakeClaude({ slowStop: true })
+    await startClaudeLogin(user)
+    await startClaudeLogin(user)
+    const [first, second] = record.dirs
+    assert.isFalse(existsSync(first))
+    assert.deepEqual(record.exited, [first])
+    await forgetClaude(user)
+    assert.isFalse(existsSync(second))
+    assert.deepEqual(record.exited, [first, second])
   })
 
   test('two sign-ins started together leave one running', async ({ assert }) => {
@@ -385,7 +460,7 @@ test.group('Claude subscription', (group) => {
       fake.login = () => ({
         url: new Promise<string>(() => {}),
         submit: async () => false,
-        kill: () => {
+        kill: async () => {
           killed++
         },
       })

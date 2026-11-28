@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
@@ -76,5 +76,23 @@ test.group('Claude Code binary runner', () => {
     const login = new ClaudeCodeCli().login(dir)
     cleanup(() => login.kill())
     assert.equal(await login.url, url)
+  })
+
+  test('stopping a sign-in settles once the binary has exited', async ({ assert, cleanup }) => {
+    // The stub records its process id in its folder (HOME), then waits as a sign-in does.
+    cleanup(await stubBinary('echo $$ > "$HOME/pid"; exec sleep 30'))
+    const dir = await mkdtemp(join(tmpdir(), 'claude-home-'))
+    cleanup(() => rm(dir, { recursive: true, force: true }))
+    const login = new ClaudeCodeCli().login(dir)
+    let pid = Number.NaN
+    for (let tries = 0; Number.isNaN(pid) && tries < 200; tries++) {
+      pid = Number.parseInt(await readFile(join(dir, 'pid'), 'utf8').catch(() => ''), 10)
+      if (Number.isNaN(pid)) await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+    assert.isFalse(Number.isNaN(pid))
+    await login.kill()
+    // Gone, not merely signalled: a killed process stays listed until its parent has seen it end.
+    assert.throws(() => process.kill(pid, 0), /ESRCH/)
+    await login.kill()
   })
 })

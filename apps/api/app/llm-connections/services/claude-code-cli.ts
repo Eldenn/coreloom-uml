@@ -27,7 +27,8 @@ export type ClaudeLogin = {
   url: Promise<string>
   /** Gives the code to the binary: `true` once it says it is signed in. */
   submit(code: string): Promise<boolean>
-  kill(): void
+  /** Stops the binary; resolves once it has exited, so nothing of it writes to its folder after. */
+  kill(): Promise<void>
 }
 
 function quiet(command: string[], configDir: string, timeoutMs: number) {
@@ -169,8 +170,9 @@ export default class ClaudeCodeCli {
           })
         })
       },
-      kill: () => {
+      kill: async () => {
         if (child.exitCode === null) child.kill('SIGKILL')
+        await exited
       },
     }
   }
