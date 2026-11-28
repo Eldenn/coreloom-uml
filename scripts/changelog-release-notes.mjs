@@ -1,16 +1,21 @@
 #!/usr/bin/env node
 /**
- * Print a GITHUB_OUTPUT-formatted multiline value combining the matching
- * version section from apps/api/CHANGELOG.md and apps/web/CHANGELOG.md
- * (both written by `changeset version`, see .github/workflows/changesets.yml)
- * for a GitHub Release body. Used only by release.yml.
+ * Print the matching version section from apps/api/CHANGELOG.md and
+ * apps/web/CHANGELOG.md (both written by `changeset version`, see
+ * .github/workflows/changesets.yml) as a GitHub Release body. Used only by
+ * release.yml, which writes it to a file: a large release does not fit in an
+ * argument. Past BODY_MAX_LENGTH (GitHub refuses a body over 125,000
+ * characters) the notes are cut at a line and link to the full changelogs.
  *
- *   node scripts/changelog-release-notes.mjs X.Y.Z
+ *   node scripts/changelog-release-notes.mjs X.Y.Z [owner/repo]
  */
 
 import { existsSync, readFileSync } from 'node:fs'
 
+const BODY_MAX_LENGTH = 120_000
+
 const version = process.argv[2]
+const repository = process.argv[3]
 if (!version) {
   console.error('Usage: node scripts/changelog-release-notes.mjs X.Y.Z')
   process.exit(1)
@@ -43,6 +48,13 @@ if (sections.length === 0) {
   process.exit(1)
 }
 
-const notes = sections.map(([label, body]) => `### ${label}\n\n${body}`).join('\n\n')
+let notes = sections.map(([label, body]) => `### ${label}\n\n${body}`).join('\n\n')
 
-process.stdout.write(`notes<<RELEASE_NOTES_EOF\n${notes}\nRELEASE_NOTES_EOF\n`)
+if (notes.length > BODY_MAX_LENGTH) {
+  const base = repository ? `https://github.com/${repository}/blob/v${version}` : '.'
+  const links = sections.map(([label]) => `[${label}](${base}/${label}/CHANGELOG.md)`).join(', ')
+  const cut = notes.slice(0, BODY_MAX_LENGTH)
+  notes = `${cut.slice(0, cut.lastIndexOf('\n'))}\n\n…\n\nThe notes are cut here; read them whole in ${links}.`
+}
+
+process.stdout.write(`${notes}\n`)

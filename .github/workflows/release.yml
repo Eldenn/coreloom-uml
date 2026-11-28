@@ -39,13 +39,13 @@ jobs:
           VERSION: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          node scripts/changelog-release-notes.mjs "${VERSION#v}" >> "$GITHUB_OUTPUT"
+          node scripts/changelog-release-notes.mjs "${VERSION#v}" "${GITHUB_REPOSITORY}" > "${RUNNER_TEMP}/release-notes.md"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
-          body: ${{ steps.changelog.outputs.notes }}
+          body_path: ${{ runner.temp }}/release-notes.md
 
   docker:
     needs: ci
