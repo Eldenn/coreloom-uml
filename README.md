@@ -35,8 +35,8 @@ AdonisJS v7 · React 19 · TypeScript (strict) · pnpm · Turborepo
 ## What is Coreloom UML?
 
 Coreloom UML is a tool for software and system design. Work is organised in **projects**: a
-project holds the design artifacts of one system or product, architectures being the first kind
-(more will follow, each linked to a project the same way). An **architecture** holds
+project holds the design artifacts of one system or product: its architectures, its agent
+conventions, its requirements and decisions, and the maps of its code. An **architecture** holds
 several **diagrams** (views: C4 context, deployment, class, sequence, state, entity-relationship,
 use case, activity, component, package), each written as Mermaid, PlantUML or JSON text and drawn live beside it.
 Changes are saved automatically, with a version check so two tabs never overwrite each other
@@ -87,6 +87,16 @@ silently.
   options weighed, an architecture, then hands over to the diagram assistant). Each step waits for
   the owner to accept its card; the browser tab keeps which conversation is a brief, nothing more
   is stored.
+  A conversation can also hold **files** (text or PDF, a PDF being read in the browser;
+  `POST /assistant/conversations/:conversationId/files`): the owner's model summarizes each one
+  part by part when it is attached, the text is kept gzipped in Drive, and every later message
+  carries only the names and summaries, the model reading the passages it needs. With
+  `assistant-repository` (and `code-maps`, `E2B_API_KEY`), the model also reads the GitHub
+  repository a project follows in an E2B sandbox kept (paused) with the conversation: files,
+  search, history, blame, and commands of its own once the sandbox is cut off the network. The
+  owner has a **terminal** in that same sandbox
+  (`POST /assistant/conversations/:conversationId/sandbox/commands`, streamed). With `web-search`
+  and a search service set by the admin, the model can also search the web (`search_web`).
 - **Requirements and decisions.** A project keeps why its architecture is what it is:
   **requirements** (`GET`/`POST /projects/:id/requirements`, `PATCH`/`DELETE /requirements/:id`:
   one checkable sentence, the quality it is about, `must` or `should`, an optional measure) and
@@ -101,6 +111,12 @@ silently.
   diagram assistant reads the requirements and the decisions still standing before it draws a view
   of the project. At most a hundred of each per project. These routes call no model. Behind the
   `design-records` feature flag, off by default; session only.
+  **Design review**: `GET /projects/:id/design-review` says, with no model, what the records say
+  against themselves (a `must` requirement no accepted decision serves, an accepted decision that
+  names no diagram, a superseded one still named, a part its view no longer has);
+  `POST /architectures/:id/design-review` has the owner's model read the architecture's views
+  against the requirements and decisions, and stores its findings (`PATCH /design-findings/:id`
+  marks one done or dismissed).
 - **Milestones.** An architecture keeps named states of all its views (a release, a target, a
   state before a migration): `GET`/`POST /architectures/:id/milestones`,
   `GET`/`DELETE /architectures/:id/milestones/:milestoneId` and
@@ -125,6 +141,17 @@ silently.
   for coding agents (at most ten wait per project). It is behind
   the `mcp-server` feature flag, off by default; generated agent conventions say how to register
   it in each tool.
+- **Tech watch.** A Watch page shared by the instance (`GET /watch/articles`, behind `tech-watch`):
+  articles on AI and software engineering from the RSS/Atom feeds and the web searches the admin
+  picks (`/admin/watch/*`: sources, blocked sites, an article's tags or hiding it), read daily by
+  `RefreshWatchJob`, tagged with the same topics as the rules and skills by the skill tagger. Only
+  the title, link, site, date and a short excerpt are kept. The assistant reads them too
+  (`find_articles`).
+- **Web search.** The admin sets one search service for the instance (Linkup today) in Settings
+  (`GET`/`PUT`/`DELETE /admin/web-search`, its key sealed and never returned). Behind `web-search`,
+  the web research and the assistant search through it, within a daily quota per account.
+- **Jobs panel.** The admin's header lists the jobs of every queue (`GET /admin/jobs`: names,
+  states and times, never a job's data).
 
 The business rules (RM-xx, referenced in the code) are in the scoping document. The monorepo comes
 from [lightloom](https://github.com/eldenn/lightloom) (itself [coreloom](https://github.com/eldenn/coreloom)
@@ -158,7 +185,8 @@ stripped down); the whole front end is built with [coreloom-ui](https://github.c
 | Diagrams | coreloom-ui's `DiagramEditor` / `UmlDiagram`; the UML model and its Mermaid, PlantUML and JSON conversion in `packages/uml`, shared by the web app and the API |
 | Agent conventions | `packages/catalog`: the ready-made rule packs, slot registry and per-tool templates from which `renderAgentContext` deterministically renders an `AGENTS.md` (plus pointer files for tools that do not read it natively); `apps/cli` (`@coreloom-uml/cli`, published on npm) writes them into a repository |
 | Code maps | `packages/codemap`: the `CodeMap` format (files, symbols and the links between them, never source code), the importer of graphify's `graph.json`, entry point detection, and the deterministic matching of diagrams against a map; `coreloom-uml map push` (`apps/cli`) sends one from a repository |
-| LLM (bring your own key) | `packages/llm`: the Vercel AI SDK (`ai` 7, `@ai-sdk/*`) behind rule proposals and the connection test; Anthropic, OpenAI, Mistral, Ollama and OpenAI-compatible servers (allowlisted) |
+| LLM (bring your own key) | `packages/llm`: the Vercel AI SDK (`ai` 7, `@ai-sdk/*`) behind every model call (rule proposals, the assistant, web research, reviews, convention tests); Anthropic, OpenAI, Mistral, Ollama and OpenAI-compatible servers (allowlisted), or a ChatGPT or Claude subscription |
+| Sandboxes | [E2B](https://github.com/e2b-dev/E2B) (Cloud, or self-hosted from `infra/e2b/`): code maps from GitHub, the assistant's repository, web research, convention tests |
 
 ## Repository Layout
 
@@ -174,15 +202,23 @@ coreloom-uml/
 │   ├── auth-policy/          # Password policy — copied from coreloom (consumed from source, no build step)
 │   ├── uml/                  # UML model + Mermaid/PlantUML/JSON conversion, shared by web and api (zod only)
 │   ├── catalog/              # Agent conventions: rule packs, slots, per-tool templates, renderAgentContext (zod only)
-│   ├── llm/                  # Calls with the user's own LLM key: providers, allowlist, connection test, rule proposals
+│   ├── codemap/              # The CodeMap format, graphify importer, entry points, diagram matching (zod only)
+│   ├── llm/                  # Calls with the user's own LLM key or subscription: providers, allowlist,
+│   │                         #   rule proposals, assistant, research, coding trials
 │   └── feature-flags/        # Feature flag declarations and their evaluation, shared by web and api (zod only)
 └── infra/
-    ├── docker-compose.yml         # local dev: postgres (+ postgres-init, which creates the dev and
-    │                              #   test databases on every `up`) + redis + mailpit + minio + bull-board
-    ├── docker-compose.staging.yml # Coolify staging stack
-    ├── e2b/                       # self-hosted E2B sandboxes (code maps from GitHub, the assistant's
-    │                              #   repository, web research), started on demand
-    └── .env.staging.example       # staging environment variables
+    ├── docker-compose.yml            # local dev: postgres (+ postgres-init, which creates the dev and
+    │                                 #   test databases on every `up`) + redis + mailpit + minio + bull-board,
+    │                                 #   and the skill-scanner, skill-tagger and convention-evals workers behind profiles
+    ├── docker-compose.staging.yml    # Coolify staging stack
+    ├── docker-compose.production.yml # Coolify production stack
+    ├── e2b/                          # self-hosted E2B sandboxes (code maps from GitHub, the assistant's
+    │                                 #   repository, web research, convention tests), started on demand
+    ├── evals/                        # Harbor environment and agents of the convention tests
+    ├── skill-scanner/                # SkillSpector lock and upgrade notes
+    ├── skill-tagger/                 # skill tagger model notes and its study
+    ├── signoz/                       # vendored SigNoz config (staging observability)
+    └── .env.staging.example          # staging environment variables
 ```
 
 ## Requirements
@@ -224,6 +260,9 @@ docker compose -f infra/docker-compose.yml --profile skills up -d skill-scanner
 # 8. (optional) Tag the skills (see infra/skill-tagger/README.md; on a Linux or macOS host,
 #    `pnpm --filter @coreloom-uml/api queue:tag` does the same without Docker)
 docker compose -f infra/docker-compose.yml --profile skills up -d skill-tagger
+
+# 9. (optional) Run the convention tests worker (needs the E2B_* values; see infra/evals/README.md)
+docker compose -f infra/docker-compose.yml --profile evals up -d convention-evals
 ```
 
 By default:
@@ -303,8 +342,9 @@ hashed in `auth_access_tokens`; the secret is shown once, at creation.
 - Each key is named, has a `read` and/or `write` ability, and expires after
   1 to 365 days or never. `GET` needs `read`, every other method `write`
   (403 otherwise).
-- Only the `/projects`, `/agent-configs`, `/architectures` and `/rule-packs`
-  routes accept a key (`middleware.auth({ guards: ['web', 'api'] })` + `middleware.tokenAbility()`).
+- Only the `/projects`, `/agent-configs`, `/architectures`, `/rule-packs`, `/role-presets`,
+  `/code-maps`, `/code-map-suggestions` and `GET /skills…` routes, and `/mcp`, accept a key
+  (`middleware.auth({ guards: ['web', 'api'] })` + `middleware.tokenAbility()`).
 - A key cannot `force` a diagram save: on a version conflict it gets the 409
   and must reload the latest version.
 - Each key is limited to 120 requests per minute (`apiTokenThrottle`); an
@@ -418,6 +458,15 @@ nothing was: the map names no GitHub repository, it has no commit, the repositor
 read, or the files were not found at that commit (a map pushed from a subfolder, a commit never
 pushed). The view is then drawn from the structure only. Package and component diagrams read no
 source.
+
+**Conformance reviews.** `POST /code-reviews` starts a review of a project's diagrams against a
+ready map (no model call); the browser then sends each diagram in turn to
+`POST /code-reviews/:id/diagrams/:diagramId`, one call of the owner's model each (with
+`includeSnippets`, it also reads the source of sequence, activity and class diagrams in a sandbox,
+as above). `GET /projects/:id/code-reviews` and `GET /code-reviews/:id` read them,
+`PATCH /code-review-findings/:id` resolves a finding, `DELETE /code-reviews/:id` deletes one. A
+project keeps its ten newest reviews. Their open findings feed the conformance route, the MCP
+tools and `check --conformance`.
 
 #### GitHub App (private repositories, pushes)
 
@@ -533,6 +582,31 @@ in `.coreloom-uml.json` (no secret), and stops (exit code 2) rather than overwri
 hand. `status` compares the local blocks with that manifest. It is a single ESM file bundled by
 tsup with the catalog inside; its tests (Vitest) run against a fixture HTTP server.
 
+Besides the tools' own files, a generation renders the gates that enforce what a tool cannot by
+itself: Git hooks in `.githooks/`, a GitHub Actions workflow (rule `git.ci-workflow`), a
+sandboxed development container (`.devcontainer/`, rule `security.sandbox`, an allowlist
+firewall) and, from the project's package diagrams, a `.dependency-cruiser.cjs` that refuses the
+dependencies no arrow draws. `POST /agent-configs/:id/imports` turns an existing agent file (or a
+web research's findings) into rule proposals with the owner's model.
+
+**Roles** (behind `agent-roles`): `POST|PATCH|DELETE /agent-configs/:id/roles[/:roleId]` adds a
+role (a mission, the folders it works in, its rights), written out or from a ready-made one
+(`/role-presets`, from agency-agents at a pinned commit); `GET …/roles/suggestions` suggests the
+ones sharing topics with the rules held. Each role is rendered once per target tool that can run
+one; a right is enforced only when the tool refuses it by itself, an instruction otherwise.
+
+**Convention tests** (behind `convention-evals`, with `E2B_API_KEY` and the `convention-evals`
+worker): `POST /agent-configs/:id/evals` (202) runs the rendered files against a coding task in
+E2B sandboxes, with and without the conventions, paid with the owner's own provider;
+`GET …/evals/plan`, `GET …/evals` and `GET …/evals/:runId` show what it will run and the results.
+Every kind runs through our own harness, the model being called from the worker so no credential
+enters a sandbox; the trial is graded in its sandbox, never on the server. A run spends at most
+5 US dollars (measured tokens times a dated price table) and stops past its time limit. Running a
+coding agent's own CLI (Claude Code, Codex) with a saved key in the sandbox exists but stays
+refused until the tests have an E2B install whose logs are not kept (`CONVENTION_EVALS_CLI_PATH`,
+off by default). Every text of a trial is filtered for secrets before it is stored; a match stores
+the trial as `leaked` with no output and stops the run.
+
 #### Skills
 
 Every generation also lists third-party skills (Agent Skills `SKILL.md` folders) that fit the
@@ -628,9 +702,13 @@ queries. Behind a proxy, keep `/skills/events` unbuffered (the response sets `X-
 
 #### Rule proposals with the user's own LLM (bring your own key)
 
-The server holds no provider key and stores none: the browser keeps the provider (`kind`,
-`model`, `baseUrl`) and its key, and sends them in the body of each call as
-`{ provider, apiKey }`. The calls live in `packages/llm` (Vercel AI SDK, structured output);
+Each account saves at most one key per provider kind: `PUT /llm/api-keys/:kind` `{ apiKey,
+baseUrl? }` stores it in `llm_api_keys` only after a successful test call with it, sealed by the
+dedicated `llmKeys` encrypter (`LLM_KEYS_ENCRYPTION_KEYS`, never `APP_KEY`) and bound to the
+account; `DELETE /llm/api-keys/:kind` removes it. A key is never returned (the routes answer its
+hint, origin and date), logged, traced or put in a job's data. The browser keeps only the provider
+`{ kind, model }` and sends it with each call; the key, and the server address of a kind that
+takes one, are read from the saved row. The calls live in `packages/llm` (Vercel AI SDK, structured output);
 the routes accept the session only (an API key gets 401) and share a budget of 10 calls a
 minute per user (`llmThrottle`).
 
@@ -685,16 +763,20 @@ minute per user (`llmThrottle`).
   (comma-separated origins, empty by default), and redirects are never followed (422 otherwise).
 - Only the configuration id, provider kind, model, duration, proposal count and failure reason
   are logged; `apiKey` fields are also redacted by the logger.
+- Every model call made for a user uses that user's provider (a saved key or a connected
+  subscription), never one the server picks; a queued job gets the kind and model with ids only
+  and reads the credential when it runs.
 - `GET /llm/providers` (session) tells the settings screen what it can offer: each kind with
   `requiresApiKey`, `takesBaseUrl` and a few model suggestions (from `packages/catalog`), and
   `allowedBaseUrls`, the origins of `LLM_ALLOWED_BASE_URLS`. Each kind also says how it
   authenticates (`auth`: `apiKey` or `subscription`) and whether it is `connected`.
 
 On the web, Settings › « LLM provider » (`apps/web/src/llm/`) sets the provider: kind, model (a
-suggestion or any typed name), server URL for `ollama` and `openai-compatible`, and key. All of it
-is kept in this browser only, under `llm-provider` in `localStorage` (`src/lib/llm-provider.ts`),
-never sent anywhere but to these two routes. « Test » checks the form's values without saving them,
-the saved key is shown masked, and « Forget the key » removes the provider and its key. Once a
+suggestion or any typed name), server URL for `ollama` and `openai-compatible`, and key. The kind
+and model stay in this browser (`llm-provider` in `localStorage`, `src/lib/llm-provider.ts`); the
+key is saved to the account and only its hint is shown (a key found in the old browser entry is
+offered for saving once, then dropped). Deleting the key stops calls with that provider until one
+is saved again. Once a
 provider is set, the rules card of the « Agent conventions » tab offers « Propose rules »: a side
 panel waits for the model (agent plan), then lists each proposal with its section and the answer
 it comes from, to accept, edit then accept, or ignore one by one (coreloom-ui's `SuggestionList`).
@@ -1027,7 +1109,7 @@ environment (**Settings → Environments**).
 | `packages/i18n` | **Dropped** — the front end follows coreloom-ui: `CoreloomI18nProvider` for component strings and the app's own `apps/web/src/messages.ts` (`en`/`fr`). | One design system, one i18n mechanism on the front. |
 | Bouncer / per-resource RBAC policies | Dropped. Resource ownership is a flat `userId` check via `app/shared/authorization/assertOwner` (through `app/architectures/services/owned-architecture.ts`); a non-owned resource reads as a 404. No roles, no policy classes. | The `assertOwner` helper covers "a user may only touch their own rows", which is all an MVP needs. Add real RBAC back (`@adonisjs/bouncer` + policy classes, exactly as coreloom does it) once roles/permissions become a requirement. |
 | Playwright e2e, Storybook | Storybook dropped (coreloom-ui has its own). Screen tests will be Playwright + axe, as in coreloom-ui — not written yet (see [Not yet included](#not-yet-included)). | |
-| Changesets versioning | **Kept, repurposed** — not for publishing packages (nothing here is published), but as the release-PR automation: every PR adds a changeset, `apps/api` + `apps/web` version together (`fixed` in `.changeset/config.json`), and merging the auto-generated "Version Packages" PR tags and deploys to production. See [Releases and production](#releases-and-production). | An MVP with a real production environment needs *some* deliberate release boundary distinct from continuous staging deploys; Changesets' PR-based flow gives that without any hand-edited version bump or changelog. |
+| Changesets versioning | **Kept, repurposed** — mainly as the release-PR automation (the only package published is `@coreloom-uml/cli`, versioned on its own and published to npm when `NPM_TOKEN` exists): every PR adds a changeset, `apps/api` + `apps/web` version together (`fixed` in `.changeset/config.json`), and merging the auto-generated "Version Packages" PR tags and deploys to production. See [Releases and production](#releases-and-production). | An MVP with a real production environment needs *some* deliberate release boundary distinct from continuous staging deploys; Changesets' PR-based flow gives that without any hand-edited version bump or changelog. |
 | Tuyau typed API client (`@tuyau/core`) | **Kept** — `apps/web` calls the API through the generated client (`apps/web/src/lib/client.ts`); no OpenAPI docs generation. The registry (`apps/api/.adonisjs/client/registry/`) is generated by an assembler hook on `node ace serve` and committed like a lockfile. | End-to-end type safety with a single source of truth (the Vine input validators + controller return types) beats hand-syncing a `fetch` wrapper against a separate schema package, even at this size. OpenAPI stays out until an external/non-TS consumer needs it. |
 | `packages/contracts` (shared Zod schemas) | **Dropped** | Its only real job was supplying `apps/web`'s request/response types, which Tuyau now infers from the API; no runtime Zod validation was in use. Client-side form checks still come from `packages/auth-policy`. |
 | `packages/auth-policy` | **Kept**, now consumed straight from TypeScript source (`exports` → `./src`, no `tsup` build); dropped from `apps/api`'s dependencies since only `apps/web` uses it | Small, dependency-free, and now directly useful (its `PASSWORD_POLICY.minLength` sets the password forms' minimum length) rather than only informing Logto's server-side policy. Coreloom builds it because its API consumes it as compiled JS; coreloom-uml's API doesn't consume it at all, so the build step is dead weight. |
