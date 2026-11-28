@@ -1,5 +1,13 @@
 # @coreloom-uml/web
 
+## 0.2.1
+
+### Patch Changes
+
+- cc870e2: Agent conventions can be deleted from their list: right-click a row and choose Remove, with the same confirmation as on their own page.
+- Updated dependencies [825bd4b]
+  - @coreloom-uml/api@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes
