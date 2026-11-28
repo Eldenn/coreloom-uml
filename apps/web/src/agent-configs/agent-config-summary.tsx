@@ -277,7 +277,6 @@ function TargetsCard({ configId, config }: { configId: number; config: AgentConf
 
 function DeleteConfig({ configId, onDeleted }: { configId: number; onDeleted: () => void }) {
   const t = useT()
-  const remove = useDeleteAgentConfig(configId)
   const [open, setOpen] = React.useState(false)
   return (
     <div className="flex justify-end">
@@ -289,31 +288,55 @@ function DeleteConfig({ configId, onDeleted }: { configId: number; onDeleted: ()
       >
         <Trash2Icon /> {t.agents.deleteConfig}
       </Button>
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t.agents.deleteTitle}</AlertDialogTitle>
-            <AlertDialogDescription>{t.agents.deleteText}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t.agents.cancel}</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={async () => {
-                try {
-                  await remove.mutateAsync()
-                  toast.success(t.agents.deleted)
-                  onDeleted()
-                } catch (error) {
-                  toast.error(getErrorMessage(error, t.agents.failed))
-                }
-              }}
-            >
-              {t.agents.remove}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteAgentConfigDialog
+        configId={configId}
+        open={open}
+        onOpenChange={setOpen}
+        onDeleted={onDeleted}
+      />
     </div>
+  )
+}
+
+/** Asks before deleting a configuration: from its own page and from the list's menu. */
+export function DeleteAgentConfigDialog({
+  configId,
+  open,
+  onOpenChange,
+  onDeleted,
+}: {
+  configId: number
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onDeleted?: () => void
+}) {
+  const t = useT()
+  const remove = useDeleteAgentConfig(configId)
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t.agents.deleteTitle}</AlertDialogTitle>
+          <AlertDialogDescription>{t.agents.deleteText}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t.agents.cancel}</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            onClick={async () => {
+              try {
+                await remove.mutateAsync()
+                toast.success(t.agents.deleted)
+                onDeleted?.()
+              } catch (error) {
+                toast.error(getErrorMessage(error, t.agents.failed))
+              }
+            }}
+          >
+            {t.agents.remove}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

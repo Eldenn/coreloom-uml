@@ -1,10 +1,12 @@
 // Agent conventions as rows, and the dialogs that create, rename and move one: used by the page of
 // all configurations (in a project or not) and by a configuration's own page.
 import { Link, useNavigate } from '@tanstack/react-router'
-import { BotIcon, PlusIcon } from 'lucide-react'
+import { BotIcon, PlusIcon, Trash2Icon } from 'lucide-react'
+import * as React from 'react'
 import { z } from 'zod'
 
 import { AgentConfigSetupContent } from '@/agent-configs/agent-config-setup'
+import { DeleteAgentConfigDialog } from '@/agent-configs/agent-config-summary'
 import { ProjectLabel } from '@/architectures/architecture-list'
 import { ItemContextMenu } from '@/assistant/item-context-menu'
 import { Button } from '@/components/ui/button'
@@ -118,6 +120,7 @@ function AgentConfigRow({
 }) {
   const t = useT()
   const navigate = useNavigate()
+  const [confirming, setConfirming] = React.useState(false)
   const inContext = useContextActions({ kind: 'agent-config', id: config.id, label: config.name })
   const actions = [
     {
@@ -126,47 +129,62 @@ function AgentConfigRow({
       onSelect: () => void navigate({ to: '/agent-configs/$id', params: { id: config.id } }),
     },
     ...inContext,
+    {
+      label: t.agents.remove,
+      icon: <Trash2Icon />,
+      destructive: true,
+      onSelect: () => {
+        setConfirming(true)
+      },
+    },
   ]
   return (
-    <ItemContextMenu actions={actions}>
-      <Item variant="outline" className="relative">
-        <ItemMedia variant="icon">
-          <BotIcon />
-        </ItemMedia>
-        <ItemContent>
-          <ItemTitle>
-            {/* The whole row opens the configuration; the project link stays clickable on top. */}
-            <Link
-              to="/agent-configs/$id"
-              params={{ id: config.id }}
-              className="rounded-sm outline-none after:absolute after:inset-0 focus-visible:ring-[3px] focus-visible:ring-ring"
-            >
-              {config.name}
-            </Link>
-          </ItemTitle>
-          <ItemDescription className="relative">
-            <ProjectLabel projects={projects} projectId={config.projectId} />
-          </ItemDescription>
-        </ItemContent>
-        <ItemActions>
-          <RelativeTime
-            date={config.updatedAt}
-            className="hidden text-[13px] text-muted-foreground sm:inline"
-          />
-          {selection && (
-            // After the link in the row, and positioned, so it stays clickable on top of it.
-            <Checkbox
-              className="relative"
-              aria-label={t.agents.select(config.name)}
-              checked={selection.has(config.id)}
-              onCheckedChange={(checked) => {
-                selection.onToggle(config, checked === true)
-              }}
+    <>
+      <ItemContextMenu actions={actions}>
+        <Item variant="outline" className="relative">
+          <ItemMedia variant="icon">
+            <BotIcon />
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>
+              {/* The whole row opens the configuration; the project link stays clickable on top. */}
+              <Link
+                to="/agent-configs/$id"
+                params={{ id: config.id }}
+                className="rounded-sm outline-none after:absolute after:inset-0 focus-visible:ring-[3px] focus-visible:ring-ring"
+              >
+                {config.name}
+              </Link>
+            </ItemTitle>
+            <ItemDescription className="relative">
+              <ProjectLabel projects={projects} projectId={config.projectId} />
+            </ItemDescription>
+          </ItemContent>
+          <ItemActions>
+            <RelativeTime
+              date={config.updatedAt}
+              className="hidden text-[13px] text-muted-foreground sm:inline"
             />
-          )}
-        </ItemActions>
-      </Item>
-    </ItemContextMenu>
+            {selection && (
+              // After the link in the row, and positioned, so it stays clickable on top of it.
+              <Checkbox
+                className="relative"
+                aria-label={t.agents.select(config.name)}
+                checked={selection.has(config.id)}
+                onCheckedChange={(checked) => {
+                  selection.onToggle(config, checked === true)
+                }}
+              />
+            )}
+          </ItemActions>
+        </Item>
+      </ItemContextMenu>
+      <DeleteAgentConfigDialog
+        configId={config.id}
+        open={confirming}
+        onOpenChange={setConfirming}
+      />
+    </>
   )
 }
 
