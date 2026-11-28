@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="36 26 184 204">
+  <!-- The CatMark of src/components/brand.tsx, coloured for the browser's light or dark tab bar. -->
+  <style>
+    .body { fill: #c9611a; }
+    .pupil { fill: #15171c; }
+    @media (prefers-color-scheme: dark) {
+      .body { fill: #ef9140; }
+      .pupil { fill: #1ce0d3; }
+    }
+  </style>
+  <path class="body" fill-rule="evenodd" d="M40 132 L60 30 L110 72 C120 70 136 70 146 72 L196 30 L216 132 C216 190 178 226 128 226 C78 226 40 190 40 132 Z M70.89 143.27 A36 36 0 0 1 121.11 156.73 A36 36 0 0 1 70.89 143.27 Z M134.89 156.73 A36 36 0 0 1 185.11 143.27 A36 36 0 0 1 134.89 156.73 Z"/>
+  <path class="pupil" d="M96 139 A5 11 0 0 1 96 161 A5 11 0 0 1 96 139 Z M160 139 A5 11 0 0 1 160 161 A5 11 0 0 1 160 139 Z"/>
+</svg>
